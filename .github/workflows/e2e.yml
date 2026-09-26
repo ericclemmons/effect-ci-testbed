@@ -10,31 +10,26 @@ permissions:
 
 jobs:
   example:
-    name: ${{ matrix.example }}
+    name: ${{ matrix.example }} / ${{ matrix.implementation }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         example:
           - node-npm
+        implementation:
+          - github-actions
+          - effect-on-github
     steps:
       - uses: actions/checkout@v7
-
-      - name: Stage example
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: |
-          mkdir -p .e2e/example
-          cp -R "examples/$EXAMPLE/." .e2e/example
-
-      - name: Run conventional pull-request action
-        uses: ./.e2e/example/.github/actions/pull_request
-
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Run Effect CI
-        run: pnpm --filter "./examples/${{ matrix.example }}" run ci
+          package-manager-cache: false
+      - if: matrix.implementation == 'effect-on-github'
+        uses: pnpm/action-setup@v4
+      - name: Run end-to-end flow
+        env:
+          EXAMPLE: ${{ matrix.example }}
+          IMPLEMENTATION: ${{ matrix.implementation }}
+        run: bash "examples/$EXAMPLE/.e2e/$IMPLEMENTATION.sh"

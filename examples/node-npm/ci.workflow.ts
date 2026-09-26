@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url"
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-const app = fileURLToPath(new URL("./app", import.meta.url))
+const app = fileURLToPath(new URL(".", import.meta.url))
 
 export const checkout = CI.step("checkout", () =>
   Effect.succeed(CI.Workspace.local(app)),

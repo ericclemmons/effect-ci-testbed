@@ -33,10 +33,10 @@ R2 / S3 archive               self-hosted executor
 
 The first checked example proves steps 1 and 2 only. Each example owns a conventional,
 copyable workflow under its own `.github/workflows` directory. The root
-[`e2e.yml`](./.github/workflows/e2e.yml) contains only a matrix of example directories.
-For each directory it stages the example at a fixed path, invokes the same local
-`pull_request` action used by the example's workflow, then invokes the Effect
-implementation through the example's standard `ci` package script.
+[`e2e.yml`](./.github/workflows/e2e.yml) crosses example directories with supported
+implementations. Each pair invokes a testbed-only adapter from the example's `.e2e`
+directory, so conventional GitHub Actions and Effect-on-GitHub report independent
+results. Future rows can add Effect-on-Cloudflare or GitLab executors.
 
 ## Workspace-first execution
 
@@ -122,8 +122,9 @@ pnpm ci:node-npm
 pnpm test
 ```
 
-The root GitHub workflow invokes the example's conventional action without knowing its
-steps, then runs the same Effect entry point as `pnpm ci:node-npm`.
+The root GitHub workflow runs each implementation as an independent matrix job. The
+example's conventional workflow keeps its steps inline; the testbed adapters only
+bootstrap those same flows across the implementation matrix.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the
