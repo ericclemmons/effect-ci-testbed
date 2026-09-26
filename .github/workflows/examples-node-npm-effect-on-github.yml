@@ -1,4 +1,4 @@
-name: node-npm / effect-on-github
+name: examples/node-npm/.github/workflows/effect-on-github.yml
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  effect-on-github:
+  ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: examples/node-npm/ci.run.ts
