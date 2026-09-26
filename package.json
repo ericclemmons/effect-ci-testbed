@@ -5,12 +5,16 @@
   "packageManager": "pnpm@12.5.1",
   "scripts": {
     "build": "pnpm --filter @effect-ci-testbed/ci build",
-    "check": "pnpm -r --if-present check",
-    "ci:node-npm": "pnpm --filter @effect-ci-testbed/example-node-npm run ci",
-    "ci:node-npm:dry-run": "pnpm --filter @effect-ci-testbed/example-node-npm run ci -- --dry-run",
+    "check": "pnpm --filter @effect-ci-testbed/ci check && tsc -p examples/node-npm/tsconfig.json --noEmit",
+    "ci:node-npm": "tsx examples/node-npm/ci.run.ts",
+    "ci:node-npm:dry-run": "DRY_RUN=1 pnpm ci:node-npm",
     "test": "pnpm check && pnpm ci:node-npm:dry-run && pnpm ci:node-npm"
   },
   "devDependencies": {
+    "@effect-ci-testbed/ci": "workspace:*",
+    "@types/node": "^24.5.2",
+    "effect": "4.0.0-beta.19",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }

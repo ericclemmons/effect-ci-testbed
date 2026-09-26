@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url"
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-const app = fileURLToPath(new URL("./app", import.meta.url))
+const app = fileURLToPath(new URL(".", import.meta.url))
 
 export const checkout = CI.step("checkout", () =>
   Effect.succeed(CI.Workspace.local(app)),
@@ -19,18 +19,12 @@ export const lint = CI.step("lint", function* () {
 })
 
 export const test = CI.step("test", function* () {
-  const workspace = yield* install
+  const workspace = yield* lint
   return yield* workspace.exec("npm test")
 })
 
-const checks = Effect.all(
-  { lint, test },
-  { concurrency: "unbounded" },
-)
-
 export const build = CI.step("build", function* () {
-  yield* checks
-  const workspace = yield* install
+  const workspace = yield* test
   return yield* workspace.exec("npm run build")
 })
 

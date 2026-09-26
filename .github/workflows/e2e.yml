@@ -1,0 +1,67 @@
+name: Examples
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  github:
+    name: ${{ matrix.example }} / github
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - node-npm
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install act
+        env:
+          ACT_VERSION: v0.2.89
+          ACT_SHA256: 0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/nektos/act/releases/download/${ACT_VERSION}/act_Linux_x86_64.tar.gz" \
+            --output "$RUNNER_TEMP/act.tar.gz"
+          echo "$ACT_SHA256  $RUNNER_TEMP/act.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/act"
+          tar -xzf "$RUNNER_TEMP/act.tar.gz" -C "$RUNNER_TEMP/act" act
+          echo "$RUNNER_TEMP/act" >> "$GITHUB_PATH"
+
+      - name: Run examples/${{ matrix.example }}/.github/workflows/github.yml
+        env:
+          EXAMPLE: ${{ matrix.example }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          example_root="$RUNNER_TEMP/examples/$EXAMPLE"
+          mkdir -p "$example_root"
+          cp -R "examples/$EXAMPLE/." "$example_root"
+
+          git -C "$example_root" init --initial-branch=main
+          git -C "$example_root" config user.name effect-ci-testbed
+          git -C "$example_root" config user.email effect-ci-testbed@users.noreply.github.com
+          git -C "$example_root" add .
+          git -C "$example_root" commit -m "Stage $EXAMPLE"
+
+          cd "$example_root"
+          act pull_request \
+            --bind \
+            --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
+            --secret GITHUB_TOKEN \
+            --workflows .github/workflows/github.yml
+
+  effect-on-github:
+    name: ${{ matrix.example }} / effect-on-github
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - node-npm
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/${{ matrix.example }}/ci.run.ts

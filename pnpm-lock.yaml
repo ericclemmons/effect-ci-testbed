@@ -166,28 +166,23 @@ importers:
 
   .:
     devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  examples/node-npm:
-    dependencies:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
-        version: link:../../packages/ci
-      effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
-    devDependencies:
+        version: link:packages/ci
       '@types/node':
         specifier: ^24.5.2
         version: 24.13.6
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
       tsx:
         specifier: ^4.20.5
         version: 4.23.15
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+
+  examples/node-npm: {}
 
   packages/ci:
     dependencies:

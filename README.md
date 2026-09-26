@@ -9,16 +9,16 @@ This repository asks one question:
 The goal is not to generate GitHub Actions YAML. The goal is to author the pipeline once in TypeScript and choose where it runs.
 
 ```text
-                              ┌─ local process
-                              ├─ GitHub runner
-ci.workflow.ts ── runtime ────├─ GitLab runner
-                              └─ Cloudflare Workflow + Sandbox
+                              ┌─ existing local workspace
+                              ├─ temporary worktree / copy-on-write workspace
+ci.workflow.ts ── runtime ────├─ GitHub or GitLab runner workspace
+                              └─ Cloudflare Worker-backed workspace
 
 source layer                  execution layer
 ────────────                  ───────────────
 GitHub                        local process
-GitLab                        local container
-Cloudflare SCM                Cloudflare Sandbox
+GitLab                        isolated filesystem workspace
+Cloudflare SCM                Cloudflare Worker executor
 R2 / S3 archive               self-hosted executor
 ```
 
@@ -31,7 +31,41 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first checked example proves steps 1 and 2 only.
+The first example describes steps 1 and 2. It owns its workflows under its own
+`.github/workflows` directory: the conventional
+[`github.yml`](./examples/node-npm/.github/workflows/github.yml) and the small
+[`effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
+caller.
+
+GitHub discovers workflow files only at the repository root, does not support nested
+workflow directories, and requires literal `uses` paths for reusable workflows. The
+root [`e2e.yml`](./.github/workflows/e2e.yml) therefore treats each example as a small
+repository and runs its exact `.github/workflows/github.yml` with `act`. `act` is only
+the testbed's GitHub-hosted E2E harness; it is not the CI runtime and developers do not
+need to install or run it locally.
+
+Effect-on-GitHub is a separate matrix-backed check. It calls the root reusable
+[`effect-ci.yml`](./.github/workflows/effect-ci.yml) natively, pointing it at each
+example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
+`effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
+commands into the root workflow.
+
+## Workspace-first execution
+
+A run owns one workspace. Steps are dependency, durability, and observability
+boundaries; they do not imply separate machines or containers. Commands reuse the
+same filesystem by default, which matches how developers usually work locally and
+keeps the common install → check → build → deploy path fast.
+
+- On GitHub or GitLab, the platform-provided fresh runner becomes the workspace.
+- Locally, execution may use the current checkout or an isolated temp directory,
+  worktree, snapshot, or copy-on-write clone.
+- On Cloudflare, the eventual executor should preserve this workspace contract rather
+  than emulate hosted-runner containers.
+- Separate machines, persisted snapshots, artifact transfer, and restoration are
+  explicit opt-in capabilities for workflows that require isolation or fan-out.
+- Workspace reuse is an optimization. Correctness may not depend on a particular
+  process, machine, or executor remaining alive across a durable suspension.
 
 ## Examples
 
@@ -58,9 +92,7 @@ Heavy multi-deployment orchestration is deliberately a separate future feature. 
 [`examples/node-npm/ci.workflow.ts`](./examples/node-npm/ci.workflow.ts) describes:
 
 ```text
-             ┌─ lint ─┐
-checkout → install    ├→ build
-             └─ test ─┘
+checkout → install → lint → test → build
 ```
 
 The important API experiment is:
@@ -79,7 +111,10 @@ const lint = CI.step("lint", function* () {
   return yield* workspace.exec("npm run lint")
 })
 
-const checks = Effect.all({ lint, test }, { concurrency: "unbounded" })
+const test = CI.step("test", function* () {
+  const workspace = yield* lint
+  return yield* workspace.exec("npm test")
+})
 ```
 
 `CI.step` accepts a generator, an Effect, or a function returning a Promise. It does not require a separate `.async` API.
@@ -90,7 +125,7 @@ const checks = Effect.all({ lint, test }, { concurrency: "unbounded" })
 pnpm install
 
 # Discover the graph and commands without executing them.
-pnpm ci:node-npm:dry-run
+DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
 
 # Execute the same workflow locally.
 pnpm ci:node-npm
@@ -99,19 +134,58 @@ pnpm ci:node-npm
 pnpm test
 ```
 
-The Effect-authored GitHub workflow invokes the same `pnpm ci:node-npm` command. The vanilla workflow remains beside it as the parity oracle.
+The example's conventional workflow keeps its steps inline. The Effect-on-GitHub
+alternative replaces those setup and command steps with one reusable workflow call:
+
+```yaml
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: ci.run.ts
+```
+
+The reusable workflow currently represents the GitHub execution layer: checkout,
+Node and pnpm setup, dependency installation, and invocation of the requested
+`ci.run.ts`. The example's Effect caller shows the intended standalone shape; it
+currently relies on the testbed's reusable workflow and workspace package, which
+still need to be packaged for use from an independent repository. A future Cloudflare
+caller should select a different execution layer while leaving the TypeScript workflow
+unchanged.
+
+The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
+reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
+`ci.run.ts` chooses the mode from that ordinary environment variable.
+
+`CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
+run the same dependency-yielding Effect program with hydrated values and return the
+same `{ value, plan }` contract. Planning suppresses workspace commands; execution
+runs them:
+
+```ts
+const result = await CI.runPromise(workflow, {
+  mode: process.env.DRY_RUN ? "plan" : "execute",
+})
+```
+
+The plan contains topologically ordered nodes, direct `needs` edges, commands,
+working directories, durable step options, and status. It is intended to feed the
+eventual DAG visualizer and permission audit without introducing a separate workflow
+definition or planning DSL.
 
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.step(id, body, options?)` is an Effect and can be yielded directly.
-- `Effect.all` expresses concurrency; there is no CI-specific parallel abstraction yet.
+- Ordinary Effect composition controls execution. This example is deliberately sequential; `Effect.all` is available when an example intentionally benefits from shared-workspace concurrency.
 - Repeatedly yielding the same step executes it once per run.
 - A `Workspace` is the value passed between steps.
-- `--dry-run` uses the same runtime and services. Commands are recorded as no-ops rather than swapping every Layer.
+- `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
+- Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
+- Dependency edges are literal yields. The first example yields the previous step to model the common single-workspace install → lint → test → build path.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Durable retry options will use the Cloudflare `WorkflowStepConfig` shape. Effect `Schedule` is not accepted as step configuration.
-- A live container may be reused, but correctness must eventually depend on a persisted workspace snapshot rather than container lifetime.
+- The default executor is workspace-first, not job-container-first. Distributed steps and artifact transfer are explicit later capabilities.
 
 ## Runtime boundary
 
@@ -119,10 +193,15 @@ The prototype currently has one in-process runtime. The intended production spli
 
 ```text
 CI program
-  ├─ planning mode: execute the program with commands recorded as no-ops
-  ├─ local/GitHub mode: execute commands on the host runner
-  └─ Cloudflare mode: map CI.step to durable Workflow steps
+  └─ CI.run
+       ├─ mode plan: hydrate values and record commands
+       ├─ mode execute: run commands on the local/GitHub host
+       └─ future Cloudflare Layer: map CI.step to durable Workflow steps
 ```
+
+This slice deliberately stops at a first-class plan rather than adding planner unit
+tests or a second engine. Verification remains end to end: type-check the packages,
+dry-run the real example, then execute that same example against its fixture app.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
 

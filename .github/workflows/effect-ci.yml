@@ -1,0 +1,34 @@
+name: Effect CI
+
+on:
+  workflow_call:
+    inputs:
+      workflow:
+        description: Path to the Effect CI entry point
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [plan, execute]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Run ${{ inputs.workflow }}
+        env:
+          CI_WORKFLOW: ${{ inputs.workflow }}
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
+        run: pnpm exec tsx "$CI_WORKFLOW"

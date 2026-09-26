@@ -1,19 +1,11 @@
 {
-  "name": "@effect-ci-testbed/example-node-npm",
+  "name": "effect-ci-node-npm-fixture",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "ci": "tsx ci.run.ts",
-    "check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@effect-ci-testbed/ci": "workspace:*",
-    "effect": "4.0.0-beta.19"
-  },
-  "devDependencies": {
-    "@types/node": "^24.5.2",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "lint": "node --check src/index.js && node --check test/index.test.js",
+    "test": "node --test",
+    "build": "node scripts/build.mjs"
   }
 }
