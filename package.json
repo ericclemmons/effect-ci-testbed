@@ -1,0 +1,16 @@
+{
+  "name": "effect-ci-testbed",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.5.1",
+  "scripts": {
+    "build": "pnpm --filter @effect-ci-testbed/ci build",
+    "check": "pnpm -r --if-present check",
+    "ci:node-npm": "pnpm --filter @effect-ci-testbed/example-node-npm run ci",
+    "ci:node-npm:dry-run": "pnpm --filter @effect-ci-testbed/example-node-npm run ci -- --dry-run",
+    "test": "pnpm check && pnpm ci:node-npm:dry-run && pnpm ci:node-npm"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
