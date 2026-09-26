@@ -31,21 +31,18 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first checked example proves steps 1 and 2 only. Each example owns its workflows
-under its own `.github/workflows` directory: the conventional
+The first example describes steps 1 and 2. It owns its workflows under its own
+`.github/workflows` directory: the conventional
 [`github.yml`](./examples/node-npm/.github/workflows/github.yml) and the small
 [`effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
-caller. The testbed's [manifest](./.github/examples.json) lists examples and runners.
-`pnpm workflows:sync` generates the root [E2E fan-out](./.github/workflows/e2e.yml)
-and callable copies of those example workflows.
+caller.
 
-GitHub discovers workflow files only at the repository root and requires literal
-`uses` paths for reusable workflows. Generation is the bridge: edits belong in each
-example; generated root files are checked in so GitHub can run the selected pairs as
-separate checks. The generator scopes command working directories to the example
-without adding testbed-specific paths to its own workflow. Future examples and GitHub
-runners are added to the manifest. GitLab and Cloudflare will use their corresponding
-runner integrations.
+GitHub discovers workflow files only at the repository root, does not support nested
+workflow directories, and requires literal `uses` paths for reusable workflows. That
+means a root matrix cannot natively execute an arbitrary
+`examples/<example>/.github/workflows/<runner>.yml` path. The testbed deliberately
+does not generate root copies or interpret those files. The E2E orchestration boundary
+remains open until the examples can be run as repositories or another runner is chosen.
 
 ## Workspace-first execution
 
