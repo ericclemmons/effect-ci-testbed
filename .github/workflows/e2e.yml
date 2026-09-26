@@ -37,7 +37,11 @@ jobs:
         working-directory: examples/${{ matrix.example }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: act pull_request --workflows .github/workflows/pull_request.yml --secret GITHUB_TOKEN
+        run: >-
+          act pull_request
+          --workflows .github/workflows/pull_request.yml
+          --platform ubuntu-latest=catthehacker/ubuntu:act-latest
+          --secret GITHUB_TOKEN
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
