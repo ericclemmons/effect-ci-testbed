@@ -12,39 +12,61 @@ jobs:
   node-npm-lint:
     name: node-npm / vanilla / lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/node-npm/app
     steps:
       - uses: actions/checkout@v4
-      - uses: ./examples/node-npm/.github/actions/vanilla
+      - uses: actions/setup-node@v4
         with:
-          script: lint
-          environment: test
+          node-version: 24
+          cache: npm
+          cache-dependency-path: examples/node-npm/app/package-lock.json
+      - run: npm ci
+      - run: npm run lint
 
   node-npm-test:
     name: node-npm / vanilla / test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/node-npm/app
     steps:
       - uses: actions/checkout@v4
-      - uses: ./examples/node-npm/.github/actions/vanilla
+      - uses: actions/setup-node@v4
         with:
-          script: test
-          environment: test
+          node-version: 24
+          cache: npm
+          cache-dependency-path: examples/node-npm/app/package-lock.json
+      - run: npm ci
+      - run: npm test
 
   node-npm-build:
     name: node-npm / vanilla / build
     needs: [node-npm-lint, node-npm-test]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/node-npm/app
     steps:
       - uses: actions/checkout@v4
-      - uses: ./examples/node-npm/.github/actions/vanilla
+      - uses: actions/setup-node@v4
         with:
-          script: build
-          environment: test
+          node-version: 24
+          cache: npm
+          cache-dependency-path: examples/node-npm/app/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
   node-npm-effect:
     name: node-npm / effect
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./examples/node-npm/.github/actions/effect
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          environment: test
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ci:node-npm
