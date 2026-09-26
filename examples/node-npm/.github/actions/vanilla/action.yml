@@ -1,0 +1,35 @@
+name: node-npm vanilla job
+description: Run one job from the conventional Node/npm GitHub Actions workflow
+
+inputs:
+  script:
+    description: npm script to run after installing dependencies
+    required: true
+  environment:
+    description: Value exposed to the script as NODE_ENV
+    required: false
+    default: development
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: ${{ github.action_path }}/../../../app/package-lock.json
+
+    - name: Install
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../../app
+      env:
+        NODE_ENV: ${{ inputs.environment }}
+      run: npm ci
+
+    - name: Run ${{ inputs.script }}
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../../app
+      env:
+        NODE_ENV: ${{ inputs.environment }}
+        NPM_SCRIPT: ${{ inputs.script }}
+      run: npm run "$NPM_SCRIPT"

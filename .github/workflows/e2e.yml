@@ -1,0 +1,50 @@
+name: examples / e2e
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  node-npm-lint:
+    name: node-npm / vanilla / lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./examples/node-npm/.github/actions/vanilla
+        with:
+          script: lint
+          environment: test
+
+  node-npm-test:
+    name: node-npm / vanilla / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./examples/node-npm/.github/actions/vanilla
+        with:
+          script: test
+          environment: test
+
+  node-npm-build:
+    name: node-npm / vanilla / build
+    needs: [node-npm-lint, node-npm-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./examples/node-npm/.github/actions/vanilla
+        with:
+          script: build
+          environment: test
+
+  node-npm-effect:
+    name: node-npm / effect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./examples/node-npm/.github/actions/effect
+        with:
+          environment: test

@@ -7,7 +7,7 @@
     "build": "pnpm --filter @effect-ci-testbed/ci build",
     "check": "pnpm -r --if-present check",
     "ci:node-npm": "pnpm --filter @effect-ci-testbed/example-node-npm run ci",
-    "ci:node-npm:dry-run": "pnpm --filter @effect-ci-testbed/example-node-npm run ci -- --dry-run",
+    "ci:node-npm:dry-run": "DRY_RUN=1 pnpm ci:node-npm",
     "test": "pnpm check && pnpm ci:node-npm:dry-run && pnpm ci:node-npm"
   },
   "devDependencies": {

@@ -31,15 +31,35 @@ interface StepDefinition<A = unknown> {
   readonly options: StepOptions
 }
 
-interface PlanNode {
+export interface PlannedCommand {
+  readonly command: string
+  readonly cwd: string
+}
+
+export interface PlanNode {
   readonly id: string
-  readonly commands: Array<{ command: string; cwd: string }>
-  status: "planned" | "running" | "complete" | "failed"
+  readonly needs: ReadonlyArray<string>
+  readonly commands: ReadonlyArray<PlannedCommand>
+  readonly options: StepOptions
+  readonly status: "planned" | "running" | "complete" | "failed"
+}
+
+export interface WorkflowPlan {
+  readonly workflowId: string
+  readonly environment: string
+  readonly mode: "plan" | "execute"
+  readonly nodes: ReadonlyArray<PlanNode>
+}
+
+interface RuntimeNode {
+  readonly id: string
+  readonly commands: Array<PlannedCommand>
+  status: PlanNode["status"]
 }
 
 interface RuntimeShape {
-  readonly dryRun: boolean
-  readonly nodes: Map<string, PlanNode>
+  readonly mode: WorkflowPlan["mode"]
+  readonly nodes: Map<string, RuntimeNode>
   readonly edges: Set<string>
   readonly cache: Cache.Cache<string, unknown, unknown, Runtime>
   readonly addDependency: (parent: string, child: string) => Effect.Effect<void>
@@ -164,9 +184,9 @@ const runCommand = (
     return Effect.sync(() => child.kill("SIGTERM"))
   })
 
-const makeRuntime = (dryRun: boolean) =>
+const makeRuntime = (mode: WorkflowPlan["mode"]) =>
   Effect.gen(function* () {
-    const nodes = new Map<string, PlanNode>()
+    const nodes = new Map<string, RuntimeNode>()
     const edges = new Set<string>()
     let runtime!: RuntimeShape
 
@@ -178,18 +198,18 @@ const makeRuntime = (dryRun: boolean) =>
         const definition = definitions.get(id)
         if (!definition) return Effect.fail(new Error(`Unknown CI step: ${id}`))
 
-        const node = nodes.get(id) ?? {
+        const node: RuntimeNode = nodes.get(id) ?? {
           id,
           commands: [],
           status: "planned" as const,
         }
         nodes.set(id, node)
-        node.status = dryRun ? "planned" : "running"
+        node.status = mode === "plan" ? "planned" : "running"
 
         return definition.body.pipe(
           Effect.provideService(CurrentStep, id),
           Effect.tap(() => Effect.sync(() => {
-            node.status = dryRun ? "planned" : "complete"
+            node.status = mode === "plan" ? "planned" : "complete"
           })),
           Effect.tapError(() => Effect.sync(() => {
             node.status = "failed"
@@ -199,7 +219,7 @@ const makeRuntime = (dryRun: boolean) =>
     })
 
     runtime = {
-      dryRun,
+      mode,
       nodes,
       edges,
       cache,
@@ -212,7 +232,7 @@ const makeRuntime = (dryRun: boolean) =>
 
         node.commands.push({ command, cwd: workspace.cwd })
 
-        if (dryRun) {
+        if (mode === "plan") {
           return Effect.succeed(workspace.completed(stepId))
         }
 
@@ -226,11 +246,14 @@ const makeRuntime = (dryRun: boolean) =>
   })
 
 export interface RunOptions {
-  readonly dryRun?: boolean
   readonly env?: string
 }
 
-const printPlan = (workflowId: string, runtime: RuntimeShape, env: string) => {
+const toPlan = (
+  workflowId: string,
+  runtime: RuntimeShape,
+  environment: string,
+): WorkflowPlan => {
   const dependencies = new Map<string, Array<string>>()
   for (const edge of runtime.edges) {
     const [parent, child] = edge.split("->") as [string, string]
@@ -239,48 +262,89 @@ const printPlan = (workflowId: string, runtime: RuntimeShape, env: string) => {
     dependencies.set(parent, children)
   }
 
-  const ordered: Array<PlanNode> = []
+  const ordered: Array<RuntimeNode> = []
   const visited = new Set<string>()
   const visit = (id: string) => {
     if (visited.has(id)) return
     visited.add(id)
-    for (const dependency of dependencies.get(id) ?? []) visit(dependency)
+    for (const dependency of [...(dependencies.get(id) ?? [])].sort()) visit(dependency)
     const node = runtime.nodes.get(id)
     if (node) ordered.push(node)
   }
-  for (const id of runtime.nodes.keys()) visit(id)
+  for (const id of [...runtime.nodes.keys()].sort()) visit(id)
 
-  console.log(`\nCI ${runtime.dryRun ? "dry run" : "run"}: ${workflowId}`)
-  console.log(`Environment: ${env}`)
-
-  for (const node of ordered) {
-    const needs = dependencies.get(node.id) ?? []
-    const suffix = needs.length > 0 ? ` needs ${needs.join(", ")}` : ""
-    console.log(`\n${node.status === "complete" ? "✓" : "○"} ${node.id}${suffix}`)
-    for (const entry of node.commands) {
-      console.log(`  $ ${entry.command}`)
-      console.log(`    cwd: ${entry.cwd}`)
-    }
+  return {
+    workflowId,
+    environment,
+    mode: runtime.mode,
+    nodes: ordered.map((node) => ({
+      id: node.id,
+      needs: [...(dependencies.get(node.id) ?? [])].sort(),
+      commands: [...node.commands],
+      options: definitions.get(node.id)?.options ?? {},
+      status: node.status,
+    })),
   }
 }
 
-export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
+export const formatPlan = (plan: WorkflowPlan): string => {
+  const lines = [
+    `CI ${plan.mode === "plan" ? "dry run" : "run"}: ${plan.workflowId}`,
+    `Environment: ${plan.environment}`,
+  ]
+
+  for (const node of plan.nodes) {
+    const suffix = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
+    lines.push("", `${node.status === "complete" ? "✓" : "○"} ${node.id}${suffix}`)
+    for (const entry of node.commands) {
+      lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
+    }
+  }
+
+  return lines.join("\n")
+}
+
+const interpret = <A>(
+  workflowDefinition: Workflow<A>,
+  mode: WorkflowPlan["mode"],
+  options: RunOptions,
+) =>
   Effect.gen(function* () {
-    const runtime = yield* makeRuntime(options.dryRun ?? false)
+    const runtime = yield* makeRuntime(mode)
     const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.exit,
     )
 
-    printPlan(workflowDefinition.id, runtime, options.env ?? "development")
+    const plan = toPlan(
+      workflowDefinition.id,
+      runtime,
+      options.env ?? "development",
+    )
 
     if (Exit.isFailure(result)) {
       return yield* Effect.failCause(result.cause)
     }
 
-    return result.value
+    return { plan, value: result.value }
   })
+
+export const plan = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
+  interpret(workflowDefinition, "plan", options).pipe(
+    Effect.map(({ plan }) => plan),
+  )
+
+export const planPromise = <A>(
+  workflowDefinition: Workflow<A>,
+  options?: RunOptions,
+) => Effect.runPromise(plan(workflowDefinition, options))
+
+export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
+  interpret(workflowDefinition, "execute", options).pipe(
+    Effect.tap(({ plan }) => Effect.sync(() => console.log(`\n${formatPlan(plan)}`))),
+    Effect.map(({ value }) => value),
+  )
 
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>
   Effect.runPromise(run(workflowDefinition, options))

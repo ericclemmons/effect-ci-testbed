@@ -12,11 +12,16 @@ checkout → install    ├→ build
 
 Compare:
 
-- [`../../.github/workflows/node-npm-vanilla.yml`](../../.github/workflows/node-npm-vanilla.yml): conventional GitHub Actions jobs.
+- [`.github/actions/vanilla/action.yml`](./.github/actions/vanilla/action.yml): the example-owned setup and command steps used by each conventional job.
+- [`.github/actions/effect/action.yml`](./.github/actions/effect/action.yml): the example-owned planning and execution steps for Effect CI.
 - [`ci.workflow.ts`](./ci.workflow.ts): the same dependency structure authored with Effect.
-- [`../../.github/workflows/node-npm-effect.yml`](../../.github/workflows/node-npm-effect.yml): runs the Effect workflow on a GitHub-hosted runner.
+- [`../../.github/workflows/e2e.yml`](../../.github/workflows/e2e.yml): the thin root workflow that invokes this example in both modes.
 
 ```bash
-pnpm ci:node-npm:dry-run
+DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
 pnpm ci:node-npm
 ```
+
+The dry-run calls `CI.planPromise` and renders the returned `WorkflowPlan`. The normal
+run calls `CI.runPromise`; both interpret the same exported workflow. `NODE_ENV`
+defaults to `development`, while any non-empty `DRY_RUN` enables planning.

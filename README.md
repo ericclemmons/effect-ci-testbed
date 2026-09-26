@@ -31,7 +31,10 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first checked example proves steps 1 and 2 only.
+The first checked example proves steps 1 and 2 only. Each example owns local actions
+under its `.github` directory for its vanilla and Effect execution mechanics. The root
+[`e2e.yml`](./.github/workflows/e2e.yml) workflow expresses the canonical GitHub job
+graph so GitHub can report lint, test, build, and Effect failures independently.
 
 ## Examples
 
@@ -90,7 +93,7 @@ const checks = Effect.all({ lint, test }, { concurrency: "unbounded" })
 pnpm install
 
 # Discover the graph and commands without executing them.
-pnpm ci:node-npm:dry-run
+DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
 
 # Execute the same workflow locally.
 pnpm ci:node-npm
@@ -99,7 +102,22 @@ pnpm ci:node-npm
 pnpm test
 ```
 
-The Effect-authored GitHub workflow invokes the same `pnpm ci:node-npm` command. The vanilla workflow remains beside it as the parity oracle.
+The example-owned GitHub action invokes the same `pnpm ci:node-npm` command. Its
+vanilla mode remains beside the Effect mode as the parity oracle.
+
+`CI.plan(workflow)` is the first interpreter boundary in the prototype. It runs the
+same dependency-yielding Effect program with hydrated values, suppresses workspace
+commands, and returns a structured `WorkflowPlan`. The CLI only formats that value:
+
+```ts
+const plan = await CI.planPromise(workflow, { env: "staging" })
+console.log(CI.formatPlan(plan))
+```
+
+The plan contains topologically ordered nodes, direct `needs` edges, commands,
+working directories, durable step options, and status. It is intended to feed the
+eventual DAG visualizer and permission audit without introducing a separate workflow
+definition or planning DSL.
 
 ## Current prototype semantics
 
@@ -108,7 +126,9 @@ The Effect-authored GitHub workflow invokes the same `pnpm ci:node-npm` command.
 - `Effect.all` expresses concurrency; there is no CI-specific parallel abstraction yet.
 - Repeatedly yielding the same step executes it once per run.
 - A `Workspace` is the value passed between steps.
-- `--dry-run` uses the same runtime and services. Commands are recorded as no-ops rather than swapping every Layer.
+- `CI.plan` and `CI.run` interpret the same workflow. Planning records commands as no-ops and returns a structured value; running executes them locally and returns the workflow value.
+- Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `development`, and any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
+- Dependency edges are literal yields. Because `build` yields both the checks and `install`, its direct needs are `install`, `lint`, and `test`, even though `install` is also a transitive dependency of both checks.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Durable retry options will use the Cloudflare `WorkflowStepConfig` shape. Effect `Schedule` is not accepted as step configuration.
 - A live container may be reused, but correctness must eventually depend on a persisted workspace snapshot rather than container lifetime.
@@ -119,10 +139,14 @@ The prototype currently has one in-process runtime. The intended production spli
 
 ```text
 CI program
-  ├─ planning mode: execute the program with commands recorded as no-ops
-  ├─ local/GitHub mode: execute commands on the host runner
+  ├─ CI.plan: hydrate values, record commands, return WorkflowPlan
+  ├─ CI.run: execute commands on the local/GitHub host runner
   └─ Cloudflare mode: map CI.step to durable Workflow steps
 ```
+
+This slice deliberately stops at a first-class plan rather than adding planner unit
+tests or a second engine. Verification remains end to end: type-check the packages,
+dry-run the real example, then execute that same example against its fixture app.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
 
