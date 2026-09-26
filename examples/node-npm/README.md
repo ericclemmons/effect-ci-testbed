@@ -5,9 +5,7 @@ The first parity fixture is deliberately ordinary: a dependency-free Node applic
 Its pipeline is:
 
 ```text
-             ┌─ lint ─┐
-checkout → install    ├→ build
-             └─ test ─┘
+checkout → install → lint → test → build
 ```
 
 Compare:

@@ -19,18 +19,12 @@ export const lint = CI.step("lint", function* () {
 })
 
 export const test = CI.step("test", function* () {
-  const workspace = yield* install
+  const workspace = yield* lint
   return yield* workspace.exec("npm test")
 })
 
-const checks = Effect.all(
-  { lint, test },
-  { concurrency: "unbounded" },
-)
-
 export const build = CI.step("build", function* () {
-  yield* checks
-  const workspace = yield* install
+  const workspace = yield* test
   return yield* workspace.exec("npm run build")
 })
 
