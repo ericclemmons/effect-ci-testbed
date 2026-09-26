@@ -50,6 +50,12 @@ example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
 `effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
 commands into the root workflow.
 
+After the example jobs finish, the installed Effect CI GitHub App publishes one
+external `Effect CI` check for the commit. The first reporting slice contains the
+completed GitHub and Effect-on-GitHub results. Reporting is intentionally separate
+from execution: a later Cloudflare runner can publish to the same GitHub check without
+pretending to be a GitHub Actions job.
+
 ## Workspace-first execution
 
 A run owns one workspace. Steps are dependency, durability, and observability
