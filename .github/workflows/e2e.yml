@@ -1,4 +1,4 @@
-name: Examples
+name: Testbed E2E
 
 on:
   pull_request:

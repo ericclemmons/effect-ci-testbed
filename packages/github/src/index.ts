@@ -31,7 +31,7 @@ export interface UpdateCheckOptions {
   readonly checkId: number
   readonly title: string
   readonly summary: string
-  readonly status?: "in_progress" | "completed"
+  readonly status?: "queued" | "in_progress" | "completed"
   readonly conclusion?: CheckConclusion
 }
 
