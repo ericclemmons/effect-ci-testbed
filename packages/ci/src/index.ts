@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import { writeSync } from "node:fs"
 import * as Cache from "effect/Cache"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -41,7 +42,7 @@ export interface PlanNode {
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly options: StepOptions
-  readonly status: "planned" | "running" | "complete" | "failed"
+  readonly status: "planned" | "queued" | "running" | "complete" | "failed" | "skipped"
 }
 
 export interface WorkflowPlan {
@@ -51,6 +52,35 @@ export interface WorkflowPlan {
   readonly nodes: ReadonlyArray<PlanNode>
 }
 
+export type WorkflowEvent =
+  | {
+      readonly type: "workflow.started"
+      readonly workflowId: string
+      readonly environment: string
+      readonly mode: WorkflowPlan["mode"]
+      readonly timestamp: string
+    }
+  | {
+      readonly type: "dependency.added"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly needs: string
+      readonly timestamp: string
+    }
+  | {
+      readonly type: "step.status"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly status: PlanNode["status"]
+      readonly timestamp: string
+    }
+  | {
+      readonly type: "workflow.completed"
+      readonly workflowId: string
+      readonly conclusion: "success" | "failure"
+      readonly timestamp: string
+    }
+
 interface RuntimeNode {
   readonly id: string
   readonly commands: Array<PlannedCommand>
@@ -58,6 +88,7 @@ interface RuntimeNode {
 }
 
 interface RuntimeShape {
+  readonly workflowId: string
   readonly mode: WorkflowPlan["mode"]
   readonly nodes: Map<string, RuntimeNode>
   readonly edges: Set<string>
@@ -68,6 +99,13 @@ interface RuntimeShape {
     workspace: Workspace,
     command: string,
   ) => Effect.Effect<Workspace, CommandError>
+}
+
+const eventFileDescriptor = Number(process.env.EFFECT_CI_EVENT_FD)
+
+const emitEvent = (event: WorkflowEvent): void => {
+  if (!Number.isInteger(eventFileDescriptor)) return
+  writeSync(eventFileDescriptor, `${JSON.stringify(event)}\n`)
 }
 
 class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
@@ -82,6 +120,7 @@ export class CommandError extends Error {
   readonly _tag = "CommandError"
 
   constructor(
+    readonly stepId: string,
     readonly command: string,
     readonly cwd: string,
     readonly exitCode: number,
@@ -165,6 +204,7 @@ export const workflow = <A>(
 ): Workflow<A> => ({ id, effect })
 
 const runCommand = (
+  stepId: string,
   command: string,
   cwd: string,
 ): Effect.Effect<void, CommandError> =>
@@ -176,15 +216,15 @@ const runCommand = (
       stdio: "inherit",
     })
 
-    child.once("error", () => resume(Effect.fail(new CommandError(command, cwd, 1))))
+    child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, cwd, 1))))
     child.once("exit", (code) => {
-      resume(code === 0 ? Effect.void : Effect.fail(new CommandError(command, cwd, code ?? 1)))
+      resume(code === 0 ? Effect.void : Effect.fail(new CommandError(stepId, command, cwd, code ?? 1)))
     })
 
     return Effect.sync(() => child.kill("SIGTERM"))
   })
 
-const makeRuntime = (mode: WorkflowPlan["mode"]) =>
+const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
     const edges = new Set<string>()
@@ -204,27 +244,60 @@ const makeRuntime = (mode: WorkflowPlan["mode"]) =>
           status: "planned" as const,
         }
         nodes.set(id, node)
-        node.status = mode === "plan" ? "planned" : "running"
+        node.status = mode === "plan" ? "planned" : "queued"
+        emitEvent({
+          type: "step.status",
+          workflowId,
+          stepId: id,
+          status: node.status,
+          timestamp: new Date().toISOString(),
+        })
 
         return definition.body.pipe(
           Effect.provideService(CurrentStep, id),
           Effect.tap(() => Effect.sync(() => {
             node.status = mode === "plan" ? "planned" : "complete"
+            emitEvent({
+              type: "step.status",
+              workflowId,
+              stepId: id,
+              status: node.status,
+              timestamp: new Date().toISOString(),
+            })
           })),
-          Effect.tapError(() => Effect.sync(() => {
-            node.status = "failed"
+          Effect.tapError((error) => Effect.sync(() => {
+            node.status = error instanceof CommandError && error.stepId !== id
+              ? "skipped"
+              : "failed"
+            emitEvent({
+              type: "step.status",
+              workflowId,
+              stepId: id,
+              status: node.status,
+              timestamp: new Date().toISOString(),
+            })
           })),
         )
       },
     })
 
     runtime = {
+      workflowId,
       mode,
       nodes,
       edges,
       cache,
       addDependency: (parent, child) => Effect.sync(() => {
-        if (parent !== "$workflow") edges.add(`${parent}->${child}`)
+        if (parent !== "$workflow") {
+          edges.add(`${parent}->${child}`)
+          emitEvent({
+            type: "dependency.added",
+            workflowId,
+            stepId: parent,
+            needs: child,
+            timestamp: new Date().toISOString(),
+          })
+        }
       }),
       execute: (stepId, workspace, command) => {
         const node = nodes.get(stepId)
@@ -236,7 +309,18 @@ const makeRuntime = (mode: WorkflowPlan["mode"]) =>
           return Effect.succeed(workspace.completed(stepId))
         }
 
-        return runCommand(command, workspace.cwd).pipe(
+        if (node.status !== "running") {
+          node.status = "running"
+          emitEvent({
+            type: "step.status",
+            workflowId,
+            stepId,
+            status: "running",
+            timestamp: new Date().toISOString(),
+          })
+        }
+
+        return runCommand(stepId, command, workspace.cwd).pipe(
           Effect.as(workspace.completed(stepId)),
         )
       },
@@ -313,7 +397,16 @@ const interpret = <A>(
   options: RunOptions,
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* makeRuntime(mode)
+    const environment = options.env ?? "development"
+    emitEvent({
+      type: "workflow.started",
+      workflowId: workflowDefinition.id,
+      environment,
+      mode,
+      timestamp: new Date().toISOString(),
+    })
+
+    const runtime = yield* makeRuntime(workflowDefinition.id, mode)
     const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
@@ -323,12 +416,25 @@ const interpret = <A>(
     const plan = toPlan(
       workflowDefinition.id,
       runtime,
-      options.env ?? "development",
+      environment,
     )
 
     if (Exit.isFailure(result)) {
+      emitEvent({
+        type: "workflow.completed",
+        workflowId: workflowDefinition.id,
+        conclusion: "failure",
+        timestamp: new Date().toISOString(),
+      })
       return yield* Effect.failCause(result.cause)
     }
+
+    emitEvent({
+      type: "workflow.completed",
+      workflowId: workflowDefinition.id,
+      conclusion: "success",
+      timestamp: new Date().toISOString(),
+    })
 
     return { plan, value: result.value }
   })

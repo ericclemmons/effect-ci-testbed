@@ -14,7 +14,8 @@ export interface CreateCheckOptions {
   readonly name: string
   readonly title: string
   readonly summary: string
-  readonly conclusion: CheckConclusion
+  readonly status?: "queued" | "in_progress"
+  readonly conclusion?: CheckConclusion
   readonly detailsUrl?: string
   readonly externalId?: string
 }
@@ -24,6 +25,29 @@ export interface CheckRun {
   readonly htmlUrl: string
 }
 
+export interface UpdateCheckOptions {
+  readonly token: string
+  readonly repository: string
+  readonly checkId: number
+  readonly title: string
+  readonly summary: string
+  readonly status?: "in_progress" | "completed"
+  readonly conclusion?: CheckConclusion
+}
+
+const headers = (token: string) => ({
+  accept: "application/vnd.github+json",
+  authorization: `Bearer ${token}`,
+  "content-type": "application/json",
+  "user-agent": "effect-ci-testbed",
+  "x-github-api-version": "2026-03-10",
+})
+
+const responseError = async (operation: string, response: Response) => {
+  const body = await response.text()
+  return new Error(`GitHub ${operation} failed (${response.status}): ${body}`)
+}
+
 export const createCheck = async (
   options: CreateCheckOptions,
 ): Promise<CheckRun> => {
@@ -31,18 +55,12 @@ export const createCheck = async (
     `https://api.github.com/repos/${options.repository}/check-runs`,
     {
       method: "POST",
-      headers: {
-        accept: "application/vnd.github+json",
-        authorization: `Bearer ${options.token}`,
-        "content-type": "application/json",
-        "user-agent": "effect-ci-testbed",
-        "x-github-api-version": "2026-03-10",
-      },
+      headers: headers(options.token),
       body: JSON.stringify({
         name: options.name,
         head_sha: options.sha,
-        status: "completed",
-        conclusion: options.conclusion,
+        status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
+        ...(options.conclusion ? { conclusion: options.conclusion } : {}),
         ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
         ...(options.externalId ? { external_id: options.externalId } : {}),
         output: {
@@ -54,8 +72,34 @@ export const createCheck = async (
   )
 
   if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`GitHub create check failed (${response.status}): ${body}`)
+    throw await responseError("create check", response)
+  }
+
+  const check = await response.json() as { id: number; html_url: string }
+  return { id: check.id, htmlUrl: check.html_url }
+}
+
+export const updateCheck = async (
+  options: UpdateCheckOptions,
+): Promise<CheckRun> => {
+  const response = await fetch(
+    `https://api.github.com/repos/${options.repository}/check-runs/${options.checkId}`,
+    {
+      method: "PATCH",
+      headers: headers(options.token),
+      body: JSON.stringify({
+        status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
+        ...(options.conclusion ? { conclusion: options.conclusion } : {}),
+        output: {
+          title: options.title,
+          summary: options.summary,
+        },
+      }),
+    },
+  )
+
+  if (!response.ok) {
+    throw await responseError("update check", response)
   }
 
   const check = await response.json() as { id: number; html_url: string }
