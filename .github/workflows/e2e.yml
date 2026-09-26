@@ -9,64 +9,41 @@ permissions:
   contents: read
 
 jobs:
-  node-npm-lint:
-    name: node-npm / vanilla / lint
+  example:
+    name: ${{ matrix.example }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/node-npm/app
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - node-npm
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: examples/node-npm/app/package-lock.json
-      - run: npm ci
-      - run: npm run lint
+      - uses: actions/checkout@v7
 
-  node-npm-test:
-    name: node-npm / vanilla / test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/node-npm/app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: examples/node-npm/app/package-lock.json
-      - run: npm ci
-      - run: npm test
+      - name: Install nested workflow runner
+        env:
+          ACT_VERSION: 0.2.89
+          ACT_SHA256: 0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0
+        run: |
+          archive="$RUNNER_TEMP/act.tar.gz"
+          curl --fail --location --silent --show-error \
+            "https://github.com/nektos/act/releases/download/v${ACT_VERSION}/act_Linux_x86_64.tar.gz" \
+            --output "$archive"
+          echo "$ACT_SHA256  $archive" | sha256sum --check
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP" act
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-  node-npm-build:
-    name: node-npm / vanilla / build
-    needs: [node-npm-lint, node-npm-test]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/node-npm/app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: examples/node-npm/app/package-lock.json
-      - run: npm ci
-      - run: npm run build
+      - name: Run conventional pull-request workflow
+        working-directory: examples/${{ matrix.example }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: act pull_request --workflows .github/workflows/pull_request.yml --secret GITHUB_TOKEN
 
-  node-npm-effect:
-    name: node-npm / effect
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm ci:node-npm
+      - name: Run Effect CI
+        run: pnpm --filter "./examples/${{ matrix.example }}" run ci

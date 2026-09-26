@@ -32,10 +32,10 @@ R2 / S3 archive               self-hosted executor
 ```
 
 The first checked example proves steps 1 and 2 only. Each example owns a conventional,
-copyable workflow under its own `.github/workflows` directory. GitHub only discovers
-workflows in the repository-root `.github/workflows` directory, so the testbed's root
-[`e2e.yml`](./.github/workflows/e2e.yml) mirrors each example's job graph and adds the
-Effect implementation as a parity check.
+copyable workflow under its own `.github/workflows` directory. The root
+[`e2e.yml`](./.github/workflows/e2e.yml) contains only a matrix of example directories.
+For each directory it runs the example's actual `pull_request.yml`, then invokes the
+Effect implementation through the example's standard `ci` package script.
 
 ## Examples
 
@@ -103,16 +103,18 @@ pnpm ci:node-npm
 pnpm test
 ```
 
-The root GitHub workflow invokes the same `pnpm ci:node-npm` command. The example's
-conventional workflow remains the source-of-truth parity oracle.
+The root GitHub workflow invokes the example's conventional workflow unchanged and
+then runs the same Effect entry point as `pnpm ci:node-npm`.
 
-`CI.plan(workflow)` is the first interpreter boundary in the prototype. It runs the
-same dependency-yielding Effect program with hydrated values, suppresses workspace
-commands, and returns a structured `WorkflowPlan`. The CLI only formats that value:
+`CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
+run the same dependency-yielding Effect program with hydrated values and return the
+same `{ value, plan }` contract. Planning suppresses workspace commands; execution
+runs them:
 
 ```ts
-const plan = await CI.planPromise(workflow, { env: "staging" })
-console.log(CI.formatPlan(plan))
+const result = await CI.runPromise(workflow, {
+  mode: process.env.DRY_RUN ? "plan" : "execute",
+})
 ```
 
 The plan contains topologically ordered nodes, direct `needs` edges, commands,
@@ -127,7 +129,7 @@ definition or planning DSL.
 - `Effect.all` expresses concurrency; there is no CI-specific parallel abstraction yet.
 - Repeatedly yielding the same step executes it once per run.
 - A `Workspace` is the value passed between steps.
-- `CI.plan` and `CI.run` interpret the same workflow. Planning records commands as no-ops and returns a structured value; running executes them locally and returns the workflow value.
+- `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
 - Dependency edges are literal yields. Because `build` yields both the checks and `install`, its direct needs are `install`, `lint`, and `test`, even though `install` is also a transitive dependency of both checks.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
@@ -140,9 +142,10 @@ The prototype currently has one in-process runtime. The intended production spli
 
 ```text
 CI program
-  ├─ CI.plan: hydrate values, record commands, return WorkflowPlan
-  ├─ CI.run: execute commands on the local/GitHub host runner
-  └─ Cloudflare mode: map CI.step to durable Workflow steps
+  └─ CI.run
+       ├─ mode plan: hydrate values and record commands
+       ├─ mode execute: run commands on the local/GitHub host
+       └─ future Cloudflare Layer: map CI.step to durable Workflow steps
 ```
 
 This slice deliberately stops at a first-class plan rather than adding planner unit

@@ -247,6 +247,7 @@ const makeRuntime = (mode: WorkflowPlan["mode"]) =>
 
 export interface RunOptions {
   readonly env?: string
+  readonly mode?: WorkflowPlan["mode"]
 }
 
 const toPlan = (
@@ -330,20 +331,9 @@ const interpret = <A>(
     return { plan, value: result.value }
   })
 
-export const plan = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
-  interpret(workflowDefinition, "plan", options).pipe(
-    Effect.map(({ plan }) => plan),
-  )
-
-export const planPromise = <A>(
-  workflowDefinition: Workflow<A>,
-  options?: RunOptions,
-) => Effect.runPromise(plan(workflowDefinition, options))
-
 export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
-  interpret(workflowDefinition, "execute", options).pipe(
+  interpret(workflowDefinition, options.mode ?? "execute", options).pipe(
     Effect.tap(({ plan }) => Effect.sync(() => console.log(`\n${formatPlan(plan)}`))),
-    Effect.map(({ value }) => value),
   )
 
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>
