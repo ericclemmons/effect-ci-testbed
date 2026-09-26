@@ -155,6 +155,10 @@ still need to be packaged for use from an independent repository. A future Cloud
 caller should select a different execution layer while leaving the TypeScript workflow
 unchanged.
 
+The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
+reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
+`ci.run.ts` chooses the mode from that ordinary environment variable.
+
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the
 same `{ value, plan }` contract. Planning suppresses workspace commands; execution

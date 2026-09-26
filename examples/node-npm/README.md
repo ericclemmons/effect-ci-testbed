@@ -25,6 +25,9 @@ Both modes call `CI.runPromise` and receive the same workflow value and structur
 plan. `NODE_ENV` defaults to `test` in CI and `development` elsewhere, while any
 non-empty `DRY_RUN` selects planning mode.
 
+The reusable Effect workflow runs both modes as separate `plan` and `execute` matrix
+jobs, setting `DRY_RUN=1` in the plan job's environment.
+
 The root harness is testbed infrastructure. If this directory becomes its own
 repository, `.github/workflows/github.yml` is the complete conventional GitHub
 Actions setup. The Effect caller also needs the reusable workflow and CI package

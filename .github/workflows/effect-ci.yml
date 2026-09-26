@@ -13,7 +13,12 @@ permissions:
 
 jobs:
   run:
+    name: ${{ matrix.mode }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [plan, execute]
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -25,4 +30,5 @@ jobs:
       - name: Run ${{ inputs.workflow }}
         env:
           CI_WORKFLOW: ${{ inputs.workflow }}
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
         run: pnpm exec tsx "$CI_WORKFLOW"
