@@ -31,26 +31,21 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first checked example proves steps 1 and 2 only. Each example owns a conventional,
-workflow under its own `.github/workflows` directory. GitHub only discovers
-workflow files in the repository-root `.github/workflows`, so the testbed exposes each
-example and implementation there as an explicit, independently reported check:
+The first checked example proves steps 1 and 2 only. Each example owns its workflows
+under its own `.github/workflows` directory: the conventional
+[`github.yml`](./examples/node-npm/.github/workflows/github.yml) and the small
+[`effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
+caller. The testbed's [manifest](./.github/examples.json) lists examples and runners.
+`pnpm workflows:sync` generates the root [E2E fan-out](./.github/workflows/e2e.yml)
+and callable copies of those example workflows.
 
-- [`examples/node-npm/.github/workflows/github.yml`](./examples/node-npm/.github/workflows/github.yml)
-  is the standalone, conventional workflow. The root
-  [`github.yml` check](./.github/workflows/examples-node-npm-github.yml) stages the example
-  as a standalone repository and runs the same steps.
-- [`examples/node-npm/.github/workflows/effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
-  is the small Effect-on-GitHub integration. The root
-  [`effect-on-github.yml` check](./.github/workflows/examples-node-npm-effect-on-github.yml)
-  calls the reusable
-  [`effect-ci.yml`](./.github/workflows/effect-ci.yml) workflow and names the TypeScript
-  entry point.
-
-Future examples add another explicit pair. Generating these root harness files can
-remove maintenance work later without changing what a reader sees inside each
-standalone example. Future implementations can add Effect-on-Cloudflare or GitLab as
-separate checks rather than combining multiple runtimes into one job.
+GitHub discovers workflow files only at the repository root and requires literal
+`uses` paths for reusable workflows. Generation is the bridge: edits belong in each
+example; generated root files are checked in so GitHub can run the selected pairs as
+separate checks. The generator scopes command working directories to the example
+without adding testbed-specific paths to its own workflow. Future examples and GitHub
+runners are added to the manifest. GitLab and Cloudflare will use their corresponding
+runner integrations.
 
 ## Workspace-first execution
 

@@ -1,0 +1,26 @@
+# Generated from examples/node-npm/.github/workflows/github.yml by scripts/sync-example-workflows.mjs.
+# Edit the example workflow, then run pnpm workflows:sync.
+name: examples/node-npm/.github/workflows/github.yml
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+    defaults:
+      run:
+        working-directory: examples/node-npm

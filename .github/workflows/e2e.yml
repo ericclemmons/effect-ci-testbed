@@ -1,0 +1,17 @@
+# Generated from .github/examples.json by scripts/sync-example-workflows.mjs.
+# Edit the manifest or an example workflow, then run pnpm workflows:sync.
+name: examples / e2e
+on:
+  pull_request: null
+  push:
+    branches:
+      - main
+permissions:
+  contents: read
+jobs:
+  node_npm_github:
+    name: node-npm / github
+    uses: ./.github/workflows/generated-node-npm-github.yml
+  node_npm_effect_on_github:
+    name: node-npm / effect-on-github
+    uses: ./.github/workflows/generated-node-npm-effect-on-github.yml

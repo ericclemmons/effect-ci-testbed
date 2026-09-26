@@ -8,6 +8,7 @@
     "check": "pnpm --filter @effect-ci-testbed/ci check && tsc -p examples/node-npm/tsconfig.json --noEmit",
     "ci:node-npm": "tsx examples/node-npm/ci.run.ts",
     "ci:node-npm:dry-run": "DRY_RUN=1 pnpm ci:node-npm",
+    "workflows:sync": "node scripts/sync-example-workflows.mjs",
     "test": "pnpm check && pnpm ci:node-npm:dry-run && pnpm ci:node-npm"
   },
   "devDependencies": {
@@ -15,6 +16,7 @@
     "@types/node": "^24.5.2",
     "effect": "4.0.0-beta.19",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "yaml": "^2.9.1"
   }
 }
