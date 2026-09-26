@@ -125,7 +125,7 @@ const report = async (event: WorkflowEvent) => {
   }
 }
 
-const child = spawn("pnpm", ["exec", "tsx", workflow], {
+const child = spawn(process.execPath, ["--import", "tsx", workflow], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],
 })
