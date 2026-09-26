@@ -38,11 +38,17 @@ The first example describes steps 1 and 2. It owns its workflows under its own
 caller.
 
 GitHub discovers workflow files only at the repository root, does not support nested
-workflow directories, and requires literal `uses` paths for reusable workflows. That
-means a root matrix cannot natively execute an arbitrary
-`examples/<example>/.github/workflows/<runner>.yml` path. The testbed deliberately
-does not generate root copies or interpret those files. The E2E orchestration boundary
-remains open until the examples can be run as repositories or another runner is chosen.
+workflow directories, and requires literal `uses` paths for reusable workflows. The
+root [`e2e.yml`](./.github/workflows/e2e.yml) therefore treats each example as a small
+repository and runs its exact `.github/workflows/github.yml` with `act`. `act` is only
+the testbed's GitHub-hosted E2E harness; it is not the CI runtime and developers do not
+need to install or run it locally.
+
+Effect-on-GitHub is a separate matrix-backed check. It calls the root reusable
+[`effect-ci.yml`](./.github/workflows/effect-ci.yml) natively, pointing it at each
+example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
+`effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
+commands into the root workflow.
 
 ## Workspace-first execution
 
