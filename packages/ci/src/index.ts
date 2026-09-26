@@ -290,15 +290,17 @@ const toPlan = (
 
 export const formatPlan = (plan: WorkflowPlan): string => {
   const lines = [
-    `CI ${plan.mode === "plan" ? "dry run" : "run"}: ${plan.workflowId}`,
+    `CI ${plan.mode === "plan" ? "plan" : "execution summary"}: ${plan.workflowId}`,
     `Environment: ${plan.environment}`,
   ]
 
   for (const node of plan.nodes) {
     const suffix = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
     lines.push("", `${node.status === "complete" ? "✓" : "○"} ${node.id}${suffix}`)
-    for (const entry of node.commands) {
-      lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
+    if (plan.mode === "plan") {
+      for (const entry of node.commands) {
+        lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
+      }
     }
   }
 

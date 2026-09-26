@@ -32,11 +32,21 @@ R2 / S3 archive               self-hosted executor
 ```
 
 The first checked example proves steps 1 and 2 only. Each example owns a conventional,
-copyable workflow under its own `.github/workflows` directory. The root
-[`e2e.yml`](./.github/workflows/e2e.yml) crosses example directories with supported
-implementations. Each pair invokes a testbed-only adapter from the example's `.e2e`
-directory, so conventional GitHub Actions and Effect-on-GitHub report independent
-results. Future rows can add Effect-on-Cloudflare or GitLab executors.
+copyable workflow under its own `.github/workflows` directory. GitHub only discovers
+workflow files in the repository-root `.github/workflows`, so the testbed exposes each
+example and implementation there as an explicit, independently reported check:
+
+- [`node-npm-github-actions.yml`](./.github/workflows/node-npm-github-actions.yml)
+  stages the example as a standalone repository and runs the same conventional steps.
+- [`node-npm-effect.yml`](./.github/workflows/node-npm-effect.yml) is the intentionally
+  small Effect-on-GitHub integration. It delegates setup and execution to the reusable
+  [`effect-ci.yml`](./.github/workflows/effect-ci.yml) workflow and names the TypeScript
+  entry point.
+
+Future examples add another explicit pair. Generating these root harness files can
+remove maintenance work later without changing what a reader sees inside each
+standalone example. Future implementations can add Effect-on-Cloudflare or GitLab as
+separate checks rather than combining multiple runtimes into one job.
 
 ## Workspace-first execution
 
@@ -122,9 +132,21 @@ pnpm ci:node-npm
 pnpm test
 ```
 
-The root GitHub workflow runs each implementation as an independent matrix job. The
-example's conventional workflow keeps its steps inline; the testbed adapters only
-bootstrap those same flows across the implementation matrix.
+The example's conventional workflow keeps its steps inline. The Effect-on-GitHub
+alternative replaces those setup and command steps with one reusable workflow call:
+
+```yaml
+jobs:
+  effect-on-github:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/node-npm/ci.run.ts
+```
+
+The reusable workflow currently represents the GitHub execution layer: checkout,
+Node and pnpm setup, dependency installation, and invocation of the requested
+`ci.run.ts`. A future Cloudflare caller should select a different execution layer while
+leaving the TypeScript workflow unchanged.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the
