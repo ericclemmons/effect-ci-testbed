@@ -3,5 +3,5 @@ set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
-pnpm install --frozen-lockfile
+pnpm install
 pnpm ci:node-npm
