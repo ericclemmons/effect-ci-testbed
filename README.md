@@ -31,11 +31,10 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first example describes steps 1 and 2. It owns its workflows under its own
-`.github/workflows` directory: the conventional
-[`github.yml`](./examples/node-npm/.github/workflows/github.yml) and the small
-[`effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
-caller.
+Each example owns its workflows under its own `.github/workflows` directory: a
+conventional `github.yml` and a small `effect-on-github.yml` caller. The npm and pnpm
+fixtures intentionally use the normal setup for their own package manager instead of
+sharing an abstract testbed action.
 
 GitHub discovers workflow files only at the repository root, does not support nested
 workflow directories, and requires literal `uses` paths for reusable workflows. The
@@ -44,13 +43,18 @@ repository and runs its exact `.github/workflows/github.yml` with `act`. `act` i
 the testbed's GitHub-hosted E2E harness; it is not the CI runtime and developers do not
 need to install or run it locally.
 
-Effect-on-GitHub is a separate matrix-backed check. It calls the root reusable
+Direct/local-style Effect execution and Effect-on-GitHub are separate matrix-backed
+checks. The local variant invokes each `ci.run.ts` directly on the GitHub machine,
+the same way a developer invokes it in an existing workspace, and has no GitHub App
+reporter. Effect-on-GitHub calls the root reusable
 [`effect-ci.yml`](./.github/workflows/effect-ci.yml) natively, pointing it at each
 example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
 `effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
 commands into the root workflow.
 
-During execution, the installed Effect CI GitHub App owns one first-class check run
+During planning, the installed Effect CI GitHub App publishes one check containing
+the ordered graph, dependencies, commands, and working directories. During execution,
+the App owns one first-class check run
 for every workflow step. The CI runtime emits structured lifecycle events on a
 dedicated stream; the GitHub adapter turns those events into native queued, running,
 success, failure, and skipped checks without adding GitHub concerns to `ci.run.ts`.
@@ -82,7 +86,7 @@ keeps the common install → check → build → deploy path fast.
 | Example | Scenario | Vanilla CI | Effect CI | Cloudflare runtime |
 | --- | --- | :---: | :---: | :---: |
 | [`node-npm`](./examples/node-npm) | Node, npm, lint + test, build | ✅ | ✅ | ⬜ |
-| `node-pnpm` | pnpm, Corepack, frozen lockfile | ⬜ | ⬜ | ⬜ |
+| [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `bun` | Bun install, test, and build | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
@@ -139,9 +143,10 @@ DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
 
 # Execute the same workflow locally.
 pnpm ci:node-npm
+pnpm ci:node-pnpm
 
-# Type-check the prototype and run both modes.
-pnpm test
+# Type-check the prototype. Behavioral verification happens in PR E2E.
+pnpm check
 ```
 
 The example's conventional workflow keeps its steps inline. The Effect-on-GitHub

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import type { Readable } from "node:stream"
-import type { PlanNode, WorkflowEvent } from "@effect-ci-testbed/ci"
+import type { PlanNode, WorkflowEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
   updateCheck,
@@ -30,6 +30,8 @@ interface StepCheck {
 const checks = new Map<string, StepCheck>()
 const output = new Map<string, string>()
 let workflowId = workflow
+let mode: WorkflowPlan["mode"] = "execute"
+let plan: WorkflowPlan | undefined
 let completed = false
 
 const MAX_OUTPUT_LENGTH = 60_000
@@ -128,20 +130,63 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
   existing.status = status
 }
 
+const planSummary = (value: WorkflowPlan): string => {
+  const rows = value.nodes
+    .map((node) => `| ${node.id} | ${node.needs.join(", ") || "—"} | ${node.commands.length} |`)
+    .join("\n")
+  return `| Step | Needs | Commands |\n| --- | --- | ---: |\n${rows}`
+}
+
+const planText = (value: WorkflowPlan): string => value.nodes
+  .filter((node) => node.commands.length > 0)
+  .map((node) => {
+    const commands = node.commands
+      .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
+      .join("\n\n")
+    return `#### ${node.id}\n\n\`\`\`sh\n${commands}\n\`\`\``
+  })
+  .join("\n\n")
+
+const publishPlan = async (
+  value: WorkflowPlan,
+  conclusion: "success" | "failure",
+) => {
+  const text = planText(value)
+  const check = await createCheck({
+    token,
+    repository,
+    sha,
+    name: `${workflowId} / plan`,
+    title: conclusion === "success" ? `${workflowId} plan ready` : `${workflowId} plan failed`,
+    summary: planSummary(value),
+    ...(text ? { text } : {}),
+    conclusion,
+    ...(detailsUrl ? { detailsUrl } : {}),
+    ...(externalId ? { externalId: `${externalId}:plan` } : {}),
+  })
+  checks.set("plan", { id: check.id, htmlUrl: check.htmlUrl, status: conclusion === "success" ? "complete" : "failed" })
+  console.log(`Effect CI check (plan): ${check.htmlUrl}`)
+}
+
 const report = async (event: WorkflowEvent) => {
   switch (event.type) {
     case "workflow.started":
       workflowId = event.workflowId
+      mode = event.mode
       return
     case "dependency.added":
       return
     case "step.status":
-      await publishStep(event.stepId, event.status)
+      if (mode === "execute") await publishStep(event.stepId, event.status)
       return
     case "step.output":
       appendOutput(event.stepId, event.stream, event.text)
       return
+    case "workflow.plan":
+      plan = event.plan
+      return
     case "workflow.completed":
+      if (mode === "plan" && plan) await publishPlan(plan, event.conclusion)
       completed = true
       return
   }

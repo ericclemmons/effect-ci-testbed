@@ -17,6 +17,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - node-pnpm
     steps:
       - uses: actions/checkout@v7
 
@@ -55,6 +56,31 @@ jobs:
             --secret GITHUB_TOKEN \
             --workflows .github/workflows/github.yml
 
+  local:
+    name: ${{ matrix.example }} / local / ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - node-npm
+          - node-pnpm
+        mode:
+          - plan
+          - execute
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Run examples/${{ matrix.example }}/ci.run.ts (${{ matrix.mode }})
+        env:
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
+        run: pnpm exec tsx "examples/${{ matrix.example }}/ci.run.ts"
+
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
     strategy:
@@ -62,6 +88,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - node-pnpm
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: examples/${{ matrix.example }}/ci.run.ts

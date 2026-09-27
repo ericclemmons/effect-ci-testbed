@@ -83,6 +83,12 @@ export type WorkflowEvent =
       readonly timestamp: string
     }
   | {
+      readonly type: "workflow.plan"
+      readonly workflowId: string
+      readonly plan: WorkflowPlan
+      readonly timestamp: string
+    }
+  | {
       readonly type: "workflow.completed"
       readonly workflowId: string
       readonly conclusion: "success" | "failure"
@@ -444,6 +450,12 @@ const interpret = <A>(
       runtime,
       environment,
     )
+    emitEvent({
+      type: "workflow.plan",
+      workflowId: workflowDefinition.id,
+      plan,
+      timestamp: new Date().toISOString(),
+    })
 
     if (Exit.isFailure(result)) {
       emitEvent({
