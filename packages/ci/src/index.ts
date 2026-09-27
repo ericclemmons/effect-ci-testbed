@@ -243,7 +243,7 @@ const runCommand = (
     child.stderr?.on("data", (chunk: Buffer) => forward("stderr", chunk))
 
     child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, cwd, 1))))
-    child.once("exit", (code) => {
+    child.once("close", (code) => {
       resume(code === 0 ? Effect.void : Effect.fail(new CommandError(stepId, command, cwd, code ?? 1)))
     })
 
