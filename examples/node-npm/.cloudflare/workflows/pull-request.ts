@@ -4,8 +4,8 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
-  const repository = yield* actions.checkout()
-  const workspace = yield* actions.install(repository)
+  let workspace = yield* actions.checkout()
+  workspace = yield* actions.install(workspace)
   const results = yield* Effect.all([
     actions.build(workspace),
     actions.lint(workspace),

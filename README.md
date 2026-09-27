@@ -119,33 +119,33 @@ checkout → install → build ┐
 Actions describe their implementation and actual blockers:
 
 ```ts
-import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
+
+export const checkout = CI.action("checkout", function* () {
+  const source = yield* CI.Source
+  return () => source.acquire(app)
+})
 
 export const install = CI.action("install", function* () {
   // Yield action-specific dependencies here.
-  return Effect.fn(function* (workspace: CI.Workspace) {
-    return yield* workspace.exec("npm ci")
-  })
+  return (workspace: CI.Workspace) => workspace.exec("npm ci")
 })
 
 export const lint = CI.action("lint", function* () {
-  return Effect.fn(function* (workspace: CI.Workspace) {
-    return yield* workspace.exec("npm run lint")
-  })
+  return (workspace: CI.Workspace) => workspace.exec("npm run lint")
 })
 
 export const test = CI.action("test", function* () {
-  return Effect.fn(function* (workspace: CI.Workspace) {
-    return yield* workspace.exec("npm test")
-  })
+  return (workspace: CI.Workspace) => workspace.exec("npm test")
 })
 ```
 
 An action's construction generator resolves action-specific dependencies and returns
 the durable implementation. Calling the action accepts its inputs and returns an Effect.
 Workspace inputs carry the producer identity, so the plan derives direct dependency
-edges without a separate `needs` DSL.
+edges without a separate `needs` DSL. The returned implementation can be an ordinary
+function, generator, async function, or Effect-returning function. `Effect.fn` is an
+optional instrumentation tool, not part of the `CI.action` contract.
 
 The workflow itself is only orchestration: sequential yields, parallel composition,
 and per-action error handling:
@@ -154,8 +154,8 @@ and per-action error handling:
 import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
-  const repository = yield* actions.checkout()
-  const workspace = yield* actions.install(repository)
+  let workspace = yield* actions.checkout()
+  workspace = yield* actions.install(workspace)
   return yield* Effect.all([
     actions.build(workspace),
     actions.lint(workspace),
@@ -176,10 +176,27 @@ runner route every event to the workflow while the workflow decides whether it a
 
 ### Values versus services
 
-The value returned by `install` is a `Workspace`: the checked-out, installed state
-that later actions operate on. It is not a list of package dependencies. A workspace
-is evolving workflow data, so it is passed explicitly between actions. Its producer
-metadata also gives the planner the durable edge from `install` to each check.
+`checkout` and `install` both return a `Workspace`: one logical workspace evolving
+through the workflow. Reassigning the `workspace` variable makes that continuity
+explicit. Each result is nevertheless a successor reference whose producer metadata
+gives the planner the durable edge from `checkout` to `install`, then from `install`
+to each check. A workspace is not a list of package dependencies.
+
+`checkout` does not branch on `NODE_ENV`. Application environment and workspace
+acquisition are independent choices: a production build can run in an existing local
+checkout, while a development build can run in a fresh remote sandbox. Instead, the
+action yields `CI.Source`, and the runner supplies its implementation:
+
+- the local source reuses the requested directory;
+- the current GitHub runner reuses the directory prepared by `actions/checkout`;
+- a packaged GitHub runner can replace that bootstrap with its own authenticated clone;
+- a future Cloudflare source can resolve the event's repository and revision into a
+  sandbox or persisted workspace snapshot.
+
+Planning uses a non-mutating source implementation that returns a symbolic or local
+workspace reference. Execution uses the runner's concrete source implementation.
+This keeps source credentials and GitHub-specific environment variables out of the
+portable workflow.
 
 Effect services and Layers are for stable capabilities used to implement actions:
 the command runner, cache, GitHub client, credentials, artifact store, healer agent,
@@ -193,9 +210,7 @@ runner to provide its own implementations:
 export const lint = CI.action("lint", function* () {
   const runner = yield* Runner
 
-  return Effect.fn(function* (workspace: CI.Workspace) {
-    return yield* runner.exec(workspace, "npm run lint")
-  })
+  return (workspace: CI.Workspace) => runner.exec(workspace, "npm run lint")
 })
 ```
 
@@ -368,7 +383,10 @@ definition or planning DSL.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
 - Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.all` to run build, lint, and test concurrently in the shared workspace.
 - Repeatedly yielding the same step executes it once per run.
-- A `Workspace` is the value passed between steps.
+- A `Workspace` is one logical workspace passed between steps as successive references.
+- `CI.Source` selects how that workspace is acquired. The default local source reuses
+  the supplied directory; hosted and durable runners can provide different source
+  implementations without branching on `NODE_ENV` inside the workflow.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
 - Dependency edges follow action inputs and outputs. The installed workspace is passed to build, lint, and test, so each directly needs install and none incorrectly depends on another check passing.
@@ -396,6 +414,15 @@ tests or a second engine. Verification remains end to end: type-check the packag
 dry-run the real example, then execute that same example against its fixture app.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
+
+The prototype's current `Workspace` still contains an in-process `cwd`; that is not a
+durable Cloudflare representation. A durable runner must serialize a workspace reference
+containing at least the source revision and a restorable snapshot, lease, or content
+address. After every action that mutates files, the runner returns the next reference.
+If a container or sandbox disappears during suspension, the executor restores that
+reference before continuing. Local and GitHub implementations may optimize the same
+contract by retaining one directory, but workflow correctness cannot depend on that
+directory surviving.
 
 Target concurrency will likely require a Durable Object keyed by target. Workflows can call Durable Objects through bindings, so a separate scheduler service is not inherently required. Cancellation must stop only work declared safe to interrupt; deployments and other external side effects enter a non-cancellable or compensating phase.
 

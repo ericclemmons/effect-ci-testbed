@@ -182,6 +182,18 @@ export class Workspace {
   }
 }
 
+export interface SourceService {
+  readonly acquire: (root: string) => Effect.Effect<Workspace, unknown>
+}
+
+export class Source extends ServiceMap.Service<Source, SourceService>()(
+  "@effect-ci-testbed/Source",
+) {}
+
+const localSource: SourceService = {
+  acquire: (root) => Effect.succeed(Workspace.local(root)),
+}
+
 export interface Workflow<A> {
   readonly id: string
   readonly on: ReadonlyArray<WorkflowEventName>
@@ -424,6 +436,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
 export interface RunOptions {
   readonly env?: string
   readonly mode?: WorkflowPlan["mode"]
+  readonly source?: SourceService
 }
 
 const toPlan = (
@@ -502,6 +515,7 @@ const interpret = <A>(
     const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
+      Effect.provideService(Source, options.source ?? localSource),
       Effect.exit,
     )
 
