@@ -136,13 +136,6 @@ const publishStep = async (
   existing.status = status
 }
 
-const planSummary = (value: WorkflowPlan): string => {
-  const rows = value.nodes
-    .map((node) => `| ${node.id} | ${node.needs.join(", ") || "—"} | ${node.commands.length} |`)
-    .join("\n")
-  return `| Step | Needs | Commands |\n| --- | --- | ---: |\n${rows}`
-}
-
 const planText = (value: WorkflowPlan): string => value.nodes
   .filter((node) => node.commands.length > 0)
   .map((node) => {
@@ -164,7 +157,7 @@ const branchSuffix = (index: number): string => {
   return suffix
 }
 
-const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
+const planStages = (value: WorkflowPlan) => {
   const stages = new Map<string, number>()
   for (const node of value.nodes) {
     stages.set(
@@ -173,16 +166,47 @@ const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
     )
   }
 
-  const groups = new Map<number, Array<string>>()
+  const groups = new Map<number, Array<PlanNode>>()
   for (const node of value.nodes) {
     const stage = stages.get(node.id) ?? 1
-    groups.set(stage, [...(groups.get(stage) ?? []), node.id])
+    groups.set(stage, [...(groups.get(stage) ?? []), node])
   }
+  return groups
+}
+
+const planSummary = (value: WorkflowPlan): string => {
+  const groups = planStages(value)
+  const lines = ["### Execution graph", ""]
+  for (const [stage, nodes] of groups) {
+    const ordered = [...nodes].sort((left, right) => left.id.localeCompare(right.id))
+    if (ordered.length === 1) {
+      const node = ordered[0]!
+      const needs = node.needs.length > 0
+        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      lines.push(`${stage}. \`${node.id}\`${needs}`)
+      continue
+    }
+
+    lines.push(`${stage}. **In parallel**`)
+    for (const [index, node] of ordered.entries()) {
+      const needs = node.needs.length > 0
+        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}`)
+    }
+  }
+  return lines.join("\n")
+}
+
+const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
+  const groups = planStages(value)
 
   const width = String(Math.max(0, ...groups.keys())).length
   const names = new Map<string, string>()
-  for (const [stage, stepIds] of groups) {
+  for (const [stage, nodes] of groups) {
     const prefix = String(stage).padStart(width, "0")
+    const stepIds = nodes.map((node) => node.id)
     for (const [index, stepId] of [...stepIds].sort().entries()) {
       const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
       names.set(stepId, `${workflowId} / ${ordinal}. ${stepId}`)
@@ -269,7 +293,9 @@ const exitCode = await new Promise<number>((resolve, reject) => {
 await reporting
 
 if (!completed) {
-  if (checks.size === 0) {
+  if (exitCode === 0 && checks.size === 0) {
+    console.log("Effect CI workflow ignored this event")
+  } else if (checks.size === 0) {
     await publishStep("startup", "failed")
   } else {
     for (const [stepId, check] of checks) {

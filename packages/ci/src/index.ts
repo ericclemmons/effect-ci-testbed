@@ -19,12 +19,14 @@ export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
 }
 
-type StepBody<A> =
+export type WorkflowBody<A> =
   | Effect.Effect<A, any, any>
   | (() =>
       | Generator<any, A, any>
       | Effect.Effect<A, any, any>
       | Promise<A>)
+
+type StepBody<A> = WorkflowBody<A>
 
 type ActionResult<A> =
   | Generator<any, A, any>
@@ -265,9 +267,9 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
 
 export const workflow = <A>(
   id: string,
-  effect: Effect.Effect<A, unknown, Runtime | CurrentStep>,
+  body: WorkflowBody<A>,
   options: WorkflowOptions = {},
-): Workflow<A> => ({ id, on: options.on ?? [], effect })
+): Workflow<A> => ({ id, on: options.on ?? [], effect: bodyToEffect(body) })
 
 const runCommand = (
   workflowId: string,

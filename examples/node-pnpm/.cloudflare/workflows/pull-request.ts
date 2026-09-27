@@ -1,17 +1,15 @@
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
-import { build, checkout, install, lint, test } from "../actions/index.ts"
+import * as actions from "../actions/index.ts"
 
-const checks = Effect.gen(function* () {
-  const repository = yield* checkout()
-  const dependencies = yield* install(repository)
+export default CI.workflow("node-pnpm", function* () {
+  const repository = yield* actions.checkout()
+  const dependencies = yield* actions.install(repository)
   return yield* Effect.all([
-    build(dependencies),
-    lint(dependencies),
-    test(dependencies),
+    actions.build(dependencies),
+    actions.lint(dependencies),
+    actions.test(dependencies),
   ], { concurrency: "unbounded" })
-})
-
-export default CI.workflow("node-pnpm", checks, {
+}, {
   on: ["pull_request", "push"],
 })
