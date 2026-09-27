@@ -255,31 +255,55 @@ collects every typed outcome, reports each one, then fails once with an aggregat
 
 ### Healing and approval
 
-The validation action should produce typed diagnostics. Recovery actions are separate
-durable invocations so GitHub and Cloudflare can report `lint`, `lint/fix`, and
-`lint/verify` independently:
+When a tool offers structured output, its validation action should decode that output
+into typed diagnostics. That may include tool-provided fix metadata, but the programming
+model does not assume every failure can identify a safe automatic fix. Unstructured or
+ambiguous failures can fall back to an agent-generated candidate or a plain failure.
+
+Recovery actions are separate durable invocations so GitHub and Cloudflare can report
+`lint`, `lint/fix`, and `lint/verify` independently:
 
 ```ts
 const lint = actions.lint(workspace).pipe(
   Effect.catchTag("LintFailure", (failure) =>
-    failure.diagnostics.every((diagnostic) => diagnostic.safeFix)
-      ? actions.fixLint(workspace, failure)
-      : actions.suggestLintFix(workspace, failure).pipe(
-          Effect.flatMap(actions.awaitApproval),
-        ),
+    actions.healLint(workspace, failure),
   ),
 )
 ```
 
-A fixer action may resolve a different agent, model, prompt, and skills than a test or
-build fixer. Safe changes should be accumulated in the workspace and verified before
-one final commit-and-push action. Experimental changes become GitHub suggestions or a
-candidate branch and pass through an explicit approval action before mutation or deploy.
+`healLint` can choose a deterministic tool fix when the decoded diagnostics support it,
+or resolve a lint-specific agent, model, prompt, and skills. Test and build healers can
+make different choices. Safe changes should be accumulated in the workspace and verified
+before one final commit-and-push action. Experimental changes become GitHub suggestions
+or a candidate branch and pass through an explicit approval action before mutation or
+deploy.
 
 Action definition identity and invocation identity are distinct: `lint` names reusable
 behavior, while `lint`, `lint/fix`, and `lint/verify` name durable invocations in one run.
 The prototype still needs to model invocation identity explicitly before implementing
 healing and re-verification.
+
+### Workflow boundaries and new events
+
+A recovery action runs inside the current workflow instance; it does not implicitly
+fork another workflow. Applying a patch only changes that instance's isolated workspace.
+The same workflow can verify the repaired workspace and then publish at most one commit,
+candidate branch, or suggestion.
+
+- Creating a GitHub suggestion emits no repository event. If a person applies it later,
+  the resulting commit triggers normal CI.
+- Pushing a repair commit triggers GitHub `push` and, for an open pull request,
+  `pull_request.synchronize`. Those events start a fresh workflow instance that verifies
+  the actual new commit from a clean workspace.
+- Waiting for approval can suspend and resume the same durable workflow instance. An
+  approval does not need a child workflow merely to continue execution.
+- An explicitly independent or long-running operation may eventually use a child
+  workflow, but that is an orchestration choice rather than the default action behavior.
+
+Self-generated commits need loop protection: record the originating run and attempt,
+deduplicate by commit SHA and external check ID, ignore already-healed commits when
+appropriate, and cap repair attempts. The original run should conclude with the candidate
+it produced; the event-driven run owns verification of the published commit.
 
 ## Run it
 
