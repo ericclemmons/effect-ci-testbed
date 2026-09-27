@@ -19,14 +19,21 @@ export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
 }
 
-export type WorkflowBody<A> =
+type EffectBody<A> =
   | Effect.Effect<A, any, any>
   | (() =>
       | Generator<any, A, any>
       | Effect.Effect<A, any, any>
       | Promise<A>)
 
-type StepBody<A> = WorkflowBody<A>
+type StepBody<A> = EffectBody<A>
+
+export type WorkflowHandler<A> = () =>
+  | Generator<any, A, any>
+  | Effect.Effect<A, any, any>
+  | Promise<A>
+
+export type WorkflowConstruction<A> = EffectBody<WorkflowHandler<A>>
 
 type ActionResult<A> =
   | Generator<any, A, any>
@@ -182,7 +189,11 @@ export class Workspace {
 export interface Workflow<A> {
   readonly id: string
   readonly on: ReadonlyArray<WorkflowEventName>
-  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep>
+  readonly construction: Effect.Effect<
+    WorkflowHandler<A>,
+    unknown,
+    Runtime | CurrentStep
+  >
 }
 
 export type WorkflowEventName = "pull_request" | "push" | "workflow_dispatch"
@@ -267,9 +278,17 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
 
 export const workflow = <A>(
   id: string,
-  body: WorkflowBody<A>,
+  construction: WorkflowConstruction<A>,
   options: WorkflowOptions = {},
-): Workflow<A> => ({ id, on: options.on ?? [], effect: bodyToEffect(body) })
+): Workflow<A> => ({
+  id,
+  on: options.on ?? [],
+  construction: bodyToEffect(construction) as Effect.Effect<
+    WorkflowHandler<A>,
+    unknown,
+    Runtime | CurrentStep
+  >,
+})
 
 const runCommand = (
   workflowId: string,
@@ -494,11 +513,12 @@ const interpret = <A>(
     })
 
     const runtime = yield* makeRuntime(workflowDefinition.id, mode)
-    const result = yield* workflowDefinition.effect.pipe(
+    const execution = workflowDefinition.construction.pipe(
+      Effect.flatMap((handler) => bodyToEffect(handler)),
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
-      Effect.exit,
-    )
+    ) as Effect.Effect<A, unknown>
+    const result = yield* Effect.exit(execution)
 
     const plan = toPlan(
       workflowDefinition.id,

@@ -139,24 +139,35 @@ export const test = CI.action("test", (workspace: CI.Workspace) =>
 producer identity, so the plan derives direct dependency edges without a separate
 `needs` DSL.
 
-The workflow declares its source events and coordinates sequential and parallel work.
-`CI.workflow` wraps generator and async bodies, so the file stays focused on orchestration:
+The workflow declares its source events and separates construction from execution.
+The outer Effect resolves runner dependencies; its returned function coordinates the
+steps for each invocation:
 
 ```ts
 import * as actions from "../actions/index.ts"
 
-export default CI.workflow("node-npm", function* () {
-  const repository = yield* actions.checkout()
-  const dependencies = yield* actions.install(repository)
-  return yield* Effect.all([
-    actions.build(dependencies),
-    actions.lint(dependencies),
-    actions.test(dependencies),
-  ], { concurrency: "unbounded" })
-}, {
-  on: ["pull_request", "push"],
-})
+export default CI.workflow(
+  "node-npm",
+  Effect.gen(function* () {
+    // Resolve runner/platform dependencies here.
+    return Effect.fn(function* () {
+      const repository = yield* actions.checkout()
+      const dependencies = yield* actions.install(repository)
+      return yield* Effect.all([
+        actions.build(dependencies),
+        actions.lint(dependencies),
+        actions.test(dependencies),
+      ], { concurrency: "unbounded" })
+    })
+  }),
+  { on: ["pull_request", "push"] },
+)
 ```
+
+Planning resolves the same outer dependencies and invokes the same inner handler, but
+the planning implementation records step relationships and commands instead of running
+them. External I/O belongs behind a step or a runner-provided service so planning stays
+side-effect free.
 
 An incoming event that is not listed in `on` is ignored successfully. This lets a
 runner route every event to the workflow while the workflow decides whether it applies.
