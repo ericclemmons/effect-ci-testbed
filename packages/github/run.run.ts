@@ -93,7 +93,11 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
   }
 }
 
-const publishStep = async (stepId: string, status: PlanNode["status"]) => {
+const publishStep = async (
+  stepId: string,
+  status: PlanNode["status"],
+  name = `${workflowId} / ${stepId}`,
+) => {
   const output = checkOutput(stepId, status)
   const text = outputText(stepId)
   const existing = checks.get(stepId)
@@ -103,7 +107,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
       token,
       repository,
       sha,
-      name: `${workflowId} / ${stepId}`,
+      name,
       title: output.title,
       summary: output.summary,
       ...(text ? { text } : {}),
@@ -121,6 +125,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
     token,
     repository,
     checkId: existing.id,
+    name,
     title: output.title,
     summary: output.summary,
     ...(text ? { text } : {}),
@@ -147,6 +152,44 @@ const planText = (value: WorkflowPlan): string => value.nodes
   })
   .join("\n\n")
 
+const branchSuffix = (index: number): string => {
+  let value = index + 1
+  let suffix = ""
+  while (value > 0) {
+    value -= 1
+    suffix = String.fromCharCode(97 + (value % 26)) + suffix
+    value = Math.floor(value / 26)
+  }
+  return suffix
+}
+
+const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
+  const stages = new Map<string, number>()
+  for (const node of value.nodes) {
+    stages.set(
+      node.id,
+      1 + Math.max(0, ...node.needs.map((dependency) => stages.get(dependency) ?? 0)),
+    )
+  }
+
+  const groups = new Map<number, Array<string>>()
+  for (const node of value.nodes) {
+    const stage = stages.get(node.id) ?? 1
+    groups.set(stage, [...(groups.get(stage) ?? []), node.id])
+  }
+
+  const width = String(Math.max(0, ...groups.keys())).length
+  const names = new Map<string, string>()
+  for (const [stage, stepIds] of groups) {
+    const prefix = String(stage).padStart(width, "0")
+    for (const [index, stepId] of [...stepIds].sort().entries()) {
+      const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
+      names.set(stepId, `${workflowId} / ${ordinal} ${stepId}`)
+    }
+  }
+  return names
+}
+
 const publishPlan = async (
   value: WorkflowPlan,
   conclusion: "success" | "failure",
@@ -156,7 +199,7 @@ const publishPlan = async (
     token,
     repository,
     sha,
-    name: `${workflowId} / plan`,
+    name: `${workflowId} / 0 plan`,
     title: conclusion === "success" ? `${workflowId} plan ready` : `${workflowId} plan failed`,
     summary: planSummary(value),
     ...(text ? { text } : {}),
@@ -184,6 +227,12 @@ const report = async (event: WorkflowEvent) => {
       return
     case "workflow.plan":
       plan = event.plan
+      if (mode === "execute") {
+        const names = stepCheckNames(event.plan)
+        for (const node of event.plan.nodes) {
+          await publishStep(node.id, node.status, names.get(node.id))
+        }
+      }
       return
     case "workflow.completed":
       if (mode === "plan" && plan) await publishPlan(plan, event.conclusion)
