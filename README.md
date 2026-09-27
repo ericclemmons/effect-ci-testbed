@@ -122,52 +122,52 @@ Actions describe their implementation and actual blockers:
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-export const install = CI.action("install", (workspace: CI.Workspace) =>
-  workspace.exec("npm ci"),
-)
+export const install = CI.action("install", function* () {
+  // Yield action-specific dependencies here.
+  return Effect.fn(function* (workspace: CI.Workspace) {
+    return yield* workspace.exec("npm ci")
+  })
+})
 
-export const lint = CI.action("lint", (workspace: CI.Workspace) =>
-  workspace.exec("npm run lint"),
-)
+export const lint = CI.action("lint", function* () {
+  return Effect.fn(function* (workspace: CI.Workspace) {
+    return yield* workspace.exec("npm run lint")
+  })
+})
 
-export const test = CI.action("test", (workspace: CI.Workspace) =>
-  workspace.exec("npm test"),
-)
+export const test = CI.action("test", function* () {
+  return Effect.fn(function* (workspace: CI.Workspace) {
+    return yield* workspace.exec("npm test")
+  })
+})
 ```
 
-`CI.action` accepts inputs and returns an Effect action. Workspace inputs carry the
-producer identity, so the plan derives direct dependency edges without a separate
-`needs` DSL.
+An action's construction generator resolves action-specific dependencies and returns
+the durable implementation. Calling the action accepts its inputs and returns an Effect.
+Workspace inputs carry the producer identity, so the plan derives direct dependency
+edges without a separate `needs` DSL.
 
-The workflow declares its source events and separates construction from execution.
-The outer Effect resolves runner dependencies; its returned function coordinates the
-steps for each invocation:
+The workflow itself is only orchestration: sequential yields, parallel composition,
+and per-action error handling:
 
 ```ts
 import * as actions from "../actions/index.ts"
 
-export default CI.workflow(
-  "node-npm",
-  Effect.gen(function* () {
-    // Resolve runner/platform dependencies here.
-    return Effect.fn(function* () {
-      const repository = yield* actions.checkout()
-      const dependencies = yield* actions.install(repository)
-      return yield* Effect.all([
-        actions.build(dependencies),
-        actions.lint(dependencies),
-        actions.test(dependencies),
-      ], { concurrency: "unbounded" })
-    })
-  }),
-  { on: ["pull_request", "push"] },
-)
+export default CI.workflow("node-npm", function* () {
+  const repository = yield* actions.checkout()
+  const dependencies = yield* actions.install(repository)
+  return yield* Effect.all([
+    actions.build(dependencies),
+    actions.lint(dependencies),
+    actions.test(dependencies),
+  ], { concurrency: "unbounded" })
+}, { on: ["pull_request", "push"] })
 ```
 
-Planning resolves the same outer dependencies and invokes the same inner handler, but
-the planning implementation records step relationships and commands instead of running
-them. External I/O belongs behind a step or a runner-provided service so planning stays
-side-effect free.
+Planning follows the same workflow composition and resolves each action's dependencies,
+while the planning implementation records durable execution instead of performing it.
+External I/O belongs in the returned action implementation or behind a runner-provided
+service so planning stays side-effect free.
 
 An incoming event that is not listed in `on` is ignored successfully. This lets a
 runner route every event to the workflow while the workflow decides whether it applies.
@@ -231,7 +231,7 @@ definition or planning DSL.
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
-- `CI.action(id, body, options?)` defines reusable work; calling it with typed inputs returns an Effect that can be yielded directly.
+- `CI.action(id, construction, options?)` resolves action dependencies and returns a durable implementation; calling it with typed inputs returns an Effect that can be yielded directly.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
 - Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.all` to run build, lint, and test concurrently in the shared workspace.
 - Repeatedly yielding the same step executes it once per run.
@@ -240,6 +240,9 @@ definition or planning DSL.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
 - Dependency edges follow action inputs and outputs. The installed workspace is passed to build, lint, and test, so each directly needs install and none incorrectly depends on another check passing.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
+- Ordinary Effect error composition attaches retry, deterministic repair, agent healing,
+  notification, or approval behavior to an individual action instead of forcing one
+  recovery policy over the whole workflow.
 - Durable retry options will use the Cloudflare `WorkflowStepConfig` shape. Effect `Schedule` is not accepted as step configuration.
 - The default executor is workspace-first, not job-container-first. Distributed steps and artifact transfer are explicit later capabilities.
 

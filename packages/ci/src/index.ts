@@ -19,26 +19,22 @@ export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
 }
 
-type EffectBody<A> =
+export type WorkflowBody<A> =
   | Effect.Effect<A, any, any>
   | (() =>
       | Generator<any, A, any>
       | Effect.Effect<A, any, any>
       | Promise<A>)
 
-type StepBody<A> = EffectBody<A>
+type StepBody<A> = WorkflowBody<A>
 
-export type WorkflowHandler<A> = () =>
+export type ActionHandler<Args extends ReadonlyArray<unknown>, A> = (...args: Args) =>
   | Generator<any, A, any>
   | Effect.Effect<A, any, any>
   | Promise<A>
 
-export type WorkflowConstruction<A> = EffectBody<WorkflowHandler<A>>
-
-type ActionResult<A> =
-  | Generator<any, A, any>
-  | Effect.Effect<A, any, any>
-  | Promise<A>
+export type ActionConstruction<Args extends ReadonlyArray<unknown>, A> =
+  WorkflowBody<ActionHandler<Args, A>>
 
 interface StepDefinition<A = unknown> {
   readonly id: string
@@ -189,11 +185,7 @@ export class Workspace {
 export interface Workflow<A> {
   readonly id: string
   readonly on: ReadonlyArray<WorkflowEventName>
-  readonly construction: Effect.Effect<
-    WorkflowHandler<A>,
-    unknown,
-    Runtime | CurrentStep
-  >
+  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep>
 }
 
 export type WorkflowEventName = "pull_request" | "push" | "workflow_dispatch"
@@ -253,7 +245,7 @@ export const step = <A>(
 
 export const action = <Args extends ReadonlyArray<unknown>, A>(
   id: string,
-  body: (...args: Args) => ActionResult<A>,
+  construction: ActionConstruction<Args, A>,
   options: StepOptions = {},
 ): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
   let registered = false
@@ -265,7 +257,9 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
     registered = true
     definitions.set(id, {
       id,
-      body: bodyToEffect(() => body(...args)),
+      body: bodyToEffect(construction).pipe(
+        Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
+      ),
       options,
     })
 
@@ -278,17 +272,9 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
 
 export const workflow = <A>(
   id: string,
-  construction: WorkflowConstruction<A>,
+  body: WorkflowBody<A>,
   options: WorkflowOptions = {},
-): Workflow<A> => ({
-  id,
-  on: options.on ?? [],
-  construction: bodyToEffect(construction) as Effect.Effect<
-    WorkflowHandler<A>,
-    unknown,
-    Runtime | CurrentStep
-  >,
-})
+): Workflow<A> => ({ id, on: options.on ?? [], effect: bodyToEffect(body) })
 
 const runCommand = (
   workflowId: string,
@@ -513,12 +499,11 @@ const interpret = <A>(
     })
 
     const runtime = yield* makeRuntime(workflowDefinition.id, mode)
-    const execution = workflowDefinition.construction.pipe(
-      Effect.flatMap((handler) => bodyToEffect(handler)),
+    const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
-    ) as Effect.Effect<A, unknown>
-    const result = yield* Effect.exit(execution)
+      Effect.exit,
+    )
 
     const plan = toPlan(
       workflowDefinition.id,
