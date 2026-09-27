@@ -5,7 +5,9 @@ This parity fixture is a dependency-free Node application using pnpm.
 Its pipeline is:
 
 ```text
-checkout → install → lint → test → build
+checkout → install → build ┐
+                   ├→ lint
+                   └→ test
 ```
 
 Compare:
@@ -15,8 +17,10 @@ Compare:
   action.
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml):
   the small Effect workflow caller.
-- [`ci.workflow.ts`](./ci.workflow.ts): the same dependency structure authored with
-  Effect.
+- [`.cloudflare/workflows/pull-request.ts`](./.cloudflare/workflows/pull-request.ts):
+  the events and orchestration for the Effect workflow.
+- [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts): how each action
+  runs and which earlier action is a true blocker.
 
 ```bash
 DRY_RUN=1 NODE_ENV=staging pnpm ci:node-pnpm

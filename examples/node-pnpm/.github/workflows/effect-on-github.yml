@@ -12,4 +12,4 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: ci.run.ts
+      workflow: .cloudflare/workflows/pull-request.ts

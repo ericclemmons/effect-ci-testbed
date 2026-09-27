@@ -76,10 +76,12 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - name: Run examples/${{ matrix.example }}/ci.run.ts (${{ matrix.mode }})
+      - name: Run examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts (${{ matrix.mode }})
         env:
+          EFFECT_CI_EVENT: pull_request
+          EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
-        run: pnpm exec tsx "examples/${{ matrix.example }}/ci.run.ts"
+        run: pnpm exec tsx packages/ci/run.run.ts
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
@@ -91,5 +93,5 @@ jobs:
           - node-pnpm
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: examples/${{ matrix.example }}/ci.run.ts
+      workflow: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
     secrets: inherit

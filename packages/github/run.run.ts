@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import type { Readable } from "node:stream"
+import { fileURLToPath } from "node:url"
 import type { PlanNode, WorkflowEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
@@ -241,7 +242,8 @@ const report = async (event: WorkflowEvent) => {
   }
 }
 
-const child = spawn(process.execPath, ["--import", "tsx", workflow], {
+const runtime = fileURLToPath(new URL("../ci/run.run.ts", import.meta.url))
+const child = spawn(process.execPath, ["--import", "tsx", runtime], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],
 })

@@ -11,7 +11,7 @@ The goal is not to generate GitHub Actions YAML. The goal is to author the pipel
 ```text
                               ┌─ existing local workspace
                               ├─ temporary worktree / copy-on-write workspace
-ci.workflow.ts ── runtime ────├─ GitHub or GitLab runner workspace
+.cloudflare/workflows/*.ts ───├─ GitHub or GitLab runner workspace
                               └─ Cloudflare Worker-backed workspace
 
 source layer                  execution layer
@@ -44,11 +44,11 @@ the testbed's GitHub-hosted E2E harness; it is not the CI runtime and developers
 need to install or run it locally.
 
 Direct/local-style Effect execution and Effect-on-GitHub are separate matrix-backed
-checks. The local variant invokes each `ci.run.ts` directly on the GitHub machine,
+checks. The local variant invokes each `.cloudflare/workflows/*.ts` directly on the GitHub machine,
 the same way a developer invokes it in an existing workspace, and has no GitHub App
 reporter. Effect-on-GitHub calls the root reusable
 [`effect-ci.yml`](./.github/workflows/effect-ci.yml) natively, pointing it at each
-example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
+example's `.cloudflare/workflows/pull-request.ts`. This keeps failures distinct and leaves room for parallel
 `effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
 commands into the root workflow.
 
@@ -57,7 +57,7 @@ the ordered graph, dependencies, commands, and working directories. During execu
 the App owns one first-class check run
 for every workflow step. The CI runtime emits structured lifecycle events on a
 dedicated stream; the GitHub adapter turns those events into native queued, running,
-success, failure, and skipped checks without adding GitHub concerns to `ci.run.ts`.
+success, failure, and skipped checks without adding GitHub concerns to the workflow.
 Command output is tee'd to the runner and attached directly to its step's check, so
 diagnostics do not require a separate Effect CI log viewer. Checks are named
 `<workflow> / <stage><branch> <step>`, so GitHub's alphabetical display preserves DAG
@@ -106,35 +106,56 @@ Heavy multi-deployment orchestration is deliberately a separate future feature. 
 
 ## First vertical slice
 
-[`examples/node-npm/ci.workflow.ts`](./examples/node-npm/ci.workflow.ts) describes:
+[`examples/node-npm/.cloudflare/workflows/pull-request.ts`](./examples/node-npm/.cloudflare/workflows/pull-request.ts)
+coordinates actions from
+[`examples/node-npm/.cloudflare/actions/index.ts`](./examples/node-npm/.cloudflare/actions/index.ts):
 
 ```text
-checkout → install → lint → test → build
+checkout → install → build ┐
+                   ├→ lint
+                   └→ test
 ```
 
-The important API experiment is:
+Actions describe their implementation and actual blockers:
 
 ```ts
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-const install = CI.step("install", function* () {
-  const workspace = yield* checkout
-  return yield* workspace.exec("npm ci")
-})
+export const install = CI.action("install", (workspace: CI.Workspace) =>
+  workspace.exec("npm ci"),
+)
 
-const lint = CI.step("lint", function* () {
-  const workspace = yield* install
-  return yield* workspace.exec("npm run lint")
-})
+export const lint = CI.action("lint", (workspace: CI.Workspace) =>
+  workspace.exec("npm run lint"),
+)
 
-const test = CI.step("test", function* () {
-  const workspace = yield* lint
-  return yield* workspace.exec("npm test")
-})
+export const test = CI.action("test", (workspace: CI.Workspace) =>
+  workspace.exec("npm test"),
+)
 ```
 
-`CI.step` accepts a generator, an Effect, or a function returning a Promise. It does not require a separate `.async` API.
+`CI.action` accepts inputs and returns an Effect action. Workspace inputs carry the
+producer identity, so the plan derives direct dependency edges without a separate
+`needs` DSL.
+
+The workflow declares its source events and coordinates sequential and parallel work:
+
+```ts
+const checks = Effect.gen(function* () {
+  const repository = yield* checkout()
+  const dependencies = yield* install(repository)
+  return yield* Effect.all([
+    build(dependencies),
+    lint(dependencies),
+    test(dependencies),
+  ], { concurrency: "unbounded" })
+})
+
+export default CI.workflow("node-npm", checks, {
+  on: ["pull_request", "push"],
+})
+```
 
 ## Run it
 
@@ -160,12 +181,12 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: ci.run.ts
+      workflow: .cloudflare/workflows/pull-request.ts
 ```
 
 The reusable workflow currently represents the GitHub execution layer: checkout,
 Node and pnpm setup, dependency installation, and invocation of the requested
-`ci.run.ts`. In execute mode it also installs an app token and wraps the portable CI
+workflow module. In execute mode it also installs an app token and wraps the portable CI
 program with the GitHub reporting adapter. The example's Effect caller shows the
 intended standalone shape; it currently relies on the testbed's reusable workflow
 and workspace packages, which still need to be packaged for use from an independent
@@ -174,7 +195,7 @@ layers while leaving the TypeScript workflow unchanged.
 
 The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
 reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
-`ci.run.ts` chooses the mode from that ordinary environment variable.
+the generic runtime chooses the mode from that ordinary environment variable.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the
@@ -195,13 +216,14 @@ definition or planning DSL.
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
-- `CI.step(id, body, options?)` is an Effect and can be yielded directly.
-- Ordinary Effect composition controls execution. This example is deliberately sequential; `Effect.all` is available when an example intentionally benefits from shared-workspace concurrency.
+- `CI.action(id, body, options?)` defines reusable work; calling it with typed inputs returns an Effect that can be yielded directly.
+- `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
+- Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.all` to run build, lint, and test concurrently in the shared workspace.
 - Repeatedly yielding the same step executes it once per run.
 - A `Workspace` is the value passed between steps.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
-- Dependency edges are literal yields. The first example yields the previous step to model the common single-workspace install → lint → test → build path.
+- Dependency edges follow action inputs and outputs. The installed workspace is passed to build, lint, and test, so each directly needs install and none incorrectly depends on another check passing.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Durable retry options will use the Cloudflare `WorkflowStepConfig` shape. Effect `Schedule` is not accepted as step configuration.
 - The default executor is workspace-first, not job-container-first. Distributed steps and artifact transfer are explicit later capabilities.

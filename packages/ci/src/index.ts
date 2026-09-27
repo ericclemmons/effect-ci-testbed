@@ -26,6 +26,11 @@ type StepBody<A> =
       | Effect.Effect<A, any, any>
       | Promise<A>)
 
+type ActionResult<A> =
+  | Generator<any, A, any>
+  | Effect.Effect<A, any, any>
+  | Promise<A>
+
 interface StepDefinition<A = unknown> {
   readonly id: string
   readonly body: Effect.Effect<A, unknown, Runtime | CurrentStep>
@@ -147,10 +152,11 @@ export class Workspace {
   private constructor(
     readonly cwd: string,
     readonly lineage: ReadonlyArray<string>,
+    readonly producer: string | undefined,
   ) {}
 
   static local(cwd: string): Workspace {
-    return new Workspace(cwd, [])
+    return new Workspace(cwd, [], undefined)
   }
 
   exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
@@ -163,13 +169,24 @@ export class Workspace {
   }
 
   completed(stepId: string): Workspace {
-    return new Workspace(this.cwd, [...this.lineage, stepId])
+    if (this.producer === stepId) return this
+    const lineage = this.lineage.includes(stepId)
+      ? this.lineage
+      : [...this.lineage, stepId]
+    return new Workspace(this.cwd, lineage, stepId)
   }
 }
 
 export interface Workflow<A> {
   readonly id: string
+  readonly on: ReadonlyArray<WorkflowEventName>
   readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep>
+}
+
+export type WorkflowEventName = "pull_request" | "push" | "workflow_dispatch"
+
+export interface WorkflowOptions {
+  readonly on?: ReadonlyArray<WorkflowEventName>
 }
 
 const definitions = new Map<string, StepDefinition>()
@@ -193,6 +210,20 @@ const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
   })
 }
 
+const runStep = <A>(
+  id: string,
+  needs: ReadonlyArray<string> = [],
+): Effect.Effect<A, unknown, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const parent = yield* CurrentStep
+    yield* runtime.addDependency(parent, id)
+    for (const dependency of needs) {
+      yield* runtime.addDependency(id, dependency)
+    }
+    return (yield* Cache.get(runtime.cache, id)) as A
+  })
+
 export const step = <A>(
   id: string,
   body: StepBody<A>,
@@ -204,18 +235,39 @@ export const step = <A>(
 
   definitions.set(id, { id, body: bodyToEffect(body), options })
 
-  return Effect.gen(function* () {
-    const runtime = yield* Runtime
-    const parent = yield* CurrentStep
-    yield* runtime.addDependency(parent, id)
-    return (yield* Cache.get(runtime.cache, id)) as A
-  })
+  return runStep(id)
+}
+
+export const action = <Args extends ReadonlyArray<unknown>, A>(
+  id: string,
+  body: (...args: Args) => ActionResult<A>,
+  options: StepOptions = {},
+): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
+  let registered = false
+
+  return (...args: Args) => {
+    if (registered || definitions.has(id)) {
+      throw new Error(`Duplicate CI action invocation: ${id}`)
+    }
+    registered = true
+    definitions.set(id, {
+      id,
+      body: bodyToEffect(() => body(...args)),
+      options,
+    })
+
+    const needs = args.flatMap((value) =>
+      value instanceof Workspace && value.producer ? [value.producer] : [],
+    )
+    return runStep(id, needs)
+  }
 }
 
 export const workflow = <A>(
   id: string,
   effect: Effect.Effect<A, unknown, Runtime | CurrentStep>,
-): Workflow<A> => ({ id, effect })
+  options: WorkflowOptions = {},
+): Workflow<A> => ({ id, on: options.on ?? [], effect })
 
 const runCommand = (
   workflowId: string,
@@ -286,6 +338,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
         })
 
         return definition.body.pipe(
+          Effect.map((value) => value instanceof Workspace ? value.completed(id) : value),
           Effect.provideService(CurrentStep, id),
           Effect.tap(() => Effect.sync(() => {
             node.status = mode === "plan" ? "planned" : "complete"
