@@ -28,8 +28,27 @@ interface StepCheck {
 }
 
 const checks = new Map<string, StepCheck>()
+const output = new Map<string, string>()
 let workflowId = workflow
 let completed = false
+
+const MAX_OUTPUT_LENGTH = 60_000
+
+const appendOutput = (stepId: string, stream: "stdout" | "stderr", text: string) => {
+  const prefix = stream === "stderr" ? "[stderr] " : ""
+  const next = `${output.get(stepId) ?? ""}${prefix}${text}`
+  output.set(
+    stepId,
+    next.length > MAX_OUTPUT_LENGTH
+      ? `[output truncated]\n${next.slice(-MAX_OUTPUT_LENGTH)}`
+      : next,
+  )
+}
+
+const outputText = (stepId: string): string | undefined => {
+  const text = output.get(stepId)?.trimEnd()
+  return text ? `#### Command output\n\n\`\`\`text\n${text}\n\`\`\`` : undefined
+}
 
 const checkOutput = (stepId: string, status: PlanNode["status"]): {
   readonly title: string
@@ -74,6 +93,7 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
 
 const publishStep = async (stepId: string, status: PlanNode["status"]) => {
   const output = checkOutput(stepId, status)
+  const text = outputText(stepId)
   const existing = checks.get(stepId)
 
   if (!existing) {
@@ -84,6 +104,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
       name: `${workflowId} / ${stepId}`,
       title: output.title,
       summary: output.summary,
+      ...(text ? { text } : {}),
       ...(output.status ? { status: output.status } : {}),
       ...(output.conclusion ? { conclusion: output.conclusion } : {}),
       ...(detailsUrl ? { detailsUrl } : {}),
@@ -100,6 +121,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
     checkId: existing.id,
     title: output.title,
     summary: output.summary,
+    ...(text ? { text } : {}),
     ...(output.status ? { status: output.status } : {}),
     ...(output.conclusion ? { conclusion: output.conclusion } : {}),
   })
@@ -115,6 +137,9 @@ const report = async (event: WorkflowEvent) => {
       return
     case "step.status":
       await publishStep(event.stepId, event.status)
+      return
+    case "step.output":
+      appendOutput(event.stepId, event.stream, event.text)
       return
     case "workflow.completed":
       completed = true

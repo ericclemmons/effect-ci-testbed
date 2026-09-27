@@ -14,6 +14,7 @@ export interface CreateCheckOptions {
   readonly name: string
   readonly title: string
   readonly summary: string
+  readonly text?: string
   readonly status?: "queued" | "in_progress"
   readonly conclusion?: CheckConclusion
   readonly detailsUrl?: string
@@ -31,6 +32,7 @@ export interface UpdateCheckOptions {
   readonly checkId: number
   readonly title: string
   readonly summary: string
+  readonly text?: string
   readonly status?: "queued" | "in_progress" | "completed"
   readonly conclusion?: CheckConclusion
 }
@@ -66,6 +68,7 @@ export const createCheck = async (
         output: {
           title: options.title,
           summary: options.summary,
+          ...(options.text ? { text: options.text } : {}),
         },
       }),
     },
@@ -93,6 +96,7 @@ export const updateCheck = async (
         output: {
           title: options.title,
           summary: options.summary,
+          ...(options.text ? { text: options.text } : {}),
         },
       }),
     },

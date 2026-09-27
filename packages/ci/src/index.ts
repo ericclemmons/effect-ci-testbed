@@ -75,6 +75,14 @@ export type WorkflowEvent =
       readonly timestamp: string
     }
   | {
+      readonly type: "step.output"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly stream: "stdout" | "stderr"
+      readonly text: string
+      readonly timestamp: string
+    }
+  | {
       readonly type: "workflow.completed"
       readonly workflowId: string
       readonly conclusion: "success" | "failure"
@@ -204,6 +212,7 @@ export const workflow = <A>(
 ): Workflow<A> => ({ id, effect })
 
 const runCommand = (
+  workflowId: string,
   stepId: string,
   command: string,
   cwd: string,
@@ -213,8 +222,25 @@ const runCommand = (
       cwd,
       env: process.env,
       shell: true,
-      stdio: "inherit",
+      stdio: ["inherit", "pipe", "pipe"],
     })
+
+    const forward = (stream: "stdout" | "stderr", chunk: Buffer) => {
+      const text = chunk.toString()
+      if (stream === "stdout") process.stdout.write(text)
+      else process.stderr.write(text)
+      emitEvent({
+        type: "step.output",
+        workflowId,
+        stepId,
+        stream,
+        text,
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    child.stdout?.on("data", (chunk: Buffer) => forward("stdout", chunk))
+    child.stderr?.on("data", (chunk: Buffer) => forward("stderr", chunk))
 
     child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, cwd, 1))))
     child.once("exit", (code) => {
@@ -320,7 +346,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
           })
         }
 
-        return runCommand(stepId, command, workspace.cwd).pipe(
+        return runCommand(workflowId, stepId, command, workspace.cwd).pipe(
           Effect.as(workspace.completed(stepId)),
         )
       },

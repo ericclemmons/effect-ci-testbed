@@ -54,9 +54,11 @@ During execution, the installed Effect CI GitHub App owns one first-class check 
 for every workflow step. The CI runtime emits structured lifecycle events on a
 dedicated stream; the GitHub adapter turns those events into native queued, running,
 success, failure, and skipped checks without adding GitHub concerns to `ci.run.ts`.
-Checks are named `<workflow> / <step>`, so every example adds its own independent set
-under the app's check suite. A later Cloudflare runner can consume the same events and
-publish the same checks without pretending to be a GitHub Actions job.
+Command output is tee'd to the runner and attached directly to its step's check, so
+diagnostics do not require a separate Effect CI log viewer. Checks are named
+`<workflow> / <step>`, so every example adds its own independent set under the app's
+check suite. A later Cloudflare runner can consume the same events and publish the
+same checks without pretending to be a GitHub Actions job.
 
 ## Workspace-first execution
 
