@@ -61,9 +61,9 @@ success, failure, and skipped checks without adding GitHub concerns to `ci.run.t
 Command output is tee'd to the runner and attached directly to its step's check, so
 diagnostics do not require a separate Effect CI log viewer. Checks are named
 `<workflow> / <stage><branch> <step>`, so GitHub's alphabetical display preserves DAG
-order: sequential steps appear as `1`, `2`, `3`, while parallel steps at the same
-depth appear as `3a`, `3b`, and `3c`. The plan is stage `0`. Every example adds its
-own independent set under the app's check suite. A later Cloudflare runner can
+order: sequential steps appear as `1.`, `2.`, `3.`, while parallel steps at the same
+depth appear as `3a.`, `3b.`, and `3c.`. The plan is stage `0.`. Every example adds
+its own independent set under the app's check suite. A later Cloudflare runner can
 consume the same events and publish the same checks without pretending to be a
 GitHub Actions job.
 

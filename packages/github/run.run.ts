@@ -184,7 +184,7 @@ const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
     const prefix = String(stage).padStart(width, "0")
     for (const [index, stepId] of [...stepIds].sort().entries()) {
       const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
-      names.set(stepId, `${workflowId} / ${ordinal} ${stepId}`)
+      names.set(stepId, `${workflowId} / ${ordinal}. ${stepId}`)
     }
   }
   return names
@@ -199,7 +199,7 @@ const publishPlan = async (
     token,
     repository,
     sha,
-    name: `${workflowId} / 0 plan`,
+    name: `${workflowId} / 0. plan`,
     title: conclusion === "success" ? `${workflowId} plan ready` : `${workflowId} plan failed`,
     summary: planSummary(value),
     ...(text ? { text } : {}),
