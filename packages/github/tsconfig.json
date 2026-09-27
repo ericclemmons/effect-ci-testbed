@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "report.run.ts"]
+  "include": ["src/**/*.ts", "run.run.ts"]
 }

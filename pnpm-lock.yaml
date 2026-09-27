@@ -199,6 +199,9 @@ importers:
 
   packages/github:
     devDependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../ci
       '@types/node':
         specifier: ^24.5.2
         version: 24.13.6

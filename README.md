@@ -50,11 +50,15 @@ example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
 `effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
 commands into the root workflow.
 
-After the example jobs finish, the installed Effect CI GitHub App publishes one
-external `Effect CI` check for the commit. The first reporting slice contains the
-completed GitHub and Effect-on-GitHub results. Reporting is intentionally separate
-from execution: a later Cloudflare runner can publish to the same GitHub check without
-pretending to be a GitHub Actions job.
+During execution, the installed Effect CI GitHub App owns one first-class check run
+for every workflow step. The CI runtime emits structured lifecycle events on a
+dedicated stream; the GitHub adapter turns those events into native queued, running,
+success, failure, and skipped checks without adding GitHub concerns to `ci.run.ts`.
+Command output is tee'd to the runner and attached directly to its step's check, so
+diagnostics do not require a separate Effect CI log viewer. Checks are named
+`<workflow> / <step>`, so every example adds its own independent set under the app's
+check suite. A later Cloudflare runner can consume the same events and publish the
+same checks without pretending to be a GitHub Actions job.
 
 ## Workspace-first execution
 
@@ -153,11 +157,12 @@ jobs:
 
 The reusable workflow currently represents the GitHub execution layer: checkout,
 Node and pnpm setup, dependency installation, and invocation of the requested
-`ci.run.ts`. The example's Effect caller shows the intended standalone shape; it
-currently relies on the testbed's reusable workflow and workspace package, which
-still need to be packaged for use from an independent repository. A future Cloudflare
-caller should select a different execution layer while leaving the TypeScript workflow
-unchanged.
+`ci.run.ts`. In execute mode it also installs an app token and wraps the portable CI
+program with the GitHub reporting adapter. The example's Effect caller shows the
+intended standalone shape; it currently relies on the testbed's reusable workflow
+and workspace packages, which still need to be packaged for use from an independent
+repository. A future Cloudflare caller should select different execution and reporting
+layers while leaving the TypeScript workflow unchanged.
 
 The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
 reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
