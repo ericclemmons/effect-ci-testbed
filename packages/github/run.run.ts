@@ -174,9 +174,45 @@ const planStages = (value: WorkflowPlan) => {
   return groups
 }
 
+const mermaidLabel = (value: string): string => value
+  .replaceAll("&", "&amp;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+
+const planDiagram = (value: WorkflowPlan): string => {
+  const identifiers = new Map(
+    value.nodes.map((node, index) => [node.id, `step${index}`] as const),
+  )
+  const lines = ["flowchart LR"]
+
+  for (const node of value.nodes) {
+    lines.push(`  ${identifiers.get(node.id)}["${mermaidLabel(node.id)}"]`)
+  }
+  for (const node of value.nodes) {
+    for (const dependency of node.needs) {
+      const from = identifiers.get(dependency)
+      const to = identifiers.get(node.id)
+      if (from && to) lines.push(`  ${from} --> ${to}`)
+    }
+  }
+
+  return lines.join("\n")
+}
+
 const planSummary = (value: WorkflowPlan): string => {
   const groups = planStages(value)
-  const lines = ["### Execution graph", ""]
+  const lines = [
+    "### Execution graph",
+    "",
+    "```mermaid",
+    planDiagram(value),
+    "```",
+    "",
+    "<details>",
+    "<summary>Text view</summary>",
+    "",
+  ]
   for (const [stage, nodes] of groups) {
     const ordered = [...nodes].sort((left, right) => left.id.localeCompare(right.id))
     if (ordered.length === 1) {
@@ -196,6 +232,7 @@ const planSummary = (value: WorkflowPlan): string => {
       lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}`)
     }
   }
+  lines.push("", "</details>")
   return lines.join("\n")
 }
 
