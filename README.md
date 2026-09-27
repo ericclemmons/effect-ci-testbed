@@ -155,11 +155,11 @@ import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
   const repository = yield* actions.checkout()
-  const dependencies = yield* actions.install(repository)
+  const workspace = yield* actions.install(repository)
   return yield* Effect.all([
-    actions.build(dependencies),
-    actions.lint(dependencies),
-    actions.test(dependencies),
+    actions.build(workspace),
+    actions.lint(workspace),
+    actions.test(workspace),
   ], { concurrency: "unbounded" })
 }, { on: ["pull_request", "push"] })
 ```
@@ -171,6 +171,115 @@ service so planning stays side-effect free.
 
 An incoming event that is not listed in `on` is ignored successfully. This lets a
 runner route every event to the workflow while the workflow decides whether it applies.
+
+## Programming model
+
+### Values versus services
+
+The value returned by `install` is a `Workspace`: the checked-out, installed state
+that later actions operate on. It is not a list of package dependencies. A workspace
+is evolving workflow data, so it is passed explicitly between actions. Its producer
+metadata also gives the planner the durable edge from `install` to each check.
+
+Effect services and Layers are for stable capabilities used to implement actions:
+the command runner, cache, GitHub client, credentials, artifact store, healer agent,
+approval service, and notification reporters. Those dependencies are yielded while
+constructing an action and captured by its returned durable implementation.
+
+Keeping these separate avoids a mutable ambient workspace while still allowing each
+runner to provide its own implementations:
+
+```ts
+export const lint = CI.action("lint", function* () {
+  const runner = yield* Runner
+
+  return Effect.fn(function* (workspace: CI.Workspace) {
+    return yield* runner.exec(workspace, "npm run lint")
+  })
+})
+```
+
+An eventual bound-workspace convenience could make this read as
+`workspace.lint`, but it must preserve the same explicit workspace versions and plan
+edges rather than hiding mutable state in a Layer.
+
+### Where control flow belongs
+
+- Use sequential `yield*` when later work needs an earlier value.
+- Use `Effect.all` for work that can run concurrently.
+- Use ordinary `if` / `switch` statements for event- or result-dependent branches.
+- Use `pipe` for policy local to one action: retry, timeout, typed recovery,
+  instrumentation, healing, or approval.
+- Use `Effect.catchTag`, `Effect.match`, or `Effect.result` for typed failures. JavaScript
+  `try` / `catch` is reserved for genuinely thrown JavaScript exceptions at integration
+  boundaries, not normal Effect failures.
+- Parse structured tool output at the action boundary with a Schema. The workflow
+  should receive typed diagnostics rather than scrape terminal text.
+
+Optional work is therefore ordinary code:
+
+```ts
+if (event.type === "pull_request") {
+  yield* actions.preview(workspace)
+}
+```
+
+### Independent checks and aggregate failure
+
+Checks that should all finish use Effect 4's result-collecting mode:
+
+```ts
+import * as Result from "effect/Result"
+
+const results = yield* Effect.all([
+  actions.build(workspace),
+  actions.lint(workspace),
+  actions.test(workspace),
+], {
+  concurrency: "unbounded",
+  mode: "result",
+})
+
+const failures = results
+  .filter(Result.isFailure)
+  .map((result) => result.failure)
+
+if (failures.length > 0) {
+  return yield* Effect.fail(new AggregateError(failures, "CI checks failed"))
+}
+```
+
+`Effect.orDie` is intentionally not used here: it turns typed failures into defects,
+which makes recovery, reporting, and per-check GitHub conclusions harder. The workflow
+collects every typed outcome, reports each one, then fails once with an aggregate error.
+
+### Healing and approval
+
+The validation action should produce typed diagnostics. Recovery actions are separate
+durable invocations so GitHub and Cloudflare can report `lint`, `lint/fix`, and
+`lint/verify` independently:
+
+```ts
+const lint = actions.lint(workspace).pipe(
+  Effect.catchTag("LintFailure", (failure) =>
+    failure.diagnostics.every((diagnostic) => diagnostic.safeFix)
+      ? actions.fixLint(workspace, failure)
+      : actions.suggestLintFix(workspace, failure).pipe(
+          Effect.flatMap(actions.awaitApproval),
+        ),
+  ),
+)
+```
+
+A fixer action may resolve a different agent, model, prompt, and skills than a test or
+build fixer. Safe changes should be accumulated in the workspace and verified before
+one final commit-and-push action. Experimental changes become GitHub suggestions or a
+candidate branch and pass through an explicit approval action before mutation or deploy.
+
+Action definition identity and invocation identity are distinct: `lint` names reusable
+behavior, while `lint`, `lint/fix`, and `lint/verify` name durable invocations in one run.
+The prototype still needs to model invocation identity explicitly before implementing
+healing and re-verification.
 
 ## Run it
 
