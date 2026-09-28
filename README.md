@@ -197,12 +197,13 @@ export default CI.workflow("node-npm", function* () {
 })
 ```
 
-This deliberately matches the canonical GitHub job's native `parallel` group. Lint and
-format both finish; lint failure fails the group and stops test, build, and deploy,
-while format failure becomes a warning and does not block them. Parallelism and
-optionality belong in the workflow policy, not the reusable actions. Mandatory
-dependencies remain inside the actions, so a separate release workflow may request
-only `deploy()` and still get checkout, install, and build.
+This deliberately matches the canonical GitHub workflow's validation matrix. Lint and
+format both finish because the matrix disables fail-fast; lint failure blocks the later
+pipeline job, while format has `continue-on-error` and does not block it. The matrix
+form also remains executable by `act`, which does not yet parse GitHub's newer native
+parallel-step syntax. Parallelism and optionality belong in workflow policy, not the
+reusable actions. Mandatory dependencies remain inside the actions, so a separate
+release workflow may request only `deploy()` and still get checkout, install, and build.
 
 Planning follows the same workflow composition and resolves each action's dependencies,
 while the planning implementation records durable execution instead of performing it.
@@ -317,8 +318,8 @@ neutral GitHub check. It does not hide checkout/install failures: those remain f
 prerequisites. `CI.parallel` discards heterogeneous success values because the group is
 a gate; action outputs remain available when actions are yielded directly. `Effect.orDie`
 is intentionally not used because defects are inappropriate for expected CI failures.
-The canonical GitHub workflow expresses the same policy with `parallel` and
-`continue-on-error: true`.
+The canonical GitHub workflow expresses the same policy with a non-fail-fast matrix and
+`continue-on-error: true` on its format entry.
 
 ### Healing and approval
 

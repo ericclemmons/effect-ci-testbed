@@ -8,8 +8,8 @@ Its pipeline is:
 checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
 ```
 
-The GitHub and Effect workflows express the same concurrency and failure policy:
-both parallel branches finish, but only lint blocks the later stages.
+The GitHub validation matrix and Effect parallel group express the same concurrency and
+failure policy: both branches finish, but only lint blocks the later stages.
 
 Compare:
 

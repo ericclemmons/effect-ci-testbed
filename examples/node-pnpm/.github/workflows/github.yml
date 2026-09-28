@@ -9,7 +9,29 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  checks:
+    name: ${{ matrix.check }}${{ matrix.optional && ' (optional)' || '' }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.optional }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: lint
+            optional: false
+          - check: format
+            optional: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@v3
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+      - run: pnpm run ${{ matrix.check }}
+
+  pipeline:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,10 +40,6 @@ jobs:
           runtime: node@24
           cache: true
           require-lockfile: true
-      - parallel:
-          - run: pnpm run lint
-          - run: pnpm run format
-            continue-on-error: true
       - run: pnpm test
       - run: pnpm run build
       - run: echo pnpx cf deploy
