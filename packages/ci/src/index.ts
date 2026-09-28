@@ -155,14 +155,10 @@ export class CommandError extends Error {
 }
 
 export class Workspace {
-  private constructor(
-    readonly cwd: string,
-    readonly lineage: ReadonlyArray<string>,
-    readonly producer: string | undefined,
-  ) {}
+  private constructor(readonly cwd: string) {}
 
   static local(cwd: string): Workspace {
-    return new Workspace(cwd, [], undefined)
+    return new Workspace(cwd)
   }
 
   exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
@@ -174,13 +170,6 @@ export class Workspace {
     })
   }
 
-  completed(stepId: string): Workspace {
-    if (this.producer === stepId) return this
-    const lineage = this.lineage.includes(stepId)
-      ? this.lineage
-      : [...this.lineage, stepId]
-    return new Workspace(this.cwd, lineage, stepId)
-  }
 }
 
 export interface SourceService {
@@ -268,22 +257,21 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
   let registered = false
 
   return (...args: Args) => {
-    if (registered || definitions.has(id)) {
-      throw new Error(`Duplicate CI action invocation: ${id}`)
+    if (!registered) {
+      if (definitions.has(id)) {
+        throw new Error(`Duplicate CI action id: ${id}`)
+      }
+      registered = true
+      definitions.set(id, {
+        id,
+        body: bodyToEffect(construction).pipe(
+          Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
+        ),
+        options,
+      })
     }
-    registered = true
-    definitions.set(id, {
-      id,
-      body: bodyToEffect(construction).pipe(
-        Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
-      ),
-      options,
-    })
 
-    const needs = args.flatMap((value) =>
-      value instanceof Workspace && value.producer ? [value.producer] : [],
-    )
-    return runStep(id, needs)
+    return runStep(id)
   }
 }
 
@@ -362,7 +350,6 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
         })
 
         return definition.body.pipe(
-          Effect.map((value) => value instanceof Workspace ? value.completed(id) : value),
           Effect.provideService(CurrentStep, id),
           Effect.tap(() => Effect.sync(() => {
             node.status = mode === "plan" ? "planned" : "complete"
@@ -415,7 +402,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
         node.commands.push({ command, cwd: workspace.cwd })
 
         if (mode === "plan") {
-          return Effect.succeed(workspace.completed(stepId))
+          return Effect.succeed(workspace)
         }
 
         if (node.status !== "running") {
@@ -430,7 +417,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
         }
 
         return runCommand(workflowId, stepId, command, workspace.cwd).pipe(
-          Effect.as(workspace.completed(stepId)),
+          Effect.as(workspace),
         )
       },
     }

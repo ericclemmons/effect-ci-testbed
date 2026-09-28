@@ -126,22 +126,31 @@ export const checkout = CI.action("checkout", function* () {
   return () => source.checkout(app)
 })
 
-export const install = CI.action("install", () =>
-  (workspace: CI.Workspace) => workspace.exec("npm ci"))
+export const install = CI.action("install", () => function* () {
+  const workspace = yield* checkout()
+  return yield* workspace.exec("npm ci")
+})
 
-export const lint = CI.action("lint", () =>
-  (workspace: CI.Workspace) => workspace.exec("npm run lint"))
+export const lint = CI.action("lint", () => function* () {
+  const workspace = yield* install()
+  return yield* workspace.exec("npm run lint")
+})
 
-export const test = CI.action("test", () =>
-  (workspace: CI.Workspace) => workspace.exec("npm test"))
+export const test = CI.action("test", () => function* () {
+  const workspace = yield* install()
+  return yield* workspace.exec("npm test")
+})
 ```
 
 An action's construction generator resolves action-specific dependencies and returns
-the durable implementation. Calling the action accepts its inputs and returns an Effect.
-Workspace inputs carry the producer identity, so the plan derives direct dependency
-edges without a separate `needs` DSL. The returned implementation can be an ordinary
-function, generator, async function, or Effect-returning function. Construction that
-does not yield services can be `() => handler`; it does not need to be a generator.
+the durable implementation. The implementation yields prerequisite actions before doing
+its own work, so invalid compositions are not expressible through the public action API:
+`lint()` always installs, and a future `deploy()` will always yield `build()` to obtain
+its artifacts. The planner observes those yielded actions directly and derives `needs`
+edges without a separate dependency DSL or AST parsing. Repeated action calls share one
+cached result per run. The returned implementation can be an ordinary function,
+generator, async function, or Effect-returning function. Construction that does not
+yield services can be `() => handler`; it does not need to be a generator.
 `Effect.fn` is an optional instrumentation tool, not part of the `CI.action` contract.
 
 The workflow itself is only orchestration: sequential yields, parallel composition,
@@ -151,13 +160,11 @@ and per-action error handling:
 import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
-  let workspace = yield* actions.checkout()
-  workspace = yield* actions.install(workspace)
   return yield* Effect.validate(
     [
-      actions.build(workspace),
-      actions.lint(workspace),
-      actions.test(workspace),
+      actions.build(),
+      actions.lint(),
+      actions.test(),
     ],
     (check) => check,
     { concurrency: "unbounded" },
@@ -175,13 +182,18 @@ runner route every event to the workflow while the workflow decides whether it a
 
 ## Programming model
 
-### Values versus services
+### Actions, values, and services
 
-`checkout` and `install` both return a `Workspace`: one logical workspace evolving
-through the workflow. Reassigning the `workspace` variable makes that continuity
-explicit. Each result is nevertheless a successor reference whose producer metadata
-gives the planner the durable edge from `checkout` to `install`, then from `install`
-to each check. A workspace is not a list of package dependencies.
+Actions own their mandatory prerequisites. `install` yields `checkout`; build, lint,
+and test each yield `install`. Workflows choose terminal goals and coordinate optional
+work, but cannot accidentally bypass the prerequisites encoded by those goals. A tagged
+release workflow may request only `deploy()`; `deploy` must yield `build()`, whose typed
+artifact output is its input, and `build` must yield `install()`.
+
+Returned values carry real data rather than hidden planning metadata. A `Workspace` is
+the checkout used by commands; future `BuildArtifacts` and `Deployment` values will make
+the build and deployment transitions type-checked. The plan edge comes from yielding the
+prerequisite action itself.
 
 `checkout` does not branch on `NODE_ENV`. Application environment and workspace
 acquisition are independent choices: a production build can run in an existing local
@@ -215,9 +227,9 @@ export const lint = CI.action("lint", function* () {
 })
 ```
 
-An eventual bound-workspace convenience could make this read as
-`workspace.lint`, but it must preserve the same explicit workspace versions and plan
-edges rather than hiding mutable state in a Layer.
+An eventual bound-workspace convenience could make this read as `workspace.lint`, but
+it must preserve yielded action prerequisites rather than hiding mutable state in a
+Layer.
 
 ### Where control flow belongs
 
@@ -236,7 +248,7 @@ Optional work is therefore ordinary code:
 
 ```ts
 if (event.type === "pull_request") {
-  yield* actions.preview(workspace)
+  yield* actions.preview()
 }
 ```
 
@@ -247,9 +259,9 @@ Checks that should all finish use Effect 4's failure-accumulating `validate`:
 ```ts
 return yield* Effect.validate(
   [
-    actions.build(workspace),
-    actions.lint(workspace),
-    actions.test(workspace),
+    actions.build(),
+    actions.lint(),
+    actions.test(),
   ],
   (check) => check,
   { concurrency: "unbounded" },
@@ -271,9 +283,9 @@ Recovery actions are separate durable invocations so GitHub and Cloudflare can r
 `lint`, `lint/fix`, and `lint/verify` independently:
 
 ```ts
-const lint = actions.lint(workspace).pipe(
+const lint = actions.lint().pipe(
   Effect.catchTag("LintFailure", (failure) =>
-    actions.healLint(workspace, failure),
+    actions.healLint(failure),
   ),
 )
 ```
@@ -371,17 +383,17 @@ definition or planning DSL.
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
-- `CI.action(id, construction, options?)` resolves action dependencies and returns a durable implementation; calling it with typed inputs returns an Effect that can be yielded directly.
+- `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
 - Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.validate` to run build, lint, and test concurrently in the shared workspace while accumulating every failure.
 - Repeatedly yielding the same step executes it once per run.
-- A `Workspace` is one logical workspace passed between steps as successive references.
+- A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
   the supplied directory; hosted and durable runners can provide different source
   implementations without branching on `NODE_ENV` inside the workflow.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
-- Dependency edges follow action inputs and outputs. The installed workspace is passed to build, lint, and test, so each directly needs install and none incorrectly depends on another check passing.
+- Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action, so each directly needs install and none incorrectly depends on another check passing.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Ordinary Effect error composition attaches retry, deterministic repair, agent healing,
   notification, or approval behavior to an individual action instead of forcing one
