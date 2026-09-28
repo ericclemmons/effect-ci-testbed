@@ -7,11 +7,14 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "deploy:webhook": "wrangler deploy",
+    "dev:webhook": "wrangler dev"
   },
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
     "@types/node": "^24.5.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "wrangler": "^4.142.0"
   }
 }

@@ -96,3 +96,12 @@ jobs:
     with:
       workflow: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
     secrets: inherit
+
+  approval-on-github:
+    name: node-npm / approval-on-github
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hitl')
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/node-npm/.cloudflare/workflows/deploy.ts
+      event: workflow_dispatch
+    secrets: inherit

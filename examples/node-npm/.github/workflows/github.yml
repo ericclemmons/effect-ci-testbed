@@ -42,4 +42,3 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - run: echo npx cf deploy

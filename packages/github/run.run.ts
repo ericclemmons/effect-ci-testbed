@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import type { Readable } from "node:stream"
+import type { Writable } from "node:stream"
 import { fileURLToPath } from "node:url"
 import type { PlanNode, RuntimeEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
+  getCheck,
   updateCheck,
   type CheckConclusion,
 } from "@effect-ci-testbed/github"
@@ -31,12 +33,15 @@ interface StepCheck {
 
 const checks = new Map<string, StepCheck>()
 const output = new Map<string, string>()
+const approvalSteps = new Set<string>()
 let workflowId = workflow
 let mode: WorkflowPlan["mode"] = "execute"
 let plan: WorkflowPlan | undefined
 let completed = false
 
 const MAX_OUTPUT_LENGTH = 60_000
+const APPROVAL_POLL_INTERVAL_MS = 3_000
+const APPROVAL_TIMEOUT_MS = Number(process.env.EFFECT_CI_APPROVAL_TIMEOUT_MS ?? 1_800_000)
 
 const appendOutput = (stepId: string, stream: "stdout" | "stderr", text: string) => {
   const prefix = stream === "stderr" ? "[stderr] " : ""
@@ -140,18 +145,25 @@ const publishStep = async (
     ...(text ? { text } : {}),
     ...(output.status ? { status: output.status } : {}),
     ...(output.conclusion ? { conclusion: output.conclusion } : {}),
+    actions: [],
   })
   existing.status = status
   existing.optional = optional
 }
 
 const planText = (value: WorkflowPlan): string => value.nodes
-  .filter((node) => node.commands.length > 0)
+  .filter((node) => node.commands.length > 0 || node.approval)
   .map((node) => {
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
       .join("\n\n")
-    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n\`\`\`sh\n${commands}\n\`\`\``
+    const approval = node.approval
+      ? `**Approval:** ${node.approval.title}\n\n${node.approval.summary}`
+      : ""
+    const details = [approval, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
+      .filter(Boolean)
+      .join("\n\n")
+    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n${details}`
   })
   .join("\n\n")
 
@@ -305,8 +317,88 @@ const publishPlan = async (
   console.log(`Effect CI check (plan): ${check.htmlUrl}`)
 }
 
+const waitForApproval = async (
+  event: Extract<RuntimeEvent, { readonly type: "approval.requested" }>,
+) => {
+  approvalSteps.add(event.stepId)
+  const existing = checks.get(event.stepId)
+  if (!existing) throw new Error(`Missing approval check for ${event.stepId}`)
+
+  await updateCheck({
+    token,
+    repository,
+    checkId: existing.id,
+    title: event.approval.title,
+    summary: event.approval.summary,
+    conclusion: "action_required",
+    actions: [
+      {
+        label: event.approval.approveLabel ?? "Approve",
+        description: "Approve and continue this workflow",
+        identifier: "approve",
+      },
+      {
+        label: event.approval.rejectLabel ?? "Reject",
+        description: "Reject and stop this workflow",
+        identifier: "reject",
+      },
+    ],
+  })
+
+  const deadline = Date.now() + APPROVAL_TIMEOUT_MS
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_INTERVAL_MS))
+    const check = await getCheck(token, repository, existing.id)
+
+    if (check.status !== "completed" || check.conclusion === "action_required") {
+      continue
+    }
+
+    const actor = check.summary?.match(/by @([^\.]+)\./)?.[1]
+
+    return {
+      decision: check.conclusion === "success" ? "approved" as const : "rejected" as const,
+      ...(actor ? { actor } : {}),
+    }
+  }
+
+  await updateCheck({
+    token,
+    repository,
+    checkId: existing.id,
+    title: `${event.stepId} timed out`,
+    summary: "No approval decision was received before the timeout.",
+    conclusion: "timed_out",
+    actions: [],
+  })
+
+  return { decision: "rejected" as const }
+}
+
+let controlStream: Writable | undefined
+
+const resolveApproval = async (
+  event: Extract<RuntimeEvent, { readonly type: "approval.requested" }>,
+) => {
+  if (!controlStream) throw new Error("Effect CI approval control stream is unavailable")
+  const result = await waitForApproval(event)
+
+  controlStream.write(`${JSON.stringify({
+    type: "approval.resolved",
+    requestId: event.requestId,
+    decision: result.decision,
+    ...(result.actor ? { actor: result.actor } : {}),
+  })}\n`)
+}
+
 const report = async (event: RuntimeEvent) => {
   switch (event.type) {
+    case "approval.requested":
+      await resolveApproval(event)
+      return
+    case "approval.resolved":
+      return
     case "workflow.started":
       workflowId = event.workflowId
       mode = event.mode
@@ -314,7 +406,12 @@ const report = async (event: RuntimeEvent) => {
     case "dependency.added":
       return
     case "step.status":
-      if (mode === "execute") await publishStep(event.stepId, event.status, undefined, event.optional)
+      if (
+        mode === "execute" &&
+        !(approvalSteps.has(event.stepId) && (event.status === "complete" || event.status === "failed"))
+      ) {
+        await publishStep(event.stepId, event.status, undefined, event.optional)
+      }
       return
     case "step.output":
       appendOutput(event.stepId, event.stream, event.text)
@@ -337,12 +434,17 @@ const report = async (event: RuntimeEvent) => {
 
 const runtime = fileURLToPath(new URL("../ci/run.run.ts", import.meta.url))
 const child = spawn(process.execPath, ["--import", "tsx", runtime], {
-  env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
-  stdio: ["inherit", "inherit", "inherit", "pipe"],
+  env: {
+    ...process.env,
+    EFFECT_CI_EVENT_FD: "3",
+    EFFECT_CI_CONTROL_FD: "4",
+  },
+  stdio: ["inherit", "inherit", "inherit", "pipe", "pipe"],
 })
 
 const eventStream = child.stdio[3] as Readable | null
 if (!eventStream) throw new Error("Effect CI event stream is unavailable")
+controlStream = (child.stdio[4] as Writable | null) ?? undefined
 
 let reportingError: unknown
 const reporting = (async () => {

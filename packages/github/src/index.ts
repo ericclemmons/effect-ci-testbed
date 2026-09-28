@@ -7,6 +7,12 @@ export type CheckConclusion =
   | "success"
   | "timed_out"
 
+export interface CheckAction {
+  readonly label: string
+  readonly description: string
+  readonly identifier: string
+}
+
 export interface CreateCheckOptions {
   readonly token: string
   readonly repository: string
@@ -19,11 +25,15 @@ export interface CreateCheckOptions {
   readonly conclusion?: CheckConclusion
   readonly detailsUrl?: string
   readonly externalId?: string
+  readonly actions?: ReadonlyArray<CheckAction>
 }
 
 export interface CheckRun {
   readonly id: number
   readonly htmlUrl: string
+  readonly status?: "queued" | "in_progress" | "completed"
+  readonly conclusion?: CheckConclusion | null
+  readonly summary?: string
 }
 
 export interface UpdateCheckOptions {
@@ -36,6 +46,7 @@ export interface UpdateCheckOptions {
   readonly text?: string
   readonly status?: "queued" | "in_progress" | "completed"
   readonly conclusion?: CheckConclusion
+  readonly actions?: ReadonlyArray<CheckAction>
 }
 
 const headers = (token: string) => ({
@@ -71,6 +82,7 @@ export const createCheck = async (
           summary: options.summary,
           ...(options.text ? { text: options.text } : {}),
         },
+        ...(options.actions ? { actions: options.actions } : {}),
       }),
     },
   )
@@ -100,6 +112,7 @@ export const updateCheck = async (
           summary: options.summary,
           ...(options.text ? { text: options.text } : {}),
         },
+        ...(options.actions ? { actions: options.actions } : {}),
       }),
     },
   )
@@ -110,4 +123,35 @@ export const updateCheck = async (
 
   const check = await response.json() as { id: number; html_url: string }
   return { id: check.id, htmlUrl: check.html_url }
+}
+
+export const getCheck = async (
+  token: string,
+  repository: string,
+  checkId: number,
+): Promise<CheckRun> => {
+  const response = await fetch(
+    `https://api.github.com/repos/${repository}/check-runs/${checkId}`,
+    { headers: headers(token) },
+  )
+
+  if (!response.ok) {
+    throw await responseError("get check", response)
+  }
+
+  const check = await response.json() as {
+    id: number
+    html_url: string
+    status: "queued" | "in_progress" | "completed"
+    conclusion: CheckConclusion | null
+    output?: { summary?: string }
+  }
+
+  return {
+    id: check.id,
+    htmlUrl: check.html_url,
+    status: check.status,
+    conclusion: check.conclusion,
+    ...(check.output?.summary ? { summary: check.output.summary } : {}),
+  }
 }

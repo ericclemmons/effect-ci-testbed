@@ -360,6 +360,41 @@ behavior, while `lint`, `lint/fix`, and `lint/verify` name durable invocations i
 The prototype still needs to model invocation identity explicitly before implementing
 healing and re-verification.
 
+Deployment approval is now a first-class runtime capability. An action yields
+`CI.Approval`, requests a decision, and does not begin the guarded side effect until the
+request resolves:
+
+```ts
+export const approveDeployment = CI.action<BuildArtifacts>(
+  "approve deployment",
+  () => function* () {
+    const artifacts = yield* build()
+    const approval = yield* CI.Approval
+
+    yield* approval.request({
+      title: "Approve the no-op deployment?",
+      summary: "Build passed. Approve to deploy.",
+    })
+
+    return artifacts
+  },
+)
+```
+
+The GitHub adapter represents the suspended action with a completed Check Run whose
+conclusion is `action_required` and whose output contains **Approve** and **Reject**
+buttons. GitHub reserves the literal `waiting`, `pending`, and `requested` Check Run
+statuses for GitHub Actions, so an App cannot use those statuses. Clicking a button
+emits `check_run.requested_action`; the webhook verifies the delivery signature and the
+actor's write permission, records success or failure on that same check, and the runner
+resumes or rejects the Effect. The check itself is the decision state for this first
+slice, so it needs no separate database.
+
+The example keeps pull-request validation separate from deployment. The deploy workflow
+can be dispatched manually, rebuilds through its intrinsic dependencies, waits at
+`approve deployment`, and only then runs the deliberately harmless
+`echo npx cf deploy` / `echo pnpx cf deploy` command.
+
 ### Workflow boundaries and new events
 
 A recovery action runs inside the current workflow instance; it does not implicitly
@@ -421,6 +456,21 @@ layers while leaving the TypeScript workflow unchanged.
 The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
 reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
 the generic runtime chooses the mode from that ordinary environment variable.
+
+### GitHub approval webhook
+
+`packages/github/worker.ts` is the small Cloudflare Worker that handles App Check Run
+actions. Deploy it with `pnpm --filter @effect-ci-testbed/github deploy:webhook`, then
+configure the GitHub App webhook URL and subscribe it to **Check runs**. Its runtime
+secrets are:
+
+- `EFFECT_CI_APP_CLIENT_ID`
+- `EFFECT_CI_APP_PRIVATE_KEY`
+- `EFFECT_CI_WEBHOOK_SECRET` (the same value configured on the GitHub App)
+
+For local E2E only, `EFFECT_CI_APPROVAL=approved` or `rejected` supplies a deterministic
+adapter. Production GitHub execution instead opens a bidirectional control channel
+between the reporter and portable runtime and waits for the signed App webhook decision.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the

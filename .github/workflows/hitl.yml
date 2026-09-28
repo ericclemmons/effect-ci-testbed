@@ -1,0 +1,22 @@
+name: Effect CI HITL
+
+on:
+  workflow_dispatch:
+    inputs:
+      example:
+        description: Example deployment to run
+        required: true
+        type: choice
+        options:
+          - node-npm
+          - node-pnpm
+
+permissions:
+  contents: read
+
+jobs:
+  effect-on-github:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/${{ inputs.example }}/.cloudflare/workflows/deploy.ts
+    secrets: inherit
