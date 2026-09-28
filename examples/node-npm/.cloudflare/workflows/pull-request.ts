@@ -6,11 +6,12 @@ import * as actions from "../actions/index.ts"
 export default CI.workflow("node-npm", function* () {
   return yield* Effect.validate(
     [
-      actions.build(),
-      actions.lint(),
-      actions.test(),
+      actions.build().pipe(Effect.asVoid),
+      actions.deploy().pipe(Effect.asVoid),
+      actions.lint().pipe(Effect.asVoid),
+      actions.test().pipe(Effect.asVoid),
     ],
     (check) => check,
-    { concurrency: "unbounded" },
+    { concurrency: "unbounded", discard: true },
   )
 }, { on: ["pull_request", "push"] })

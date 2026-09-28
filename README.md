@@ -111,7 +111,7 @@ coordinates actions from
 [`examples/node-npm/.cloudflare/actions/index.ts`](./examples/node-npm/.cloudflare/actions/index.ts):
 
 ```text
-checkout → install → build ┐
+checkout → install ┬→ build → deploy
                    ├→ lint
                    └→ test
 ```
@@ -140,12 +140,18 @@ export const test = CI.action("test", () => function* () {
   const workspace = yield* install()
   return yield* workspace.exec("npm test")
 })
+
+export const deploy = CI.action("deploy", () => function* () {
+  const artifacts = yield* build()
+  yield* artifacts.workspace.exec("echo pnpx cf deploy")
+  return { artifacts, target: "cloudflare" } satisfies Deployment
+})
 ```
 
 An action's construction generator resolves action-specific dependencies and returns
 the durable implementation. The implementation yields prerequisite actions before doing
 its own work, so invalid compositions are not expressible through the public action API:
-`lint()` always installs, and a future `deploy()` will always yield `build()` to obtain
+`lint()` always installs, and `deploy()` always yields `build()` to obtain
 its artifacts. The planner observes those yielded actions directly and derives `needs`
 edges without a separate dependency DSL or AST parsing. Repeated action calls share one
 cached result per run. The returned implementation can be an ordinary function,
@@ -162,12 +168,13 @@ import * as actions from "../actions/index.ts"
 export default CI.workflow("node-npm", function* () {
   return yield* Effect.validate(
     [
-      actions.build(),
-      actions.lint(),
-      actions.test(),
+      actions.build().pipe(Effect.asVoid),
+      actions.deploy().pipe(Effect.asVoid),
+      actions.lint().pipe(Effect.asVoid),
+      actions.test().pipe(Effect.asVoid),
     ],
     (check) => check,
-    { concurrency: "unbounded" },
+    { concurrency: "unbounded", discard: true },
   )
 }, { on: ["pull_request", "push"] })
 ```
@@ -259,12 +266,12 @@ Checks that should all finish use Effect 4's failure-accumulating `validate`:
 ```ts
 return yield* Effect.validate(
   [
-    actions.build(),
-    actions.lint(),
-    actions.test(),
+    actions.build().pipe(Effect.asVoid),
+    actions.lint().pipe(Effect.asVoid),
+    actions.test().pipe(Effect.asVoid),
   ],
   (check) => check,
-  { concurrency: "unbounded" },
+  { concurrency: "unbounded", discard: true },
 )
 ```
 
@@ -385,15 +392,15 @@ definition or planning DSL.
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
-- Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.validate` to run build, lint, and test concurrently in the shared workspace while accumulating every failure.
-- Repeatedly yielding the same step executes it once per run.
+- Ordinary Effect composition controls execution. The examples use `Effect.validate` to request build, deploy, lint, and test concurrently while accumulating every failure; their yielded prerequisites enforce checkout → install → build → deploy.
+- Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
 - A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
   the supplied directory; hosted and durable runners can provide different source
   implementations without branching on `NODE_ENV` inside the workflow.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
-- Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action, so each directly needs install and none incorrectly depends on another check passing.
+- Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action; deploy yields the cached build action and consumes its typed artifacts.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Ordinary Effect error composition attaches retry, deterministic repair, agent healing,
   notification, or approval behavior to an individual action instead of forcing one
