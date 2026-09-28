@@ -4,6 +4,7 @@ import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
   const event = yield* CI.WorkflowEvent
+
   if (!["pull_request", "push", "workflow_dispatch"].includes(event.type)) {
     return
   }
@@ -14,5 +15,6 @@ export default CI.workflow("node-npm", function* () {
   ])
   yield* actions.test()
   yield* actions.build()
+
   return yield* actions.deploy()
 })
