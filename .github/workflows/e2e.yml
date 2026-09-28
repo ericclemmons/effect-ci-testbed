@@ -52,6 +52,7 @@ jobs:
           cd "$example_root"
           act pull_request \
             --bind \
+            --concurrent-jobs 1 \
             --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
             --secret GITHUB_TOKEN \
             --workflows .github/workflows/github.yml
