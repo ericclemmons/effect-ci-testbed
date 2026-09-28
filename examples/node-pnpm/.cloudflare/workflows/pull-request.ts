@@ -4,6 +4,11 @@ import * as Effect from "effect/Effect"
 import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-pnpm", function* () {
+  const event = yield* CI.WorkflowEvent
+  if (event.type !== "pull_request" && event.type !== "push" && event.type !== "workflow_dispatch") {
+    return
+  }
+
   return yield* Effect.validate(
     [
       actions.build().pipe(Effect.asVoid),
@@ -14,4 +19,4 @@ export default CI.workflow("node-pnpm", function* () {
     (check) => check,
     { concurrency: "unbounded", discard: true },
   )
-}, { on: ["pull_request", "push"] })
+})

@@ -17,11 +17,8 @@ const workflow = module.default
 if (!workflow) throw new Error(`${workflowPath} must default-export a CI workflow`)
 
 const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
-if (event && workflow.on.length > 0 && !workflow.on.includes(event)) {
-  console.log(`Skipping ${workflow.id}: it does not respond to ${event}`)
-} else {
-  await CI.runPromise(workflow, {
-    env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
-    mode: process.env.DRY_RUN ? "plan" : "execute",
-  })
-}
+await CI.runPromise(workflow, {
+  env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
+  event: { type: event ?? "workflow_dispatch" },
+  mode: process.env.DRY_RUN ? "plan" : "execute",
+})

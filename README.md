@@ -128,22 +128,28 @@ export const checkout = CI.action("checkout", function* () {
 
 export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
-  return yield* workspace.exec("npm ci")
+  const packageManager = yield* CI.PackageManager.JavaScript(workspace)
+  return {
+    packageManager: packageManager.name,
+    workspace: yield* packageManager.install(),
+  } satisfies Installation
 })
 
 export const lint = CI.action("lint", () => function* () {
-  const workspace = yield* install()
-  return yield* workspace.exec("npm run lint")
+  const installation = yield* install()
+  const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
+  return yield* packageManager.run("lint")
 })
 
 export const test = CI.action("test", () => function* () {
-  const workspace = yield* install()
-  return yield* workspace.exec("npm test")
+  const installation = yield* install()
+  const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
+  return yield* packageManager.run("test")
 })
 
 export const deploy = CI.action("deploy", () => function* () {
   const artifacts = yield* build()
-  yield* artifacts.workspace.exec("echo pnpx cf deploy")
+  yield* artifacts.installation.workspace.exec("echo pnpx cf deploy")
   return { artifacts, target: "cloudflare" } satisfies Deployment
 })
 ```
@@ -166,6 +172,11 @@ and per-action error handling:
 import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
+  const event = yield* CI.WorkflowEvent
+  if (event.type !== "pull_request" && event.type !== "push" && event.type !== "workflow_dispatch") {
+    return
+  }
+
   return yield* Effect.validate(
     [
       actions.build().pipe(Effect.asVoid),
@@ -176,7 +187,7 @@ export default CI.workflow("node-npm", function* () {
     (check) => check,
     { concurrency: "unbounded", discard: true },
   )
-}, { on: ["pull_request", "push"] })
+})
 ```
 
 Planning follows the same workflow composition and resolves each action's dependencies,
@@ -184,8 +195,9 @@ while the planning implementation records durable execution instead of performin
 External I/O belongs in the returned action implementation or behind a runner-provided
 service so planning stays side-effect free.
 
-An incoming event that is not listed in `on` is ignored successfully. This lets a
-runner route every event to the workflow while the workflow decides whether it applies.
+The runner provides every incoming event as `CI.WorkflowEvent`. The workflow yields that
+requirement and uses ordinary TypeScript to decide whether and how it applies. There is
+no separate trigger-condition DSL or runner-side `on` filtering.
 
 ## Programming model
 
@@ -198,9 +210,16 @@ release workflow may request only `deploy()`; `deploy` must yield `build()`, who
 artifact output is its input, and `build` must yield `install()`.
 
 Returned values carry real data rather than hidden planning metadata. A `Workspace` is
-the checkout used by commands; future `BuildArtifacts` and `Deployment` values will make
-the build and deployment transitions type-checked. The plan edge comes from yielding the
-prerequisite action itself.
+the checkout used by commands; `Installation`, `BuildArtifacts`, and `Deployment` make
+the transitions type-checked. The plan edge comes from yielding the prerequisite action
+itself.
+
+`CI.PackageManager.JavaScript(workspace)` yields a workspace-bound package-manager
+capability with `install`, `run`, and `exec` methods. It prefers
+`package.json#packageManager`, falls back to JavaScript lockfiles, and rejects ambiguous
+lockfiles. The namespace is ecosystem-specific because one repository may independently
+yield JavaScript and Python package managers for the same checkout. `workspace.exec`
+remains the command escape hatch.
 
 `checkout` does not branch on `NODE_ENV`. Application environment and workspace
 acquisition are independent choices: a production build can run in an existing local
@@ -398,6 +417,10 @@ definition or planning DSL.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
   the supplied directory; hosted and durable runners can provide different source
   implementations without branching on `NODE_ENV` inside the workflow.
+- `CI.WorkflowEvent` is a yielded runtime requirement. Workflows branch on its typed
+  event data directly instead of declaring an `on` array interpreted by the runner.
+- `CI.PackageManager.JavaScript(workspace)` detects and binds npm, pnpm, Yarn, or Bun to
+  a workspace. Other ecosystems will use independent package-manager resources.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
 - Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action; deploy yields the cached build action and consumes its typed artifacts.

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process"
-import { writeSync } from "node:fs"
+import { existsSync, readFileSync, writeSync } from "node:fs"
+import { join } from "node:path"
 import * as Cache from "effect/Cache"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -63,7 +64,7 @@ export interface WorkflowPlan {
   readonly nodes: ReadonlyArray<PlanNode>
 }
 
-export type WorkflowEvent =
+export type RuntimeEvent =
   | {
       readonly type: "workflow.started"
       readonly workflowId: string
@@ -128,7 +129,7 @@ interface RuntimeShape {
 
 const eventFileDescriptor = Number(process.env.EFFECT_CI_EVENT_FD)
 
-const emitEvent = (event: WorkflowEvent): void => {
+const emitEvent = (event: RuntimeEvent): void => {
   if (!Number.isInteger(eventFileDescriptor)) return
   writeSync(eventFileDescriptor, `${JSON.stringify(event)}\n`)
 }
@@ -172,6 +173,93 @@ export class Workspace {
 
 }
 
+export class PackageManagerError extends Error {
+  readonly _tag = "PackageManagerError"
+
+  constructor(readonly cwd: string, message: string) {
+    super(message)
+  }
+}
+
+export namespace PackageManager {
+  export type JavaScriptName = "npm" | "pnpm" | "yarn" | "bun"
+
+  export interface JavaScript {
+    readonly name: JavaScriptName
+    readonly workspace: Workspace
+    readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+    readonly run: (script: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+    readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  }
+
+  const fromPackageManagerField = (workspace: Workspace): JavaScriptName | undefined => {
+    const packageJson = join(workspace.cwd, "package.json")
+    if (!existsSync(packageJson)) return undefined
+    const contents = JSON.parse(readFileSync(packageJson, "utf8")) as {
+      readonly packageManager?: string
+    }
+    const name = contents.packageManager?.split("@")[0]
+    return name === "npm" || name === "pnpm" || name === "yarn" || name === "bun"
+      ? name
+      : undefined
+  }
+
+  const fromLockfile = (workspace: Workspace): JavaScriptName | undefined => {
+    const matches = ([
+      ["npm", "package-lock.json"],
+      ["pnpm", "pnpm-lock.yaml"],
+      ["yarn", "yarn.lock"],
+      ["bun", "bun.lock"],
+      ["bun", "bun.lockb"],
+    ] as const).filter(([, file]) => existsSync(join(workspace.cwd, file)))
+    const names = [...new Set(matches.map(([name]) => name))]
+    if (names.length > 1) {
+      throw new PackageManagerError(
+        workspace.cwd,
+        `Multiple JavaScript package-manager lockfiles found: ${names.join(", ")}`,
+      )
+    }
+    return names[0]
+  }
+
+  export const JavaScript = (workspace: Workspace): Effect.Effect<JavaScript, PackageManagerError> =>
+    Effect.try({
+      try: () => {
+        const name = fromPackageManagerField(workspace) ?? fromLockfile(workspace)
+        if (!name) {
+          throw new PackageManagerError(
+            workspace.cwd,
+            "Could not detect a JavaScript package manager from packageManager or a lockfile",
+          )
+        }
+
+        const command = (operation: "install" | "run" | "exec", value?: string) => {
+          switch (operation) {
+            case "install":
+              return name === "npm" ? "npm ci" : `${name} install`
+            case "run":
+              return `${name} run ${JSON.stringify(value)}`
+            case "exec":
+              return name === "bun"
+                ? `bunx ${value}`
+                : `${name} exec ${value}`
+          }
+        }
+
+        return {
+          name,
+          workspace,
+          install: () => workspace.exec(command("install")),
+          run: (script) => workspace.exec(command("run", script)),
+          exec: (executable) => workspace.exec(command("exec", executable)),
+        }
+      },
+      catch: (error) => error instanceof PackageManagerError
+        ? error
+        : new PackageManagerError(workspace.cwd, String(error)),
+    })
+}
+
 export interface SourceService {
   readonly checkout: (root: string) => Effect.Effect<Workspace, unknown>
 }
@@ -186,15 +274,24 @@ const localSource: SourceService = {
 
 export interface Workflow<A> {
   readonly id: string
-  readonly on: ReadonlyArray<WorkflowEventName>
-  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep>
+  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep | WorkflowEvent>
 }
 
-export type WorkflowEventName = "pull_request" | "push" | "workflow_dispatch"
+export type WorkflowEventName =
+  | "merge_group"
+  | "pull_request"
+  | "push"
+  | "release"
+  | "workflow_dispatch"
 
-export interface WorkflowOptions {
-  readonly on?: ReadonlyArray<WorkflowEventName>
+export interface WorkflowEventShape {
+  readonly type: WorkflowEventName
+  readonly payload?: unknown
 }
+
+export class WorkflowEvent extends ServiceMap.Service<WorkflowEvent, WorkflowEventShape>()(
+  "@effect-ci-testbed/WorkflowEvent",
+) {}
 
 const definitions = new Map<string, StepDefinition>()
 
@@ -278,8 +375,7 @@ export const action = <Args extends ReadonlyArray<unknown>, A>(
 export const workflow = <A>(
   id: string,
   body: WorkflowBody<A>,
-  options: WorkflowOptions = {},
-): Workflow<A> => ({ id, on: options.on ?? [], effect: bodyToEffect(body) })
+): Workflow<A> => ({ id, effect: bodyToEffect(body) })
 
 const runCommand = (
   workflowId: string,
@@ -427,6 +523,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
 
 export interface RunOptions {
   readonly env?: string
+  readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
   readonly source?: SourceService
 }
@@ -495,6 +592,7 @@ const interpret = <A>(
 ) =>
   Effect.gen(function* () {
     const environment = options.env ?? "development"
+    const event: WorkflowEventShape = options.event ?? { type: "workflow_dispatch" }
     emitEvent({
       type: "workflow.started",
       workflowId: workflowDefinition.id,
@@ -508,6 +606,7 @@ const interpret = <A>(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(Source, options.source ?? localSource),
+      Effect.provideService(WorkflowEvent, event),
       Effect.exit,
     )
 

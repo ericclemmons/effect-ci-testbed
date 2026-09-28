@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import type { Readable } from "node:stream"
 import { fileURLToPath } from "node:url"
-import type { PlanNode, WorkflowEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
+import type { PlanNode, RuntimeEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
   updateCheck,
@@ -273,7 +273,7 @@ const publishPlan = async (
   console.log(`Effect CI check (plan): ${check.htmlUrl}`)
 }
 
-const report = async (event: WorkflowEvent) => {
+const report = async (event: RuntimeEvent) => {
   switch (event.type) {
     case "workflow.started":
       workflowId = event.workflowId
@@ -316,7 +316,7 @@ let reportingError: unknown
 const reporting = (async () => {
   const lines = createInterface({ input: eventStream })
   for await (const line of lines) {
-    await report(JSON.parse(line) as WorkflowEvent)
+    await report(JSON.parse(line) as RuntimeEvent)
   }
 })().catch((error: unknown) => {
   reportingError = error
