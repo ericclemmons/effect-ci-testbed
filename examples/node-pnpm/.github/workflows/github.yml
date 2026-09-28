@@ -23,23 +23,23 @@ jobs:
             optional: true
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: pnpm/setup@v3
         with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm ci
-      - run: npm run ${{ matrix.check }}
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+      - run: pnpm run ${{ matrix.check }}
 
   pipeline:
     needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: pnpm/setup@v3
         with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - run: echo npx cf deploy
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+      - run: pnpm test
+      - run: pnpm run build
+      - run: echo pnpx cf deploy

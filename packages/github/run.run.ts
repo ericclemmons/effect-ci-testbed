@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import type { Readable } from "node:stream"
-import type { PlanNode, WorkflowEvent } from "@effect-ci-testbed/ci"
+import { fileURLToPath } from "node:url"
+import type { PlanNode, RuntimeEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
   updateCheck,
@@ -25,11 +26,14 @@ interface StepCheck {
   readonly id: number
   readonly htmlUrl: string
   status: PlanNode["status"]
+  optional: boolean
 }
 
 const checks = new Map<string, StepCheck>()
 const output = new Map<string, string>()
 let workflowId = workflow
+let mode: WorkflowPlan["mode"] = "execute"
+let plan: WorkflowPlan | undefined
 let completed = false
 
 const MAX_OUTPUT_LENGTH = 60_000
@@ -50,7 +54,7 @@ const outputText = (stepId: string): string | undefined => {
   return text ? `#### Command output\n\n\`\`\`text\n${text}\n\`\`\`` : undefined
 }
 
-const checkOutput = (stepId: string, status: PlanNode["status"]): {
+const checkOutput = (stepId: string, status: PlanNode["status"], optional: boolean): {
   readonly title: string
   readonly summary: string
   readonly status?: "queued" | "in_progress"
@@ -61,7 +65,7 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
     case "queued":
       return {
         title: `${stepId} is queued`,
-        summary: `Waiting to run as part of ${workflowId}.`,
+        summary: `Waiting to run as ${optional ? "an optional" : "a required"} part of ${workflowId}.`,
         status: "queued",
       }
     case "running":
@@ -75,6 +79,12 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
         title: `${stepId} passed`,
         summary: `Completed successfully as part of ${workflowId}.`,
         conclusion: "success",
+      }
+    case "warning":
+      return {
+        title: `${stepId} completed with a warning`,
+        summary: `This optional check failed without blocking ${workflowId}.`,
+        conclusion: "neutral",
       }
     case "failed":
       return {
@@ -91,8 +101,13 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
   }
 }
 
-const publishStep = async (stepId: string, status: PlanNode["status"]) => {
-  const output = checkOutput(stepId, status)
+const publishStep = async (
+  stepId: string,
+  status: PlanNode["status"],
+  name = `${workflowId} / ${stepId}`,
+  optional = false,
+) => {
+  const output = checkOutput(stepId, status, optional)
   const text = outputText(stepId)
   const existing = checks.get(stepId)
 
@@ -101,7 +116,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
       token,
       repository,
       sha,
-      name: `${workflowId} / ${stepId}`,
+      name,
       title: output.title,
       summary: output.summary,
       ...(text ? { text } : {}),
@@ -110,7 +125,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
       ...(detailsUrl ? { detailsUrl } : {}),
       ...(externalId ? { externalId: `${externalId}:${stepId}` } : {}),
     })
-    checks.set(stepId, { id: check.id, htmlUrl: check.htmlUrl, status })
+    checks.set(stepId, { id: check.id, htmlUrl: check.htmlUrl, status, optional })
     console.log(`Effect CI check (${stepId}): ${check.htmlUrl}`)
     return
   }
@@ -119,6 +134,7 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
     token,
     repository,
     checkId: existing.id,
+    name,
     title: output.title,
     summary: output.summary,
     ...(text ? { text } : {}),
@@ -126,28 +142,201 @@ const publishStep = async (stepId: string, status: PlanNode["status"]) => {
     ...(output.conclusion ? { conclusion: output.conclusion } : {}),
   })
   existing.status = status
+  existing.optional = optional
 }
 
-const report = async (event: WorkflowEvent) => {
+const planText = (value: WorkflowPlan): string => value.nodes
+  .filter((node) => node.commands.length > 0)
+  .map((node) => {
+    const commands = node.commands
+      .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
+      .join("\n\n")
+    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n\`\`\`sh\n${commands}\n\`\`\``
+  })
+  .join("\n\n")
+
+const branchSuffix = (index: number): string => {
+  let value = index + 1
+  let suffix = ""
+  while (value > 0) {
+    value -= 1
+    suffix = String.fromCharCode(97 + (value % 26)) + suffix
+    value = Math.floor(value / 26)
+  }
+  return suffix
+}
+
+const planStages = (value: WorkflowPlan) => {
+  const stages = new Map<string, number>()
+  for (const node of value.nodes) {
+    stages.set(
+      node.id,
+      1 + Math.max(
+        0,
+        ...[...node.needs, ...node.after]
+          .map((dependency) => stages.get(dependency) ?? 0),
+      ),
+    )
+  }
+
+  const groups = new Map<number, Array<PlanNode>>()
+  for (const node of value.nodes) {
+    const stage = stages.get(node.id) ?? 1
+    groups.set(stage, [...(groups.get(stage) ?? []), node])
+  }
+  return groups
+}
+
+const mermaidLabel = (value: string): string => value
+  .replaceAll("&", "&amp;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+
+const planDiagram = (value: WorkflowPlan): string => {
+  const identifiers = new Map(
+    value.nodes.map((node, index) => [node.id, `step${index}`] as const),
+  )
+  const lines = ["flowchart LR"]
+
+  for (const node of value.nodes) {
+    lines.push(`  ${identifiers.get(node.id)}["${mermaidLabel(node.id)}${node.optional ? " (optional)" : ""}"]`)
+  }
+  for (const node of value.nodes) {
+    for (const dependency of node.needs) {
+      const from = identifiers.get(dependency)
+      const to = identifiers.get(node.id)
+      if (from && to) lines.push(`  ${from} --> ${to}`)
+    }
+    for (const dependency of node.after) {
+      const from = identifiers.get(dependency)
+      const to = identifiers.get(node.id)
+      if (from && to) lines.push(`  ${from} -. after .-> ${to}`)
+    }
+  }
+
+  return lines.join("\n")
+}
+
+const planSummary = (value: WorkflowPlan): string => {
+  const groups = planStages(value)
+  const lines = [
+    "### Execution graph",
+    "",
+    "```mermaid",
+    planDiagram(value),
+    "```",
+    "",
+    "<details>",
+    "<summary>Text view</summary>",
+    "",
+  ]
+  for (const [stage, nodes] of groups) {
+    const ordered = [...nodes].sort((left, right) => left.id.localeCompare(right.id))
+    if (ordered.length === 1) {
+      const node = ordered[0]!
+      const needs = node.needs.length > 0
+        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      const after = node.after.length > 0
+        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      const optional = node.optional ? " — **optional**" : ""
+      lines.push(`${stage}. \`${node.id}\`${needs}${after}${optional}`)
+      continue
+    }
+
+    lines.push(`${stage}. **In parallel**`)
+    for (const [index, node] of ordered.entries()) {
+      const needs = node.needs.length > 0
+        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      const after = node.after.length > 0
+        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
+        : ""
+      const optional = node.optional ? " — **optional**" : ""
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${optional}`)
+    }
+  }
+  lines.push("", "</details>")
+  return lines.join("\n")
+}
+
+const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
+  const groups = planStages(value)
+
+  const width = String(Math.max(0, ...groups.keys())).length
+  const names = new Map<string, string>()
+  for (const [stage, nodes] of groups) {
+    const prefix = String(stage).padStart(width, "0")
+    const stepIds = nodes.map((node) => node.id)
+    for (const [index, stepId] of [...stepIds].sort().entries()) {
+      const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
+      const node = nodes.find((candidate) => candidate.id === stepId)
+      names.set(stepId, `${workflowId} / ${ordinal}. ${stepId}${node?.optional ? " (optional)" : ""}`)
+    }
+  }
+  return names
+}
+
+const publishPlan = async (
+  value: WorkflowPlan,
+  conclusion: "success" | "failure",
+) => {
+  const text = planText(value)
+  const check = await createCheck({
+    token,
+    repository,
+    sha,
+    name: `${workflowId} / 0. plan`,
+    title: conclusion === "success" ? `${workflowId} plan ready` : `${workflowId} plan failed`,
+    summary: planSummary(value),
+    ...(text ? { text } : {}),
+    conclusion,
+    ...(detailsUrl ? { detailsUrl } : {}),
+    ...(externalId ? { externalId: `${externalId}:plan` } : {}),
+  })
+  checks.set("plan", {
+    id: check.id,
+    htmlUrl: check.htmlUrl,
+    status: conclusion === "success" ? "complete" : "failed",
+    optional: false,
+  })
+  console.log(`Effect CI check (plan): ${check.htmlUrl}`)
+}
+
+const report = async (event: RuntimeEvent) => {
   switch (event.type) {
     case "workflow.started":
       workflowId = event.workflowId
+      mode = event.mode
       return
     case "dependency.added":
       return
     case "step.status":
-      await publishStep(event.stepId, event.status)
+      if (mode === "execute") await publishStep(event.stepId, event.status, undefined, event.optional)
       return
     case "step.output":
       appendOutput(event.stepId, event.stream, event.text)
       return
+    case "workflow.plan":
+      plan = event.plan
+      if (mode === "execute") {
+        const names = stepCheckNames(event.plan)
+        for (const node of event.plan.nodes) {
+          await publishStep(node.id, node.status, names.get(node.id), node.optional)
+        }
+      }
+      return
     case "workflow.completed":
+      if (mode === "plan" && plan) await publishPlan(plan, event.conclusion)
       completed = true
       return
   }
 }
 
-const child = spawn(process.execPath, ["--import", "tsx", workflow], {
+const runtime = fileURLToPath(new URL("../ci/run.run.ts", import.meta.url))
+const child = spawn(process.execPath, ["--import", "tsx", runtime], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],
 })
@@ -159,7 +348,7 @@ let reportingError: unknown
 const reporting = (async () => {
   const lines = createInterface({ input: eventStream })
   for await (const line of lines) {
-    await report(JSON.parse(line) as WorkflowEvent)
+    await report(JSON.parse(line) as RuntimeEvent)
   }
 })().catch((error: unknown) => {
   reportingError = error
@@ -173,12 +362,14 @@ const exitCode = await new Promise<number>((resolve, reject) => {
 await reporting
 
 if (!completed) {
-  if (checks.size === 0) {
+  if (exitCode === 0 && checks.size === 0) {
+    console.log("Effect CI workflow ignored this event")
+  } else if (checks.size === 0) {
     await publishStep("startup", "failed")
   } else {
     for (const [stepId, check] of checks) {
       if (check.status === "queued" || check.status === "running") {
-        await publishStep(stepId, check.status === "running" ? "failed" : "skipped")
+        await publishStep(stepId, check.status === "running" ? "failed" : "skipped", undefined, check.optional)
       }
     }
   }

@@ -17,6 +17,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - node-pnpm
     steps:
       - uses: actions/checkout@v7
 
@@ -51,9 +52,37 @@ jobs:
           cd "$example_root"
           act pull_request \
             --bind \
+            --concurrent-jobs 1 \
             --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
             --secret GITHUB_TOKEN \
             --workflows .github/workflows/github.yml
+
+  local:
+    name: ${{ matrix.example }} / local / ${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - node-npm
+          - node-pnpm
+        mode:
+          - plan
+          - execute
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Run examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts (${{ matrix.mode }})
+        env:
+          EFFECT_CI_EVENT: pull_request
+          EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
+        run: pnpm exec tsx packages/ci/run.run.ts
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
@@ -62,7 +91,8 @@ jobs:
       matrix:
         example:
           - node-npm
+          - node-pnpm
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: examples/${{ matrix.example }}/ci.run.ts
+      workflow: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
     secrets: inherit

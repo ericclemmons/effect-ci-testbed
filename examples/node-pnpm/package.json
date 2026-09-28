@@ -1,8 +1,9 @@
 {
-  "name": "effect-ci-node-npm-fixture",
+  "name": "effect-ci-node-pnpm-fixture",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.5.1",
   "scripts": {
     "format": "node scripts/format.mjs",
     "lint": "node --check src/index.js && node --check test/index.test.js",

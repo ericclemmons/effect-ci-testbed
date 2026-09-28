@@ -184,6 +184,8 @@ importers:
 
   examples/node-npm: {}
 
+  examples/node-pnpm: {}
+
   packages/ci:
     dependencies:
       effect:

@@ -32,24 +32,17 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - uses: actions/create-github-app-token@v3
-        if: matrix.mode == 'execute'
         id: app-token
         with:
           client-id: ${{ vars.EFFECT_CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
           permission-checks: write
-      - name: Plan ${{ inputs.workflow }}
-        if: matrix.mode == 'plan'
-        env:
-          EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
-          DRY_RUN: "1"
-        run: pnpm exec tsx "$EFFECT_CI_WORKFLOW"
-      - name: Execute ${{ inputs.workflow }}
-        if: matrix.mode == 'execute'
+      - name: Run ${{ inputs.workflow }} (${{ matrix.mode }})
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          EFFECT_CI_EVENT: ${{ github.event_name }}
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          EFFECT_CI_DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}
+          EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}
         run: pnpm exec tsx packages/github/run.run.ts

@@ -11,7 +11,7 @@ The goal is not to generate GitHub Actions YAML. The goal is to author the pipel
 ```text
                               ┌─ existing local workspace
                               ├─ temporary worktree / copy-on-write workspace
-ci.workflow.ts ── runtime ────├─ GitHub or GitLab runner workspace
+.cloudflare/workflows/*.ts ───├─ GitHub or GitLab runner workspace
                               └─ Cloudflare Worker-backed workspace
 
 source layer                  execution layer
@@ -31,11 +31,10 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
-The first example describes steps 1 and 2. It owns its workflows under its own
-`.github/workflows` directory: the conventional
-[`github.yml`](./examples/node-npm/.github/workflows/github.yml) and the small
-[`effect-on-github.yml`](./examples/node-npm/.github/workflows/effect-on-github.yml)
-caller.
+Each example owns its workflows under its own `.github/workflows` directory: a
+conventional `github.yml` and a small `effect-on-github.yml` caller. The npm and pnpm
+fixtures intentionally use the normal setup for their own package manager instead of
+sharing an abstract testbed action.
 
 GitHub discovers workflow files only at the repository root, does not support nested
 workflow directories, and requires literal `uses` paths for reusable workflows. The
@@ -44,21 +43,30 @@ repository and runs its exact `.github/workflows/github.yml` with `act`. `act` i
 the testbed's GitHub-hosted E2E harness; it is not the CI runtime and developers do not
 need to install or run it locally.
 
-Effect-on-GitHub is a separate matrix-backed check. It calls the root reusable
+Direct/local-style Effect execution and Effect-on-GitHub are separate matrix-backed
+checks. The local variant invokes each `.cloudflare/workflows/*.ts` directly on the GitHub machine,
+the same way a developer invokes it in an existing workspace, and has no GitHub App
+reporter. Effect-on-GitHub calls the root reusable
 [`effect-ci.yml`](./.github/workflows/effect-ci.yml) natively, pointing it at each
-example's `ci.run.ts`. This keeps failures distinct and leaves room for parallel
+example's `.cloudflare/workflows/pull-request.ts`. This keeps failures distinct and leaves room for parallel
 `effect-on-gitlab` and `effect-on-cloudflare` checks without copying example-specific
 commands into the root workflow.
 
-During execution, the installed Effect CI GitHub App owns one first-class check run
+During planning, the installed Effect CI GitHub App publishes one check containing
+the ordered graph, dependencies, commands, and working directories. During execution,
+the App owns one first-class check run
 for every workflow step. The CI runtime emits structured lifecycle events on a
 dedicated stream; the GitHub adapter turns those events into native queued, running,
-success, failure, and skipped checks without adding GitHub concerns to `ci.run.ts`.
+success, neutral-warning, failure, and skipped checks without adding GitHub concerns
+to the workflow.
 Command output is tee'd to the runner and attached directly to its step's check, so
 diagnostics do not require a separate Effect CI log viewer. Checks are named
-`<workflow> / <step>`, so every example adds its own independent set under the app's
-check suite. A later Cloudflare runner can consume the same events and publish the
-same checks without pretending to be a GitHub Actions job.
+`<workflow> / <stage><branch> <step>`, so GitHub's alphabetical display preserves DAG
+order: sequential steps appear as `1.`, `2.`, `3.`, while parallel steps at the same
+depth appear as `3a.`, `3b.`, and `3c.`. The plan is stage `0.`. Every example adds
+its own independent set under the app's check suite. A later Cloudflare runner can
+consume the same events and publish the same checks without pretending to be a
+GitHub Actions job.
 
 ## Workspace-first execution
 
@@ -82,7 +90,7 @@ keeps the common install → check → build → deploy path fast.
 | Example | Scenario | Vanilla CI | Effect CI | Cloudflare runtime |
 | --- | --- | :---: | :---: | :---: |
 | [`node-npm`](./examples/node-npm) | Node, npm, lint + test, build | ✅ | ✅ | ⬜ |
-| `node-pnpm` | pnpm, Corepack, frozen lockfile | ⬜ | ⬜ | ⬜ |
+| [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `bun` | Bun install, test, and build | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
@@ -99,35 +107,280 @@ Heavy multi-deployment orchestration is deliberately a separate future feature. 
 
 ## First vertical slice
 
-[`examples/node-npm/ci.workflow.ts`](./examples/node-npm/ci.workflow.ts) describes:
+[`examples/node-npm/.cloudflare/workflows/pull-request.ts`](./examples/node-npm/.cloudflare/workflows/pull-request.ts)
+coordinates actions from
+[`examples/node-npm/.cloudflare/actions/index.ts`](./examples/node-npm/.cloudflare/actions/index.ts):
 
 ```text
-checkout → install → lint → test → build
+checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
 ```
 
-The important API experiment is:
+Actions describe their implementation and actual blockers:
 
 ```ts
-import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-const install = CI.step("install", function* () {
-  const workspace = yield* checkout
-  return yield* workspace.exec("npm ci")
+export const checkout = CI.action<CI.Workspace>("checkout", function* () {
+  const source = yield* CI.Source
+
+  return () => source.checkout(app)
 })
 
-const lint = CI.step("lint", function* () {
-  const workspace = yield* install
-  return yield* workspace.exec("npm run lint")
+export const install = CI.action<Installation>("install", () => function* () {
+  const workspace = yield* checkout()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
+
+  return {
+    workspace: yield* npm.install({ frozenLockfile: true }),
+  }
 })
 
-const test = CI.step("test", function* () {
-  const workspace = yield* lint
-  return yield* workspace.exec("npm test")
+export const lint = CI.action<CI.Workspace>("lint", () => function* () {
+  const installation = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+
+  return yield* npm.run("lint")
+})
+
+export const format = CI.action<CI.Workspace>("format", () => function* () {
+  const installation = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+
+  return yield* npm.run("format")
+})
+
+export const test = CI.action<CI.Workspace>("test", () => function* () {
+  const installation = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+
+  return yield* npm.run("test")
+})
+
+export const deploy = CI.action<Deployment>("deploy", () => function* () {
+  const artifacts = yield* build()
+
+  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
+
+  return { artifacts, target: "cloudflare" }
 })
 ```
 
-`CI.step` accepts a generator, an Effect, or a function returning a Promise. It does not require a separate `.async` API.
+An action's construction generator resolves action-specific dependencies and returns
+the durable implementation. The implementation yields prerequisite actions before doing
+its own work, so invalid compositions are not expressible through the public action API:
+`lint()` always installs, and `deploy()` always yields `build()` to obtain
+its artifacts. The planner observes those yielded actions directly and derives `needs`
+edges without a separate dependency DSL or AST parsing. Repeated action calls share one
+cached result per run. The returned implementation can be an ordinary function,
+generator, async function, or Effect-returning function. Construction that does not
+yield services can be `() => handler`; it does not need to be a generator.
+`Effect.fn` is an optional instrumentation tool, not part of the `CI.action` contract.
+The explicit success generic, such as `CI.action<Deployment>`, is the action's public
+output contract and checks every implementation return path. A local
+`value satisfies Deployment` only checks that expression while preserving its narrower
+inferred type. Effect itself orders its type parameters as success, error, and
+requirements; the prototype currently exposes the success contract explicitly and
+still erases action errors and requirements to `unknown` at the public boundary.
+
+The workflow itself is only orchestration: sequential yields, parallel composition,
+and per-action error handling:
+
+```ts
+import * as actions from "../actions/index.ts"
+
+export default CI.workflow("node-npm", function* () {
+  const event = yield* CI.WorkflowEvent
+
+  if (!["pull_request", "push", "workflow_dispatch"].includes(event.type)) {
+    return
+  }
+
+  yield* CI.parallel([
+    actions.lint(),
+    CI.optional(actions.format()),
+  ])
+  yield* actions.test()
+  yield* actions.build()
+
+  return yield* actions.deploy()
+})
+```
+
+This deliberately matches the canonical GitHub workflow's validation matrix. Lint and
+format both finish because the matrix disables fail-fast; lint failure blocks the later
+pipeline job, while format has `continue-on-error` and does not block it. The matrix
+form also remains executable by `act`, which does not yet parse GitHub's newer native
+parallel-step syntax. Parallelism and optionality belong in workflow policy, not the
+reusable actions. Mandatory dependencies remain inside the actions, so a separate
+release workflow may request only `deploy()` and still get checkout, install, and build.
+
+Planning follows the same workflow composition and resolves each action's dependencies,
+while the planning implementation records durable execution instead of performing it.
+External I/O belongs in the returned action implementation or behind a runner-provided
+service so planning stays side-effect free.
+
+The runner provides every incoming event as `CI.WorkflowEvent`. The workflow yields that
+requirement and uses ordinary TypeScript to decide whether and how it applies. There is
+no separate trigger-condition DSL or runner-side `on` filtering.
+
+## Programming model
+
+### Actions, values, and services
+
+Actions own their mandatory prerequisites. `install` yields `checkout`; build, lint,
+and test each yield `install`. Workflows choose terminal goals and coordinate optional
+work, but cannot accidentally bypass the prerequisites encoded by those goals. A tagged
+release workflow may request only `deploy()`; `deploy` must yield `build()`, whose typed
+artifact output is its input, and `build` must yield `install()`.
+
+Returned values carry real data rather than hidden planning metadata. A `Workspace` is
+the checkout used by commands; `Installation`, `BuildArtifacts`, and `Deployment` make
+the transitions type-checked. The plan edge comes from yielding the prerequisite action
+itself.
+
+`CI.PackageManager.JavaScript(workspace)` yields a workspace-bound package-manager
+capability with `install`, `run`, and `exec` methods. It prefers
+`package.json#packageManager`, falls back to JavaScript lockfiles, and rejects ambiguous
+lockfiles. Its cardinality is **exactly one JavaScript package manager**: zero matches
+and multiple JavaScript ecosystems are errors. The namespace is ecosystem-specific
+because one repository may independently yield one JavaScript manager and one Python
+manager for the same checkout—for example pnpm and uv. Future resource APIs must name
+their cardinality rather than hide it: an optional lookup returns zero-or-one, an
+ecosystem lookup returns exactly one, and a repository-wide aggregate may return many
+or install all discovered managers. `packageManager.install({ frozenLockfile: true })`
+maps the shared intent to each manager's native command. `workspace.exec` remains the
+command escape hatch.
+
+`checkout` does not branch on `NODE_ENV`. Application environment and workspace
+acquisition are independent choices: a production build can run in an existing local
+checkout, while a development build can run in a fresh remote sandbox. Instead, the
+action yields `CI.Source`, and the runner supplies its implementation:
+
+- the local source reuses the requested directory;
+- the current GitHub runner reuses the directory prepared by `actions/checkout`;
+- a packaged GitHub runner can replace that bootstrap with its own authenticated clone;
+- a future Cloudflare source can resolve the event's repository and revision into a
+  sandbox or persisted workspace snapshot.
+
+Planning uses a non-mutating source implementation that returns a symbolic or local
+workspace reference. Execution uses the runner's concrete source implementation.
+This keeps source credentials and GitHub-specific environment variables out of the
+portable workflow.
+
+Effect services and Layers are for stable capabilities used to implement actions:
+the command runner, cache, GitHub client, credentials, artifact store, healer agent,
+approval service, and notification reporters. Those dependencies are yielded while
+constructing an action and captured by its returned durable implementation.
+
+Keeping these separate avoids a mutable ambient workspace while still allowing each
+runner to provide its own implementations:
+
+```ts
+export const lint = CI.action("lint", function* () {
+  const runner = yield* Runner
+
+  return (workspace: CI.Workspace) => runner.exec(workspace, "npm run lint")
+})
+```
+
+An eventual bound-workspace convenience could make this read as `workspace.lint`, but
+it must preserve yielded action prerequisites rather than hiding mutable state in a
+Layer.
+
+### Where control flow belongs
+
+- Use sequential `yield*` when later work needs an earlier value.
+- Use `Effect.all` for work that can run concurrently.
+- Use ordinary `if` / `switch` statements for event- or result-dependent branches.
+- Use `pipe` for policy local to one action: retry, timeout, typed recovery,
+  instrumentation, healing, or approval.
+- Use `Effect.catchTag`, `Effect.match`, or `Effect.result` for typed failures. JavaScript
+  `try` / `catch` is reserved for genuinely thrown JavaScript exceptions at integration
+  boundaries, not normal Effect failures.
+- Parse structured tool output at the action boundary with a Schema. The workflow
+  should receive typed diagnostics rather than scrape terminal text.
+
+Optional work is therefore ordinary code:
+
+```ts
+if (event.type === "pull_request") {
+  yield* actions.preview()
+}
+```
+
+### Independent checks and aggregate failure
+
+`CI.parallel` is the workflow-level shorthand for independent work that must all finish.
+It uses Effect's failure-accumulating validation so one mandatory failure does not cancel
+the other branches:
+
+```ts
+yield* CI.parallel([
+  actions.lint(),
+  CI.optional(actions.format()),
+])
+```
+
+`CI.optional` is policy on this invocation, not a property of the `format` action. It
+recovers only a failure produced by that action, records the output, and reports a
+neutral GitHub check. It does not hide checkout/install failures: those remain failed
+prerequisites. `CI.parallel` discards heterogeneous success values because the group is
+a gate; action outputs remain available when actions are yielded directly. `Effect.orDie`
+is intentionally not used because defects are inappropriate for expected CI failures.
+The canonical GitHub workflow expresses the same policy with a non-fail-fast matrix and
+`continue-on-error: true` on its format entry.
+
+### Healing and approval
+
+When a tool offers structured output, its validation action should decode that output
+into typed diagnostics. That may include tool-provided fix metadata, but the programming
+model does not assume every failure can identify a safe automatic fix. Unstructured or
+ambiguous failures can fall back to an agent-generated candidate or a plain failure.
+
+Recovery actions are separate durable invocations so GitHub and Cloudflare can report
+`lint`, `lint/fix`, and `lint/verify` independently:
+
+```ts
+const lint = actions.lint().pipe(
+  Effect.catchTag("LintFailure", (failure) =>
+    actions.healLint(failure),
+  ),
+)
+```
+
+`healLint` can choose a deterministic tool fix when the decoded diagnostics support it,
+or resolve a lint-specific agent, model, prompt, and skills. Test and build healers can
+make different choices. Safe changes should be accumulated in the workspace and verified
+before one final commit-and-push action. Experimental changes become GitHub suggestions
+or a candidate branch and pass through an explicit approval action before mutation or
+deploy.
+
+Action definition identity and invocation identity are distinct: `lint` names reusable
+behavior, while `lint`, `lint/fix`, and `lint/verify` name durable invocations in one run.
+The prototype still needs to model invocation identity explicitly before implementing
+healing and re-verification.
+
+### Workflow boundaries and new events
+
+A recovery action runs inside the current workflow instance; it does not implicitly
+fork another workflow. Applying a patch only changes that instance's isolated workspace.
+The same workflow can verify the repaired workspace and then publish at most one commit,
+candidate branch, or suggestion.
+
+- Creating a GitHub suggestion emits no repository event. If a person applies it later,
+  the resulting commit triggers normal CI.
+- Pushing a repair commit triggers GitHub `push` and, for an open pull request,
+  `pull_request.synchronize`. Those events start a fresh workflow instance that verifies
+  the actual new commit from a clean workspace.
+- Waiting for approval can suspend and resume the same durable workflow instance. An
+  approval does not need a child workflow merely to continue execution.
+- An explicitly independent or long-running operation may eventually use a child
+  workflow, but that is an orchestration choice rather than the default action behavior.
+
+Self-generated commits need loop protection: record the originating run and attempt,
+deduplicate by commit SHA and external check ID, ignore already-healed commits when
+appropriate, and cap repair attempts. The original run should conclude with the candidate
+it produced; the event-driven run owns verification of the published commit.
 
 ## Run it
 
@@ -139,9 +392,10 @@ DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
 
 # Execute the same workflow locally.
 pnpm ci:node-npm
+pnpm ci:node-pnpm
 
-# Type-check the prototype and run both modes.
-pnpm test
+# Type-check the prototype. Behavioral verification happens in PR E2E.
+pnpm check
 ```
 
 The example's conventional workflow keeps its steps inline. The Effect-on-GitHub
@@ -152,12 +406,12 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: ci.run.ts
+      workflow: .cloudflare/workflows/pull-request.ts
 ```
 
 The reusable workflow currently represents the GitHub execution layer: checkout,
 Node and pnpm setup, dependency installation, and invocation of the requested
-`ci.run.ts`. In execute mode it also installs an app token and wraps the portable CI
+workflow module. In execute mode it also installs an app token and wraps the portable CI
 program with the GitHub reporting adapter. The example's Effect caller shows the
 intended standalone shape; it currently relies on the testbed's reusable workflow
 and workspace packages, which still need to be packaged for use from an independent
@@ -166,7 +420,7 @@ layers while leaving the TypeScript workflow unchanged.
 
 The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
 reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
-`ci.run.ts` chooses the mode from that ordinary environment variable.
+the generic runtime chooses the mode from that ordinary environment variable.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the
@@ -179,22 +433,41 @@ const result = await CI.runPromise(workflow, {
 })
 ```
 
-The plan contains topologically ordered nodes, direct `needs` edges, commands,
+The plan contains topologically ordered nodes, direct `needs` and `after` edges, commands,
 working directories, durable step options, and status. It is intended to feed the
 eventual DAG visualizer and permission audit without introducing a separate workflow
 definition or planning DSL.
 
+`needs` means a successful result is required. `after` is an ordering-only edge: the
+downstream action waits for completion but is not blocked by that action's warning.
+`CI.parallel` records a shared stage and establishes the next workflow barrier. Thus the
+example plan says test **needs** lint and runs **after** optional format, while intrinsic
+action dependencies remain reusable and separate from workflow scheduling policy.
+
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
-- `CI.step(id, body, options?)` is an Effect and can be yielded directly.
-- Ordinary Effect composition controls execution. This example is deliberately sequential; `Effect.all` is available when an example intentionally benefits from shared-workspace concurrency.
-- Repeatedly yielding the same step executes it once per run.
-- A `Workspace` is the value passed between steps.
+- `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
+- `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
+- Ordinary Effect composition controls execution. The current examples use `CI.parallel` for required lint plus optional format, then resume sequential fail-fast execution for test, build, and deploy, matching their canonical GitHub jobs.
+- `CI.optional(effect)` marks one invocation non-blocking. Its own failure is reported as a neutral warning; prerequisite failures still propagate.
+- Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
+- A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
+- `CI.Source` selects how that workspace is acquired. The default local source reuses
+  the supplied directory; hosted and durable runners can provide different source
+  implementations without branching on `NODE_ENV` inside the workflow.
+- `CI.WorkflowEvent` is a yielded runtime requirement. Workflows branch on its typed
+  event data directly instead of declaring an `on` array interpreted by the runner.
+- `CI.PackageManager.JavaScript(workspace)` resolves exactly one npm, pnpm, Yarn, or Bun
+  resource for a workspace. Other ecosystems will use independent resources, and future
+  zero/one/many APIs must make their cardinality explicit.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
-- Dependency edges are literal yields. The first example yields the previous step to model the common single-workspace install → lint → test → build path.
+- Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action; deploy yields the cached build action and consumes its typed artifacts.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
+- Ordinary Effect error composition attaches retry, deterministic repair, agent healing,
+  notification, or approval behavior to an individual action instead of forcing one
+  recovery policy over the whole workflow.
 - Durable retry options will use the Cloudflare `WorkflowStepConfig` shape. Effect `Schedule` is not accepted as step configuration.
 - The default executor is workspace-first, not job-container-first. Distributed steps and artifact transfer are explicit later capabilities.
 
@@ -214,7 +487,33 @@ This slice deliberately stops at a first-class plan rather than adding planner u
 tests or a second engine. Verification remains end to end: type-check the packages,
 dry-run the real example, then execute that same example against its fixture app.
 
+### Local Cloudflare verification
+
+Direct execution remains the fast local development path because it exercises the
+portable workflow without requiring a Cloudflare emulator. Once the Cloudflare adapter
+wraps that program in a real `WorkflowEntrypoint`, a second E2E runner should start
+[`wrangler dev`](https://developers.cloudflare.com/workflows/build/local-development/)
+and use `wrangler workflows trigger <name> --local`. That runner will
+verify the Cloudflare-specific interpreter: durable step caching, suspension and resume,
+bindings, retries, event delivery, and workspace restoration. It complements direct
+execution rather than replacing it.
+
+Cloudflare's local Workflow environment is emulated, so remote execution remains the
+final parity check for platform behavior. Local Explorer and Cloudflare's
+[Workflow visualizer](https://developers.cloudflare.com/workflows/build/visualizer/)
+should become useful diagnostics for this runner, especially when approval,
+sleep, retry, and recovery steps are introduced.
+
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
+
+The prototype's current `Workspace` still contains an in-process `cwd`; that is not a
+durable Cloudflare representation. A durable runner must serialize a workspace reference
+containing at least the source revision and a restorable snapshot, lease, or content
+address. After every action that mutates files, the runner returns the next reference.
+If a container or sandbox disappears during suspension, the executor restores that
+reference before continuing. Local and GitHub implementations may optimize the same
+contract by retaining one directory, but workflow correctness cannot depend on that
+directory surviving.
 
 Target concurrency will likely require a Durable Object keyed by target. Workflows can call Durable Objects through bindings, so a separate scheduler service is not inherently required. Cancellation must stop only work declared safe to interrupt; deployments and other external side effects enter a non-cancellable or compensating phase.
 

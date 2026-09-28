@@ -5,10 +5,11 @@
   "packageManager": "pnpm@12.5.1",
   "scripts": {
     "build": "pnpm --filter @effect-ci-testbed/ci build",
-    "check": "pnpm --filter './packages/*' check && tsc -p examples/node-npm/tsconfig.json --noEmit",
-    "ci:node-npm": "tsx examples/node-npm/ci.run.ts",
+    "check": "pnpm --filter './packages/*' check && tsc -p examples/node-npm/tsconfig.json --noEmit && tsc -p examples/node-pnpm/tsconfig.json --noEmit",
+    "ci:node-npm": "EFFECT_CI_WORKFLOW=examples/node-npm/.cloudflare/workflows/pull-request.ts tsx packages/ci/run.run.ts",
     "ci:node-npm:dry-run": "DRY_RUN=1 pnpm ci:node-npm",
-    "test": "pnpm check && pnpm ci:node-npm:dry-run && pnpm ci:node-npm"
+    "ci:node-pnpm": "EFFECT_CI_WORKFLOW=examples/node-pnpm/.cloudflare/workflows/pull-request.ts tsx packages/ci/run.run.ts",
+    "ci:node-pnpm:dry-run": "DRY_RUN=1 pnpm ci:node-pnpm"
   },
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
