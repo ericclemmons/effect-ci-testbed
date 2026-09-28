@@ -154,7 +154,7 @@ export const test = CI.action<CI.Workspace>("test", () => function* () {
 
 export const deploy = CI.action<Deployment>("deploy", () => function* () {
   const artifacts = yield* build()
-  yield* artifacts.installation.workspace.exec("echo pnpx cf deploy")
+  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
   return { artifacts, target: "cloudflare" }
 })
 ```
