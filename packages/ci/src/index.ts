@@ -51,6 +51,7 @@ export interface PlannedCommand {
 
 export interface PlanNode {
   readonly id: string
+  readonly after: ReadonlyArray<string>
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly optional: boolean
@@ -119,10 +120,15 @@ interface RuntimeShape {
   readonly workflowId: string
   readonly mode: WorkflowPlan["mode"]
   readonly nodes: Map<string, RuntimeNode>
+  readonly afterEdges: Set<string>
   readonly edges: Set<string>
   readonly optionalSteps: Set<string>
   readonly cache: Cache.Cache<string, unknown, unknown, Runtime>
   readonly addDependency: (parent: string, child: string) => Effect.Effect<void>
+  readonly addParallel: (
+    parent: string,
+    steps: ReadonlyArray<{ readonly id: string; readonly optional: boolean }>,
+  ) => Effect.Effect<void>
   readonly markOptional: (stepId: string) => Effect.Effect<void>
   readonly recoverOptional: (stepId: string) => Effect.Effect<boolean>
   readonly execute: (
@@ -361,6 +367,7 @@ const runStep = <A>(
 }
 
 const actionIds = new WeakMap<object, string>()
+const optionalEffects = new WeakSet<object>()
 
 export const optional = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -368,7 +375,7 @@ export const optional = <A, E, R>(
   const stepId = actionIds.get(effect as object)
   if (!stepId) throw new Error("CI.optional expects a CI action or step")
 
-  return Effect.gen(function* () {
+  const optionalEffect = Effect.gen(function* () {
     const runtime = yield* Runtime
     yield* runtime.markOptional(stepId)
     return yield* effect.pipe(
@@ -379,15 +386,31 @@ export const optional = <A, E, R>(
       )),
     )
   })
+  actionIds.set(optionalEffect as object, stepId)
+  optionalEffects.add(optionalEffect as object)
+  return optionalEffect
 }
 
 export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, any>>>(
   effects: Effects,
-) => Effect.validate(
-  effects,
-  (effect) => effect,
-  { concurrency: "unbounded", discard: true },
-)
+) => {
+  const steps = effects.map((effect) => {
+    const id = actionIds.get(effect as object)
+    if (!id) throw new Error("CI.parallel expects CI actions or steps")
+    return { id, optional: optionalEffects.has(effect as object) }
+  })
+
+  return Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const parent = yield* CurrentStep
+    yield* runtime.addParallel(parent, steps)
+    return yield* Effect.validate(
+      effects,
+      (effect) => effect,
+      { concurrency: "unbounded", discard: true },
+    )
+  })
+}
 
 export const step = <A>(
   id: string,
@@ -476,9 +499,15 @@ const runCommand = (
 const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
+    const afterEdges = new Set<string>()
     const edges = new Set<string>()
     const failureOrigins = new Map<unknown, string>()
     const optionalSteps = new Set<string>()
+    const parallelSteps = new Set<string>()
+    let workflowBarrier: {
+      readonly after: ReadonlyArray<string>
+      readonly needs: ReadonlyArray<string>
+    } = { after: [], needs: [] }
     let runtime!: RuntimeShape
 
     const cache = yield* Cache.make<string, unknown, unknown, Runtime, "lookup">({
@@ -539,19 +568,48 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
       workflowId,
       mode,
       nodes,
+      afterEdges,
       edges,
       optionalSteps,
       cache,
       addDependency: (parent, child) => Effect.sync(() => {
-        if (parent !== "$workflow") {
-          edges.add(`${parent}->${child}`)
-          emitEvent({
-            type: "dependency.added",
-            workflowId,
-            stepId: parent,
-            needs: child,
-            timestamp: new Date().toISOString(),
-          })
+        if (parent === "$workflow") {
+          if (parallelSteps.delete(child)) return
+          for (const dependency of workflowBarrier.needs) {
+            edges.add(`${child}->${dependency}`)
+          }
+          for (const dependency of workflowBarrier.after) {
+            afterEdges.add(`${child}->${dependency}`)
+          }
+          workflowBarrier = optionalSteps.has(child)
+            ? { after: [child], needs: [] }
+            : { after: [], needs: [child] }
+          return
+        }
+        edges.add(`${parent}->${child}`)
+        emitEvent({
+          type: "dependency.added",
+          workflowId,
+          stepId: parent,
+          needs: child,
+          timestamp: new Date().toISOString(),
+        })
+      }),
+      addParallel: (parent, steps) => Effect.sync(() => {
+        if (parent !== "$workflow") return
+        for (const step of steps) {
+          if (step.optional) optionalSteps.add(step.id)
+          parallelSteps.add(step.id)
+          for (const dependency of workflowBarrier.needs) {
+            edges.add(`${step.id}->${dependency}`)
+          }
+          for (const dependency of workflowBarrier.after) {
+            afterEdges.add(`${step.id}->${dependency}`)
+          }
+        }
+        workflowBarrier = {
+          after: steps.filter((step) => step.optional).map((step) => step.id),
+          needs: steps.filter((step) => !step.optional).map((step) => step.id),
         }
       }),
       markOptional: (stepId) => Effect.sync(() => {
@@ -622,12 +680,24 @@ const toPlan = (
     dependencies.set(parent, children)
   }
 
+  const after = new Map<string, Array<string>>()
+  for (const edge of runtime.afterEdges) {
+    const [parent, child] = edge.split("->") as [string, string]
+    const children = after.get(parent) ?? []
+    children.push(child)
+    after.set(parent, children)
+  }
+
   const ordered: Array<RuntimeNode> = []
   const visited = new Set<string>()
   const visit = (id: string) => {
     if (visited.has(id)) return
     visited.add(id)
-    for (const dependency of [...(dependencies.get(id) ?? [])].sort()) visit(dependency)
+    const prerequisites = [
+      ...(dependencies.get(id) ?? []),
+      ...(after.get(id) ?? []),
+    ]
+    for (const dependency of [...new Set(prerequisites)].sort()) visit(dependency)
     const node = runtime.nodes.get(id)
     if (node) ordered.push(node)
   }
@@ -639,6 +709,7 @@ const toPlan = (
     mode: runtime.mode,
     nodes: ordered.map((node) => ({
       id: node.id,
+      after: [...(after.get(node.id) ?? [])].sort(),
       needs: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
       optional: runtime.optionalSteps.has(node.id),
@@ -655,9 +726,10 @@ export const formatPlan = (plan: WorkflowPlan): string => {
   ]
 
   for (const node of plan.nodes) {
+    const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""
     const needs = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
     const optional = node.optional ? " (optional)" : ""
-    const suffix = `${needs}${optional}`
+    const suffix = `${needs}${after}${optional}`
     const status = node.status === "complete"
       ? "✓"
       : node.status === "warning"

@@ -57,7 +57,8 @@ the ordered graph, dependencies, commands, and working directories. During execu
 the App owns one first-class check run
 for every workflow step. The CI runtime emits structured lifecycle events on a
 dedicated stream; the GitHub adapter turns those events into native queued, running,
-success, failure, and skipped checks without adding GitHub concerns to the workflow.
+success, neutral-warning, failure, and skipped checks without adding GitHub concerns
+to the workflow.
 Command output is tee'd to the runner and attached directly to its step's check, so
 diagnostics do not require a separate Effect CI log viewer. Checks are named
 `<workflow> / <stage><branch> <step>`, so GitHub's alphabetical display preserves DAG
@@ -424,16 +425,16 @@ const result = await CI.runPromise(workflow, {
 })
 ```
 
-The plan contains topologically ordered nodes, direct `needs` edges, commands,
+The plan contains topologically ordered nodes, direct `needs` and `after` edges, commands,
 working directories, durable step options, and status. It is intended to feed the
 eventual DAG visualizer and permission audit without introducing a separate workflow
 definition or planning DSL.
 
-Today those `needs` edges describe mandatory action prerequisites, not every temporal
-ordering choice made by a workflow. For example, sequentially yielding lint and then
-test does not make test intrinsically require lint. A scheduling layer must record that
-orchestration separately before the plan UI can label serial and parallel lanes without
-conflating policy order with reusable action dependencies.
+`needs` means a successful result is required. `after` is an ordering-only edge: the
+downstream action waits for completion but is not blocked by that action's warning.
+`CI.parallel` records a shared stage and establishes the next workflow barrier. Thus the
+example plan says test **needs** lint and runs **after** optional format, while intrinsic
+action dependencies remain reusable and separate from workflow scheduling policy.
 
 ## Current prototype semantics
 

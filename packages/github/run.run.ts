@@ -171,7 +171,11 @@ const planStages = (value: WorkflowPlan) => {
   for (const node of value.nodes) {
     stages.set(
       node.id,
-      1 + Math.max(0, ...node.needs.map((dependency) => stages.get(dependency) ?? 0)),
+      1 + Math.max(
+        0,
+        ...[...node.needs, ...node.after]
+          .map((dependency) => stages.get(dependency) ?? 0),
+      ),
     )
   }
 
@@ -204,6 +208,11 @@ const planDiagram = (value: WorkflowPlan): string => {
       const to = identifiers.get(node.id)
       if (from && to) lines.push(`  ${from} --> ${to}`)
     }
+    for (const dependency of node.after) {
+      const from = identifiers.get(dependency)
+      const to = identifiers.get(node.id)
+      if (from && to) lines.push(`  ${from} -. after .-> ${to}`)
+    }
   }
 
   return lines.join("\n")
@@ -229,8 +238,11 @@ const planSummary = (value: WorkflowPlan): string => {
       const needs = node.needs.length > 0
         ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
+      const after = node.after.length > 0
+        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
+        : ""
       const optional = node.optional ? " — **optional**" : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}${optional}`)
+      lines.push(`${stage}. \`${node.id}\`${needs}${after}${optional}`)
       continue
     }
 
@@ -239,8 +251,11 @@ const planSummary = (value: WorkflowPlan): string => {
       const needs = node.needs.length > 0
         ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
+      const after = node.after.length > 0
+        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
+        : ""
       const optional = node.optional ? " — **optional**" : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${optional}`)
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${optional}`)
     }
   }
   lines.push("", "</details>")
