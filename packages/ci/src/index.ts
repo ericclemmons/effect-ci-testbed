@@ -53,8 +53,9 @@ export interface PlanNode {
   readonly id: string
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
+  readonly optional: boolean
   readonly options: StepOptions
-  readonly status: "planned" | "queued" | "running" | "complete" | "failed" | "skipped"
+  readonly status: "planned" | "queued" | "running" | "complete" | "warning" | "failed" | "skipped"
 }
 
 export interface WorkflowPlan {
@@ -84,6 +85,7 @@ export type RuntimeEvent =
       readonly workflowId: string
       readonly stepId: string
       readonly status: PlanNode["status"]
+      readonly optional: boolean
       readonly timestamp: string
     }
   | {
@@ -118,8 +120,11 @@ interface RuntimeShape {
   readonly mode: WorkflowPlan["mode"]
   readonly nodes: Map<string, RuntimeNode>
   readonly edges: Set<string>
+  readonly optionalSteps: Set<string>
   readonly cache: Cache.Cache<string, unknown, unknown, Runtime>
   readonly addDependency: (parent: string, child: string) => Effect.Effect<void>
+  readonly markOptional: (stepId: string) => Effect.Effect<void>
+  readonly recoverOptional: (stepId: string) => Effect.Effect<boolean>
   readonly execute: (
     stepId: string,
     workspace: Workspace,
@@ -341,8 +346,8 @@ const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
 const runStep = <A>(
   id: string,
   needs: ReadonlyArray<string> = [],
-): Effect.Effect<A, unknown, Runtime | CurrentStep> =>
-  Effect.gen(function* () {
+): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
+  const effect = Effect.gen(function* () {
     const runtime = yield* Runtime
     const parent = yield* CurrentStep
     yield* runtime.addDependency(parent, id)
@@ -351,6 +356,38 @@ const runStep = <A>(
     }
     return (yield* Cache.get(runtime.cache, id)) as A
   })
+  actionIds.set(effect as object, id)
+  return effect
+}
+
+const actionIds = new WeakMap<object, string>()
+
+export const optional = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A | undefined, E, R | Runtime> => {
+  const stepId = actionIds.get(effect as object)
+  if (!stepId) throw new Error("CI.optional expects a CI action or step")
+
+  return Effect.gen(function* () {
+    const runtime = yield* Runtime
+    yield* runtime.markOptional(stepId)
+    return yield* effect.pipe(
+      Effect.catch((error) => runtime.recoverOptional(stepId).pipe(
+        Effect.flatMap((recovered) => recovered
+          ? Effect.succeed(undefined)
+          : Effect.fail(error)),
+      )),
+    )
+  })
+}
+
+export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, any>>>(
+  effects: Effects,
+) => Effect.validate(
+  effects,
+  (effect) => effect,
+  { concurrency: "unbounded", discard: true },
+)
 
 export const step = <A>(
   id: string,
@@ -440,6 +477,8 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
     const edges = new Set<string>()
+    const failureOrigins = new Map<unknown, string>()
+    const optionalSteps = new Set<string>()
     let runtime!: RuntimeShape
 
     const cache = yield* Cache.make<string, unknown, unknown, Runtime, "lookup">({
@@ -462,6 +501,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
           workflowId,
           stepId: id,
           status: node.status,
+          optional: optionalSteps.has(id),
           timestamp: new Date().toISOString(),
         })
 
@@ -474,18 +514,20 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
               workflowId,
               stepId: id,
               status: node.status,
+              optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
             })
           })),
           Effect.tapError((error) => Effect.sync(() => {
-            node.status = error instanceof CommandError && error.stepId !== id
-              ? "skipped"
-              : "failed"
+            const origin = failureOrigins.get(error)
+            node.status = origin && origin !== id ? "skipped" : "failed"
+            if (!origin) failureOrigins.set(error, id)
             emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
               status: node.status,
+              optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
             })
           })),
@@ -498,6 +540,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
       mode,
       nodes,
       edges,
+      optionalSteps,
       cache,
       addDependency: (parent, child) => Effect.sync(() => {
         if (parent !== "$workflow") {
@@ -510,6 +553,23 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
             timestamp: new Date().toISOString(),
           })
         }
+      }),
+      markOptional: (stepId) => Effect.sync(() => {
+        optionalSteps.add(stepId)
+      }),
+      recoverOptional: (stepId) => Effect.sync(() => {
+        const node = nodes.get(stepId)
+        if (!node || node.status !== "failed") return false
+        node.status = "warning"
+        emitEvent({
+          type: "step.status",
+          workflowId,
+          stepId,
+          status: node.status,
+          optional: true,
+          timestamp: new Date().toISOString(),
+        })
+        return true
       }),
       execute: (stepId, workspace, command) => {
         const node = nodes.get(stepId)
@@ -528,6 +588,7 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
             workflowId,
             stepId,
             status: "running",
+            optional: optionalSteps.has(stepId),
             timestamp: new Date().toISOString(),
           })
         }
@@ -580,6 +641,7 @@ const toPlan = (
       id: node.id,
       needs: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
+      optional: runtime.optionalSteps.has(node.id),
       options: definitions.get(node.id)?.options ?? {},
       status: node.status,
     })),
@@ -593,8 +655,19 @@ export const formatPlan = (plan: WorkflowPlan): string => {
   ]
 
   for (const node of plan.nodes) {
-    const suffix = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
-    lines.push("", `${node.status === "complete" ? "✓" : "○"} ${node.id}${suffix}`)
+    const needs = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
+    const optional = node.optional ? " (optional)" : ""
+    const suffix = `${needs}${optional}`
+    const status = node.status === "complete"
+      ? "✓"
+      : node.status === "warning"
+      ? "⚠"
+      : node.status === "failed"
+      ? "×"
+      : node.status === "skipped"
+      ? "–"
+      : "○"
+    lines.push("", `${status} ${node.id}${suffix}`)
     if (plan.mode === "plan") {
       for (const entry of node.commands) {
         lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)

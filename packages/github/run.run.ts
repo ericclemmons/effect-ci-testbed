@@ -26,6 +26,7 @@ interface StepCheck {
   readonly id: number
   readonly htmlUrl: string
   status: PlanNode["status"]
+  optional: boolean
 }
 
 const checks = new Map<string, StepCheck>()
@@ -53,7 +54,7 @@ const outputText = (stepId: string): string | undefined => {
   return text ? `#### Command output\n\n\`\`\`text\n${text}\n\`\`\`` : undefined
 }
 
-const checkOutput = (stepId: string, status: PlanNode["status"]): {
+const checkOutput = (stepId: string, status: PlanNode["status"], optional: boolean): {
   readonly title: string
   readonly summary: string
   readonly status?: "queued" | "in_progress"
@@ -64,7 +65,7 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
     case "queued":
       return {
         title: `${stepId} is queued`,
-        summary: `Waiting to run as part of ${workflowId}.`,
+        summary: `Waiting to run as ${optional ? "an optional" : "a required"} part of ${workflowId}.`,
         status: "queued",
       }
     case "running":
@@ -78,6 +79,12 @@ const checkOutput = (stepId: string, status: PlanNode["status"]): {
         title: `${stepId} passed`,
         summary: `Completed successfully as part of ${workflowId}.`,
         conclusion: "success",
+      }
+    case "warning":
+      return {
+        title: `${stepId} completed with a warning`,
+        summary: `This optional check failed without blocking ${workflowId}.`,
+        conclusion: "neutral",
       }
     case "failed":
       return {
@@ -98,8 +105,9 @@ const publishStep = async (
   stepId: string,
   status: PlanNode["status"],
   name = `${workflowId} / ${stepId}`,
+  optional = false,
 ) => {
-  const output = checkOutput(stepId, status)
+  const output = checkOutput(stepId, status, optional)
   const text = outputText(stepId)
   const existing = checks.get(stepId)
 
@@ -117,7 +125,7 @@ const publishStep = async (
       ...(detailsUrl ? { detailsUrl } : {}),
       ...(externalId ? { externalId: `${externalId}:${stepId}` } : {}),
     })
-    checks.set(stepId, { id: check.id, htmlUrl: check.htmlUrl, status })
+    checks.set(stepId, { id: check.id, htmlUrl: check.htmlUrl, status, optional })
     console.log(`Effect CI check (${stepId}): ${check.htmlUrl}`)
     return
   }
@@ -134,6 +142,7 @@ const publishStep = async (
     ...(output.conclusion ? { conclusion: output.conclusion } : {}),
   })
   existing.status = status
+  existing.optional = optional
 }
 
 const planText = (value: WorkflowPlan): string => value.nodes
@@ -142,7 +151,7 @@ const planText = (value: WorkflowPlan): string => value.nodes
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
       .join("\n\n")
-    return `#### ${node.id}\n\n\`\`\`sh\n${commands}\n\`\`\``
+    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n\`\`\`sh\n${commands}\n\`\`\``
   })
   .join("\n\n")
 
@@ -187,7 +196,7 @@ const planDiagram = (value: WorkflowPlan): string => {
   const lines = ["flowchart LR"]
 
   for (const node of value.nodes) {
-    lines.push(`  ${identifiers.get(node.id)}["${mermaidLabel(node.id)}"]`)
+    lines.push(`  ${identifiers.get(node.id)}["${mermaidLabel(node.id)}${node.optional ? " (optional)" : ""}"]`)
   }
   for (const node of value.nodes) {
     for (const dependency of node.needs) {
@@ -220,7 +229,8 @@ const planSummary = (value: WorkflowPlan): string => {
       const needs = node.needs.length > 0
         ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}`)
+      const optional = node.optional ? " — **optional**" : ""
+      lines.push(`${stage}. \`${node.id}\`${needs}${optional}`)
       continue
     }
 
@@ -229,7 +239,8 @@ const planSummary = (value: WorkflowPlan): string => {
       const needs = node.needs.length > 0
         ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}`)
+      const optional = node.optional ? " — **optional**" : ""
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${optional}`)
     }
   }
   lines.push("", "</details>")
@@ -246,7 +257,8 @@ const stepCheckNames = (value: WorkflowPlan): ReadonlyMap<string, string> => {
     const stepIds = nodes.map((node) => node.id)
     for (const [index, stepId] of [...stepIds].sort().entries()) {
       const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
-      names.set(stepId, `${workflowId} / ${ordinal}. ${stepId}`)
+      const node = nodes.find((candidate) => candidate.id === stepId)
+      names.set(stepId, `${workflowId} / ${ordinal}. ${stepId}${node?.optional ? " (optional)" : ""}`)
     }
   }
   return names
@@ -269,7 +281,12 @@ const publishPlan = async (
     ...(detailsUrl ? { detailsUrl } : {}),
     ...(externalId ? { externalId: `${externalId}:plan` } : {}),
   })
-  checks.set("plan", { id: check.id, htmlUrl: check.htmlUrl, status: conclusion === "success" ? "complete" : "failed" })
+  checks.set("plan", {
+    id: check.id,
+    htmlUrl: check.htmlUrl,
+    status: conclusion === "success" ? "complete" : "failed",
+    optional: false,
+  })
   console.log(`Effect CI check (plan): ${check.htmlUrl}`)
 }
 
@@ -282,7 +299,7 @@ const report = async (event: RuntimeEvent) => {
     case "dependency.added":
       return
     case "step.status":
-      if (mode === "execute") await publishStep(event.stepId, event.status)
+      if (mode === "execute") await publishStep(event.stepId, event.status, undefined, event.optional)
       return
     case "step.output":
       appendOutput(event.stepId, event.stream, event.text)
@@ -292,7 +309,7 @@ const report = async (event: RuntimeEvent) => {
       if (mode === "execute") {
         const names = stepCheckNames(event.plan)
         for (const node of event.plan.nodes) {
-          await publishStep(node.id, node.status, names.get(node.id))
+          await publishStep(node.id, node.status, names.get(node.id), node.optional)
         }
       }
       return
@@ -337,7 +354,7 @@ if (!completed) {
   } else {
     for (const [stepId, check] of checks) {
       if (check.status === "queued" || check.status === "running") {
-        await publishStep(stepId, check.status === "running" ? "failed" : "skipped")
+        await publishStep(stepId, check.status === "running" ? "failed" : "skipped", undefined, check.optional)
       }
     }
   }

@@ -5,10 +5,11 @@ The first parity fixture is deliberately ordinary: a dependency-free Node applic
 Its pipeline is:
 
 ```text
-checkout → install → build ┐
-                   ├→ lint
-                   └→ test
+checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
 ```
+
+The GitHub and Effect workflows express the same concurrency and failure policy:
+both parallel branches finish, but only lint blocks the later stages.
 
 Compare:
 

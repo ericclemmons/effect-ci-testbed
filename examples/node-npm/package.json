@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "format": "node scripts/format.mjs",
     "lint": "node --check src/index.js && node --check test/index.test.js",
     "test": "node --test",
     "build": "node scripts/build.mjs"

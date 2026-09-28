@@ -111,9 +111,7 @@ coordinates actions from
 [`examples/node-npm/.cloudflare/actions/index.ts`](./examples/node-npm/.cloudflare/actions/index.ts):
 
 ```text
-checkout → install ┬→ build → deploy
-                   ├→ lint
-                   └→ test
+checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
 ```
 
 Actions describe their implementation and actual blockers:
@@ -139,6 +137,12 @@ export const lint = CI.action<CI.Workspace>("lint", () => function* () {
   const installation = yield* install()
   const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
   return yield* packageManager.run("lint")
+})
+
+export const format = CI.action<CI.Workspace>("format", () => function* () {
+  const installation = yield* install()
+  const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
+  return yield* packageManager.run("format")
 })
 
 export const test = CI.action<CI.Workspace>("test", () => function* () {
@@ -183,18 +187,22 @@ export default CI.workflow("node-npm", function* () {
     return
   }
 
-  yield* actions.lint()
+  yield* CI.parallel([
+    actions.lint(),
+    CI.optional(actions.format()),
+  ])
   yield* actions.test()
   yield* actions.build()
   return yield* actions.deploy()
 })
 ```
 
-These ordinary yields deliberately match the single canonical GitHub job: a lint
-failure stops test, build, and deploy. Parallelism belongs in the workflow only when
-the GitHub equivalent also fans those checks out. Mandatory dependencies remain inside
-the actions, so a separate release workflow may request only `deploy()` and still get
-checkout, install, and build.
+This deliberately matches the canonical GitHub job's native `parallel` group. Lint and
+format both finish; lint failure fails the group and stops test, build, and deploy,
+while format failure becomes a warning and does not block them. Parallelism and
+optionality belong in the workflow policy, not the reusable actions. Mandatory
+dependencies remain inside the actions, so a separate release workflow may request
+only `deploy()` and still get checkout, install, and build.
 
 Planning follows the same workflow composition and resolves each action's dependencies,
 while the planning implementation records durable execution instead of performing it.
@@ -292,33 +300,25 @@ if (event.type === "pull_request") {
 
 ### Independent checks and aggregate failure
 
-The first fixture is sequential and fail-fast because its canonical GitHub workflow is
-one sequential job. A workflow that intentionally defines independent GitHub jobs can
-use Effect 4's failure-accumulating `validate` to run all of them:
+`CI.parallel` is the workflow-level shorthand for independent work that must all finish.
+It uses Effect's failure-accumulating validation so one mandatory failure does not cancel
+the other branches:
 
 ```ts
-return yield* Effect.validate(
-  [
-    actions.build().pipe(Effect.asVoid),
-    actions.lint().pipe(Effect.asVoid),
-    actions.test().pipe(Effect.asVoid),
-  ],
-  (check) => check,
-  { concurrency: "unbounded", discard: true },
-)
+yield* CI.parallel([
+  actions.lint(),
+  CI.optional(actions.format()),
+])
 ```
 
-`Effect.validate` executes every check and accumulates all typed failures. `Effect.orDie`
-is intentionally not used here: it turns typed failures into defects, which makes
-recovery, reporting, and per-check GitHub conclusions harder.
-
-`Effect.asVoid` in that heterogeneous example erases each success value so all array
-members share one success type. The mapper `(check) => check` is the identity function
-that turns each array element into the Effect to validate. `discard: true` avoids
-building a success-value array when only completion and accumulated failures matter.
-Those are Effect composition choices, not requirements of `CI.workflow`. A non-blocking
-formatter should instead report a typed warning (and optionally an artifact or suggested
-patch) without failing the gate that subsequent stages depend on.
+`CI.optional` is policy on this invocation, not a property of the `format` action. It
+recovers only a failure produced by that action, records the output, and reports a
+neutral GitHub check. It does not hide checkout/install failures: those remain failed
+prerequisites. `CI.parallel` discards heterogeneous success values because the group is
+a gate; action outputs remain available when actions are yielded directly. `Effect.orDie`
+is intentionally not used because defects are inappropriate for expected CI failures.
+The canonical GitHub workflow expresses the same policy with `parallel` and
+`continue-on-error: true`.
 
 ### Healing and approval
 
@@ -439,7 +439,8 @@ conflating policy order with reusable action dependencies.
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
-- Ordinary Effect composition controls execution. The current examples use sequential yields to match their canonical GitHub jobs and fail early; their yielded prerequisites independently enforce checkout → install → build → deploy.
+- Ordinary Effect composition controls execution. The current examples use `CI.parallel` for required lint plus optional format, then resume sequential fail-fast execution for test, build, and deploy, matching their canonical GitHub jobs.
+- `CI.optional(effect)` marks one invocation non-blocking. Its own failure is reported as a neutral warning; prerequisite failures still propagate.
 - Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
 - A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses

@@ -18,7 +18,10 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm ci
-      - run: npm run lint
+      - parallel:
+          - run: npm run lint
+          - run: npm run format
+            continue-on-error: true
       - run: npm test
       - run: npm run build
       - run: echo pnpx cf deploy

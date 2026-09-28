@@ -8,7 +8,10 @@ export default CI.workflow("node-pnpm", function* () {
     return
   }
 
-  yield* actions.lint()
+  yield* CI.parallel([
+    actions.lint(),
+    CI.optional(actions.format()),
+  ])
   yield* actions.test()
   yield* actions.build()
   return yield* actions.deploy()

@@ -18,7 +18,10 @@ jobs:
           runtime: node@24
           cache: true
           require-lockfile: true
-      - run: pnpm run lint
+      - parallel:
+          - run: pnpm run lint
+          - run: pnpm run format
+            continue-on-error: true
       - run: pnpm test
       - run: pnpm run build
       - run: echo pnpx cf deploy

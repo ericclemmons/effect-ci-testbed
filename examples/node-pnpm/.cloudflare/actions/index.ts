@@ -38,6 +38,12 @@ export const lint = CI.action<CI.Workspace>("lint", () => function* () {
   return yield* packageManager.run("lint")
 })
 
+export const format = CI.action<CI.Workspace>("format", () => function* () {
+  const installation = yield* install()
+  const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
+  return yield* packageManager.run("format")
+})
+
 export const test = CI.action<CI.Workspace>("test", () => function* () {
   const installation = yield* install()
   const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
