@@ -123,29 +123,26 @@ import * as CI from "@effect-ci-testbed/ci"
 
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
-  return () => source.acquire(app)
+  return () => source.checkout(app)
 })
 
-export const install = CI.action("install", function* () {
-  // Yield action-specific dependencies here.
-  return (workspace: CI.Workspace) => workspace.exec("npm ci")
-})
+export const install = CI.action("install", () =>
+  (workspace: CI.Workspace) => workspace.exec("npm ci"))
 
-export const lint = CI.action("lint", function* () {
-  return (workspace: CI.Workspace) => workspace.exec("npm run lint")
-})
+export const lint = CI.action("lint", () =>
+  (workspace: CI.Workspace) => workspace.exec("npm run lint"))
 
-export const test = CI.action("test", function* () {
-  return (workspace: CI.Workspace) => workspace.exec("npm test")
-})
+export const test = CI.action("test", () =>
+  (workspace: CI.Workspace) => workspace.exec("npm test"))
 ```
 
 An action's construction generator resolves action-specific dependencies and returns
 the durable implementation. Calling the action accepts its inputs and returns an Effect.
 Workspace inputs carry the producer identity, so the plan derives direct dependency
 edges without a separate `needs` DSL. The returned implementation can be an ordinary
-function, generator, async function, or Effect-returning function. `Effect.fn` is an
-optional instrumentation tool, not part of the `CI.action` contract.
+function, generator, async function, or Effect-returning function. Construction that
+does not yield services can be `() => handler`; it does not need to be a generator.
+`Effect.fn` is an optional instrumentation tool, not part of the `CI.action` contract.
 
 The workflow itself is only orchestration: sequential yields, parallel composition,
 and per-action error handling:
@@ -156,11 +153,15 @@ import * as actions from "../actions/index.ts"
 export default CI.workflow("node-npm", function* () {
   let workspace = yield* actions.checkout()
   workspace = yield* actions.install(workspace)
-  return yield* Effect.all([
-    actions.build(workspace),
-    actions.lint(workspace),
-    actions.test(workspace),
-  ], { concurrency: "unbounded" })
+  return yield* Effect.validate(
+    [
+      actions.build(workspace),
+      actions.lint(workspace),
+      actions.test(workspace),
+    ],
+    (check) => check,
+    { concurrency: "unbounded" },
+  )
 }, { on: ["pull_request", "push"] })
 ```
 
@@ -241,32 +242,23 @@ if (event.type === "pull_request") {
 
 ### Independent checks and aggregate failure
 
-Checks that should all finish use Effect 4's result-collecting mode:
+Checks that should all finish use Effect 4's failure-accumulating `validate`:
 
 ```ts
-import * as Result from "effect/Result"
-
-const results = yield* Effect.all([
-  actions.build(workspace),
-  actions.lint(workspace),
-  actions.test(workspace),
-], {
-  concurrency: "unbounded",
-  mode: "result",
-})
-
-const failures = results
-  .filter(Result.isFailure)
-  .map((result) => result.failure)
-
-if (failures.length > 0) {
-  return yield* Effect.fail(new AggregateError(failures, "CI checks failed"))
-}
+return yield* Effect.validate(
+  [
+    actions.build(workspace),
+    actions.lint(workspace),
+    actions.test(workspace),
+  ],
+  (check) => check,
+  { concurrency: "unbounded" },
+)
 ```
 
-`Effect.orDie` is intentionally not used here: it turns typed failures into defects,
-which makes recovery, reporting, and per-check GitHub conclusions harder. The workflow
-collects every typed outcome, reports each one, then fails once with an aggregate error.
+`Effect.validate` executes every check and accumulates all typed failures. `Effect.orDie`
+is intentionally not used here: it turns typed failures into defects, which makes
+recovery, reporting, and per-check GitHub conclusions harder.
 
 ### Healing and approval
 
@@ -381,7 +373,7 @@ definition or planning DSL.
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.action(id, construction, options?)` resolves action dependencies and returns a durable implementation; calling it with typed inputs returns an Effect that can be yielded directly.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
-- Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.all` to run build, lint, and test concurrently in the shared workspace.
+- Ordinary Effect composition controls execution. The examples install sequentially, then use `Effect.validate` to run build, lint, and test concurrently in the shared workspace while accumulating every failure.
 - Repeatedly yielding the same step executes it once per run.
 - A `Workspace` is one logical workspace passed between steps as successive references.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
@@ -412,6 +404,23 @@ CI program
 This slice deliberately stops at a first-class plan rather than adding planner unit
 tests or a second engine. Verification remains end to end: type-check the packages,
 dry-run the real example, then execute that same example against its fixture app.
+
+### Local Cloudflare verification
+
+Direct execution remains the fast local development path because it exercises the
+portable workflow without requiring a Cloudflare emulator. Once the Cloudflare adapter
+wraps that program in a real `WorkflowEntrypoint`, a second E2E runner should start
+[`wrangler dev`](https://developers.cloudflare.com/workflows/build/local-development/)
+and use `wrangler workflows trigger <name> --local`. That runner will
+verify the Cloudflare-specific interpreter: durable step caching, suspension and resume,
+bindings, retries, event delivery, and workspace restoration. It complements direct
+execution rather than replacing it.
+
+Cloudflare's local Workflow environment is emulated, so remote execution remains the
+final parity check for platform behavior. Local Explorer and Cloudflare's
+[Workflow visualizer](https://developers.cloudflare.com/workflows/build/visualizer/)
+should become useful diagnostics for this runner, especially when approval,
+sleep, retry, and recovery steps are introduced.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
 

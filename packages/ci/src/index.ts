@@ -22,6 +22,7 @@ export interface StepOptions extends WorkflowStepConfig {
 export type WorkflowBody<A> =
   | Effect.Effect<A, any, any>
   | (() =>
+      | A
       | Generator<any, A, any>
       | Effect.Effect<A, any, any>
       | Promise<A>)
@@ -183,7 +184,7 @@ export class Workspace {
 }
 
 export interface SourceService {
-  readonly acquire: (root: string) => Effect.Effect<Workspace, unknown>
+  readonly checkout: (root: string) => Effect.Effect<Workspace, unknown>
 }
 
 export class Source extends ServiceMap.Service<Source, SourceService>()(
@@ -191,7 +192,7 @@ export class Source extends ServiceMap.Service<Source, SourceService>()(
 ) {}
 
 const localSource: SourceService = {
-  acquire: (root) => Effect.succeed(Workspace.local(root)),
+  checkout: (root) => Effect.succeed(Workspace.local(root)),
 }
 
 export interface Workflow<A> {
@@ -220,10 +221,14 @@ const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
       return Effect.gen(() => result as Generator<any, A, any>)
     }
 
-    return Effect.tryPromise({
-      try: () => result as Promise<A>,
-      catch: (error) => error,
-    })
+    if (result && typeof result === "object" && "then" in result) {
+      return Effect.tryPromise({
+        try: () => result as Promise<A>,
+        catch: (error) => error,
+      })
+    }
+
+    return Effect.succeed(result as A)
   })
 }
 
