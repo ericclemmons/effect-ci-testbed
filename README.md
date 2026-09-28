@@ -121,36 +121,36 @@ Actions describe their implementation and actual blockers:
 ```ts
 import * as CI from "@effect-ci-testbed/ci"
 
-export const checkout = CI.action("checkout", function* () {
+export const checkout = CI.action<CI.Workspace>("checkout", function* () {
   const source = yield* CI.Source
   return () => source.checkout(app)
 })
 
-export const install = CI.action("install", () => function* () {
+export const install = CI.action<Installation>("install", () => function* () {
   const workspace = yield* checkout()
   const packageManager = yield* CI.PackageManager.JavaScript(workspace)
   return {
     packageManager: packageManager.name,
-    workspace: yield* packageManager.install(),
-  } satisfies Installation
+    workspace: yield* packageManager.install({ frozenLockfile: true }),
+  }
 })
 
-export const lint = CI.action("lint", () => function* () {
+export const lint = CI.action<CI.Workspace>("lint", () => function* () {
   const installation = yield* install()
   const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
   return yield* packageManager.run("lint")
 })
 
-export const test = CI.action("test", () => function* () {
+export const test = CI.action<CI.Workspace>("test", () => function* () {
   const installation = yield* install()
   const packageManager = yield* CI.PackageManager.JavaScript(installation.workspace)
   return yield* packageManager.run("test")
 })
 
-export const deploy = CI.action("deploy", () => function* () {
+export const deploy = CI.action<Deployment>("deploy", () => function* () {
   const artifacts = yield* build()
   yield* artifacts.installation.workspace.exec("echo pnpx cf deploy")
-  return { artifacts, target: "cloudflare" } satisfies Deployment
+  return { artifacts, target: "cloudflare" }
 })
 ```
 
@@ -164,6 +164,12 @@ cached result per run. The returned implementation can be an ordinary function,
 generator, async function, or Effect-returning function. Construction that does not
 yield services can be `() => handler`; it does not need to be a generator.
 `Effect.fn` is an optional instrumentation tool, not part of the `CI.action` contract.
+The explicit success generic, such as `CI.action<Deployment>`, is the action's public
+output contract and checks every implementation return path. A local
+`value satisfies Deployment` only checks that expression while preserving its narrower
+inferred type. Effect itself orders its type parameters as success, error, and
+requirements; the prototype currently exposes the success contract explicitly and
+still erases action errors and requirements to `unknown` at the public boundary.
 
 The workflow itself is only orchestration: sequential yields, parallel composition,
 and per-action error handling:
@@ -173,22 +179,22 @@ import * as actions from "../actions/index.ts"
 
 export default CI.workflow("node-npm", function* () {
   const event = yield* CI.WorkflowEvent
-  if (event.type !== "pull_request" && event.type !== "push" && event.type !== "workflow_dispatch") {
+  if (!["pull_request", "push", "workflow_dispatch"].includes(event.type)) {
     return
   }
 
-  return yield* Effect.validate(
-    [
-      actions.build().pipe(Effect.asVoid),
-      actions.deploy().pipe(Effect.asVoid),
-      actions.lint().pipe(Effect.asVoid),
-      actions.test().pipe(Effect.asVoid),
-    ],
-    (check) => check,
-    { concurrency: "unbounded", discard: true },
-  )
+  yield* actions.lint()
+  yield* actions.test()
+  yield* actions.build()
+  return yield* actions.deploy()
 })
 ```
+
+These ordinary yields deliberately match the single canonical GitHub job: a lint
+failure stops test, build, and deploy. Parallelism belongs in the workflow only when
+the GitHub equivalent also fans those checks out. Mandatory dependencies remain inside
+the actions, so a separate release workflow may request only `deploy()` and still get
+checkout, install, and build.
 
 Planning follows the same workflow composition and resolves each action's dependencies,
 while the planning implementation records durable execution instead of performing it.
@@ -217,9 +223,15 @@ itself.
 `CI.PackageManager.JavaScript(workspace)` yields a workspace-bound package-manager
 capability with `install`, `run`, and `exec` methods. It prefers
 `package.json#packageManager`, falls back to JavaScript lockfiles, and rejects ambiguous
-lockfiles. The namespace is ecosystem-specific because one repository may independently
-yield JavaScript and Python package managers for the same checkout. `workspace.exec`
-remains the command escape hatch.
+lockfiles. Its cardinality is **exactly one JavaScript package manager**: zero matches
+and multiple JavaScript ecosystems are errors. The namespace is ecosystem-specific
+because one repository may independently yield one JavaScript manager and one Python
+manager for the same checkout—for example pnpm and uv. Future resource APIs must name
+their cardinality rather than hide it: an optional lookup returns zero-or-one, an
+ecosystem lookup returns exactly one, and a repository-wide aggregate may return many
+or install all discovered managers. `packageManager.install({ frozenLockfile: true })`
+maps the shared intent to each manager's native command. `workspace.exec` remains the
+command escape hatch.
 
 `checkout` does not branch on `NODE_ENV`. Application environment and workspace
 acquisition are independent choices: a production build can run in an existing local
@@ -280,7 +292,9 @@ if (event.type === "pull_request") {
 
 ### Independent checks and aggregate failure
 
-Checks that should all finish use Effect 4's failure-accumulating `validate`:
+The first fixture is sequential and fail-fast because its canonical GitHub workflow is
+one sequential job. A workflow that intentionally defines independent GitHub jobs can
+use Effect 4's failure-accumulating `validate` to run all of them:
 
 ```ts
 return yield* Effect.validate(
@@ -297,6 +311,14 @@ return yield* Effect.validate(
 `Effect.validate` executes every check and accumulates all typed failures. `Effect.orDie`
 is intentionally not used here: it turns typed failures into defects, which makes
 recovery, reporting, and per-check GitHub conclusions harder.
+
+`Effect.asVoid` in that heterogeneous example erases each success value so all array
+members share one success type. The mapper `(check) => check` is the identity function
+that turns each array element into the Effect to validate. `discard: true` avoids
+building a success-value array when only completion and accumulated failures matter.
+Those are Effect composition choices, not requirements of `CI.workflow`. A non-blocking
+formatter should instead report a typed warning (and optionally an artifact or suggested
+patch) without failing the gate that subsequent stages depend on.
 
 ### Healing and approval
 
@@ -406,12 +428,18 @@ working directories, durable step options, and status. It is intended to feed th
 eventual DAG visualizer and permission audit without introducing a separate workflow
 definition or planning DSL.
 
+Today those `needs` edges describe mandatory action prerequisites, not every temporal
+ordering choice made by a workflow. For example, sequentially yielding lint and then
+test does not make test intrinsically require lint. A scheduling layer must record that
+orchestration separately before the plan UI can label serial and parallel lanes without
+conflating policy order with reusable action dependencies.
+
 ## Current prototype semantics
 
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
-- Ordinary Effect composition controls execution. The examples use `Effect.validate` to request build, deploy, lint, and test concurrently while accumulating every failure; their yielded prerequisites enforce checkout → install → build → deploy.
+- Ordinary Effect composition controls execution. The current examples use sequential yields to match their canonical GitHub jobs and fail early; their yielded prerequisites independently enforce checkout → install → build → deploy.
 - Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
 - A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
@@ -419,8 +447,9 @@ definition or planning DSL.
   implementations without branching on `NODE_ENV` inside the workflow.
 - `CI.WorkflowEvent` is a yielded runtime requirement. Workflows branch on its typed
   event data directly instead of declaring an `on` array interpreted by the runner.
-- `CI.PackageManager.JavaScript(workspace)` detects and binds npm, pnpm, Yarn, or Bun to
-  a workspace. Other ecosystems will use independent package-manager resources.
+- `CI.PackageManager.JavaScript(workspace)` resolves exactly one npm, pnpm, Yarn, or Bun
+  resource for a workspace. Other ecosystems will use independent resources, and future
+  zero/one/many APIs must make their cardinality explicit.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
 - Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
 - Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action; deploy yields the cached build action and consumes its typed artifacts.

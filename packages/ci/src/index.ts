@@ -184,10 +184,16 @@ export class PackageManagerError extends Error {
 export namespace PackageManager {
   export type JavaScriptName = "npm" | "pnpm" | "yarn" | "bun"
 
+  export interface InstallOptions {
+    readonly frozenLockfile?: boolean
+  }
+
   export interface JavaScript {
     readonly name: JavaScriptName
     readonly workspace: Workspace
-    readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+    readonly install: (
+      options?: InstallOptions,
+    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
     readonly run: (script: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
     readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
   }
@@ -233,10 +239,24 @@ export namespace PackageManager {
           )
         }
 
-        const command = (operation: "install" | "run" | "exec", value?: string) => {
+        const command = (
+          operation: "install" | "run" | "exec",
+          value?: string,
+          options: InstallOptions = {},
+        ) => {
           switch (operation) {
             case "install":
-              return name === "npm" ? "npm ci" : `${name} install`
+              if (!options.frozenLockfile) return `${name} install`
+              switch (name) {
+                case "npm":
+                  return "npm ci"
+                case "pnpm":
+                  return "pnpm install --frozen-lockfile"
+                case "yarn":
+                  return "yarn install --immutable"
+                case "bun":
+                  return "bun install --frozen-lockfile"
+              }
             case "run":
               return `${name} run ${JSON.stringify(value)}`
             case "exec":
@@ -249,7 +269,7 @@ export namespace PackageManager {
         return {
           name,
           workspace,
-          install: () => workspace.exec(command("install")),
+          install: (options) => workspace.exec(command("install", undefined, options)),
           run: (script) => workspace.exec(command("run", script)),
           exec: (executable) => workspace.exec(command("exec", executable)),
         }
@@ -346,7 +366,7 @@ export const step = <A>(
   return runStep(id)
 }
 
-export const action = <Args extends ReadonlyArray<unknown>, A>(
+export const action = <A, Args extends ReadonlyArray<unknown> = ReadonlyArray<never>>(
   id: string,
   construction: ActionConstruction<Args, A>,
   options: StepOptions = {},
