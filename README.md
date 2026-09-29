@@ -92,6 +92,7 @@ keeps the common install → check → build → deploy path fast.
 | [`node-npm`](./examples/node-npm) | Node, npm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`hitl-deploy`](./examples/hitl-deploy) | protected production deployment with human approval | ✅ | ✅ | ⬜ |
+| [`cloudflare-runner`](./examples/cloudflare-runner) | checkout, install, and build in a Cloudflare Sandbox | — | ✅ | ✅ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `bun` | Bun install, test, and build | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
