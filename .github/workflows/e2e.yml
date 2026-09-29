@@ -2,6 +2,7 @@ name: Testbed E2E
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
