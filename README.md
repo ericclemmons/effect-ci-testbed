@@ -91,6 +91,7 @@ keeps the common install → check → build → deploy path fast.
 | --- | --- | :---: | :---: | :---: |
 | [`node-npm`](./examples/node-npm) | Node, npm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
+| [`hitl-deploy`](./examples/hitl-deploy) | protected production deployment with human approval | ✅ | ✅ | ⬜ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `bun` | Bun install, test, and build | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
@@ -100,7 +101,6 @@ keeps the common install → check → build → deploy path fast.
 | `monorepo` | multiple apps and affected packages | ⬜ | ⬜ | ⬜ |
 | `mirrored-source` | same repository pushed from GitHub or GitLab | ⬜ | ⬜ | ⬜ |
 | `manual-reconcile` | compare latest source with deployed revision | ⬜ | ⬜ | ⬜ |
-| `approval` | durable human approval before deployment | ⬜ | ⬜ | ⬜ |
 | `gradual-deploy` | version upload, percentages, health, rollback | ⬜ | ⬜ | ⬜ |
 
 Heavy multi-deployment orchestration is deliberately a separate future feature. The first deployment examples should run the commands developers naturally run and capture structured tool output such as Wrangler's output file.
@@ -112,7 +112,7 @@ coordinates actions from
 [`examples/node-npm/.cloudflare/actions/index.ts`](./examples/node-npm/.cloudflare/actions/index.ts):
 
 ```text
-checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
+checkout → install → [lint (required) ∥ format (optional)] → test → build
 ```
 
 Actions describe their implementation and actual blockers:
@@ -156,20 +156,22 @@ export const test = CI.action<CI.Workspace>("test", () => function* () {
   return yield* npm.run("test")
 })
 
-export const deploy = CI.action<Deployment>("deploy", () => function* () {
-  const artifacts = yield* build()
+export const build = CI.action<BuildArtifacts>("build", () => function* () {
+  const installation = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
 
-  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
+  yield* npm.run("build")
 
-  return { artifacts, target: "cloudflare" }
+  return { installation, paths: ["dist/index.js"] }
 })
 ```
 
 An action's construction generator resolves action-specific dependencies and returns
 the durable implementation. The implementation yields prerequisite actions before doing
 its own work, so invalid compositions are not expressible through the public action API:
-`lint()` always installs, and `deploy()` always yields `build()` to obtain
-its artifacts. The planner observes those yielded actions directly and derives `needs`
+`lint()` and `build()` always install. The `hitl-deploy` example applies the same rule
+to deployment: `deploy()` yields `build()` to obtain its artifacts. The planner observes
+those yielded actions directly and derives `needs`
 edges without a separate dependency DSL or AST parsing. Repeated action calls share one
 cached result per run. The returned implementation can be an ordinary function,
 generator, async function, or Effect-returning function. Construction that does not
@@ -200,9 +202,8 @@ export default CI.workflow("node-npm", function* () {
     CI.optional(actions.format()),
   ])
   yield* actions.test()
-  yield* actions.build()
 
-  return yield* actions.deploy()
+  return yield* actions.build()
 })
 ```
 
@@ -211,8 +212,9 @@ format both finish because the matrix disables fail-fast; lint failure blocks th
 pipeline job, while format has `continue-on-error` and does not block it. The matrix
 form also remains executable by `act`, which does not yet parse GitHub's newer native
 parallel-step syntax. Parallelism and optionality belong in workflow policy, not the
-reusable actions. Mandatory dependencies remain inside the actions, so a separate
-release workflow may request only `deploy()` and still get checkout, install, and build.
+reusable actions. Mandatory dependencies remain inside the actions. The focused
+[`hitl-deploy`](./examples/hitl-deploy) example shows a release workflow requesting only
+`deploy()` while still getting checkout, install, and build.
 
 Planning follows the same workflow composition and resolves each action's dependencies,
 while the planning implementation records durable execution instead of performing it.
@@ -365,20 +367,18 @@ Deployment approval is now a first-class runtime capability. An action yields
 request resolves:
 
 ```ts
-export const approveDeployment = CI.action<BuildArtifacts>(
-  "approve deployment",
-  () => function* () {
-    const artifacts = yield* build()
-    const approval = yield* CI.Approval
+export const deploy = CI.action<Deployment>("deploy", () => function* () {
+  const artifacts = yield* build()
+  const approval = yield* CI.Approval
 
-    yield* approval.request({
-      title: "Approve the no-op deployment?",
-      summary: "Build passed. Approve to deploy.",
-    })
+  yield* approval.request({
+    title: "Approve the production deployment?",
+    summary: "Build passed. Approve to deploy.",
+  })
+  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
 
-    return artifacts
-  },
-)
+  return { artifacts, target: "production" }
+})
 ```
 
 On GitHub Actions, production approval is owned by a protected GitHub Environment. The
@@ -393,10 +393,10 @@ runner cannot rely on GitHub Actions to suspend its execution. That runner will 
 different `ApprovalHandler`, potentially backed by GitHub App check actions, Cloudflare,
 or Slack, without changing the workflow's action graph.
 
-The example keeps pull-request validation separate from deployment. The deploy workflow
-can be dispatched manually, rebuilds through its intrinsic dependencies, waits at
-`approve deployment`, and only then runs the deliberately harmless
-`echo npx cf deploy` / `echo pnpx cf deploy` command.
+The [`hitl-deploy`](./examples/hitl-deploy) example keeps pull-request validation
+separate from deployment. Its deploy workflow can be dispatched manually, rebuilds
+through intrinsic dependencies, and runs the deliberately harmless
+`echo npx cf deploy` command only in a GitHub job protected by `production`.
 
 ### Workflow boundaries and new events
 
@@ -494,7 +494,7 @@ action dependencies remain reusable and separate from workflow scheduling policy
 - `import * as CI` follows Effect's module style and keeps provider implementations out of the core package.
 - `CI.action(id, construction, options?)` resolves service dependencies and returns a durable implementation; that implementation yields mandatory prerequisite actions and returns typed outputs.
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
-- Ordinary Effect composition controls execution. The current examples use `CI.parallel` for required lint plus optional format, then resume sequential fail-fast execution for test, build, and deploy, matching their canonical GitHub jobs.
+- Ordinary Effect composition controls execution. The Node examples use `CI.parallel` for required lint plus optional format, then resume sequential fail-fast execution for test and build. `hitl-deploy` isolates deployment and approval semantics.
 - `CI.optional(effect)` marks one invocation non-blocking. Its own failure is reported as a neutral warning; prerequisite failures still propagate.
 - Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
 - A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.

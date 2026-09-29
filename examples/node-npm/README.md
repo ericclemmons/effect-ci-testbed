@@ -1,11 +1,17 @@
 # Node + npm
 
-The first parity fixture is deliberately ordinary: a dependency-free Node application using npm.
+This example answers one question:
+
+> How do I run an ordinary npm project's required and optional checks with parity
+> between GitHub Actions and Effect CI?
+
+The fixture is deliberately ordinary: a dependency-free Node application using npm.
+Its lockfile also demonstrates JavaScript package-manager inference selecting npm.
 
 Its pipeline is:
 
 ```text
-checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
+checkout → install → [lint (required) ∥ format (optional)] → test → build
 ```
 
 The GitHub validation matrix and Effect parallel group express the same concurrency and

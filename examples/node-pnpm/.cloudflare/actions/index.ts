@@ -8,11 +8,6 @@ export interface BuildArtifacts {
   readonly paths: ReadonlyArray<string>
 }
 
-export interface Deployment {
-  readonly artifacts: BuildArtifacts
-  readonly target: "cloudflare"
-}
-
 export interface Installation {
   readonly workspace: CI.Workspace
 }
@@ -62,28 +57,5 @@ export const build = CI.action<BuildArtifacts>("build", () => function* () {
   return {
     installation,
     paths: ["dist/index.js"],
-  }
-})
-
-export const approveDeployment = CI.action<BuildArtifacts>("approve deployment", () => function* () {
-  const artifacts = yield* build()
-  const approval = yield* CI.Approval
-
-  yield* approval.request({
-    title: "Approve the no-op deployment?",
-    summary: "Build passed. Approve to run `echo pnpx cf deploy`.",
-  })
-
-  return artifacts
-})
-
-export const deploy = CI.action<Deployment>("deploy", () => function* () {
-  const artifacts = yield* approveDeployment()
-
-  yield* artifacts.installation.workspace.exec("echo pnpx cf deploy")
-
-  return {
-    artifacts,
-    target: "cloudflare",
   }
 })

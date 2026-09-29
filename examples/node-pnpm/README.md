@@ -1,11 +1,17 @@
 # Node + pnpm
 
-This parity fixture is a dependency-free Node application using pnpm.
+This example answers one question:
+
+> How do I run the same CI shape with pnpm while keeping package-manager-specific setup
+> out of the workflow orchestration?
+
+The fixture is a dependency-free Node application whose `packageManager` field and
+lockfile demonstrate JavaScript package-manager inference selecting pnpm.
 
 Its pipeline is:
 
 ```text
-checkout → install → [lint (required) ∥ format (optional)] → test → build → deploy
+checkout → install → [lint (required) ∥ format (optional)] → test → build
 ```
 
 The GitHub validation matrix and Effect parallel group express the same concurrency and
