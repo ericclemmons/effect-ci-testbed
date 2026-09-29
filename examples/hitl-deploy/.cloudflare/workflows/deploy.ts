@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 
 import * as actions from "../actions/index.ts"
 
-export default CI.workflow("node-pnpm deploy", function* () {
+export default CI.workflow("hitl-deploy", function* () {
   const event = yield* CI.WorkflowEvent
 
   if (event.type !== "workflow_dispatch") {

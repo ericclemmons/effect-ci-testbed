@@ -8,6 +8,11 @@ export interface BuildArtifacts {
   readonly paths: ReadonlyArray<string>
 }
 
+export interface Deployment {
+  readonly artifacts: BuildArtifacts
+  readonly target: "production"
+}
+
 export interface Installation {
   readonly workspace: CI.Workspace
 }
@@ -27,27 +32,6 @@ export const install = CI.action<Installation>("install", () => function* () {
   }
 })
 
-export const lint = CI.action<CI.Workspace>("lint", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
-
-  return yield* npm.run("lint")
-})
-
-export const format = CI.action<CI.Workspace>("format", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
-
-  return yield* npm.run("format")
-})
-
-export const test = CI.action<CI.Workspace>("test", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
-
-  return yield* npm.run("test")
-})
-
 export const build = CI.action<BuildArtifacts>("build", () => function* () {
   const installation = yield* install()
   const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
@@ -57,5 +41,21 @@ export const build = CI.action<BuildArtifacts>("build", () => function* () {
   return {
     installation,
     paths: ["dist/index.js"],
+  }
+})
+
+export const deploy = CI.action<Deployment>("deploy", () => function* () {
+  const artifacts = yield* build()
+  const approval = yield* CI.Approval
+
+  yield* approval.request({
+    title: "Approve the production deployment?",
+    summary: "Build passed. Approve to run the no-op production deployment.",
+  })
+  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
+
+  return {
+    artifacts,
+    target: "production",
   }
 })
