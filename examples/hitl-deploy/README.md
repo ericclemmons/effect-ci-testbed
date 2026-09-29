@@ -21,6 +21,8 @@ Create an environment named `production` in **Settings → Environments**, then 
 more **Required reviewers**. The workflow job declares `environment: production`, so
 GitHub pauses it, notifies eligible reviewers, withholds environment secrets, and does
 not assign a runner until somebody selects **Review deployments → Approve and deploy**.
+Selecting **Reject** fails that deployment workflow. Inside the portable Effect action,
+a rejected decision becomes a typed `CI.ApprovalError` before the deploy command runs.
 
 Required reviewers on GitHub Free, Pro, and Team are available only for public
 repositories. Private repositories need a plan that supports this protection rule.
@@ -45,3 +47,8 @@ echo npx cf deploy
 GitHub's environment gate is self-contained and needs no webhook. A future workflow
 running outside GitHub Actions will need a different `CI.Approval` adapter, such as a
 GitHub App check action or a Cloudflare/Slack approval channel.
+
+The repository's pull-request E2E uses deterministic approved and rejected adapters so
+an unattended test cannot remain in GitHub's `Waiting` state. Run the root
+`Effect CI HITL Deploy` workflow manually when you want to exercise the real protected
+environment approval UI.

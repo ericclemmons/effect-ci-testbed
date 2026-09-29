@@ -381,12 +381,25 @@ export const deploy = CI.action<Deployment>("deploy", () => function* () {
 })
 ```
 
+An approved request returns normally. A rejected request fails the action with a typed
+`ApprovalError` whose decision is `"rejected"`; a missing or broken adapter fails with
+decision `"unavailable"`. In either failure case, execution stops at the `yield*` and
+the guarded deploy command is never invoked.
+
 On GitHub Actions, production approval is owned by a protected GitHub Environment. The
 deployment job declares `environment: production`, so GitHub pauses it before assigning
 a runner or exposing environment secrets. Once a required reviewer approves the job,
 the adapter supplies `EFFECT_CI_APPROVAL=approved`; `CI.Approval` then records the
 already-resolved platform decision and the deployment action may continue. No app
 webhook is involved in this GitHub-native path.
+
+Rejecting the pending GitHub deployment fails that explicitly dispatched deployment
+workflow. GitHub does not provide a seconds-long expiry for required-reviewer gates: a
+job remains `Waiting` for a reviewer and eventually fails after GitHub's platform
+timeout. Therefore the pull-request E2E suite does not start a protected deployment.
+It uses deterministic approved and rejected handlers to verify both outcomes, while
+the separately dispatched `Effect CI HITL Deploy` workflow exercises the real
+`production` environment UI without becoming a required PR check.
 
 The approval action remains part of the portable workflow because a future remote
 runner cannot rely on GitHub Actions to suspend its execution. That runner will need a

@@ -2,7 +2,7 @@ name: Testbed E2E
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -98,12 +98,16 @@ jobs:
       workflow: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
     secrets: inherit
 
-  production-deploy:
-    name: hitl-deploy / production deployment
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hitl')
-    needs: effect-on-github
+  hitl-deploy:
+    name: hitl-deploy / local / ${{ matrix.mode }}
     runs-on: ubuntu-latest
-    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        mode:
+          - plan
+          - approved
+          - rejected
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -112,18 +116,29 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - uses: actions/create-github-app-token@v3
-        id: app-token
-        with:
-          client-id: ${{ vars.EFFECT_CI_APP_CLIENT_ID }}
-          private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
-          permission-checks: write
-      - name: Deploy hitl-deploy after production approval
+      - name: Verify ${{ matrix.mode }} deployment decision
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          EFFECT_CI_APPROVAL: approved
+          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
+          EFFECT_CI_APPROVAL: ${{ matrix.mode == 'rejected' && 'rejected' || 'approved' }}
           EFFECT_CI_EVENT: workflow_dispatch
           EFFECT_CI_WORKFLOW: examples/hitl-deploy/.cloudflare/workflows/deploy.ts
-          EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha }}
-          EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:production
-        run: pnpm exec tsx packages/github/run.run.ts
+        run: |
+          output="$RUNNER_TEMP/hitl-deploy-${{ matrix.mode }}.log"
+
+          if [ "${{ matrix.mode }}" = "rejected" ]; then
+            if pnpm exec tsx packages/ci/run.run.ts >"$output" 2>&1; then
+              cat "$output"
+              echo "Expected the rejected approval to fail" >&2
+              exit 1
+            fi
+
+            cat "$output"
+            grep --fixed-strings "ApprovalError" "$output"
+
+            if grep --fixed-strings '$ echo npx cf deploy' "$output"; then
+              echo "Deploy command ran after rejection" >&2
+              exit 1
+            fi
+          else
+            pnpm exec tsx packages/ci/run.run.ts
+          fi
