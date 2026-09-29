@@ -7,6 +7,11 @@ on:
         description: Path to the Effect CI entry point
         required: true
         type: string
+      event:
+        description: Optional portable workflow event override
+        required: false
+        type: string
+        default: ""
     secrets:
       EFFECT_CI_APP_PRIVATE_KEY:
         description: Private key for the Effect CI GitHub App
@@ -40,7 +45,7 @@ jobs:
       - name: Run ${{ inputs.workflow }} (${{ matrix.mode }})
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          EFFECT_CI_EVENT: ${{ github.event_name }}
+          EFFECT_CI_EVENT: ${{ inputs.event || github.event_name }}
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

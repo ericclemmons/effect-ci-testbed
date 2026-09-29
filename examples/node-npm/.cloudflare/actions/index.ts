@@ -65,8 +65,20 @@ export const build = CI.action<BuildArtifacts>("build", () => function* () {
   }
 })
 
-export const deploy = CI.action<Deployment>("deploy", () => function* () {
+export const approveDeployment = CI.action<BuildArtifacts>("approve deployment", () => function* () {
   const artifacts = yield* build()
+  const approval = yield* CI.Approval
+
+  yield* approval.request({
+    title: "Approve the no-op deployment?",
+    summary: "Build passed. Approve to run `echo npx cf deploy`.",
+  })
+
+  return artifacts
+})
+
+export const deploy = CI.action<Deployment>("deploy", () => function* () {
+  const artifacts = yield* approveDeployment()
 
   yield* artifacts.installation.workspace.exec("echo npx cf deploy")
 

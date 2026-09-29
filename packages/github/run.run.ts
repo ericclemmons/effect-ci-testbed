@@ -146,12 +146,18 @@ const publishStep = async (
 }
 
 const planText = (value: WorkflowPlan): string => value.nodes
-  .filter((node) => node.commands.length > 0)
+  .filter((node) => node.commands.length > 0 || node.approval)
   .map((node) => {
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
       .join("\n\n")
-    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n\`\`\`sh\n${commands}\n\`\`\``
+    const approval = node.approval
+      ? `**Approval:** ${node.approval.title}\n\n${node.approval.summary}`
+      : ""
+    const details = [approval, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
+      .filter(Boolean)
+      .join("\n\n")
+    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n${details}`
   })
   .join("\n\n")
 
@@ -307,6 +313,9 @@ const publishPlan = async (
 
 const report = async (event: RuntimeEvent) => {
   switch (event.type) {
+    case "approval.requested":
+    case "approval.resolved":
+      return
     case "workflow.started":
       workflowId = event.workflowId
       mode = event.mode
@@ -314,7 +323,9 @@ const report = async (event: RuntimeEvent) => {
     case "dependency.added":
       return
     case "step.status":
-      if (mode === "execute") await publishStep(event.stepId, event.status, undefined, event.optional)
+      if (mode === "execute") {
+        await publishStep(event.stepId, event.status, undefined, event.optional)
+      }
       return
     case "step.output":
       appendOutput(event.stepId, event.stream, event.text)

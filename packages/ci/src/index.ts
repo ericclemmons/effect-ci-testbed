@@ -54,6 +54,7 @@ export interface PlanNode {
   readonly after: ReadonlyArray<string>
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
+  readonly approval?: ApprovalRequest
   readonly optional: boolean
   readonly options: StepOptions
   readonly status: "planned" | "queued" | "running" | "complete" | "warning" | "failed" | "skipped"
@@ -67,6 +68,23 @@ export interface WorkflowPlan {
 }
 
 export type RuntimeEvent =
+  | {
+      readonly type: "approval.requested"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly requestId: string
+      readonly approval: ApprovalRequest
+      readonly timestamp: string
+    }
+  | {
+      readonly type: "approval.resolved"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly requestId: string
+      readonly decision: ApprovalDecision
+      readonly actor?: string
+      readonly timestamp: string
+    }
   | {
       readonly type: "workflow.started"
       readonly workflowId: string
@@ -113,6 +131,7 @@ export type RuntimeEvent =
 interface RuntimeNode {
   readonly id: string
   readonly commands: Array<PlannedCommand>
+  approval?: ApprovalRequest
   status: PlanNode["status"]
 }
 
@@ -136,6 +155,10 @@ interface RuntimeShape {
     workspace: Workspace,
     command: string,
   ) => Effect.Effect<Workspace, CommandError>
+  readonly requestApproval: (
+    stepId: string,
+    request: ApprovalRequest,
+  ) => Effect.Effect<ApprovalResult, ApprovalError>
 }
 
 const eventFileDescriptor = Number(process.env.EFFECT_CI_EVENT_FD)
@@ -165,6 +188,54 @@ export class CommandError extends Error {
     super(`Command failed (${exitCode}): ${command}`)
   }
 }
+
+export interface ApprovalRequest {
+  readonly title: string
+  readonly summary: string
+  readonly approveLabel?: string
+  readonly rejectLabel?: string
+}
+
+export type ApprovalDecision = "approved" | "rejected"
+
+export interface ApprovalResult {
+  readonly decision: ApprovalDecision
+  readonly actor?: string
+}
+
+export interface ApprovalRuntimeRequest extends ApprovalRequest {
+  readonly requestId: string
+  readonly stepId: string
+  readonly workflowId: string
+}
+
+export interface ApprovalHandler {
+  readonly request: (
+    request: ApprovalRuntimeRequest,
+  ) => Effect.Effect<ApprovalResult, unknown>
+}
+
+export class ApprovalError extends Error {
+  readonly _tag = "ApprovalError"
+
+  constructor(
+    readonly stepId: string,
+    readonly decision: "rejected" | "unavailable",
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+export interface ApprovalService {
+  readonly request: (
+    request: ApprovalRequest,
+  ) => Effect.Effect<ApprovalResult, ApprovalError, Runtime | CurrentStep>
+}
+
+export class Approval extends ServiceMap.Service<Approval, ApprovalService>()(
+  "@effect-ci-testbed/Approval",
+) {}
 
 export class Workspace {
   private constructor(readonly cwd: string) {}
@@ -305,7 +376,7 @@ const localSource: SourceService = {
 
 export interface Workflow<A> {
   readonly id: string
-  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep | WorkflowEvent>
+  readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep | WorkflowEvent | Approval>
 }
 
 export type WorkflowEventName =
@@ -496,7 +567,11 @@ const runCommand = (
     return Effect.sync(() => child.kill("SIGTERM"))
   })
 
-const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
+const makeRuntime = (
+  workflowId: string,
+  mode: WorkflowPlan["mode"],
+  approvalHandler?: ApprovalHandler,
+) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
     const afterEdges = new Set<string>()
@@ -655,12 +730,71 @@ const makeRuntime = (workflowId: string, mode: WorkflowPlan["mode"]) =>
           Effect.as(workspace),
         )
       },
+      requestApproval: (stepId, request) => {
+        const node = nodes.get(stepId)
+        if (!node) return Effect.die(new Error(`Missing plan node for ${stepId}`))
+
+        node.approval = request
+
+        if (mode === "plan") {
+          return Effect.succeed({ decision: "approved" as const })
+        }
+
+        if (!approvalHandler) {
+          return Effect.fail(new ApprovalError(
+            stepId,
+            "unavailable",
+            `No approval handler is available for ${stepId}`,
+          ))
+        }
+
+        const requestId = `${workflowId}:${stepId}`
+        emitEvent({
+          type: "approval.requested",
+          workflowId,
+          stepId,
+          requestId,
+          approval: request,
+          timestamp: new Date().toISOString(),
+        })
+
+        return approvalHandler.request({
+          ...request,
+          requestId,
+          stepId,
+          workflowId,
+        }).pipe(
+          Effect.mapError((error) => error instanceof ApprovalError
+            ? error
+            : new ApprovalError(stepId, "unavailable", String(error))),
+          Effect.flatMap((result) => {
+            emitEvent({
+              type: "approval.resolved",
+              workflowId,
+              stepId,
+              requestId,
+              decision: result.decision,
+              ...(result.actor ? { actor: result.actor } : {}),
+              timestamp: new Date().toISOString(),
+            })
+
+            return result.decision === "approved"
+              ? Effect.succeed(result)
+              : Effect.fail(new ApprovalError(
+                stepId,
+                "rejected",
+                `${stepId} was rejected${result.actor ? ` by ${result.actor}` : ""}`,
+              ))
+          }),
+        )
+      },
     }
 
     return runtime
   })
 
 export interface RunOptions {
+  readonly approval?: ApprovalHandler
   readonly env?: string
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
@@ -712,6 +846,7 @@ const toPlan = (
       after: [...(after.get(node.id) ?? [])].sort(),
       needs: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
+      ...(node.approval ? { approval: node.approval } : {}),
       optional: runtime.optionalSteps.has(node.id),
       options: definitions.get(node.id)?.options ?? {},
       status: node.status,
@@ -741,6 +876,9 @@ export const formatPlan = (plan: WorkflowPlan): string => {
       : "○"
     lines.push("", `${status} ${node.id}${suffix}`)
     if (plan.mode === "plan") {
+      if (node.approval) {
+        lines.push(`  approval: ${node.approval.title}`)
+      }
       for (const entry of node.commands) {
         lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
       }
@@ -766,12 +904,21 @@ const interpret = <A>(
       timestamp: new Date().toISOString(),
     })
 
-    const runtime = yield* makeRuntime(workflowDefinition.id, mode)
+    const runtime = yield* makeRuntime(workflowDefinition.id, mode, options.approval)
+    const approval: ApprovalService = {
+      request: (request) => Effect.gen(function* () {
+        const currentRuntime = yield* Runtime
+        const stepId = yield* CurrentStep
+
+        return yield* currentRuntime.requestApproval(stepId, request)
+      }),
+    }
     const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(Source, options.source ?? localSource),
       Effect.provideService(WorkflowEvent, event),
+      Effect.provideService(Approval, approval),
       Effect.exit,
     )
 

@@ -14,7 +14,5 @@ export default CI.workflow("node-pnpm", function* () {
     CI.optional(actions.format()),
   ])
   yield* actions.test()
-  yield* actions.build()
-
-  return yield* actions.deploy()
+  return yield* actions.build()
 })
