@@ -97,11 +97,32 @@ jobs:
       workflow: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
     secrets: inherit
 
-  approval-on-github:
-    name: node-npm / approval-on-github
+  production-deploy:
+    name: node-npm / production deployment
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hitl')
-    uses: ./.github/workflows/effect-ci.yml
-    with:
-      workflow: examples/node-npm/.cloudflare/workflows/deploy.ts
-      event: workflow_dispatch
-    secrets: inherit
+    needs: effect-on-github
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.EFFECT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
+          permission-checks: write
+      - name: Deploy node-npm after production approval
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          EFFECT_CI_APPROVAL: approved
+          EFFECT_CI_EVENT: workflow_dispatch
+          EFFECT_CI_WORKFLOW: examples/node-npm/.cloudflare/workflows/deploy.ts
+          EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha }}
+          EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:production
+        run: pnpm exec tsx packages/github/run.run.ts

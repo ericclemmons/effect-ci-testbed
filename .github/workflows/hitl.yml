@@ -15,8 +15,30 @@ permissions:
   contents: read
 
 jobs:
-  effect-on-github:
-    uses: ./.github/workflows/effect-ci.yml
-    with:
-      workflow: examples/${{ inputs.example }}/.cloudflare/workflows/deploy.ts
-    secrets: inherit
+  production-deploy:
+    name: ${{ inputs.example }} / production deployment
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.EFFECT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
+          permission-checks: write
+      - name: Deploy ${{ inputs.example }} after production approval
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          EFFECT_CI_APPROVAL: approved
+          EFFECT_CI_EVENT: workflow_dispatch
+          EFFECT_CI_WORKFLOW: examples/${{ inputs.example }}/.cloudflare/workflows/deploy.ts
+          EFFECT_CI_SHA: ${{ github.sha }}
+          EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:production
+        run: pnpm exec tsx packages/github/run.run.ts

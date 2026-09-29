@@ -381,14 +381,17 @@ export const approveDeployment = CI.action<BuildArtifacts>(
 )
 ```
 
-The GitHub adapter represents the suspended action with a completed Check Run whose
-conclusion is `action_required` and whose output contains **Approve** and **Reject**
-buttons. GitHub reserves the literal `waiting`, `pending`, and `requested` Check Run
-statuses for GitHub Actions, so an App cannot use those statuses. Clicking a button
-emits `check_run.requested_action`; the webhook verifies the delivery signature and the
-actor's write permission, records success or failure on that same check, and the runner
-resumes or rejects the Effect. The check itself is the decision state for this first
-slice, so it needs no separate database.
+On GitHub Actions, production approval is owned by a protected GitHub Environment. The
+deployment job declares `environment: production`, so GitHub pauses it before assigning
+a runner or exposing environment secrets. Once a required reviewer approves the job,
+the adapter supplies `EFFECT_CI_APPROVAL=approved`; `CI.Approval` then records the
+already-resolved platform decision and the deployment action may continue. No app
+webhook is involved in this GitHub-native path.
+
+The approval action remains part of the portable workflow because a future remote
+runner cannot rely on GitHub Actions to suspend its execution. That runner will need a
+different `ApprovalHandler`, potentially backed by GitHub App check actions, Cloudflare,
+or Slack, without changing the workflow's action graph.
 
 The example keeps pull-request validation separate from deployment. The deploy workflow
 can be dispatched manually, rebuilds through its intrinsic dependencies, waits at
@@ -457,20 +460,12 @@ The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitH
 reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
 the generic runtime chooses the mode from that ordinary environment variable.
 
-### GitHub approval webhook
+### Approval adapters
 
-`packages/github/worker.ts` is the small Cloudflare Worker that handles App Check Run
-actions. Deploy it with `pnpm --filter @effect-ci-testbed/github deploy:webhook`, then
-configure the GitHub App webhook URL and subscribe it to **Check runs**. Its runtime
-secrets are:
-
-- `EFFECT_CI_APP_CLIENT_ID`
-- `EFFECT_CI_APP_PRIVATE_KEY`
-- `EFFECT_CI_WEBHOOK_SECRET` (the same value configured on the GitHub App)
-
-For local E2E only, `EFFECT_CI_APPROVAL=approved` or `rejected` supplies a deterministic
-adapter. Production GitHub execution instead opens a bidirectional control channel
-between the reporter and portable runtime and waits for the signed App webhook decision.
+`EFFECT_CI_APPROVAL=approved` or `rejected` supplies a deterministic adapter. GitHub's
+production deployment job sets `approved` only after its protected Environment gate has
+passed. Local E2E uses the same adapter to verify both outcomes without requiring a
+human. Remote execution will provide an asynchronous handler instead.
 
 `CI.run(workflow, { mode })` is the interpreter boundary in the prototype. Both modes
 run the same dependency-yielding Effect program with hydrated values and return the

@@ -1,6 +1,0 @@
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "effect-ci-testbed-github",
-  "main": "worker.ts",
-  "compatibility_date": "2026-09-28"
-}
