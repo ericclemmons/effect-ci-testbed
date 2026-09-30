@@ -5,11 +5,36 @@ This example answers one question:
 > How do I execute `checkout → install → build` in a Cloudflare Workflow and Sandbox instead of on a GitHub runner?
 
 The action and workflow files use the same portable Effect CI API as the local and
-GitHub examples. The Worker changes only the interpreter:
+GitHub examples. The Worker is intentionally userland-only:
+
+```ts
+import * as Cloudflare from "@effect-ci-testbed/cloudflare"
+
+import workflow from "../.cloudflare/workflows/build.ts"
+
+export { Sandbox } from "@effect-ci-testbed/cloudflare"
+
+export default {
+  fetch() {
+    return new Response("Effect CI Cloudflare runner")
+  },
+}
+
+export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow)
+```
+
+`@effect-ci-testbed/cloudflare` owns the host mechanics. It creates the native
+`WorkflowEntrypoint`, derives the repository and revision from the Workflow payload,
+binds each run to a Sandbox, and supplies `CI.Source` and `CI.CommandExecutor` to the
+portable runtime:
 
 - `CI.Source` clones the requested Git repository into a Cloudflare Sandbox.
 - `CI.Workspace.exec()` executes commands in that Sandbox.
 - Native Cloudflare Workflow steps checkpoint `checkout`, `install`, and `build`.
+
+The example still exports `Sandbox` because Wrangler must discover the Durable Object
+class named by `wrangler.jsonc`. Everything specific to this repository remains in its
+workflow and actions.
 
 Start a local Worker with Docker running:
 
