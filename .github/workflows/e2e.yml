@@ -146,6 +146,7 @@ jobs:
   cloudflare-runner:
     name: cloudflare-runner / Cloudflare local runtime
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -173,21 +174,32 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
 
+          ready=
           for attempt in $(seq 1 60); do
-            if curl --silent --output /dev/null http://localhost:8787; then
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "wrangler dev exited before becoming ready" >&2
+              exit 1
+            fi
+            if curl --silent --fail --output /dev/null http://localhost:8787; then
+              ready=1
               break
             fi
             sleep 2
           done
 
-          pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows trigger \
+          if [ -z "$ready" ]; then
+            echo "wrangler dev did not become ready before the timeout" >&2
+            exit 1
+          fi
+
+          timeout 30s pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows trigger \
             effect-ci-cloudflare-runner \
             "$params" \
             --id "$instance_id" \
             --local
 
           for attempt in $(seq 1 90); do
-            description=$(pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows instances describe \
+            description=$(timeout 15s pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows instances describe \
               effect-ci-cloudflare-runner \
               "$instance_id" \
               --local \

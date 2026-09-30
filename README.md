@@ -31,6 +31,89 @@ R2 / S3 archive               self-hosted executor
 4. Replace GitHub as the source with GitLab, Cloudflare SCM, or object storage.
 ```
 
+These are adoption paths, not a required migration sequence. The CI program is the
+product; GitHub Actions, an agent's machine, an ephemeral GitHub runner, and a native
+Cloudflare Workflow are hosts for the same program.
+
+```text
+                         repository CI program
+                              ./ci.run.ts
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             │                     │                     │
+      developer / agent     GitHub Actions job    repository webhook
+       executes locally       invokes program      invokes program
+             │                     │                     │
+       local processes       selected runner       Cloudflare Workflow
+                              ├─ GitHub-hosted             │
+                              └─ ephemeral custom       Sandbox
+```
+
+GitHub's [`runs-on`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job)
+array matches a runner that already has **all** requested labels. A label can look like
+a provisioning query—`cpu=16`, `image=linux-x64`, or eventually
+`effect-ci=cloudflare`—but GitHub does not interpret those constraints itself. A runner
+controller must observe the queued job, provision and register a matching ephemeral
+runner, and remove it afterward. That makes a label-driven Cloudflare runner a useful
+hybrid adapter, separate from Cloudflare receiving repository events and running CI
+without GitHub Actions.
+
+## Roadmap
+
+The roadmap is organized by user-visible capability, not by infrastructure layer.
+Every completed slice must have a focused example README answering “How do I do X?”
+
+### Portable CI program
+
+- [x] Author typed actions with intrinsic dependencies and compose them into workflows.
+- [x] Plan without executing and render the discovered DAG in a first-class check.
+- [x] Run the same program directly on an existing local or GitHub workspace.
+- [ ] Make the repository entry point directly executable as `./ci.run.ts`.
+- [ ] Add stable agent-facing commands for `plan`, `run`, `list`, and targeted actions.
+- [ ] Document the one command agents should run instead of discovering package-specific
+  lint, format, test, and build scripts themselves.
+- [ ] Add a future `cf ci` façade over the same runtime rather than a second engine.
+
+The executable local program is the next milestone. It is the shortest path to
+agent-first development: an agent can change code, run the repository's canonical CI,
+read structured failures, and repeat without knowing whether the project uses npm,
+pnpm, uv, Turbo, or several of them.
+
+### GitHub-native adoption
+
+- [x] Run the portable program inside an ordinary GitHub-hosted job.
+- [x] Publish one GitHub check per action with logs and dependency-aware ordering.
+- [x] Use protected GitHub Environments for production approval.
+- [ ] Package invocation as a small reusable action/workflow for existing repositories.
+- [ ] Support a self-hosted runner label such as `effect-ci` with an already-registered
+  runner.
+- [ ] Prototype a [RunsOn-style](https://runs-on.com/) ephemeral runner controller where labels are resource
+  constraints and a Cloudflare-backed runner is registered per GitHub job.
+
+The last item preserves every existing GitHub Action step; only `runs-on` changes. It
+is the gentlest migration path, but it also means running the GitHub Actions runner
+protocol and lifecycle. It should not be conflated with interpreting `ci.run.ts`
+directly in a Cloudflare Workflow.
+
+### Cloudflare-native execution
+
+- [x] Bundle the portable program as a Cloudflare `WorkflowEntrypoint`.
+- [x] Execute `checkout → install → build` in a Sandbox with native durable steps.
+- [x] Exercise the Workflow and Sandbox together under `wrangler dev` in E2E.
+- [ ] Trigger runs from authenticated repository events without GitHub Actions.
+- [ ] Publish the same check and log model back to the source provider.
+- [ ] Persist and restore workspace state when a Sandbox is replaced.
+- [ ] Prove retry, suspension, cancellation, and replay around external side effects.
+- [ ] Add distributed fan-out and explicit artifact transfer without changing local DX.
+
+### Agent, healing, and deployment capabilities
+
+- [ ] Return structured diagnostics that an agent can consume without scraping logs.
+- [ ] Compose action-specific healing, verification, commit, suggestion, and approval.
+- [ ] Distinguish safe automatic fixes from proposed changes requiring HITL approval.
+- [ ] Add preview, staging, and production deployment examples with typed artifacts.
+- [ ] Add notifications as composable observers rather than workflow control flow.
+
 Each example owns its workflows under its own `.github/workflows` directory: a
 conventional `github.yml` and a small `effect-on-github.yml` caller. The npm and pnpm
 fixtures intentionally use the normal setup for their own package manager instead of
@@ -78,7 +161,7 @@ keeps the common install → check → build → deploy path fast.
 - On GitHub or GitLab, the platform-provided fresh runner becomes the workspace.
 - Locally, execution may use the current checkout or an isolated temp directory,
   worktree, snapshot, or copy-on-write clone.
-- On Cloudflare, the eventual executor should preserve this workspace contract rather
+- On Cloudflare, the executor should preserve this workspace contract rather
   than emulate hosted-runner containers.
 - Separate machines, persisted snapshots, artifact transfer, and restoration are
   explicit opt-in capabilities for workflows that require isolation or fan-out.
@@ -510,7 +593,9 @@ action dependencies remain reusable and separate from workflow scheduling policy
 - `CI.step(id, body, options?)` remains the lower-level fixed-step primitive.
 - Ordinary Effect composition controls execution. The Node examples use `CI.parallel` for required lint plus optional format, then resume sequential fail-fast execution for test and build. `hitl-deploy` isolates deployment and approval semantics.
 - `CI.optional(effect)` marks one invocation non-blocking. Its own failure is reported as a neutral warning; prerequisite failures still propagate.
-- Repeatedly yielding the same step executes it once in the current in-process runtime. The future Cloudflare adapter must map the same stable action ID to one durable Workflow task so the persisted result is reused across replay and restart.
+- Repeatedly yielding the same step executes it once in the current Effect runtime. The
+  Cloudflare adapter maps the same stable action ID to a native Workflow step so its
+  remote operation is checkpointed across replay.
 - A `Workspace` is the checkout shared by workspace actions. It does not carry hidden dependency metadata.
 - `CI.Source` selects how that workspace is acquired. The default local source reuses
   the supplied directory; hosted and durable runners can provide different source
@@ -532,30 +617,30 @@ action dependencies remain reusable and separate from workflow scheduling policy
 
 ## Runtime boundary
 
-The prototype currently has one in-process runtime. The intended production split is:
+The prototype now has one portable Effect runtime and two command interpreters:
 
 ```text
 CI program
   └─ CI.run
        ├─ mode plan: hydrate values and record commands
        ├─ mode execute: run commands on the local/GitHub host
-       └─ future Cloudflare Layer: map CI.step to durable Workflow steps
+       └─ Cloudflare adapter: map actions to Workflow steps and commands to Sandbox exec
 ```
 
-This slice deliberately stops at a first-class plan rather than adding planner unit
-tests or a second engine. Verification remains end to end: type-check the packages,
-dry-run the real example, then execute that same example against its fixture app.
+The runner is selected through `CI.Source` and `CI.CommandExecutor`; workflow and action
+authors do not branch on their host. Verification remains end to end: type-check the
+packages, dry-run the real example, execute it against its local fixture, bundle the
+Worker, and run the same graph through a local Cloudflare Workflow and Sandbox.
 
 ### Local Cloudflare verification
 
 Direct execution remains the fast local development path because it exercises the
-portable workflow without requiring a Cloudflare emulator. Once the Cloudflare adapter
-wraps that program in a real `WorkflowEntrypoint`, a second E2E runner should start
+portable workflow without requiring a Cloudflare emulator. The `cloudflare-runner`
+E2E also starts
 [`wrangler dev`](https://developers.cloudflare.com/workflows/build/local-development/)
-and use `wrangler workflows trigger <name> --local`. That runner will
-verify the Cloudflare-specific interpreter: durable step caching, suspension and resume,
-bindings, retries, event delivery, and workspace restoration. It complements direct
-execution rather than replacing it.
+and uses `wrangler workflows trigger <name> --local` to verify the Cloudflare-specific
+source and command interpreter. It complements direct execution rather than replacing
+it. Suspension, retry, and workspace restoration remain later acceptance slices.
 
 Cloudflare's local Workflow environment is emulated, so remote execution remains the
 final parity check for platform behavior. Local Explorer and Cloudflare's
@@ -565,10 +650,10 @@ sleep, retry, and recovery steps are introduced.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
 
-The prototype's current `Workspace` still contains an in-process `cwd`; that is not a
-durable Cloudflare representation. A durable runner must serialize a workspace reference
-containing at least the source revision and a restorable snapshot, lease, or content
-address. After every action that mutates files, the runner returns the next reference.
+`Workspace` now distinguishes a local directory from a remote workspace ID and path,
+but the remote reference is not yet sufficient for durable restoration. A production
+runner must also serialize the source revision and a restorable snapshot, lease, or
+content address. After every action that mutates files, the runner returns the next reference.
 If a container or sandbox disappears during suspension, the executor restores that
 reference before continuing. Local and GitHub implementations may optimize the same
 contract by retaining one directory, but workflow correctness cannot depend on that

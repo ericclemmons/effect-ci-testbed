@@ -20,6 +20,12 @@ interface Env {
 
 export { Sandbox }
 
+export default {
+  fetch() {
+    return new Response("Effect CI Cloudflare runner")
+  },
+}
+
 export class EffectCIWorkflow extends WorkflowEntrypoint<Env, WorkflowParameters> {
   override async run(
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
