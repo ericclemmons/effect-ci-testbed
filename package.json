@@ -10,13 +10,14 @@
     "ci:hitl-deploy:dry-run": "DRY_RUN=1 pnpm ci:hitl-deploy",
     "ci:cloudflare-runner": "EFFECT_CI_EVENT=workflow_dispatch EFFECT_CI_WORKFLOW=examples/cloudflare-runner/.cloudflare/workflows/build.ts tsx packages/ci/run.run.ts",
     "ci:cloudflare-runner:dry-run": "DRY_RUN=1 pnpm ci:cloudflare-runner",
-    "ci:node-npm": "EFFECT_CI_WORKFLOW=examples/node-npm/.cloudflare/workflows/pull-request.ts tsx packages/ci/run.run.ts",
-    "ci:node-npm:dry-run": "DRY_RUN=1 pnpm ci:node-npm",
-    "ci:node-pnpm": "EFFECT_CI_WORKFLOW=examples/node-pnpm/.cloudflare/workflows/pull-request.ts tsx packages/ci/run.run.ts",
-    "ci:node-pnpm:dry-run": "DRY_RUN=1 pnpm ci:node-pnpm"
+    "ci:node-npm": "examples/node-npm/.cloudflare/workflows/ci.run.ts --format=text",
+    "ci:node-npm:dry-run": "examples/node-npm/.cloudflare/workflows/ci.run.ts plan --format=text",
+    "ci:node-pnpm": "examples/node-pnpm/.cloudflare/workflows/ci.run.ts --format=text",
+    "ci:node-pnpm:dry-run": "examples/node-pnpm/.cloudflare/workflows/ci.run.ts plan --format=text"
   },
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cli": "workspace:*",
     "@types/node": "^24.5.2",
     "effect": "4.0.0-beta.19",
     "tsx": "^4.20.5",

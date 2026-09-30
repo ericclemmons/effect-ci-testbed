@@ -78,12 +78,45 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - name: Run examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts (${{ matrix.mode }})
+      - name: Run examples/${{ matrix.example }}/.cloudflare/workflows/ci.run.ts (${{ matrix.mode }})
         env:
           EFFECT_CI_EVENT: pull_request
-          EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/workflows/pull-request.ts
-          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
-        run: pnpm exec tsx packages/ci/run.run.ts
+        run: examples/${{ matrix.example }}/.cloudflare/workflows/ci.run.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
+
+  agent-cli:
+    name: agent-first executable CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Discover exported actions
+        run: examples/node-npm/.cloudflare/workflows/ci.run.ts list --format=text
+      - name: Plan one action as structured output
+        run: |
+          output=$(examples/node-npm/.cloudflare/workflows/ci.run.ts plan lint --format=json)
+          echo "$output"
+          OUTPUT="$output" node -e '
+            const value = JSON.parse(process.env.OUTPUT)
+            if (!value.ok || value.target !== "lint") process.exit(1)
+            if (value.plan.nodes.at(-1)?.id !== "lint") process.exit(1)
+          '
+      - name: Return a stable remote-provider exit
+        run: |
+          output="$RUNNER_TEMP/effect-ci-remote.json"
+          if examples/node-npm/.cloudflare/workflows/ci.run.ts --remote --format=json >"$output"; then
+            echo "Expected unconfigured remote execution to fail" >&2
+            exit 1
+          else
+            status=$?
+          fi
+          cat "$output"
+          test "$status" -eq 3
+          grep --fixed-strings '"code": "CI_REMOTE_UNAVAILABLE"' "$output"
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
