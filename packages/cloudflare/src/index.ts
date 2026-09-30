@@ -17,8 +17,6 @@ export interface Runner {
   readonly source: CI.SourceService
 }
 
-const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`
-
 export const makeRunner = (options: RunnerOptions): Runner => {
   const sandbox = getSandbox(options.binding, options.sandboxId)
   const targetDirectory = options.targetDirectory ?? "/workspace/repository"
@@ -29,16 +27,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
         try: async () => {
           await options.step.do("checkout", async () => {
             await sandbox.gitCheckout(options.repository, {
+              branch: options.revision,
               targetDir: targetDirectory,
             })
-            const checkout = await sandbox.exec(
-              `git checkout --detach ${shellQuote(options.revision)}`,
-              { cwd: targetDirectory },
-            )
-
-            if (!checkout.success) {
-              throw new Error(checkout.stderr || `Could not check out ${options.revision}`)
-            }
           })
 
           const cwd = root === "." ? targetDirectory : `${targetDirectory}/${root}`
