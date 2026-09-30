@@ -81,7 +81,7 @@ jobs:
       - name: Run examples/${{ matrix.example }}/.cloudflare/workflows/ci.run.ts (${{ matrix.mode }})
         env:
           EFFECT_CI_EVENT: pull_request
-        run: examples/${{ matrix.example }}/.cloudflare/workflows/ci.run.ts ${{ matrix.mode }} --format=text
+        run: examples/${{ matrix.example }}/.cloudflare/workflows/ci.run.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
   agent-cli:
     name: agent-first executable CI
