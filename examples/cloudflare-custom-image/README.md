@@ -11,7 +11,7 @@ frontend and backend used by the action:
 ```dockerfile
 FROM docker.io/cloudflare/sandbox:0.12.10-python
 
-RUN pip install --no-cache-dir build==1.3.0 hatchling==1.27.0
+RUN python3 -m pip install --no-cache-dir build==1.3.0 hatchling==1.27.0
 ```
 
 The action is ordinary portable Effect CI code:
@@ -20,7 +20,7 @@ The action is ordinary portable Effect CI code:
 export const build = CI.action<PythonArtifacts>("build python package", () => function* () {
   const workspace = yield* checkout()
 
-  yield* workspace.exec("python -m build --no-isolation")
+  yield* workspace.exec("python3 -m build --no-isolation")
 
   return {
     paths: ["dist/*.whl", "dist/*.tar.gz"],

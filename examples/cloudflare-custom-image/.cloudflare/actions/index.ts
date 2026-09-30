@@ -14,7 +14,7 @@ export const checkout = CI.action<CI.Workspace>("checkout", function* () {
 export const build = CI.action<PythonArtifacts>("build python package", () => function* () {
   const workspace = yield* checkout()
 
-  yield* workspace.exec("python -m build --no-isolation")
+  yield* workspace.exec("python3 -m build --no-isolation")
 
   return {
     paths: ["dist/*.whl", "dist/*.tar.gz"],
