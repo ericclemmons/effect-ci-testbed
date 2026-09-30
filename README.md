@@ -75,10 +75,9 @@ Every completed slice must have a focused example README answering “How do I d
   lint, format, test, and build scripts themselves.
 - [ ] Add a future `cf ci` façade over the same runtime rather than a second engine.
 
-The executable local program is the next milestone. It is the shortest path to
-agent-first development: an agent can change code, run the repository's canonical CI,
-read structured failures, and repeat without knowing whether the project uses npm,
-pnpm, uv, Turbo, or several of them.
+The executable local program is the canonical agent-first interface: an agent can
+change code, run the repository's CI, read structured failures, and repeat without
+knowing whether the project uses npm, pnpm, uv, Turbo, or several of them.
 
 ### GitHub-native adoption
 
@@ -101,6 +100,10 @@ directly in a Cloudflare Workflow.
 - [x] Bundle the portable program as a Cloudflare `WorkflowEntrypoint`.
 - [x] Execute `checkout → install → build` in a Sandbox with native durable steps.
 - [x] Exercise the Workflow and Sandbox together under `wrangler dev` in E2E.
+- [x] Move Workflow/Sandbox host mechanics into `@effect-ci-testbed/cloudflare` so
+  examples contain only userland Worker, workflow, and action code.
+- [ ] Add a focused custom-Dockerfile example that extends the Sandbox runtime with a
+  tool unavailable in the stock image.
 - [ ] Trigger runs from authenticated repository events without GitHub Actions.
 - [ ] Publish the same check and log model back to the source provider.
 - [ ] Persist and restore workspace state when a Sandbox is replaced.

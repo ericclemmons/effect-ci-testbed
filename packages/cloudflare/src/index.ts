@@ -1,7 +1,13 @@
-import { getSandbox, type Sandbox } from "@cloudflare/sandbox"
+import { getSandbox, Sandbox } from "@cloudflare/sandbox"
 import * as CI from "@effect-ci-testbed/ci"
-import type { WorkflowStep } from "cloudflare:workers"
+import {
+  WorkflowEntrypoint,
+  type WorkflowEvent,
+  type WorkflowStep,
+} from "cloudflare:workers"
 import * as Effect from "effect/Effect"
+
+export { Sandbox }
 
 export interface RunnerOptions {
   readonly binding: DurableObjectNamespace<Sandbox>
@@ -15,6 +21,15 @@ export interface RunnerOptions {
 export interface Runner {
   readonly executor: CI.CommandExecutor
   readonly source: CI.SourceService
+}
+
+export interface WorkflowParameters {
+  readonly repository: string
+  readonly revision: string
+}
+
+export interface WorkflowEnvironment {
+  readonly Sandbox: DurableObjectNamespace<Sandbox>
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -72,5 +87,34 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           : new CI.CommandError(stepId, command, workspace.cwd, 1),
       }),
     },
+  }
+}
+
+export const workflowEntrypoint = <A>(
+  workflow: CI.Workflow<A>,
+) => class EffectCIWorkflow extends WorkflowEntrypoint<
+  WorkflowEnvironment,
+  WorkflowParameters
+> {
+  override async run(
+    event: Readonly<WorkflowEvent<WorkflowParameters>>,
+    step: WorkflowStep,
+  ) {
+    const runner = makeRunner({
+      binding: this.env.Sandbox,
+      repository: event.payload.repository,
+      revision: event.payload.revision,
+      sandboxId: event.instanceId,
+      step,
+    })
+
+    const result = await CI.runPromise(workflow, {
+      env: "cloudflare",
+      event: { type: "workflow_dispatch", payload: event.payload },
+      executor: runner.executor,
+      source: runner.source,
+    })
+
+    return result.plan
   }
 }
