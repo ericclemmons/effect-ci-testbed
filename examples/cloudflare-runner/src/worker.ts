@@ -39,11 +39,13 @@ export class EffectCIWorkflow extends WorkflowEntrypoint<Env, WorkflowParameters
       step,
     })
 
-    return CI.runPromise(workflow, {
+    const result = await CI.runPromise(workflow, {
       env: "cloudflare",
       event: { type: "workflow_dispatch", payload: event.payload },
       executor: runner.executor,
       source: runner.source,
     })
+
+    return result.plan
   }
 }
