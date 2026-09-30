@@ -1,0 +1,21 @@
+{
+  "name": "effect-ci-cloudflare-custom-image-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "trigger": "wrangler workflows trigger effect-ci-cloudflare-custom-image"
+  },
+  "dependencies": {
+    "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cloudflare": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260929.1",
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "wrangler": "4.144.0"
+  }
+}
