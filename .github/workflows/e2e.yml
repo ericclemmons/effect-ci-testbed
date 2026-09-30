@@ -177,9 +177,19 @@ jobs:
           fi
 
   cloudflare-runner:
-    name: cloudflare-runner / Cloudflare local runtime
+    name: ${{ matrix.example }} / Cloudflare local runtime
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: cloudflare-runner
+            package: effect-ci-cloudflare-runner-fixture
+            workflow: effect-ci-cloudflare-runner
+          - example: cloudflare-custom-image
+            package: effect-ci-cloudflare-custom-image-fixture
+            workflow: effect-ci-cloudflare-custom-image
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -189,21 +199,24 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - name: Verify portable plan and Worker bundle
+        env:
+          EFFECT_CI_EVENT: workflow_dispatch
+          EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/workflows/build.ts
         run: |
-          pnpm ci:cloudflare-runner:dry-run
-          pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler deploy \
+          DRY_RUN=1 pnpm exec tsx packages/ci/run.run.ts
+          pnpm --filter ${{ matrix.package }} exec wrangler deploy \
             --dry-run \
             --containers-rollout=none
-      - name: Execute checkout, install, and build in Cloudflare locally
+      - name: Execute the workflow in Cloudflare locally
         env:
           REPOSITORY: ${{ github.event.pull_request.head.repo.clone_url || 'https://github.com/ericclemmons/effect-ci-testbed.git' }}
           REVISION: ${{ github.head_ref || github.ref_name }}
         run: |
-          log="$RUNNER_TEMP/cloudflare-runner.log"
+          log="$RUNNER_TEMP/${{ matrix.example }}.log"
           instance_id="effect-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           params=$(node -e 'process.stdout.write(JSON.stringify({ repository: process.env.REPOSITORY, revision: process.env.REVISION }))')
 
-          pnpm --filter effect-ci-cloudflare-runner-fixture dev >"$log" 2>&1 &
+          pnpm --filter ${{ matrix.package }} dev >"$log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
 
@@ -225,15 +238,15 @@ jobs:
             exit 1
           fi
 
-          timeout 30s pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows trigger \
-            effect-ci-cloudflare-runner \
+          timeout 30s pnpm --filter ${{ matrix.package }} exec wrangler workflows trigger \
+            ${{ matrix.workflow }} \
             "$params" \
             --id "$instance_id" \
             --local
 
           for attempt in $(seq 1 90); do
-            description=$(timeout 15s pnpm --filter effect-ci-cloudflare-runner-fixture exec wrangler workflows instances describe \
-              effect-ci-cloudflare-runner \
+            description=$(timeout 15s pnpm --filter ${{ matrix.package }} exec wrangler workflows instances describe \
+              ${{ matrix.workflow }} \
               "$instance_id" \
               --local \
               --json 2>/dev/null || true)
