@@ -237,11 +237,21 @@ export class Approval extends ServiceMap.Service<Approval, ApprovalService>()(
   "@effect-ci-testbed/Approval",
 ) {}
 
+export type WorkspaceKind = "local" | "remote"
+
 export class Workspace {
-  private constructor(readonly cwd: string) {}
+  private constructor(
+    readonly cwd: string,
+    readonly kind: WorkspaceKind,
+    readonly id?: string,
+  ) {}
 
   static local(cwd: string): Workspace {
-    return new Workspace(cwd)
+    return new Workspace(cwd, "local")
+  }
+
+  static remote(id: string, cwd: string): Workspace {
+    return new Workspace(cwd, "remote", id)
   }
 
   exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
@@ -372,6 +382,26 @@ export class Source extends ServiceMap.Service<Source, SourceService>()(
 
 const localSource: SourceService = {
   checkout: (root) => Effect.succeed(Workspace.local(root)),
+}
+
+export interface CommandExecutionRequest {
+  readonly command: string
+  readonly onOutput: (stream: "stdout" | "stderr", text: string) => void
+  readonly stepId: string
+  readonly workflowId: string
+  readonly workspace: Workspace
+}
+
+export interface CommandExecutionResult {
+  readonly exitCode: number
+  readonly stderr: string
+  readonly stdout: string
+}
+
+export interface CommandExecutor {
+  readonly execute: (
+    request: CommandExecutionRequest,
+  ) => Effect.Effect<CommandExecutionResult, CommandError>
 }
 
 export interface Workflow<A> {
@@ -528,15 +558,12 @@ export const workflow = <A>(
   body: WorkflowBody<A>,
 ): Workflow<A> => ({ id, effect: bodyToEffect(body) })
 
-const runCommand = (
-  workflowId: string,
-  stepId: string,
-  command: string,
-  cwd: string,
-): Effect.Effect<void, CommandError> =>
-  Effect.callback<void, CommandError>((resume) => {
+const localCommandExecutor: CommandExecutor = {
+  execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
+    const stdout: Array<string> = []
+    const stderr: Array<string> = []
     const child = spawn(command, {
-      cwd,
+      cwd: workspace.cwd,
       env: process.env,
       shell: true,
       stdio: ["inherit", "pipe", "pipe"],
@@ -544,33 +571,35 @@ const runCommand = (
 
     const forward = (stream: "stdout" | "stderr", chunk: Buffer) => {
       const text = chunk.toString()
-      if (stream === "stdout") process.stdout.write(text)
-      else process.stderr.write(text)
-      emitEvent({
-        type: "step.output",
-        workflowId,
-        stepId,
-        stream,
-        text,
-        timestamp: new Date().toISOString(),
-      })
+      if (stream === "stdout") {
+        stdout.push(text)
+        process.stdout.write(text)
+      } else {
+        stderr.push(text)
+        process.stderr.write(text)
+      }
+      onOutput(stream, text)
     }
 
     child.stdout?.on("data", (chunk: Buffer) => forward("stdout", chunk))
     child.stderr?.on("data", (chunk: Buffer) => forward("stderr", chunk))
 
-    child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, cwd, 1))))
+    child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, workspace.cwd, 1))))
     child.once("close", (code) => {
-      resume(code === 0 ? Effect.void : Effect.fail(new CommandError(stepId, command, cwd, code ?? 1)))
+      resume(code === 0
+        ? Effect.succeed({ exitCode: 0, stderr: stderr.join(""), stdout: stdout.join("") })
+        : Effect.fail(new CommandError(stepId, command, workspace.cwd, code ?? 1)))
     })
 
     return Effect.sync(() => child.kill("SIGTERM"))
-  })
+  }),
+}
 
 const makeRuntime = (
   workflowId: string,
   mode: WorkflowPlan["mode"],
   approvalHandler?: ApprovalHandler,
+  commandExecutor: CommandExecutor = localCommandExecutor,
 ) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
@@ -726,7 +755,20 @@ const makeRuntime = (
           })
         }
 
-        return runCommand(workflowId, stepId, command, workspace.cwd).pipe(
+        return commandExecutor.execute({
+          command,
+          onOutput: (stream, text) => emitEvent({
+            type: "step.output",
+            workflowId,
+            stepId,
+            stream,
+            text,
+            timestamp: new Date().toISOString(),
+          }),
+          stepId,
+          workflowId,
+          workspace,
+        }).pipe(
           Effect.as(workspace),
         )
       },
@@ -795,6 +837,7 @@ const makeRuntime = (
 
 export interface RunOptions {
   readonly approval?: ApprovalHandler
+  readonly executor?: CommandExecutor
   readonly env?: string
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
@@ -904,7 +947,12 @@ const interpret = <A>(
       timestamp: new Date().toISOString(),
     })
 
-    const runtime = yield* makeRuntime(workflowDefinition.id, mode, options.approval)
+    const runtime = yield* makeRuntime(
+      workflowDefinition.id,
+      mode,
+      options.approval,
+      options.executor,
+    )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {
         const currentRuntime = yield* Runtime
