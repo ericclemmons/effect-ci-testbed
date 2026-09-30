@@ -37,7 +37,7 @@ Cloudflare Workflow are hosts for the same program.
 
 ```text
                          repository CI program
-                              ./ci.run.ts
+                  .cloudflare/workflows/ci.run.ts
                                    │
              ┌─────────────────────┼─────────────────────┐
              │                     │                     │
@@ -68,9 +68,10 @@ Every completed slice must have a focused example README answering “How do I d
 - [x] Author typed actions with intrinsic dependencies and compose them into workflows.
 - [x] Plan without executing and render the discovered DAG in a first-class check.
 - [x] Run the same program directly on an existing local or GitHub workspace.
-- [ ] Make the repository entry point directly executable as `./ci.run.ts`.
-- [ ] Add stable agent-facing commands for `plan`, `run`, `list`, and targeted actions.
-- [ ] Document the one command agents should run instead of discovering package-specific
+- [x] Make the repository entry point directly executable as
+  `.cloudflare/workflows/ci.run.ts`.
+- [x] Add stable agent-facing commands for `plan`, `run`, `list`, and targeted actions.
+- [x] Document the one command agents should run instead of discovering package-specific
   lint, format, test, and build scripts themselves.
 - [ ] Add a future `cf ci` façade over the same runtime rather than a second engine.
 
@@ -108,7 +109,9 @@ directly in a Cloudflare Workflow.
 
 ### Agent, healing, and deployment capabilities
 
-- [ ] Return structured diagnostics that an agent can consume without scraping logs.
+- [x] Return structured plans and stable error identities that an agent can consume
+  without scraping logs.
+- [ ] Add typed tool diagnostics to structured action failures.
 - [ ] Compose action-specific healing, verification, commit, suggestion, and approval.
 - [ ] Distinguish safe automatic fixes from proposed changes requiring HITL approval.
 - [ ] Add preview, staging, and production deployment examples with typed artifacts.
@@ -177,7 +180,6 @@ keeps the common install → check → build → deploy path fast.
 | [`hitl-deploy`](./examples/hitl-deploy) | protected production deployment with human approval | ✅ | ✅ | ⬜ |
 | [`cloudflare-runner`](./examples/cloudflare-runner) | checkout, install, and build in a Cloudflare Sandbox | — | ✅ | ✅ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
-| `bun` | Bun install, test, and build | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
 | `workers-preview` | PR preview target and cleanup | ⬜ | ⬜ | ⬜ |
 | `turbo` | existing Turbo graph and cache | ⬜ | ⬜ | ⬜ |
@@ -190,6 +192,37 @@ keeps the common install → check → build → deploy path fast.
 Heavy multi-deployment orchestration is deliberately a separate future feature. The first deployment examples should run the commands developers naturally run and capture structured tool output such as Wrangler's output file.
 
 ## First vertical slice
+
+The executable entrypoint is deliberately inside `.cloudflare/workflows` rather than
+adding another root-level config file. It default-exports the repository workflow and
+re-exports action definitions as named CLI targets:
+
+```ts
+#!/usr/bin/env -S node --import tsx
+
+import * as CLI from "@effect-ci-testbed/cli"
+import * as actions from "../actions/index.ts"
+import workflow from "./pull-request.ts"
+
+export * from "../actions/index.ts"
+export default workflow
+
+if (CLI.isMain(import.meta.url)) {
+  await CLI.runMain({ actions, workflow })
+}
+```
+
+`@effect-ci-testbed/cli` owns the shell contract while `@effect-ci-testbed/ci` remains
+provider-neutral. Effect 4 includes an `effect/unstable/cli` module; this first slice
+keeps the public command surface in a separate package so adopting that parser as it
+stabilizes does not alter workflow files. Agent detection follows Wrangler's precedent:
+explicit `--format=text|json` wins, only a directly detected agent defaults to JSON,
+and detection errors fall back to text.
+
+Process exit codes are intentionally broad and portable: `0` success, `1` workflow or
+action failure, `2` usage or configuration, `3` unavailable provider, and `4` rejected
+or unavailable approval. Stable granular identities such as `CI_COMMAND_FAILED` and
+`CI_REMOTE_UNAVAILABLE` live in JSON; values above 255 are not portable through shells.
 
 [`examples/node-npm/.cloudflare/workflows/pull-request.ts`](./examples/node-npm/.cloudflare/workflows/pull-request.ts)
 coordinates actions from
@@ -523,7 +556,11 @@ it produced; the event-driven run owns verification of the published commit.
 pnpm install
 
 # Discover the graph and commands without executing them.
-DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
+NODE_ENV=staging ./examples/node-npm/.cloudflare/workflows/ci.run.ts plan
+
+# List and run one exported action with machine-readable output.
+./examples/node-npm/.cloudflare/workflows/ci.run.ts list
+./examples/node-npm/.cloudflare/workflows/ci.run.ts run lint --format=json
 
 # Execute the same workflow locally.
 pnpm ci:node-npm
@@ -554,8 +591,8 @@ repository. A future Cloudflare caller should select different execution and rep
 layers while leaving the TypeScript workflow unchanged.
 
 The reusable workflow runs `plan` and `execute` as separate matrix jobs, so GitHub
-reports both modes. It sets `DRY_RUN=1` in the plan job's environment;
-the generic runtime chooses the mode from that ordinary environment variable.
+reports both modes. Its compatibility runner still selects planning through `DRY_RUN`;
+the executable entrypoint uses the explicit `plan` command.
 
 ### Approval adapters
 
@@ -606,7 +643,10 @@ action dependencies remain reusable and separate from workflow scheduling policy
   resource for a workspace. Other ecosystems will use independent resources, and future
   zero/one/many APIs must make their cardinality explicit.
 - `CI.run` has one result contract in both modes. Planning records commands as no-ops; execution runs them locally. Both return the workflow value and structured plan.
-- Runtime configuration uses ordinary process environment: `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise; any non-empty `DRY_RUN` selects planning. The prototype does not introduce a CI-specific argument parser or configuration CLI.
+- Runtime configuration uses ordinary process environment for injected values:
+  `NODE_ENV` defaults to `test` when `CI` is set and `development` otherwise.
+  `.cloudflare/workflows/ci.run.ts` owns the local CLI contract; the older generic
+  GitHub adapter continues accepting `DRY_RUN` as a compatibility input.
 - Dependency edges follow yielded prerequisite actions. Build, lint, and test each yield the cached install action; deploy yields the cached build action and consumes its typed artifacts.
 - JavaScript chooses branches, targets, modes, and preview names. There is no condition DSL.
 - Ordinary Effect error composition attaches retry, deterministic repair, agent healing,

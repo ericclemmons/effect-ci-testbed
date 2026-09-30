@@ -558,7 +558,9 @@ export const workflow = <A>(
   body: WorkflowBody<A>,
 ): Workflow<A> => ({ id, effect: bodyToEffect(body) })
 
-const localCommandExecutor: CommandExecutor = {
+const makeLocalCommandExecutor = (
+  output: "inherit" | "silent",
+): CommandExecutor => ({
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
     const stdout: Array<string> = []
     const stderr: Array<string> = []
@@ -573,10 +575,10 @@ const localCommandExecutor: CommandExecutor = {
       const text = chunk.toString()
       if (stream === "stdout") {
         stdout.push(text)
-        process.stdout.write(text)
+        if (output === "inherit") process.stdout.write(text)
       } else {
         stderr.push(text)
-        process.stderr.write(text)
+        if (output === "inherit") process.stderr.write(text)
       }
       onOutput(stream, text)
     }
@@ -593,13 +595,13 @@ const localCommandExecutor: CommandExecutor = {
 
     return Effect.sync(() => child.kill("SIGTERM"))
   }),
-}
+})
 
 const makeRuntime = (
   workflowId: string,
   mode: WorkflowPlan["mode"],
   approvalHandler?: ApprovalHandler,
-  commandExecutor: CommandExecutor = localCommandExecutor,
+  commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
 ) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
@@ -841,6 +843,7 @@ export interface RunOptions {
   readonly env?: string
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
+  readonly output?: "inherit" | "silent"
   readonly source?: SourceService
 }
 
@@ -951,7 +954,7 @@ const interpret = <A>(
       workflowDefinition.id,
       mode,
       options.approval,
-      options.executor,
+      options.executor ?? makeLocalCommandExecutor(options.output ?? "inherit"),
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {
@@ -1004,7 +1007,9 @@ const interpret = <A>(
 
 export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
   interpret(workflowDefinition, options.mode ?? "execute", options).pipe(
-    Effect.tap(({ plan }) => Effect.sync(() => console.log(`\n${formatPlan(plan)}`))),
+    Effect.tap(({ plan }) => options.output === "silent"
+      ? Effect.void
+      : Effect.sync(() => console.log(`\n${formatPlan(plan)}`))),
   )
 
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>

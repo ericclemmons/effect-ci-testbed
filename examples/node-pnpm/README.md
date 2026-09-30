@@ -29,8 +29,12 @@ Compare:
 - [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts): how each action
   runs and which earlier action is a true blocker.
 
+The executable `.cloudflare/workflows/ci.run.ts` exposes the same default workflow,
+named action targets, text/JSON formats, and local/remote selection as the npm example;
+the inferred package-manager resource is the only runtime difference.
+
 ```bash
-DRY_RUN=1 NODE_ENV=staging pnpm ci:node-pnpm
+NODE_ENV=staging pnpm ci:node-pnpm:dry-run
 pnpm ci:node-pnpm
 ```
 

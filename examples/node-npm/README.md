@@ -26,14 +26,32 @@ Compare:
 - [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts): how each action
   runs and which earlier action is a true blocker.
 
+The executable [`.cloudflare/workflows/ci.run.ts`](./.cloudflare/workflows/ci.run.ts)
+is the canonical interface for developers and coding agents. It default-exports the
+workflow and re-exports the actions as named run targets:
+
 ```bash
-DRY_RUN=1 NODE_ENV=staging pnpm ci:node-npm
+./.cloudflare/workflows/ci.run.ts
+./.cloudflare/workflows/ci.run.ts run lint
+./.cloudflare/workflows/ci.run.ts plan lint --format=json
+./.cloudflare/workflows/ci.run.ts list
+```
+
+`run` is the default command, so the first form executes the complete workflow and
+`./.cloudflare/workflows/ci.run.ts lint` is shorthand for `run lint`. Explicit
+`--format=text` and `--format=json` override output selection. Without an override,
+a directly detected coding agent receives JSON while interactive and hybrid terminals
+receive text. `--local` is the default; `--remote` selects a configured remote provider
+without changing the workflow, and fails with `CI_REMOTE_UNAVAILABLE` / exit code `3`
+until the entry point supplies one.
+
+```bash
+NODE_ENV=staging pnpm ci:node-npm:dry-run
 pnpm ci:node-npm
 ```
 
-The generic runtime loads this workflow and calls `CI.runPromise`, receiving the same
-workflow value and structured plan in both modes. `NODE_ENV` defaults to `test` in CI
-and `development` elsewhere, while any non-empty `DRY_RUN` selects planning mode.
+The executable calls the CLI package and receives the same workflow value and structured
+plan in both modes. `NODE_ENV` defaults to `test` in CI and `development` elsewhere.
 
 The reusable Effect workflow runs both modes as separate `plan` and `execute` matrix
 jobs, setting `DRY_RUN=1` in the plan job's environment.
