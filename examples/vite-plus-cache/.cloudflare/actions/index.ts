@@ -12,10 +12,10 @@ export const install = CI.action<CI.Workspace>("install", () => function* () {
   return yield* workspace.exec("npm --prefix examples/vite-plus-cache/app ci")
 })
 
-export const build = CI.action<void>("build", () => function* () {
+export const build = CI.action<CI.Workspace>("build", () => function* () {
   const workspace = yield* install()
 
-  yield* workspace.exec(
+  return yield* workspace.exec(
     "cd examples/vite-plus-cache/app && npx vp run -t vite-plus-cache-app#build",
   )
 })

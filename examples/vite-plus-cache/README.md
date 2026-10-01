@@ -21,14 +21,19 @@ is reusable; Vite+ makes that decision after seeing the restored cache.
 The userland workflow remains ordinary:
 
 ```ts
-export const build = CI.action<void>("build", () => function* () {
+export const build = CI.action<CI.Workspace>("build", () => function* () {
   const workspace = yield* install()
 
-  yield* workspace.exec(
+  return yield* workspace.exec(
     "cd examples/vite-plus-cache/app && npx vp run -t vite-plus-cache-app#build",
   )
 })
 ```
+
+Returning the `Workspace` is significant: it tells the runner that this action produced
+a new logical filesystem revision. The Cloudflare interpreter snapshots that revision,
+including Vite+'s updated task cache. The action does not return a Cloudflare snapshot
+or a hand-written artifact manifest.
 
 The Worker opts into one rolling cache and identifies the tool-owned path to protect:
 
