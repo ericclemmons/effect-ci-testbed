@@ -6,10 +6,8 @@ export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
 export default {
   fetch() {
-    return new Response("Effect CI custom-image runner")
+    return new Response("Effect CI prepared-toolchain runner")
   },
 }
 
-export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
-  container: { image: "python" },
-})
+export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow)

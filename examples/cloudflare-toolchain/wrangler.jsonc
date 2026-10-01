@@ -1,18 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "effect-ci-cloudflare-custom-image",
+  "name": "effect-ci-cloudflare-toolchain",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-30",
   "compatibility_flags": ["nodejs_compat"],
   "containers": [
     {
       "class_name": "WorkspaceContainer",
-      "scheduling_policy": "durable_object",
-      "images": {
-        "python": {
-          "dockerfile": "./Dockerfile"
-        }
-      }
+      "scheduling_policy": "durable_object"
     }
   ],
   "durable_objects": {
@@ -33,7 +28,7 @@
     {
       "binding": "EFFECT_CI",
       "class_name": "EffectCIWorkflow",
-      "name": "effect-ci-cloudflare-custom-image"
+      "name": "effect-ci-cloudflare-toolchain"
     }
   ]
 }

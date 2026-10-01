@@ -187,9 +187,9 @@ jobs:
           - example: cloudflare-runner
             package: effect-ci-cloudflare-runner-fixture
             workflow: effect-ci-cloudflare-runner
-          - example: cloudflare-custom-image
-            package: effect-ci-cloudflare-custom-image-fixture
-            workflow: effect-ci-cloudflare-custom-image
+          - example: cloudflare-toolchain
+            package: effect-ci-cloudflare-toolchain-fixture
+            workflow: effect-ci-cloudflare-toolchain
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
