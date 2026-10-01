@@ -1,6 +1,6 @@
 # Run GitHub-source CI entirely on Cloudflare
 
-This planned example answers one question:
+This example answers one question:
 
 > How do I keep source and pull requests on GitHub while every CI run is a native Cloudflare Workflow instance?
 
@@ -8,7 +8,7 @@ The first slice is a single-tenant service deployed in the repository owner's
 Cloudflare account. It is similar in spirit to a hosted CI integration or Workers
 Builds, but it is explicitly an Effect CI example—not an emulation of either product.
 
-## Intended experience
+## Experience
 
 1. Install the Effect CI GitHub App on a repository.
 2. Push a commit or update a pull request.
@@ -64,19 +64,60 @@ Cloudflare resource access should use bindings rather than Cloudflare API tokens
 Worker starts the Workflow through its binding, so deploying this example does not add
 a general-purpose Cloudflare credential to the runtime.
 
-## Reuse before new infrastructure
+## What is reusable
 
-The implementation should extract two existing pieces into reusable libraries:
+The implementation composes three reusable libraries:
 
-- The GitHub reporter in `packages/github/run.run.ts` becomes a runtime-event consumer
-  that works in both a GitHub runner and a Cloudflare Workflow.
+- `@effect-ci-testbed/github` verifies webhook signatures, mints short-lived GitHub App
+  installation tokens, and turns runtime events into plan and per-action checks.
 - `@effect-ci-testbed/cloudflare` continues to own Workflow, Container, checkout,
   snapshot, and restore mechanics.
+- `@effect-ci-testbed/github-cloudflare` is the small bridge that accepts a verified
+  check-suite delivery, starts one native Workflow instance, and connects its runtime
+  events to the GitHub reporter.
 
-The example itself should contain only GitHub App registration instructions, its
+The example itself contains only GitHub App registration instructions, its
 portable actions/workflow, a small Worker entrypoint, and Wrangler bindings.
 
-## Acceptance criteria for the first slice
+## Set up the single-tenant service
+
+Create a GitHub App owned by the same user or organization as the target repository:
+
+- Webhook URL: `https://<worker>.workers.dev/webhooks/github`
+- Webhook: active, with a generated secret
+- Repository permissions: **Checks: read and write**, **Contents: read-only**
+- Subscribe to **Check suite** events
+- Install it on the repositories this service may build
+
+Generate a private key, then configure the deployed Worker without committing any
+credential:
+
+```sh
+pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_APP_ID
+pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_PRIVATE_KEY
+pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_WEBHOOK_SECRET
+pnpm --filter effect-ci-github-cloudflare-fixture deploy
+```
+
+`GITHUB_PRIVATE_KEY` accepts the PEM directly or with newlines encoded as `\\n`.
+The Worker returns `202 Accepted` only after its Workflow binding accepts the delivery.
+Repeating the same `X-GitHub-Delivery` returns the existing instance rather than
+starting duplicate CI.
+
+The complete userland Worker is deliberately this small:
+
+```ts
+import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
+
+import workflow from "../.cloudflare/workflows/build.ts"
+
+export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
+
+export default GitHubCloudflare.worker()
+export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow)
+```
+
+## First-slice contract
 
 - A real GitHub webhook starts exactly one native Workflow instance.
 - The instance is visible and inspectable in the Cloudflare dashboard.
@@ -84,7 +125,7 @@ portable actions/workflow, a small Worker entrypoint, and Wrangler bindings.
 - Check details contain action command output; failure output is visible on GitHub.
 - Success, failure, and GitHub **Re-run** all work without GitHub Actions.
 - A duplicate webhook delivery does not start duplicate CI.
-- The E2E fixture deliberately fails one action to prove failure propagation.
+- A failure concludes both the action check and Workflow as failed.
 
 PR comments, annotations, cancellation, approval, caching, artifacts, deployment, and
 multi-tenant installation management are follow-up slices. Once this bridge works, the

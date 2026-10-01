@@ -29,6 +29,7 @@ interface WorkspaceContainerStub {
     revision: string,
     targetDirectory: string,
     options?: WorkspaceContainerOptions,
+    token?: string,
   ) => Promise<void>
   readonly checkpoint: (
     name: string,
@@ -157,6 +158,7 @@ export class WorkspaceContainer extends DurableObject {
     revision: string,
     targetDirectory = defaultTargetDirectory,
     options: WorkspaceContainerOptions = {},
+    token?: string,
   ): Promise<void> {
     await this.ensureRunning(options)
 
@@ -177,8 +179,12 @@ export class WorkspaceContainer extends DurableObject {
     const existing = await this.run(["test", "-d", `${targetDirectory}/.git`])
 
     if (existing.exitCode !== 0) {
+      const authentication = token
+        ? ["-c", `http.extraHeader=Authorization: Basic ${btoa(`x-access-token:${token}`)}`]
+        : []
       const clone = await this.run([
         "git",
+        ...authentication,
         "clone",
         "--no-checkout",
         repository,
@@ -190,8 +196,12 @@ export class WorkspaceContainer extends DurableObject {
       }
     }
 
+    const authentication = token
+      ? ["-c", `http.extraHeader=Authorization: Basic ${btoa(`x-access-token:${token}`)}`]
+      : []
     const fetch = await this.run([
       "git",
+      ...authentication,
       "-C",
       targetDirectory,
       "fetch",
@@ -282,6 +292,7 @@ export interface RunnerOptions {
   readonly revision: string
   readonly step: WorkflowStep
   readonly targetDirectory?: string
+  readonly token?: string | (() => Promise<string>)
   readonly workspaceId: string
 }
 
@@ -314,11 +325,16 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       checkout: (root) => Effect.tryPromise({
         try: async () => {
           await options.step.do("checkout", async () => {
+            const token = typeof options.token === "function"
+              ? await options.token()
+              : options.token
+
             await container.checkout(
               options.repository,
               options.revision,
               targetDirectory,
               options.container,
+              token,
             )
           })
 
