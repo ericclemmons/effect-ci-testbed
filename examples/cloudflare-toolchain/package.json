@@ -1,12 +1,12 @@
 {
-  "name": "effect-ci-cloudflare-custom-image-fixture",
+  "name": "effect-ci-cloudflare-toolchain-fixture",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
     "dev": "wrangler dev",
-    "trigger": "wrangler workflows trigger effect-ci-cloudflare-custom-image"
+    "trigger": "wrangler workflows trigger effect-ci-cloudflare-toolchain"
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",

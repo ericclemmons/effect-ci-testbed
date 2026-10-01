@@ -3,6 +3,6 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "effect-ci-custom-image"
+name = "effect-ci-toolchain"
 version = "0.0.0"
 requires-python = ">=3.11"

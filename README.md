@@ -103,8 +103,8 @@ directly in a Cloudflare Workflow.
 - [x] Move Workflow/Container host mechanics into `@effect-ci-testbed/cloudflare` so
   examples contain only userland Worker, workflow, and action code.
 - [x] Use the managed Debian Trixie image for ordinary Node.js CI without a Dockerfile.
-- [x] Add a focused custom-Dockerfile example that extends the Container runtime with a
-  tool unavailable in the stock image.
+- [x] Prepare additional tools with `exec()` and snapshot the managed Trixie workspace
+  so later Containers can reuse the toolchain without a Dockerfile.
 - [x] Persist an installed workspace as a native filesystem snapshot, replace the live
   Container, and restore the snapshot before building.
 - [ ] Trigger runs from authenticated repository events without GitHub Actions.
@@ -185,7 +185,7 @@ keeps the common install → check → build → deploy path fast.
 | [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`hitl-deploy`](./examples/hitl-deploy) | protected production deployment with human approval | ✅ | ✅ | ⬜ |
 | [`cloudflare-runner`](./examples/cloudflare-runner) | checkpoint and restore an installed workspace in a managed Cloudflare Container | — | ✅ | ✅ |
-| [`cloudflare-custom-image`](./examples/cloudflare-custom-image) | build a Python artifact with tools added by a named custom Container image | — | ✅ | ✅ |
+| [`cloudflare-toolchain`](./examples/cloudflare-toolchain) | install a Python toolchain once, snapshot it, and build from the prepared workspace | — | ✅ | ✅ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
 | `workers-preview` | PR preview target and cleanup | ⬜ | ⬜ | ⬜ |
