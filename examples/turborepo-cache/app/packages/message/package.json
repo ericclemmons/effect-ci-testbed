@@ -1,0 +1,7 @@
+{
+  "name": "@turborepo-cache/message",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}

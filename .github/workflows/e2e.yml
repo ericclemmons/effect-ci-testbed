@@ -332,10 +332,20 @@ jobs:
             if (ignored.status !== 202) throw new Error(`Expected 202, received ${ignored.status}`)
           '
 
-  vite-plus-cache:
-    name: vite-plus-cache / restored task output
+  task-cache:
+    name: ${{ matrix.example }} / restored task output
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: vite-plus-cache
+            package: effect-ci-vite-plus-cache-fixture
+            workflow: effect-ci-vite-plus-cache
+          - example: turborepo-cache
+            package: effect-ci-turborepo-cache-fixture
+            workflow: effect-ci-turborepo-cache
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -349,10 +359,10 @@ jobs:
           REPOSITORY: ${{ github.event.pull_request.head.repo.clone_url || 'https://github.com/ericclemmons/effect-ci-testbed.git' }}
           REVISION: ${{ github.head_ref || github.ref_name }}
         run: |
-          log="$RUNNER_TEMP/vite-plus-cache.log"
+          log="$RUNNER_TEMP/${{ matrix.example }}.log"
           params=$(node -e 'process.stdout.write(JSON.stringify({ repository: process.env.REPOSITORY, revision: process.env.REVISION }))')
 
-          pnpm --filter effect-ci-vite-plus-cache-fixture dev >"$log" 2>&1 &
+          pnpm --filter ${{ matrix.package }} dev >"$log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
 
@@ -367,8 +377,8 @@ jobs:
             local instance_id="$1"
 
             for attempt in $(seq 1 90); do
-              description=$(pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows instances describe \
-                effect-ci-vite-plus-cache \
+              description=$(pnpm --filter ${{ matrix.package }} exec wrangler workflows instances describe \
+                ${{ matrix.workflow }} \
                 "$instance_id" \
                 --local \
                 --json 2>/dev/null || true)
@@ -394,21 +404,21 @@ jobs:
             return 1
           }
 
-          first="vite-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
-          second="vite-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
+          first="task-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
+          second="task-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
 
-          pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows trigger \
-            effect-ci-vite-plus-cache "$params" --id "$first" --local
+          pnpm --filter ${{ matrix.package }} exec wrangler workflows trigger \
+            ${{ matrix.workflow }} "$params" --id "$first" --local
           wait_for_workflow "$first" >/dev/null
 
-          pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows trigger \
-            effect-ci-vite-plus-cache "$params" --id "$second" --local
+          pnpm --filter ${{ matrix.package }} exec wrangler workflows trigger \
+            ${{ matrix.workflow }} "$params" --id "$second" --local
           description=$(wait_for_workflow "$second")
 
           DESCRIPTION="$description" node -e '
             const value = JSON.parse(process.env.DESCRIPTION)
             const output = value.steps.find((step) => step.name.startsWith("build-"))?.output?.stdout ?? ""
             if (!output.includes("cache hit")) {
-              throw new Error(`Expected Vite+ cache hit, received: ${output}`)
+              throw new Error(`Expected task cache hit, received: ${output}`)
             }
           '

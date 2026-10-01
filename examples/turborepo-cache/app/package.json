@@ -1,0 +1,14 @@
+{
+  "name": "turborepo-cache-app",
+  "packageManager": "npm@11.19.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "2.11.6"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

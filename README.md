@@ -23,11 +23,12 @@ we learn from it.
 | 6 | [`github-cloudflare-ci`](./examples/github-cloudflare-ci) | How does GitHub remain the source while Cloudflare runs all CI and reports checks and logs back? | In progress | — | ✅ | ✅ |
 | 7 | `github-runner-action` | How does a GitHub job use GitHub-hosted, Blacksmith, or self-hosted compute while a thin action runs the repository's canonical Effect CI program? | Planned | ✅ | ✅ | — |
 | 8 | [`vite-plus-cache`](./examples/vite-plus-cache) | How can Effect CI persist Vite+'s automatically tracked task cache between Workflow instances? | Done | — | ✅ | ✅ |
-| 9 | `package-manager-cache` | How are detected npm, pnpm, and other package-manager caches restored automatically? | Planned | — | ✅ | ✅ |
-| 10 | `cloudflare-parallel` | How does one prepared snapshot fan out into parallel lint, test, and build Containers? | Planned | — | ✅ | ✅ |
-| 11 | `workers-deploy` | How do typed build artifacts become a Cloudflare Workers deployment? | Planned | ✅ | ✅ | ✅ |
-| 12 | `workers-preview` | How are pull-request previews created, reported, and cleaned up? | Planned | ✅ | ✅ | ✅ |
-| 13 | `agent-healing` | How does a failed action invoke a specialized repair, verify it, and propose or publish the fix? | Planned | — | ✅ | ✅ |
+| 9 | [`turborepo-cache`](./examples/turborepo-cache) | How can Effect CI persist Turborepo's task cache between Workflow instances? | Done | — | ✅ | ✅ |
+| 10 | `package-manager-cache` | How are detected npm, pnpm, and other package-manager caches restored automatically? | Planned | — | ✅ | ✅ |
+| 11 | `cloudflare-parallel` | How does one prepared snapshot fan out into parallel lint, test, and build Containers? | Planned | — | ✅ | ✅ |
+| 12 | `workers-deploy` | How do typed build artifacts become a Cloudflare Workers deployment? | Planned | ✅ | ✅ | ✅ |
+| 13 | `workers-preview` | How are pull-request previews created, reported, and cleaned up? | Planned | ✅ | ✅ | ✅ |
+| 14 | `agent-healing` | How does a failed action invoke a specialized repair, verify it, and propose or publish the fix? | Planned | — | ✅ | ✅ |
 
 ## Try it locally
 
