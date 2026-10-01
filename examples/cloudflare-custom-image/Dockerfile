@@ -1,3 +1,6 @@
-FROM docker.io/cloudflare/sandbox:0.12.10-python
+FROM docker.io/library/node:24-trixie-slim
 
-RUN python3 -m pip install --no-cache-dir build==1.3.0 hatchling==1.27.0
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends git python3 python3-pip \
+  && python3 -m pip install --break-system-packages --no-cache-dir build==1.3.0 hatchling==1.27.0 \
+  && rm -rf /var/lib/apt/lists/*

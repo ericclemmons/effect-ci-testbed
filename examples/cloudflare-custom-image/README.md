@@ -4,14 +4,14 @@ This example answers one question:
 
 > How do I run an Effect CI action with a tool that is not in Cloudflare's default Sandbox image?
 
-The default Sandbox image is intentionally lean and does not include Python. This
-example chooses Cloudflare's matching `-python` image and installs the Python build
-frontend and backend used by the action:
+The managed Trixie image is enough for Node.js CI. This separate example shows the
+escape hatch for a workflow that also needs Python: a named image selected at runtime
+by the Workspace Durable Object.
 
 ```dockerfile
-FROM docker.io/cloudflare/sandbox:0.12.10-python
+FROM docker.io/library/node:24-trixie-slim
 
-RUN python3 -m pip install --no-cache-dir build==1.3.0 hatchling==1.27.0
+RUN apt-get install python3 python3-pip
 ```
 
 The action is ordinary portable Effect CI code:
@@ -29,9 +29,8 @@ export const build = CI.action<PythonArtifacts>("build python package", () => fu
 })
 ```
 
-`wrangler.jsonc` points the `Sandbox` container at `./Dockerfile`; Wrangler builds that
-image for both local development and deployment. The Sandbox npm package and Docker
-image stay pinned to the same `0.12.10` release.
+`wrangler.jsonc` registers the Dockerfile as the named `python` image. The Workflow
+entrypoint asks its Workspace Durable Object for that image; no Sandbox SDK is used.
 
 Start the Worker with Docker running:
 
@@ -48,5 +47,5 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-custom-image \
 ```
 
 The completed `build python package` step produces a wheel and source archive in the
-Sandbox workspace. Artifact persistence and download are separate future capabilities;
+Container workspace. Artifact publication remains separate from workspace snapshots;
 this example is specifically about customizing the execution image.
