@@ -24,7 +24,9 @@ The userland workflow remains ordinary:
 export const build = CI.action<void>("build", () => function* () {
   const workspace = yield* install()
 
-  yield* workspace.exec("npx vp run build")
+  yield* workspace.exec(
+    "cd examples/vite-plus-cache/app && npx vp run -t vite-plus-cache-app#build",
+  )
 })
 ```
 
