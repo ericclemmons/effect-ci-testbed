@@ -253,14 +253,23 @@ export class Workspace {
     readonly cwd: string,
     readonly kind: WorkspaceKind,
     readonly id?: string,
+    readonly revision?: WorkspaceCheckpointHandle,
   ) {}
 
   static local(cwd: string): Workspace {
     return new Workspace(cwd, "local")
   }
 
-  static remote(id: string, cwd: string): Workspace {
-    return new Workspace(cwd, "remote", id)
+  static remote(
+    id: string,
+    cwd: string,
+    revision?: WorkspaceCheckpointHandle,
+  ): Workspace {
+    return new Workspace(cwd, "remote", id, revision)
+  }
+
+  withRevision(revision: WorkspaceCheckpointHandle): Workspace {
+    return new Workspace(this.cwd, this.kind, this.id, revision)
   }
 
   exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
@@ -449,6 +458,11 @@ export interface CommandExecutor {
 }
 
 export interface WorkspacePersistence {
+  readonly commit: (request: {
+    readonly stepId: string
+    readonly workflowId: string
+    readonly workspace: Workspace
+  }) => Effect.Effect<Workspace, unknown>
   readonly checkpoint: (request: {
     readonly name: string
     readonly stepId: string
@@ -661,6 +675,7 @@ const makeRuntime = (
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
   workspacePersistence: WorkspacePersistence = {
+    commit: ({ workspace }) => Effect.succeed(workspace),
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
     restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
   },
@@ -704,6 +719,14 @@ const makeRuntime = (
 
         return definition.body.pipe(
           Effect.provideService(CurrentStep, id),
+          Effect.flatMap((value) =>
+            mode === "execute" && value instanceof Workspace
+              ? workspacePersistence.commit({
+                  stepId: id,
+                  workflowId,
+                  workspace: value,
+                })
+              : Effect.succeed(value)),
           Effect.tap(() => Effect.sync(() => {
             node.status = mode === "plan" ? "planned" : "complete"
             emitEvent({
@@ -851,7 +874,11 @@ const makeRuntime = (
           workflowId,
           workspace,
         }).pipe(
-          Effect.map((handle) => new WorkspaceCheckpoint(name, workspace, handle)),
+          Effect.map((handle) => new WorkspaceCheckpoint(
+            name,
+            workspace.withRevision(handle),
+            handle,
+          )),
         )
       },
       restore: (stepId, checkpoint) => mode === "plan"

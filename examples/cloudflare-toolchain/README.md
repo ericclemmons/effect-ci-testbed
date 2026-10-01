@@ -5,11 +5,11 @@ This example answers one question:
 > How do I add tools that are not in Cloudflare's managed image without maintaining a Dockerfile?
 
 The Workflow starts from Cloudflare's managed `cloudflare/debian-trixie` image. An
-ordinary Effect CI action installs Python and its build tools with `Workspace.exec()`,
-then saves the prepared repository and toolchain as a native filesystem snapshot:
+ordinary Effect CI action installs Python and its build tools with `Workspace.exec()`
+and returns the prepared logical workspace:
 
 ```ts
-export const preparePython = CI.action<PythonToolchain>(
+export const preparePython = CI.action<CI.Workspace>(
   "prepare python toolchain",
   () => function* () {
     const workspace = yield* checkout()
@@ -21,33 +21,26 @@ export const preparePython = CI.action<PythonToolchain>(
       "python3 -m pip install --break-system-packages --root-user-action=ignore --no-cache-dir build==1.3.0 hatchling==1.27.0",
     )
 
-    return {
-      checkpoint: yield* workspace.checkpoint("python-toolchain"),
-    }
+    return workspace
   },
 )
 ```
 
-The build action restores that immutable checkpoint into a fresh Container before it
-uses the toolchain:
+The build action consumes that prepared workspace without knowing whether the runner
+kept its Container alive or restored its durable revision:
 
 ```ts
-export const build = CI.action<PythonArtifacts>("build python package", () => function* () {
-  const toolchain = yield* preparePython()
-  const workspace = yield* toolchain.checkpoint.restore()
+export const build = CI.action<void>("build python package", () => function* () {
+  const workspace = yield* preparePython()
 
   yield* workspace.exec("python3 -m build --no-isolation")
-
-  return {
-    paths: ["dist/*.whl", "dist/*.tar.gz"],
-    workspace,
-  }
 })
 ```
 
-There is intentionally no Dockerfile or named-image configuration. The managed image
-provides the base system; commands describe how to prepare the workspace; the snapshot
-is the reusable output. Future sandboxes can restore it without repeating setup.
+There is intentionally no Dockerfile, named-image configuration, or explicit snapshot
+plumbing. The managed image provides the base system; commands describe how to prepare
+the workspace; the Cloudflare runner commits returned workspaces as native snapshots.
+Future Containers can materialize that logical revision without repeating setup.
 
 Start the Worker with Docker running:
 
@@ -64,5 +57,5 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-toolchain \
 ```
 
 The completed `build python package` step produces a wheel and source archive in the
-restored Container workspace. Publishing portable artifacts remains separate from
-workspace snapshots.
+materialized workspace. Publishing portable artifacts remains separate from durable
+workspace revisions.
