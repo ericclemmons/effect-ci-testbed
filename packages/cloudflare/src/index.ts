@@ -30,8 +30,16 @@ interface WorkspaceContainerStub {
     targetDirectory: string,
     options?: WorkspaceContainerOptions,
   ) => Promise<void>
-  readonly checkpoint: (name: string) => Promise<ContainerSnapshotValue>
-  readonly execute: (command: string, cwd: string) => Promise<ContainerExecutionResult>
+  readonly checkpoint: (
+    name: string,
+    release?: boolean,
+  ) => Promise<ContainerSnapshotValue>
+  readonly execute: (
+    command: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ) => Promise<ContainerExecutionResult>
   readonly restore: (snapshot: ContainerSnapshotValue) => Promise<void>
 }
 
@@ -41,6 +49,10 @@ export interface WorkspaceContainerOptions {
 }
 
 export class WorkspaceContainer extends DurableObject {
+  private activeStepId: string | undefined
+  private dirty = false
+  private workingCheckpointId: string | undefined
+
   private container() {
     const container = this.ctx.container
 
@@ -67,6 +79,8 @@ export class WorkspaceContainer extends DurableObject {
         containerSnapshot: activeCheckpoint,
         enableInternet: true,
       })
+      this.workingCheckpointId = activeCheckpoint.id
+      this.dirty = false
 
       return
     }
@@ -81,6 +95,44 @@ export class WorkspaceContainer extends DurableObject {
       entrypoint: ["sleep", "infinity"],
       enableInternet: true,
     })
+  }
+
+  private async materialize(
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ): Promise<void> {
+    if (this.activeStepId === stepId) {
+      await this.ensureRunning()
+      return
+    }
+
+    if (!revision) {
+      await this.ensureRunning()
+      this.activeStepId = stepId
+      return
+    }
+
+    const container = this.container()
+    const canReuse = container.running &&
+      this.workingCheckpointId === revision.id &&
+      !this.dirty
+
+    if (!canReuse) {
+      await this.ctx.storage.put("activeCheckpoint", revision)
+
+      if (container.running) {
+        await container.destroy(`Materializing workspace revision ${revision.id}`)
+      }
+
+      container.start({
+        containerSnapshot: revision,
+        enableInternet: true,
+      })
+      this.workingCheckpointId = revision.id
+      this.dirty = false
+    }
+
+    this.activeStepId = stepId
   }
 
   private async run(
@@ -166,19 +218,35 @@ export class WorkspaceContainer extends DurableObject {
     }
   }
 
-  async execute(command: string, cwd: string): Promise<ContainerExecutionResult> {
-    await this.ensureRunning()
+  async execute(
+    command: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ): Promise<ContainerExecutionResult> {
+    await this.materialize(stepId, revision)
+    this.dirty = true
 
     return this.run(["sh", "-lc", command], cwd)
   }
 
-  async checkpoint(name: string): Promise<ContainerSnapshotValue> {
+  async checkpoint(
+    name: string,
+    release = false,
+  ): Promise<ContainerSnapshotValue> {
     const snapshot = await this.container().snapshotContainer({ name })
 
     await this.ctx.storage.put({
       activeCheckpoint: snapshot,
       [`checkpoint:${name}`]: snapshot,
     })
+    this.activeStepId = undefined
+    this.dirty = false
+    this.workingCheckpointId = snapshot.id
+
+    if (release) {
+      await this.container().destroy(`Releasing committed workspace ${snapshot.id}`)
+    }
 
     return {
       id: snapshot.id,
@@ -200,6 +268,9 @@ export class WorkspaceContainer extends DurableObject {
       containerSnapshot: snapshot,
       enableInternet: true,
     })
+    this.activeStepId = undefined
+    this.dirty = false
+    this.workingCheckpointId = snapshot.id
   }
 }
 
@@ -207,6 +278,7 @@ export interface RunnerOptions {
   readonly binding: DurableObjectNamespace
   readonly container?: WorkspaceContainerOptions
   readonly repository: string
+  readonly reuseWorkspace?: boolean
   readonly revision: string
   readonly step: WorkflowStep
   readonly targetDirectory?: string
@@ -230,6 +302,7 @@ export interface WorkflowEnvironment {
 
 export interface WorkflowEntrypointOptions {
   readonly container?: WorkspaceContainerOptions
+  readonly reuseWorkspace?: boolean
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -263,8 +336,18 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
           }
 
+          const revision = workspace.revision
+          if (revision && revision.provider !== "cloudflare-container") {
+            throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
+          }
+
           const result = await options.step.do(stepId, () =>
-            container.execute(command, workspace.cwd))
+            container.execute(
+              command,
+              workspace.cwd,
+              stepId,
+              revision?.value as ContainerSnapshotValue | undefined,
+            ))
 
           if (result.stdout) onOutput("stdout", result.stdout)
           if (result.stderr) onOutput("stderr", result.stderr)
@@ -286,6 +369,26 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
     },
     persistence: {
+      commit: ({ stepId, workspace }) => Effect.tryPromise({
+        try: async () => {
+          if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
+            throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
+          }
+
+          const snapshot = await options.step.do(`${stepId}:commit`, () =>
+            container.checkpoint(
+              `${stepId}-workspace`,
+              options.reuseWorkspace === false,
+            ))
+          const revision: CI.WorkspaceCheckpointHandle = {
+            provider: "cloudflare-container",
+            value: snapshot,
+          }
+
+          return workspace.withRevision(revision)
+        },
+        catch: (error) => error,
+      }),
       checkpoint: ({ name, stepId, workspace }) => Effect.tryPromise({
         try: async () => {
           if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
@@ -334,6 +437,9 @@ export const workflowEntrypoint = <A>(
       binding: this.env.Workspace,
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
+      ...(options.reuseWorkspace === undefined
+        ? {}
+        : { reuseWorkspace: options.reuseWorkspace }),
       revision: event.payload.revision,
       step,
       workspaceId: event.instanceId,

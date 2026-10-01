@@ -10,4 +10,6 @@ export default {
   },
 }
 
-export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow)
+export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
+  reuseWorkspace: false,
+})
