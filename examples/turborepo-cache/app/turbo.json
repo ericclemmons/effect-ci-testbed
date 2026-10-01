@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "agentGuidance": false,
+  "cacheDir": ".turbo/cache",
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**"]
+    }
+  }
+}
