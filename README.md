@@ -46,7 +46,7 @@ Cloudflare Workflow are hosts for the same program.
              │                     │                     │
        local processes       selected runner       Cloudflare Workflow
                               ├─ GitHub-hosted             │
-                              └─ ephemeral custom       Sandbox
+                              └─ ephemeral custom       Container Durable Object
 ```
 
 GitHub's [`runs-on`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job)
@@ -98,17 +98,20 @@ directly in a Cloudflare Workflow.
 ### Cloudflare-native execution
 
 - [x] Bundle the portable program as a Cloudflare `WorkflowEntrypoint`.
-- [x] Execute `checkout → install → build` in a Sandbox with native durable steps.
-- [x] Exercise the Workflow and Sandbox together under `wrangler dev` in E2E.
-- [x] Move Workflow/Sandbox host mechanics into `@effect-ci-testbed/cloudflare` so
+- [x] Execute `checkout → install → build` in a Container with native durable steps.
+- [x] Exercise the Workflow and Container together under `wrangler dev` in E2E.
+- [x] Move Workflow/Container host mechanics into `@effect-ci-testbed/cloudflare` so
   examples contain only userland Worker, workflow, and action code.
-- [x] Add a focused custom-Dockerfile example that extends the Sandbox runtime with a
+- [x] Use the managed Debian Trixie image for ordinary Node.js CI without a Dockerfile.
+- [x] Add a focused custom-Dockerfile example that extends the Container runtime with a
   tool unavailable in the stock image.
+- [x] Persist an installed workspace as a native filesystem snapshot, replace the live
+  Container, and restore the snapshot before building.
 - [ ] Trigger runs from authenticated repository events without GitHub Actions.
 - [ ] Publish the same check and log model back to the source provider.
-- [ ] Persist and restore workspace state when a Sandbox is replaced.
 - [ ] Prove retry, suspension, cancellation, and replay around external side effects.
-- [ ] Add distributed fan-out and explicit artifact transfer without changing local DX.
+- [ ] Restore one workspace snapshot into parallel lint, test, and build Containers.
+- [ ] Publish portable build artifacts separately from workspace snapshots.
 
 ### Agent, healing, and deployment capabilities
 
@@ -181,8 +184,8 @@ keeps the common install → check → build → deploy path fast.
 | [`node-npm`](./examples/node-npm) | Node, npm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`node-pnpm`](./examples/node-pnpm) | Node, pnpm, lint + test, build | ✅ | ✅ | ⬜ |
 | [`hitl-deploy`](./examples/hitl-deploy) | protected production deployment with human approval | ✅ | ✅ | ⬜ |
-| [`cloudflare-runner`](./examples/cloudflare-runner) | checkout, install, and build in a Cloudflare Sandbox | — | ✅ | ✅ |
-| [`cloudflare-custom-image`](./examples/cloudflare-custom-image) | build a Python artifact with tools added by a custom Sandbox image | — | ✅ | ✅ |
+| [`cloudflare-runner`](./examples/cloudflare-runner) | checkpoint and restore an installed workspace in a managed Cloudflare Container | — | ✅ | ✅ |
+| [`cloudflare-custom-image`](./examples/cloudflare-custom-image) | build a Python artifact with tools added by a named custom Container image | — | ✅ | ✅ |
 | `node-version` | custom Node version and architecture | ⬜ | ⬜ | ⬜ |
 | `workers-app` | Worker lint, tests, build | ⬜ | ⬜ | ⬜ |
 | `workers-preview` | PR preview target and cleanup | ⬜ | ⬜ | ⬜ |
@@ -668,13 +671,13 @@ CI program
   └─ CI.run
        ├─ mode plan: hydrate values and record commands
        ├─ mode execute: run commands on the local/GitHub host
-       └─ Cloudflare adapter: map actions to Workflow steps and commands to Sandbox exec
+       └─ Cloudflare adapter: map actions to Workflow steps and commands to ctx.container.exec
 ```
 
 The runner is selected through `CI.Source` and `CI.CommandExecutor`; workflow and action
 authors do not branch on their host. Verification remains end to end: type-check the
 packages, dry-run the real example, execute it against its local fixture, bundle the
-Worker, and run the same graph through a local Cloudflare Workflow and Sandbox.
+Worker, and run the same graph through a local Cloudflare Workflow and Container.
 
 ### Local Cloudflare verification
 
@@ -683,8 +686,8 @@ portable workflow without requiring a Cloudflare emulator. The `cloudflare-runne
 E2E also starts
 [`wrangler dev`](https://developers.cloudflare.com/workflows/build/local-development/)
 and uses `wrangler workflows trigger <name> --local` to verify the Cloudflare-specific
-source and command interpreter. It complements direct execution rather than replacing
-it. Suspension, retry, and workspace restoration remain later acceptance slices.
+source, command, snapshot, and restore interpreters. It complements direct execution
+rather than replacing it. Suspension and retry remain later acceptance slices.
 
 Cloudflare's local Workflow environment is emulated, so remote execution remains the
 final parity check for platform behavior. Local Explorer and Cloudflare's
@@ -694,14 +697,13 @@ sleep, retry, and recovery steps are introduced.
 
 Cloudflare mode should keep ordinary Effect composition. The Workflow step is the durable boundary; the workflow does not need an Alchemy-style outer construction function merely to discover dependencies.
 
-`Workspace` now distinguishes a local directory from a remote workspace ID and path,
-but the remote reference is not yet sufficient for durable restoration. A production
-runner must also serialize the source revision and a restorable snapshot, lease, or
-content address. After every action that mutates files, the runner returns the next reference.
-If a container or sandbox disappears during suspension, the executor restores that
-reference before continuing. Local and GitHub implementations may optimize the same
-contract by retaining one directory, but workflow correctness cannot depend on that
-directory surviving.
+`Workspace` distinguishes a local directory from a remote workspace ID and path.
+`workspace.checkpoint(name)` now returns a typed `WorkspaceCheckpoint`; restoring it
+uses the host's persistence implementation. Local and GitHub execution retain the same
+directory, while the Cloudflare implementation creates an immutable native Container
+filesystem snapshot. Workspace checkpoints preserve mutable execution state. They are
+not portable artifacts: releases, downloads, and long-lived deployment outputs still
+belong in a separate artifact store.
 
 Target concurrency will likely require a Durable Object keyed by target. Workflows can call Durable Objects through bindings, so a separate scheduler service is not inherently required. Cancellation must stop only work declared safe to interrupt; deployments and other external side effects enter a non-cancellable or compensating phase.
 

@@ -6,7 +6,7 @@ export interface BuildArtifacts {
 }
 
 export interface Installation {
-  readonly workspace: CI.Workspace
+  readonly checkpoint: CI.WorkspaceCheckpoint
 }
 
 export const checkout = CI.action<CI.Workspace>("checkout", function* () {
@@ -17,16 +17,18 @@ export const checkout = CI.action<CI.Workspace>("checkout", function* () {
 
 export const install = CI.action<Installation>("install", () => function* () {
   const workspace = yield* checkout()
+  yield* workspace.exec("npm ci")
 
   return {
-    workspace: yield* workspace.exec("npm ci"),
+    checkpoint: yield* workspace.checkpoint("npm-install"),
   }
 })
 
 export const build = CI.action<BuildArtifacts>("build", () => function* () {
   const installation = yield* install()
+  const workspace = yield* installation.checkpoint.restore()
 
-  yield* installation.workspace.exec("npm run build")
+  yield* workspace.exec("npm run build")
 
   return {
     installation,

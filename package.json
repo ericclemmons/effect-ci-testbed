@@ -2,7 +2,7 @@
   "name": "effect-ci-testbed",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.5.1",
+  "packageManager": "pnpm@12.8.1",
   "scripts": {
     "build": "pnpm --filter @effect-ci-testbed/ci build",
     "check": "pnpm --filter './packages/*' check && tsc -p examples/node-npm/tsconfig.json --noEmit && tsc -p examples/node-pnpm/tsconfig.json --noEmit && tsc -p examples/hitl-deploy/tsconfig.json --noEmit && tsc -p examples/cloudflare-runner/tsconfig.json --noEmit && tsc -p examples/cloudflare-custom-image/tsconfig.json --noEmit",
@@ -18,9 +18,9 @@
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
     "@effect-ci-testbed/cli": "workspace:*",
-    "@types/node": "^24.5.2",
+    "@types/node": "^26.6.3",
     "effect": "4.0.0-beta.19",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   }
 }

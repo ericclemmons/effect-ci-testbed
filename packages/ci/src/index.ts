@@ -155,6 +155,15 @@ interface RuntimeShape {
     workspace: Workspace,
     command: string,
   ) => Effect.Effect<Workspace, CommandError>
+  readonly checkpoint: (
+    stepId: string,
+    workspace: Workspace,
+    name: string,
+  ) => Effect.Effect<WorkspaceCheckpoint, unknown>
+  readonly restore: (
+    stepId: string,
+    checkpoint: WorkspaceCheckpoint,
+  ) => Effect.Effect<Workspace, unknown>
   readonly requestApproval: (
     stepId: string,
     request: ApprovalRequest,
@@ -263,6 +272,41 @@ export class Workspace {
     })
   }
 
+  checkpoint(name: string): Effect.Effect<WorkspaceCheckpoint, unknown, Runtime | CurrentStep> {
+    const workspace = this
+
+    return Effect.gen(function* () {
+      const runtime = yield* Runtime
+      const stepId = yield* CurrentStep
+
+      return yield* runtime.checkpoint(stepId, workspace, name)
+    })
+  }
+
+}
+
+export interface WorkspaceCheckpointHandle {
+  readonly provider: string
+  readonly value: unknown
+}
+
+export class WorkspaceCheckpoint {
+  constructor(
+    readonly name: string,
+    readonly workspace: Workspace,
+    readonly handle: WorkspaceCheckpointHandle,
+  ) {}
+
+  restore(): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> {
+    const checkpoint = this
+
+    return Effect.gen(function* () {
+      const runtime = yield* Runtime
+      const stepId = yield* CurrentStep
+
+      return yield* runtime.restore(stepId, checkpoint)
+    })
+  }
 }
 
 export class PackageManagerError extends Error {
@@ -402,6 +446,20 @@ export interface CommandExecutor {
   readonly execute: (
     request: CommandExecutionRequest,
   ) => Effect.Effect<CommandExecutionResult, CommandError>
+}
+
+export interface WorkspacePersistence {
+  readonly checkpoint: (request: {
+    readonly name: string
+    readonly stepId: string
+    readonly workflowId: string
+    readonly workspace: Workspace
+  }) => Effect.Effect<WorkspaceCheckpointHandle, unknown>
+  readonly restore: (request: {
+    readonly checkpoint: WorkspaceCheckpoint
+    readonly stepId: string
+    readonly workflowId: string
+  }) => Effect.Effect<Workspace, unknown>
 }
 
 export interface Workflow<A> {
@@ -602,6 +660,10 @@ const makeRuntime = (
   mode: WorkflowPlan["mode"],
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
+  workspacePersistence: WorkspacePersistence = {
+    checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
+    restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
+  },
 ) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
@@ -774,6 +836,27 @@ const makeRuntime = (
           Effect.as(workspace),
         )
       },
+      checkpoint: (stepId, workspace, name) => {
+        if (mode === "plan") {
+          return Effect.succeed(new WorkspaceCheckpoint(
+            name,
+            workspace,
+            { provider: "plan", value: undefined },
+          ))
+        }
+
+        return workspacePersistence.checkpoint({
+          name,
+          stepId,
+          workflowId,
+          workspace,
+        }).pipe(
+          Effect.map((handle) => new WorkspaceCheckpoint(name, workspace, handle)),
+        )
+      },
+      restore: (stepId, checkpoint) => mode === "plan"
+        ? Effect.succeed(checkpoint.workspace)
+        : workspacePersistence.restore({ checkpoint, stepId, workflowId }),
       requestApproval: (stepId, request) => {
         const node = nodes.get(stepId)
         if (!node) return Effect.die(new Error(`Missing plan node for ${stepId}`))
@@ -845,6 +928,7 @@ export interface RunOptions {
   readonly mode?: WorkflowPlan["mode"]
   readonly output?: "inherit" | "silent"
   readonly source?: SourceService
+  readonly workspacePersistence?: WorkspacePersistence
 }
 
 const toPlan = (
@@ -955,6 +1039,7 @@ const interpret = <A>(
       mode,
       options.approval,
       options.executor ?? makeLocalCommandExecutor(options.output ?? "inherit"),
+      options.workspacePersistence,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {

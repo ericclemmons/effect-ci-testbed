@@ -2,28 +2,33 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "effect-ci-cloudflare-custom-image",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-09-29",
+  "compatibility_date": "2026-09-30",
   "compatibility_flags": ["nodejs_compat"],
   "containers": [
     {
-      "class_name": "Sandbox",
-      "image": "./Dockerfile"
+      "class_name": "WorkspaceContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "python": {
+          "dockerfile": "./Dockerfile"
+        }
+      }
     }
   ],
   "durable_objects": {
     "bindings": [
       {
-        "class_name": "Sandbox",
-        "name": "Sandbox"
+        "class_name": "WorkspaceContainer",
+        "name": "Workspace"
       }
     ]
   },
-  "migrations": [
-    {
-      "new_sqlite_classes": ["Sandbox"],
-      "tag": "v1"
+  "exports": {
+    "WorkspaceContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
     }
-  ],
+  },
   "workflows": [
     {
       "binding": "EFFECT_CI",
