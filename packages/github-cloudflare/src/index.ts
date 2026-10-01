@@ -159,6 +159,10 @@ export const workflowEntrypoint = <A>(
     )
     const runner = Cloudflare.makeRunner({
       binding: this.env.Workspace,
+      cache: {
+        key: event.payload.repositoryName,
+        paths: ["node_modules/.vite/task-cache"],
+      },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(options.reuseWorkspace === undefined

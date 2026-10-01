@@ -331,3 +331,84 @@ jobs:
             })
             if (ignored.status !== 202) throw new Error(`Expected 202, received ${ignored.status}`)
           '
+
+  vite-plus-cache:
+    name: vite-plus-cache / restored task output
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Verify cache miss then hit across Workflow instances
+        env:
+          REPOSITORY: ${{ github.event.pull_request.head.repo.clone_url || 'https://github.com/ericclemmons/effect-ci-testbed.git' }}
+          REVISION: ${{ github.head_ref || github.ref_name }}
+        run: |
+          log="$RUNNER_TEMP/vite-plus-cache.log"
+          params=$(node -e 'process.stdout.write(JSON.stringify({ repository: process.env.REPOSITORY, revision: process.env.REVISION }))')
+
+          pnpm --filter effect-ci-vite-plus-cache-fixture dev >"$log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://localhost:8787; then
+              break
+            fi
+            sleep 2
+          done
+
+          wait_for_workflow() {
+            local instance_id="$1"
+
+            for attempt in $(seq 1 90); do
+              description=$(pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows instances describe \
+                effect-ci-vite-plus-cache \
+                "$instance_id" \
+                --local \
+                --json 2>/dev/null || true)
+              run_state=$(DESCRIPTION="$description" node -e '
+                try {
+                  const value = JSON.parse(process.env.DESCRIPTION)
+                  process.stdout.write(value.status ?? "")
+                } catch {}
+              ')
+
+              if [ "$run_state" = "complete" ]; then
+                echo "$description"
+                return 0
+              fi
+              if [ "$run_state" = "errored" ] || [ "$run_state" = "terminated" ]; then
+                echo "$description" >&2
+                return 1
+              fi
+              sleep 2
+            done
+
+            echo "Workflow $instance_id did not complete before the timeout" >&2
+            return 1
+          }
+
+          first="vite-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
+          second="vite-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
+
+          pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows trigger \
+            effect-ci-vite-plus-cache "$params" --id "$first" --local
+          wait_for_workflow "$first" >/dev/null
+
+          pnpm --filter effect-ci-vite-plus-cache-fixture exec wrangler workflows trigger \
+            effect-ci-vite-plus-cache "$params" --id "$second" --local
+          description=$(wait_for_workflow "$second")
+
+          DESCRIPTION="$description" node -e '
+            const value = JSON.parse(process.env.DESCRIPTION)
+            const output = value.steps.find((step) => step.name.startsWith("build-"))?.output?.stdout ?? ""
+            if (!output.includes("cache hit")) {
+              throw new Error(`Expected Vite+ cache hit, received: ${output}`)
+            }
+          '

@@ -24,6 +24,13 @@ export interface ContainerSnapshotValue {
 }
 
 interface WorkspaceContainerStub {
+  readonly getCachedSnapshot: (
+    key: string,
+  ) => Promise<ContainerSnapshotValue | undefined>
+  readonly putCachedSnapshot: (
+    key: string,
+    snapshot: ContainerSnapshotValue,
+  ) => Promise<void>
   readonly checkout: (
     repository: string,
     revision: string,
@@ -40,6 +47,7 @@ interface WorkspaceContainerStub {
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    cachePaths?: ReadonlyArray<string>,
   ) => Promise<ContainerExecutionResult>
   readonly restore: (snapshot: ContainerSnapshotValue) => Promise<void>
 }
@@ -153,6 +161,17 @@ export class WorkspaceContainer extends DurableObject {
     }
   }
 
+  async getCachedSnapshot(key: string): Promise<ContainerSnapshotValue | undefined> {
+    return this.ctx.storage.get<ContainerSnapshotValue>(`cache:${key}`)
+  }
+
+  async putCachedSnapshot(
+    key: string,
+    snapshot: ContainerSnapshotValue,
+  ): Promise<void> {
+    await this.ctx.storage.put(`cache:${key}`, snapshot)
+  }
+
   async checkout(
     repository: string,
     revision: string,
@@ -233,11 +252,46 @@ export class WorkspaceContainer extends DurableObject {
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    cachePaths: ReadonlyArray<string> = [],
   ): Promise<ContainerExecutionResult> {
     await this.materialize(stepId, revision)
     this.dirty = true
 
-    return this.run(["sh", "-lc", command], cwd)
+    const paths = cachePaths.map((path) => {
+      if (path.startsWith("/") || path.split("/").includes("..")) {
+        throw new Error(`Cache path must be relative to the workspace: ${path}`)
+      }
+
+      return `${cwd}/${path}`
+    })
+    const backups = paths.map((_, index) => `/tmp/effect-ci-cache/${index}`)
+
+    for (const [index, path] of paths.entries()) {
+      await this.run(["rm", "-rf", backups[index]!])
+      const exists = await this.run(["test", "-e", path])
+
+      if (exists.exitCode === 0) {
+        await this.run(["mkdir", "-p", "/tmp/effect-ci-cache"])
+        await this.run(["cp", "-a", path, backups[index]!])
+      }
+    }
+
+    const result = await this.run(["sh", "-lc", command], cwd)
+
+    for (const [index, path] of paths.entries()) {
+      const exists = await this.run(["test", "-e", path])
+      const backupExists = await this.run(["test", "-e", backups[index]!])
+
+      if (exists.exitCode !== 0 && backupExists.exitCode === 0) {
+        const parent = path.slice(0, path.lastIndexOf("/"))
+        await this.run(["mkdir", "-p", parent])
+        await this.run(["cp", "-a", backups[index]!, path])
+      }
+
+      await this.run(["rm", "-rf", backups[index]!])
+    }
+
+    return result
   }
 
   async checkpoint(
@@ -286,6 +340,10 @@ export class WorkspaceContainer extends DurableObject {
 
 export interface RunnerOptions {
   readonly binding: DurableObjectNamespace
+  readonly cache?: {
+    readonly key: string
+    readonly paths?: ReadonlyArray<string>
+  }
   readonly container?: WorkspaceContainerOptions
   readonly repository: string
   readonly reuseWorkspace?: boolean
@@ -312,18 +370,35 @@ export interface WorkflowEnvironment {
 }
 
 export interface WorkflowEntrypointOptions {
+  readonly cacheKey?: string
+  readonly cachePaths?: ReadonlyArray<string>
   readonly container?: WorkspaceContainerOptions
   readonly reuseWorkspace?: boolean
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
   const container = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
+  const cache = options.cache
+    ? options.binding.getByName(
+        `cache:${options.cache.key}:image=${options.container?.image ?? defaultImage}`,
+      ) as unknown as WorkspaceContainerStub
+    : undefined
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
 
   return {
     source: {
       checkout: (root) => Effect.tryPromise({
         try: async () => {
+          if (cache) {
+            const snapshot = await options.step.do("workspace-cache:restore", () =>
+              cache.getCachedSnapshot("latest"))
+
+            if (snapshot) {
+              await options.step.do("workspace-cache:materialize", () =>
+                container.restore(snapshot))
+            }
+          }
+
           await options.step.do("checkout", async () => {
             const token = typeof options.token === "function"
               ? await options.token()
@@ -363,6 +438,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               workspace.cwd,
               stepId,
               revision?.value as ContainerSnapshotValue | undefined,
+              options.cache?.paths,
             ))
 
           if (result.stdout) onOutput("stdout", result.stdout)
@@ -396,6 +472,12 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               `${stepId}-workspace`,
               options.reuseWorkspace === false,
             ))
+
+          if (cache) {
+            await options.step.do(`${stepId}:cache`, () =>
+              cache.putCachedSnapshot("latest", snapshot))
+          }
+
           const revision: CI.WorkspaceCheckpointHandle = {
             provider: "cloudflare-container",
             value: snapshot,
@@ -451,6 +533,14 @@ export const workflowEntrypoint = <A>(
   ) {
     const runner = makeRunner({
       binding: this.env.Workspace,
+      ...(options.cacheKey
+        ? {
+            cache: {
+              key: options.cacheKey,
+              ...(options.cachePaths ? { paths: options.cachePaths } : {}),
+            },
+          }
+        : {}),
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(options.reuseWorkspace === undefined
