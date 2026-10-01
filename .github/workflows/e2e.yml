@@ -269,3 +269,65 @@ jobs:
 
           echo "Cloudflare Workflow did not complete before the timeout" >&2
           exit 1
+
+  github-cloudflare-ci:
+    name: github-cloudflare-ci / webhook bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Verify production Worker bundle
+        run: |
+          pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler deploy \
+            --dry-run \
+            --containers-rollout=none
+      - name: Verify webhook authentication locally
+        run: |
+          log="$RUNNER_TEMP/github-cloudflare-ci.log"
+
+          pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler dev \
+            --var GITHUB_WEBHOOK_SECRET:test-secret >"$log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://localhost:8787; then
+              break
+            fi
+            sleep 2
+          done
+
+          node --input-type=module -e '
+            import { createHmac } from "node:crypto"
+            const body = JSON.stringify({ action: "completed" })
+            const signature = "sha256=" + createHmac("sha256", "test-secret")
+              .update(body)
+              .digest("hex")
+            const invalid = await fetch("http://localhost:8787/webhooks/github", {
+              method: "POST",
+              headers: {
+                "x-github-event": "check_suite",
+                "x-github-delivery": "invalid",
+                "x-hub-signature-256": "sha256=invalid",
+              },
+              body,
+            })
+            if (invalid.status !== 401) throw new Error(`Expected 401, received ${invalid.status}`)
+
+            const ignored = await fetch("http://localhost:8787/webhooks/github", {
+              method: "POST",
+              headers: {
+                "x-github-event": "check_suite",
+                "x-github-delivery": "signed-ignored",
+                "x-hub-signature-256": signature,
+              },
+              body,
+            })
+            if (ignored.status !== 202) throw new Error(`Expected 202, received ${ignored.status}`)
+          '

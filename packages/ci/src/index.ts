@@ -172,10 +172,21 @@ interface RuntimeShape {
 
 const eventFileDescriptor = Number(process.env.EFFECT_CI_EVENT_FD)
 
-const emitEvent = (event: RuntimeEvent): void => {
+export type RuntimeEventHandler = (event: RuntimeEvent) => void | Promise<void>
+
+const writeEvent = (event: RuntimeEvent): void => {
   if (!Number.isInteger(eventFileDescriptor)) return
   writeSync(eventFileDescriptor, `${JSON.stringify(event)}\n`)
 }
+
+const makeEventEmitter = (handler?: RuntimeEventHandler) =>
+  (event: RuntimeEvent): Effect.Effect<void> => Effect.tryPromise({
+    try: async () => {
+      writeEvent(event)
+      await handler?.(event)
+    },
+    catch: (error) => error,
+  }).pipe(Effect.orDie)
 
 class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
   "@effect-ci-testbed/Runtime",
@@ -672,6 +683,7 @@ const makeLocalCommandExecutor = (
 const makeRuntime = (
   workflowId: string,
   mode: WorkflowPlan["mode"],
+  emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
   workspacePersistence: WorkspacePersistence = {
@@ -708,7 +720,7 @@ const makeRuntime = (
         }
         nodes.set(id, node)
         node.status = mode === "plan" ? "planned" : "queued"
-        emitEvent({
+        const queued = emitEvent({
           type: "step.status",
           workflowId,
           stepId: id,
@@ -717,7 +729,8 @@ const makeRuntime = (
           timestamp: new Date().toISOString(),
         })
 
-        return definition.body.pipe(
+        return queued.pipe(
+          Effect.andThen(definition.body),
           Effect.provideService(CurrentStep, id),
           Effect.flatMap((value) =>
             mode === "execute" && value instanceof Workspace
@@ -727,9 +740,10 @@ const makeRuntime = (
                   workspace: value,
                 })
               : Effect.succeed(value)),
-          Effect.tap(() => Effect.sync(() => {
+          Effect.tap(() => {
             node.status = mode === "plan" ? "planned" : "complete"
-            emitEvent({
+
+            return emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
@@ -737,12 +751,13 @@ const makeRuntime = (
               optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
             })
-          })),
-          Effect.tapError((error) => Effect.sync(() => {
+          }),
+          Effect.tapError((error) => {
             const origin = failureOrigins.get(error)
             node.status = origin && origin !== id ? "skipped" : "failed"
             if (!origin) failureOrigins.set(error, id)
-            emitEvent({
+
+            return emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
@@ -750,7 +765,7 @@ const makeRuntime = (
               optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
             })
-          })),
+          }),
         )
       },
     })
@@ -763,7 +778,7 @@ const makeRuntime = (
       edges,
       optionalSteps,
       cache,
-      addDependency: (parent, child) => Effect.sync(() => {
+      addDependency: (parent, child) => Effect.gen(function* () {
         if (parent === "$workflow") {
           if (parallelSteps.delete(child)) return
           for (const dependency of workflowBarrier.needs) {
@@ -778,7 +793,7 @@ const makeRuntime = (
           return
         }
         edges.add(`${parent}->${child}`)
-        emitEvent({
+        yield* emitEvent({
           type: "dependency.added",
           workflowId,
           stepId: parent,
@@ -806,11 +821,11 @@ const makeRuntime = (
       markOptional: (stepId) => Effect.sync(() => {
         optionalSteps.add(stepId)
       }),
-      recoverOptional: (stepId) => Effect.sync(() => {
+      recoverOptional: (stepId) => Effect.gen(function* () {
         const node = nodes.get(stepId)
         if (!node || node.status !== "failed") return false
         node.status = "warning"
-        emitEvent({
+        yield* emitEvent({
           type: "step.status",
           workflowId,
           stepId,
@@ -830,33 +845,53 @@ const makeRuntime = (
           return Effect.succeed(workspace)
         }
 
-        if (node.status !== "running") {
-          node.status = "running"
-          emitEvent({
-            type: "step.status",
-            workflowId,
-            stepId,
-            status: "running",
-            optional: optionalSteps.has(stepId),
-            timestamp: new Date().toISOString(),
-          })
-        }
+        const started = node.status !== "running"
+          ? (() => {
+            node.status = "running"
 
-        return commandExecutor.execute({
-          command,
-          onOutput: (stream, text) => emitEvent({
-            type: "step.output",
-            workflowId,
+            return emitEvent({
+              type: "step.status",
+              workflowId,
+              stepId,
+              status: "running",
+              optional: optionalSteps.has(stepId),
+              timestamp: new Date().toISOString(),
+            })
+          })()
+          : Effect.void
+
+        return started.pipe(
+          Effect.andThen(commandExecutor.execute({
+            command,
+            onOutput: () => {},
             stepId,
-            stream,
-            text,
-            timestamp: new Date().toISOString(),
-          }),
-          stepId,
-          workflowId,
-          workspace,
-        }).pipe(
-          Effect.as(workspace),
+            workflowId,
+            workspace,
+          })),
+          Effect.flatMap((result) => Effect.gen(function* () {
+            if (result.stdout) {
+              yield* emitEvent({
+                type: "step.output",
+                workflowId,
+                stepId,
+                stream: "stdout",
+                text: result.stdout,
+                timestamp: new Date().toISOString(),
+              })
+            }
+            if (result.stderr) {
+              yield* emitEvent({
+                type: "step.output",
+                workflowId,
+                stepId,
+                stream: "stderr",
+                text: result.stderr,
+                timestamp: new Date().toISOString(),
+              })
+            }
+
+            return workspace
+          })),
         )
       },
       checkpoint: (stepId, workspace, name) => {
@@ -903,7 +938,7 @@ const makeRuntime = (
         }
 
         const requestId = `${workflowId}:${stepId}`
-        emitEvent({
+        const requested = emitEvent({
           type: "approval.requested",
           workflowId,
           stepId,
@@ -912,17 +947,18 @@ const makeRuntime = (
           timestamp: new Date().toISOString(),
         })
 
-        return approvalHandler.request({
-          ...request,
-          requestId,
-          stepId,
-          workflowId,
-        }).pipe(
+        return requested.pipe(
+          Effect.andThen(approvalHandler.request({
+            ...request,
+            requestId,
+            stepId,
+            workflowId,
+          })),
           Effect.mapError((error) => error instanceof ApprovalError
             ? error
             : new ApprovalError(stepId, "unavailable", String(error))),
           Effect.flatMap((result) => {
-            emitEvent({
+            const resolved = emitEvent({
               type: "approval.resolved",
               workflowId,
               stepId,
@@ -932,13 +968,15 @@ const makeRuntime = (
               timestamp: new Date().toISOString(),
             })
 
-            return result.decision === "approved"
-              ? Effect.succeed(result)
-              : Effect.fail(new ApprovalError(
-                stepId,
-                "rejected",
-                `${stepId} was rejected${result.actor ? ` by ${result.actor}` : ""}`,
-              ))
+            return resolved.pipe(
+              Effect.andThen(result.decision === "approved"
+                ? Effect.succeed(result)
+                : Effect.fail(new ApprovalError(
+                  stepId,
+                  "rejected",
+                  `${stepId} was rejected${result.actor ? ` by ${result.actor}` : ""}`,
+                ))),
+            )
           }),
         )
       },
@@ -953,6 +991,7 @@ export interface RunOptions {
   readonly env?: string
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
+  readonly onEvent?: RuntimeEventHandler
   readonly output?: "inherit" | "silent"
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
@@ -1053,7 +1092,9 @@ const interpret = <A>(
   Effect.gen(function* () {
     const environment = options.env ?? "development"
     const event: WorkflowEventShape = options.event ?? { type: "workflow_dispatch" }
-    emitEvent({
+    const emitEvent = makeEventEmitter(options.onEvent)
+
+    yield* emitEvent({
       type: "workflow.started",
       workflowId: workflowDefinition.id,
       environment,
@@ -1064,6 +1105,7 @@ const interpret = <A>(
     const runtime = yield* makeRuntime(
       workflowDefinition.id,
       mode,
+      emitEvent,
       options.approval,
       options.executor ?? makeLocalCommandExecutor(options.output ?? "inherit"),
       options.workspacePersistence,
@@ -1090,7 +1132,7 @@ const interpret = <A>(
       runtime,
       environment,
     )
-    emitEvent({
+    yield* emitEvent({
       type: "workflow.plan",
       workflowId: workflowDefinition.id,
       plan,
@@ -1098,7 +1140,7 @@ const interpret = <A>(
     })
 
     if (Exit.isFailure(result)) {
-      emitEvent({
+      yield* emitEvent({
         type: "workflow.completed",
         workflowId: workflowDefinition.id,
         conclusion: "failure",
@@ -1107,7 +1149,7 @@ const interpret = <A>(
       return yield* Effect.failCause(result.cause)
     }
 
-    emitEvent({
+    yield* emitEvent({
       type: "workflow.completed",
       workflowId: workflowDefinition.id,
       conclusion: "success",

@@ -20,7 +20,7 @@ we learn from it.
 | 3 | [`hitl-deploy`](./examples/hitl-deploy) | How does a production deploy require build artifacts and human approval? | Done | ✅ | ✅ | — |
 | 4 | [`cloudflare-runner`](./examples/cloudflare-runner) | How do I run CI in a Cloudflare Workflow and restore a Container snapshot? | Done | — | ✅ | ✅ |
 | 5 | [`cloudflare-toolchain`](./examples/cloudflare-toolchain) | How do I prepare and snapshot extra tools without a Dockerfile? | Done | — | ✅ | ✅ |
-| 6 | [`github-cloudflare-ci`](./examples/github-cloudflare-ci) | How does GitHub remain the source while Cloudflare runs all CI and reports checks and logs back? | **Next** | — | ✅ | ✅ |
+| 6 | [`github-cloudflare-ci`](./examples/github-cloudflare-ci) | How does GitHub remain the source while Cloudflare runs all CI and reports checks and logs back? | In progress | — | ✅ | ✅ |
 | 7 | `package-manager-cache` | How are detected npm, pnpm, and other package-manager caches restored automatically? | Planned | — | ✅ | ✅ |
 | 8 | `vite-plus-cache` | How can a tool publish cache metadata that Effect CI uses automatically? | Planned | — | ✅ | ✅ |
 | 9 | `cloudflare-parallel` | How does one prepared snapshot fan out into parallel lint, test, and build Containers? | Planned | — | ✅ | ✅ |
