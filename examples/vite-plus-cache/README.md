@@ -21,7 +21,7 @@ is reusable; Vite+ makes that decision after seeing the restored cache.
 The userland workflow remains ordinary:
 
 ```ts
-export const build = CI.action<CI.Workspace>("build", () => function* () {
+export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
   return yield* workspace.exec(

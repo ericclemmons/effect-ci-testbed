@@ -552,6 +552,7 @@ export const workflowEntrypoint = <A>(
     })
 
     const result = await CI.runPromise(workflow, {
+      ci: true,
       env: "cloudflare",
       event: { type: "workflow_dispatch", payload: event.payload },
       executor: runner.executor,

@@ -10,10 +10,12 @@ Its dependency graph is deliberately small:
 checkout → install → build → deploy
 ```
 
-`deploy()` yields `build()`, so the deployment cannot be authored without producing
-typed build artifacts first. The Effect workflow also requests `CI.Approval` inside the
-deploy action. On GitHub Actions, that request is resolved by the native protected
-environment gate before the deployment job starts.
+`deploy()` yields `build()`, so the deployment cannot be authored without first
+producing the built workspace revision. No separate artifact wrapper is needed because
+the no-op deploy consumes the filesystem exactly as the build left it. The Effect
+workflow also requests `CI.Approval` inside the deploy action. On GitHub Actions, that
+request is resolved by the native protected environment gate before the deployment job
+starts.
 
 ## Required GitHub setup
 

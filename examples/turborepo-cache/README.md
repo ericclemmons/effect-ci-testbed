@@ -15,7 +15,7 @@ The responsibilities are intentionally split:
 The userland action is an ordinary command:
 
 ```ts
-export const build = CI.action<CI.Workspace>("build", () => function* () {
+export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
   return yield* workspace.exec(

@@ -1,19 +1,19 @@
 import * as CI from "@effect-ci-testbed/ci"
 
-export const checkout = CI.action<CI.Workspace>("checkout", function* () {
+export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
   return () => source.checkout("examples/cloudflare-runner/app")
 })
 
-export const install = CI.action<CI.Workspace>("install", () => function* () {
+export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
 
   return yield* workspace.exec("npm ci")
 })
 
-export const build = CI.action<void>("build", () => function* () {
+export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
-  yield* workspace.exec("npm run build")
+  return yield* workspace.exec("npm run build")
 })

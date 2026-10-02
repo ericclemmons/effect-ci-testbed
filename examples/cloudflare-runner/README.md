@@ -40,20 +40,22 @@ is no Sandbox SDK dependency or custom image in this example. Each run gets a
 The portable action expresses only the dependency and value flow:
 
 ```ts
-export const install = CI.action<CI.Workspace>("install", () => function* () {
+export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
 
   return yield* workspace.exec("npm ci")
 })
 
-export const build = CI.action<void>("build", () => function* () {
+export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
-  yield* workspace.exec("npm run build")
+  return yield* workspace.exec("npm run build")
 })
 ```
 
-`install()` returns the installed workspace—not a Cloudflare snapshot. The runner
+`CI.action` expects a workspace by default; actions that intentionally produce another
+value opt into it with a generic such as `CI.action<void>`. `install()` returns the
+installed workspace—not a Cloudflare snapshot. The runner
 associates that value with a snapshot revision. With normal reuse enabled, the next
 action can continue in the live Container; after suspension, eviction, or deliberate
 release, the same value transparently restores the correct revision.

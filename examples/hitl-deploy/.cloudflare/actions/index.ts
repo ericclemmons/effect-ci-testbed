@@ -3,59 +3,33 @@ import * as CI from "@effect-ci-testbed/ci"
 
 const app = fileURLToPath(new URL("../../", import.meta.url))
 
-export interface BuildArtifacts {
-  readonly installation: Installation
-  readonly paths: ReadonlyArray<string>
-}
-
-export interface Deployment {
-  readonly artifacts: BuildArtifacts
-  readonly target: "production"
-}
-
-export interface Installation {
-  readonly workspace: CI.Workspace
-}
-
-export const checkout = CI.action<CI.Workspace>("checkout", function* () {
+export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
   return () => source.checkout(app)
 })
 
-export const install = CI.action<Installation>("install", () => function* () {
+export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return {
-    workspace: yield* npm.install({ frozenLockfile: true }),
-  }
+  return yield* npm.install()
 })
 
-export const build = CI.action<BuildArtifacts>("build", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+export const build = CI.action("build", () => function* () {
+  const workspace = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  yield* npm.run("build")
-
-  return {
-    installation,
-    paths: ["dist/index.js"],
-  }
+  return yield* npm.run("build")
 })
 
-export const deploy = CI.action<Deployment>("deploy", () => function* () {
-  const artifacts = yield* build()
+export const deploy = CI.action("deploy", () => function* () {
+  const workspace = yield* build()
   const approval = yield* CI.Approval
 
   yield* approval.request({
     title: "Approve the production deployment?",
     summary: "Build passed. Approve to run the no-op production deployment.",
   })
-  yield* artifacts.installation.workspace.exec("echo npx cf deploy")
-
-  return {
-    artifacts,
-    target: "production",
-  }
+  return yield* workspace.exec("echo npx cf deploy")
 })
