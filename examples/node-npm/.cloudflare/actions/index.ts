@@ -3,59 +3,43 @@ import * as CI from "@effect-ci-testbed/ci"
 
 const app = fileURLToPath(new URL("../../", import.meta.url))
 
-export interface BuildArtifacts {
-  readonly installation: Installation
-  readonly paths: ReadonlyArray<string>
-}
-
-export interface Installation {
-  readonly workspace: CI.Workspace
-}
-
-export const checkout = CI.action<CI.Workspace>("checkout", function* () {
+export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
   return () => source.checkout(app)
 })
 
-export const install = CI.action<Installation>("install", () => function* () {
+export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return {
-    workspace: yield* npm.install({ frozenLockfile: true }),
-  }
+  return yield* npm.install()
 })
 
-export const lint = CI.action<CI.Workspace>("lint", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+export const lint = CI.action("lint", () => function* () {
+  const workspace = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
 
   return yield* npm.run("lint")
 })
 
-export const format = CI.action<CI.Workspace>("format", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+export const format = CI.action("format", () => function* () {
+  const workspace = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
 
   return yield* npm.run("format")
 })
 
-export const test = CI.action<CI.Workspace>("test", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+export const test = CI.action("test", () => function* () {
+  const workspace = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
 
   return yield* npm.run("test")
 })
 
-export const build = CI.action<BuildArtifacts>("build", () => function* () {
-  const installation = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(installation.workspace)
+export const build = CI.action("build", () => function* () {
+  const workspace = yield* install()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  yield* npm.run("build")
-
-  return {
-    installation,
-    paths: ["dist/index.js"],
-  }
+  return yield* npm.run("build")
 })

@@ -9,7 +9,7 @@ ordinary Effect CI action installs Python and its build tools with `Workspace.ex
 and returns the prepared logical workspace:
 
 ```ts
-export const preparePython = CI.action<CI.Workspace>(
+export const preparePython = CI.action(
   "prepare python toolchain",
   () => function* () {
     const workspace = yield* checkout()
@@ -17,11 +17,9 @@ export const preparePython = CI.action<CI.Workspace>(
     yield* workspace.exec(
       "DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install --yes --no-install-recommends python3 python3-pip",
     )
-    yield* workspace.exec(
+    return yield* workspace.exec(
       "python3 -m pip install --break-system-packages --root-user-action=ignore --no-cache-dir build==1.3.0 hatchling==1.27.0",
     )
-
-    return workspace
   },
 )
 ```
@@ -30,10 +28,10 @@ The build action consumes that prepared workspace without knowing whether the ru
 kept its Container alive or restored its durable revision:
 
 ```ts
-export const build = CI.action<void>("build python package", () => function* () {
+export const build = CI.action("build python package", () => function* () {
   const workspace = yield* preparePython()
 
-  yield* workspace.exec("python3 -m build --no-isolation")
+  return yield* workspace.exec("python3 -m build --no-isolation")
 })
 ```
 

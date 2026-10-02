@@ -136,6 +136,7 @@ interface RuntimeNode {
 }
 
 interface RuntimeShape {
+  readonly ci: boolean
   readonly workflowId: string
   readonly mode: WorkflowPlan["mode"]
   readonly nodes: Map<string, RuntimeNode>
@@ -398,11 +399,11 @@ export namespace PackageManager {
         const command = (
           operation: "install" | "run" | "exec",
           value?: string,
-          options: InstallOptions = {},
+          frozenLockfile = false,
         ) => {
           switch (operation) {
             case "install":
-              if (!options.frozenLockfile) return `${name} install`
+              if (!frozenLockfile) return `${name} install`
               switch (name) {
                 case "npm":
                   return "npm ci"
@@ -425,7 +426,12 @@ export namespace PackageManager {
         return {
           name,
           workspace,
-          install: (options) => workspace.exec(command("install", undefined, options)),
+          install: (options) => Effect.gen(function* () {
+            const runtime = yield* Runtime
+            const frozenLockfile = options?.frozenLockfile ?? runtime.ci
+
+            return yield* workspace.exec(command("install", undefined, frozenLockfile))
+          }),
           run: (script) => workspace.exec(command("run", script)),
           exec: (executable) => workspace.exec(command("exec", executable)),
         }
@@ -610,9 +616,12 @@ export const step = <A>(
   return runStep(id)
 }
 
-export const action = <A, Args extends ReadonlyArray<unknown> = ReadonlyArray<never>>(
+export const action = <
+  A = Workspace,
+  Args extends ReadonlyArray<unknown> = ReadonlyArray<never>,
+>(
   id: string,
-  construction: ActionConstruction<Args, A>,
+  construction: ActionConstruction<Args, NoInfer<A>>,
   options: StepOptions = {},
 ): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
   let registered = false
@@ -682,6 +691,7 @@ const makeLocalCommandExecutor = (
 
 const makeRuntime = (
   workflowId: string,
+  ci: boolean,
   mode: WorkflowPlan["mode"],
   emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
   approvalHandler?: ApprovalHandler,
@@ -771,6 +781,7 @@ const makeRuntime = (
     })
 
     runtime = {
+      ci,
       workflowId,
       mode,
       nodes,
@@ -987,6 +998,7 @@ const makeRuntime = (
 
 export interface RunOptions {
   readonly approval?: ApprovalHandler
+  readonly ci?: boolean
   readonly executor?: CommandExecutor
   readonly env?: string
   readonly event?: WorkflowEventShape
@@ -1104,6 +1116,7 @@ const interpret = <A>(
 
     const runtime = yield* makeRuntime(
       workflowDefinition.id,
+      options.ci ?? (typeof process !== "undefined" && process.env.CI !== undefined),
       mode,
       emitEvent,
       options.approval,

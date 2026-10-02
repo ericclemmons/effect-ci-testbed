@@ -7,6 +7,16 @@ on compute selected by a GitHub job, or in a Cloudflare Workflow. Actions own th
 dependencies; workflows coordinate sequencing, parallelism, optional work, recovery,
 approval, and deployment.
 
+The consumer model is intentionally small:
+
+- An action returns the next logical `CI.Workspace` by default. The runner checkpoints
+  that revision; a non-workspace result must be explicit, such as `CI.action<void>`.
+- Capabilities such as `CI.PackageManager.JavaScript(workspace)` remain separate from
+  the workspace instead of turning it into a platform-specific god object.
+- A durable checkpoint restores one exact action revision. A reusable cache restores
+  only its owned paths into the current revision and must never replace dependency
+  lineage.
+
 ## Examples, in implementation order
 
 The table is stack-ranked. Each linked directory contains a focused README answering
@@ -24,11 +34,17 @@ we learn from it.
 | 7 | `github-runner-action` | How does a GitHub job use GitHub-hosted, Blacksmith, or self-hosted compute while a thin action runs the repository's canonical Effect CI program? | Planned | ✅ | ✅ | — |
 | 8 | [`vite-plus-cache`](./examples/vite-plus-cache) | How can Effect CI persist Vite+'s automatically tracked task cache between Workflow instances? | Done | — | ✅ | ✅ |
 | 9 | [`turborepo-cache`](./examples/turborepo-cache) | How can Effect CI persist Turborepo's task cache between Workflow instances? | Done | — | ✅ | ✅ |
-| 10 | `package-manager-cache` | How are detected npm, pnpm, and other package-manager caches restored automatically? | Planned | — | ✅ | ✅ |
-| 11 | `cloudflare-parallel` | How does one prepared snapshot fan out into parallel lint, test, and build Containers? | Planned | — | ✅ | ✅ |
-| 12 | `workers-deploy` | How do typed build artifacts become a Cloudflare Workers deployment? | Planned | ✅ | ✅ | ✅ |
-| 13 | `workers-preview` | How are pull-request previews created, reported, and cleaned up? | Planned | ✅ | ✅ | ✅ |
-| 14 | `agent-healing` | How does a failed action invoke a specialized repair, verify it, and propose or publish the fix? | Planned | — | ✅ | ✅ |
+| 10 | `package-manager-cache` | How does installation restore package-manager-owned cache paths without replacing the incoming workspace? | Next | — | ✅ | ✅ |
+| 11 | `mise-toolchain` | How does a project install all runtimes declared by Mise before resolving its package managers? | Planned | — | ✅ | ✅ |
+| 12 | `node-version` | How does a project select and cache a Node.js version that is absent from the runner image? | Planned | — | ✅ | ✅ |
+| 13 | `system-packages` | How does a build install an uncommon system dependency such as ImageMagick across runner images? | Planned | — | ✅ | ✅ |
+| 14 | `custom-cache` | How does a project change cache keys, paths, scope, retention, or disable caching without changing its actions? | Planned | — | ✅ | ✅ |
+| 15 | `cloudflare-parallel` | How does one prepared snapshot fan out into parallel lint, test, and build Containers? | Planned | — | ✅ | ✅ |
+| 16 | `cloudflare-approval` | How does a Cloudflare Workflow pause for approval and durably resume the same deployment? | Planned | — | ✅ | ✅ |
+| 17 | `chat-approval` | How does Slack or Discord resolve the same portable approval request? | Planned | — | ✅ | ✅ |
+| 18 | `workers-deploy` | How does a built workspace become a Cloudflare Workers deployment? | Planned | ✅ | ✅ | ✅ |
+| 19 | `workers-preview` | How are pull-request previews created, reported, and cleaned up? | Planned | ✅ | ✅ | ✅ |
+| 20 | `agent-healing` | How does a failed action invoke a specialized repair, verify it, and propose or publish the fix? | Planned | — | ✅ | ✅ |
 
 ## Try it locally
 
