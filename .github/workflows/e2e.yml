@@ -422,3 +422,76 @@ jobs:
               throw new Error(`Expected task cache hit, received: ${output}`)
             }
           '
+
+  package-manager-cache:
+    name: package-manager-cache / offline restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Populate online, then install offline in a fresh Workflow
+        env:
+          REPOSITORY: ${{ github.event.pull_request.head.repo.clone_url || 'https://github.com/ericclemmons/effect-ci-testbed.git' }}
+          REVISION: ${{ github.head_ref || github.ref_name }}
+        run: |
+          log="$RUNNER_TEMP/package-manager-cache.log"
+          online=$(node -e 'process.stdout.write(JSON.stringify({ repository: process.env.REPOSITORY, revision: process.env.REVISION }))')
+          offline=$(node -e 'process.stdout.write(JSON.stringify({ repository: process.env.REPOSITORY, revision: process.env.REVISION, offline: true }))')
+
+          pnpm --filter effect-ci-package-manager-cache-fixture dev >"$log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://localhost:8787; then
+              break
+            fi
+            sleep 2
+          done
+
+          wait_for_workflow() {
+            local instance_id="$1"
+
+            for attempt in $(seq 1 90); do
+              description=$(pnpm --filter effect-ci-package-manager-cache-fixture exec wrangler workflows instances describe \
+                effect-ci-package-manager-cache \
+                "$instance_id" \
+                --local \
+                --json 2>/dev/null || true)
+              run_state=$(DESCRIPTION="$description" node -e '
+                try {
+                  const value = JSON.parse(process.env.DESCRIPTION)
+                  process.stdout.write(value.status ?? "")
+                } catch {}
+              ')
+
+              if [ "$run_state" = "complete" ]; then
+                return 0
+              fi
+              if [ "$run_state" = "errored" ] || [ "$run_state" = "terminated" ]; then
+                echo "$description" >&2
+                return 1
+              fi
+              sleep 2
+            done
+
+            echo "Workflow $instance_id did not complete before the timeout" >&2
+            return 1
+          }
+
+          first="package-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-online"
+          second="package-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-offline"
+
+          pnpm --filter effect-ci-package-manager-cache-fixture exec wrangler workflows trigger \
+            effect-ci-package-manager-cache "$online" --id "$first" --local
+          wait_for_workflow "$first"
+
+          pnpm --filter effect-ci-package-manager-cache-fixture exec wrangler workflows trigger \
+            effect-ci-package-manager-cache "$offline" --id "$second" --local
+          wait_for_workflow "$second"

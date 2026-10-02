@@ -156,6 +156,16 @@ interface RuntimeShape {
     workspace: Workspace,
     command: string,
   ) => Effect.Effect<Workspace, CommandError>
+  readonly readFile: (
+    stepId: string,
+    workspace: Workspace,
+    path: string,
+  ) => Effect.Effect<string | undefined, unknown>
+  readonly exists: (
+    stepId: string,
+    workspace: Workspace,
+    path: string,
+  ) => Effect.Effect<boolean, unknown>
   readonly checkpoint: (
     stepId: string,
     workspace: Workspace,
@@ -293,6 +303,36 @@ export class Workspace {
     })
   }
 
+  readFile(path: string): Effect.Effect<string | undefined, unknown, Runtime | CurrentStep> {
+    if (path.startsWith("/") || path.split("/").includes("..")) {
+      return Effect.fail(new Error(`Workspace path must be relative: ${path}`))
+    }
+
+    const workspace = this
+
+    return Effect.gen(function* () {
+      const runtime = yield* Runtime
+      const stepId = yield* CurrentStep
+
+      return yield* runtime.readFile(stepId, workspace, path)
+    })
+  }
+
+  exists(path: string): Effect.Effect<boolean, unknown, Runtime | CurrentStep> {
+    if (path.startsWith("/") || path.split("/").includes("..")) {
+      return Effect.fail(new Error(`Workspace path must be relative: ${path}`))
+    }
+
+    const workspace = this
+
+    return Effect.gen(function* () {
+      const runtime = yield* Runtime
+      const stepId = yield* CurrentStep
+
+      return yield* runtime.exists(stepId, workspace, path)
+    })
+  }
+
   checkpoint(name: string): Effect.Effect<WorkspaceCheckpoint, unknown, Runtime | CurrentStep> {
     const workspace = this
 
@@ -343,6 +383,7 @@ export namespace PackageManager {
 
   export interface InstallOptions {
     readonly frozenLockfile?: boolean
+    readonly offline?: boolean
   }
 
   export interface JavaScript {
@@ -355,91 +396,130 @@ export namespace PackageManager {
     readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
   }
 
-  const fromPackageManagerField = (workspace: Workspace): JavaScriptName | undefined => {
-    const packageJson = join(workspace.cwd, "package.json")
-    if (!existsSync(packageJson)) return undefined
-    const contents = JSON.parse(readFileSync(packageJson, "utf8")) as {
+  const fromPackageManagerField = (contents: string | undefined): JavaScriptName | undefined => {
+    if (!contents) return undefined
+    const packageJson = JSON.parse(contents) as {
       readonly packageManager?: string
     }
-    const name = contents.packageManager?.split("@")[0]
+    const name = packageJson.packageManager?.split("@")[0]
     return name === "npm" || name === "pnpm" || name === "yarn" || name === "bun"
       ? name
       : undefined
   }
 
-  const fromLockfile = (workspace: Workspace): JavaScriptName | undefined => {
-    const matches = ([
-      ["npm", "package-lock.json"],
-      ["pnpm", "pnpm-lock.yaml"],
-      ["yarn", "yarn.lock"],
-      ["bun", "bun.lock"],
-      ["bun", "bun.lockb"],
-    ] as const).filter(([, file]) => existsSync(join(workspace.cwd, file)))
-    const names = [...new Set(matches.map(([name]) => name))]
-    if (names.length > 1) {
-      throw new PackageManagerError(
-        workspace.cwd,
-        `Multiple JavaScript package-manager lockfiles found: ${names.join(", ")}`,
-      )
-    }
-    return names[0]
-  }
+  const lockfiles = [
+    ["npm", "package-lock.json"],
+    ["pnpm", "pnpm-lock.yaml"],
+    ["yarn", "yarn.lock"],
+    ["bun", "bun.lock"],
+    ["bun", "bun.lockb"],
+  ] as const
 
-  export const JavaScript = (workspace: Workspace): Effect.Effect<JavaScript, PackageManagerError> =>
-    Effect.try({
-      try: () => {
-        const name = fromPackageManagerField(workspace) ?? fromLockfile(workspace)
-        if (!name) {
-          throw new PackageManagerError(
-            workspace.cwd,
-            "Could not detect a JavaScript package manager from packageManager or a lockfile",
-          )
+  export const JavaScript = (
+    workspace: Workspace,
+  ): Effect.Effect<JavaScript, PackageManagerError, Runtime | CurrentStep> =>
+    Effect.gen(function* () {
+      const packageJson = yield* workspace.readFile("package.json")
+      const lockfileMatches: Array<JavaScriptName> = []
+
+      for (const [name, file] of lockfiles) {
+        if (yield* workspace.exists(file)) {
+          lockfileMatches.push(name)
         }
+      }
 
-        const command = (
-          operation: "install" | "run" | "exec",
-          value?: string,
-          frozenLockfile = false,
-        ) => {
-          switch (operation) {
-            case "install":
-              if (!frozenLockfile) return `${name} install`
+      const names = [...new Set(lockfileMatches)]
+
+      if (names.length > 1) {
+        return yield* Effect.fail(new PackageManagerError(
+          workspace.cwd,
+          `Multiple JavaScript package-manager lockfiles found: ${names.join(", ")}`,
+        ))
+      }
+
+      const name = yield* Effect.try({
+        try: () => {
+          const detected = fromPackageManagerField(packageJson) ?? names[0]
+
+          if (!detected) {
+            throw new PackageManagerError(
+              workspace.cwd,
+              "Could not detect a JavaScript package manager from packageManager or a lockfile",
+            )
+          }
+
+          return detected
+        },
+        catch: (error) => error instanceof PackageManagerError
+          ? error
+          : new PackageManagerError(workspace.cwd, String(error)),
+      })
+
+      const command = (
+        operation: "install" | "run" | "exec",
+        value?: string,
+        frozenLockfile = false,
+        offline = false,
+      ) => {
+        switch (operation) {
+          case "install": {
+            const offlineFlag = offline ? " --offline" : ""
+
+            if (!frozenLockfile) {
               switch (name) {
                 case "npm":
-                  return "npm ci"
+                  return `npm_config_cache=.effect-ci/cache/npm npm install${offlineFlag}`
                 case "pnpm":
-                  return "pnpm install --frozen-lockfile"
+                  return `pnpm install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
                 case "yarn":
-                  return "yarn install --immutable"
+                  return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install${offlineFlag}`
                 case "bun":
-                  return "bun install --frozen-lockfile"
+                  return `bun install --cache-dir .effect-ci/cache/bun${offlineFlag}`
               }
-            case "run":
-              return `${name} run ${JSON.stringify(value)}`
-            case "exec":
-              return name === "bun"
-                ? `bunx ${value}`
-                : `${name} exec ${value}`
+            }
+
+            switch (name) {
+              case "npm":
+                return `npm_config_cache=.effect-ci/cache/npm npm ci${offlineFlag}`
+              case "pnpm":
+                return `pnpm install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+              case "yarn":
+                return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install --immutable${offlineFlag}`
+              case "bun":
+                return `bun install --frozen-lockfile --cache-dir .effect-ci/cache/bun${offlineFlag}`
+            }
           }
+          case "run":
+            return `${name} run ${JSON.stringify(value)}`
+          case "exec":
+            return name === "bun"
+              ? `bunx ${value}`
+              : `${name} exec ${value}`
         }
+      }
 
-        return {
-          name,
-          workspace,
-          install: (options) => Effect.gen(function* () {
-            const runtime = yield* Runtime
-            const frozenLockfile = options?.frozenLockfile ?? runtime.ci
+      return {
+        name,
+        workspace,
+        install: (options?: InstallOptions) => Effect.gen(function* () {
+          const runtime = yield* Runtime
+          const frozenLockfile = options?.frozenLockfile ?? runtime.ci
 
-            return yield* workspace.exec(command("install", undefined, frozenLockfile))
-          }),
-          run: (script) => workspace.exec(command("run", script)),
-          exec: (executable) => workspace.exec(command("exec", executable)),
-        }
-      },
-      catch: (error) => error instanceof PackageManagerError
+          return yield* workspace.exec(command(
+            "install",
+            undefined,
+            frozenLockfile,
+            options?.offline ?? false,
+          ))
+        }),
+        run: (script: string) => workspace.exec(command("run", script)),
+        exec: (executable: string) => workspace.exec(command("exec", executable)),
+      }
+    }).pipe(
+      Effect.mapError((error) => error instanceof PackageManagerError
         ? error
-        : new PackageManagerError(workspace.cwd, String(error)),
-    })
+        : new PackageManagerError(workspace.cwd, String(error))),
+    )
 }
 
 export interface SourceService {
@@ -472,6 +552,31 @@ export interface CommandExecutor {
   readonly execute: (
     request: CommandExecutionRequest,
   ) => Effect.Effect<CommandExecutionResult, CommandError>
+}
+
+export interface WorkspaceFileSystem {
+  readonly exists: (
+    workspace: Workspace,
+    path: string,
+    stepId: string,
+  ) => Effect.Effect<boolean, unknown>
+  readonly readFile: (
+    workspace: Workspace,
+    path: string,
+    stepId: string,
+  ) => Effect.Effect<string | undefined, unknown>
+}
+
+const localWorkspaceFileSystem: WorkspaceFileSystem = {
+  exists: (workspace, path) => Effect.sync(() => existsSync(join(workspace.cwd, path))),
+  readFile: (workspace, path) => Effect.try({
+    try: () => {
+      const target = join(workspace.cwd, path)
+
+      return existsSync(target) ? readFileSync(target, "utf8") : undefined
+    },
+    catch: (error) => error,
+  }),
 }
 
 export interface WorkspacePersistence {
@@ -696,6 +801,7 @@ const makeRuntime = (
   emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
+  workspaceFileSystem: WorkspaceFileSystem = localWorkspaceFileSystem,
   workspacePersistence: WorkspacePersistence = {
     commit: ({ workspace }) => Effect.succeed(workspace),
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
@@ -905,6 +1011,16 @@ const makeRuntime = (
           })),
         )
       },
+      readFile: (stepId, workspace, path) => workspaceFileSystem.readFile(
+        workspace,
+        path,
+        stepId,
+      ),
+      exists: (stepId, workspace, path) => workspaceFileSystem.exists(
+        workspace,
+        path,
+        stepId,
+      ),
       checkpoint: (stepId, workspace, name) => {
         if (mode === "plan") {
           return Effect.succeed(new WorkspaceCheckpoint(
@@ -1007,6 +1123,7 @@ export interface RunOptions {
   readonly output?: "inherit" | "silent"
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
+  readonly workspaceFileSystem?: WorkspaceFileSystem
 }
 
 const toPlan = (
@@ -1121,6 +1238,7 @@ const interpret = <A>(
       emitEvent,
       options.approval,
       options.executor ?? makeLocalCommandExecutor(options.output ?? "inherit"),
+      options.workspaceFileSystem,
       options.workspacePersistence,
     )
     const approval: ApprovalService = {
