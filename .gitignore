@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 .wrangler/
+**/.effect-ci/cache/
 dist/
 .DS_Store
 *.tsbuildinfo

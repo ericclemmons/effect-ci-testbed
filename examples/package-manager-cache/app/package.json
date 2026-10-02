@@ -1,0 +1,13 @@
+{
+  "name": "package-manager-cache-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.6.1",
+  "dependencies": {
+    "is-number": "7.0.0"
+  },
+  "scripts": {
+    "verify": "node verify.js"
+  }
+}

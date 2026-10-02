@@ -49,6 +49,18 @@ interface WorkspaceContainerStub {
     revision?: ContainerSnapshotValue,
     cachePaths?: ReadonlyArray<string>,
   ) => Promise<ContainerExecutionResult>
+  readonly exists: (
+    path: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ) => Promise<boolean>
+  readonly readFile: (
+    path: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ) => Promise<string | undefined>
   readonly restore: (snapshot: ContainerSnapshotValue) => Promise<void>
 }
 
@@ -294,6 +306,38 @@ export class WorkspaceContainer extends DurableObject {
     return result
   }
 
+  async readFile(
+    path: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ): Promise<string | undefined> {
+    if (path.startsWith("/") || path.split("/").includes("..")) {
+      throw new Error(`Workspace path must be relative: ${path}`)
+    }
+
+    await this.materialize(stepId, revision)
+
+    const result = await this.run(["cat", `${cwd}/${path}`])
+
+    return result.exitCode === 0 ? result.stdout : undefined
+  }
+
+  async exists(
+    path: string,
+    cwd: string,
+    stepId: string,
+    revision?: ContainerSnapshotValue,
+  ): Promise<boolean> {
+    if (path.startsWith("/") || path.split("/").includes("..")) {
+      throw new Error(`Workspace path must be relative: ${path}`)
+    }
+
+    await this.materialize(stepId, revision)
+
+    return (await this.run(["test", "-e", `${cwd}/${path}`])).exitCode === 0
+  }
+
   async checkpoint(
     name: string,
     release = false,
@@ -356,6 +400,7 @@ export interface RunnerOptions {
 
 export interface Runner {
   readonly executor: CI.CommandExecutor
+  readonly fileSystem: CI.WorkspaceFileSystem
   readonly persistence: CI.WorkspacePersistence
   readonly source: CI.SourceService
 }
@@ -460,6 +505,54 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           : new CI.CommandError(stepId, command, workspace.cwd, 1),
       }),
     },
+    fileSystem: {
+      exists: (workspace, path, stepId) => Effect.tryPromise({
+        try: async () => {
+          if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
+            throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
+          }
+
+          const revision = workspace.revision
+          if (revision && revision.provider !== "cloudflare-container") {
+            throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
+          }
+
+          const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
+
+          return options.step.do(`${stepId}:exists-${pathId}`, () =>
+            container.exists(
+              path,
+              workspace.cwd,
+              stepId,
+              revision?.value as ContainerSnapshotValue | undefined,
+            ))
+        },
+        catch: (error) => error,
+      }),
+      readFile: (workspace, path, stepId) => Effect.tryPromise({
+        try: async () => {
+          if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
+            throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
+          }
+
+          const revision = workspace.revision
+          if (revision && revision.provider !== "cloudflare-container") {
+            throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
+          }
+
+          const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
+
+          return options.step.do(`${stepId}:read-${pathId}`, () =>
+            container.readFile(
+              path,
+              workspace.cwd,
+              stepId,
+              revision?.value as ContainerSnapshotValue | undefined,
+            ))
+        },
+        catch: (error) => error,
+      }),
+    },
     persistence: {
       commit: ({ stepId, workspace }) => Effect.tryPromise({
         try: async () => {
@@ -557,6 +650,7 @@ export const workflowEntrypoint = <A>(
       event: { type: "workflow_dispatch", payload: event.payload },
       executor: runner.executor,
       source: runner.source,
+      workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,
     })
 
