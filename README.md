@@ -20,21 +20,23 @@ The consumer model is intentionally small:
 ## Examples, in implementation order
 
 The matrix is stack-ranked. Each link opens one focused example that answers the stated
-use-case. Checkmarks mean that execution path is exercised; empty boxes are useful gaps,
-not a separate status system.
+use-case. A checkmark means the use-case is exercised end-to-end in that actual
+environment. `wrangler dev --local` counts as Local, not Cloudflare. Cloudflare remains
+unchecked until the example is deployed to an account and exercised there. Empty boxes
+are useful gaps, not a separate status system.
 
 | Use-case | Local | GitHub | Cloudflare |
 | --- | :---: | :---: | :---: |
 | [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | 🔲 |
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | 🔲 |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | 🔲 |
-| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | 🔲 | ✅ |
-| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | 🔲 | ✅ |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | ✅ | ✅ | ✅ |
+| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | 🔲 | 🔲 |
+| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | 🔲 | 🔲 |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | 🔲 | 🔲 | 🔲 |
 | Run the canonical CI script on GitHub-hosted, Blacksmith, or self-hosted compute | 🔲 | 🔲 | 🔲 |
-| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | 🔲 | ✅ |
-| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | 🔲 | ✅ |
-| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | 🔲 | ✅ |
+| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | 🔲 | 🔲 |
+| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | 🔲 | 🔲 |
+| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | 🔲 | 🔲 |
 | Install all runtimes declared by Mise | 🔲 | 🔲 | 🔲 |
 | Select and cache a project-specific Node.js version | 🔲 | 🔲 | 🔲 |
 | Install a system dependency such as ImageMagick | 🔲 | 🔲 | 🔲 |
