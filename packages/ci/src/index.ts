@@ -848,9 +848,7 @@ export const workflow = <A>(
   body: WorkflowBody<A>,
 ): Workflow<A> => ({ id, effect: bodyToEffect(body) })
 
-const makeLocalCommandExecutor = (
-  output: "inherit" | "silent",
-): CommandExecutor => ({
+const makeLocalCommandExecutor = (): CommandExecutor => ({
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
     const stdout: Array<string> = []
     const stderr: Array<string> = []
@@ -865,10 +863,8 @@ const makeLocalCommandExecutor = (
       const text = chunk.toString()
       if (stream === "stdout") {
         stdout.push(text)
-        if (output === "inherit") process.stdout.write(text)
       } else {
         stderr.push(text)
-        if (output === "inherit") process.stderr.write(text)
       }
       onOutput(stream, text)
     }
@@ -891,9 +887,10 @@ const makeRuntime = (
   workflowId: string,
   ci: boolean,
   mode: WorkflowPlan["mode"],
+  output: "inherit" | "silent",
   emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
   approvalHandler?: ApprovalHandler,
-  commandExecutor: CommandExecutor = makeLocalCommandExecutor("inherit"),
+  commandExecutor: CommandExecutor = makeLocalCommandExecutor(),
   workspaceFileSystem: WorkspaceFileSystem = localWorkspaceFileSystem,
   workspacePersistence: WorkspacePersistence = {
     commit: ({ workspace }) => Effect.succeed(workspace),
@@ -1073,7 +1070,11 @@ const makeRuntime = (
         return started.pipe(
           Effect.andThen(commandExecutor.execute({
             command,
-            onOutput: () => {},
+            onOutput: (stream, text) => {
+              if (output !== "inherit") return
+              if (stream === "stdout") process.stdout.write(text)
+              else process.stderr.write(text)
+            },
             stepId,
             workflowId,
             workspace,
@@ -1328,9 +1329,10 @@ const interpret = <A>(
       workflowDefinition.id,
       options.ci ?? (typeof process !== "undefined" && process.env.CI !== undefined),
       mode,
+      options.output ?? "inherit",
       emitEvent,
       options.approval,
-      options.executor ?? makeLocalCommandExecutor(options.output ?? "inherit"),
+      options.executor ?? makeLocalCommandExecutor(),
       options.workspaceFileSystem,
       options.workspacePersistence,
     )

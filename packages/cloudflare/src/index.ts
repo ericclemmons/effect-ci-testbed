@@ -649,6 +649,7 @@ export const workflowEntrypoint = <A>(
       env: "cloudflare",
       event: { type: "workflow_dispatch", payload: event.payload },
       executor: runner.executor,
+      output: "silent",
       source: runner.source,
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,

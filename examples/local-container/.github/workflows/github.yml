@@ -1,0 +1,19 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: node:24-bookworm
+    steps:
+      - uses: actions/checkout@v7
+      - run: npm ci
+      - run: test "$(uname -s)" = Linux
+      - run: npm test
