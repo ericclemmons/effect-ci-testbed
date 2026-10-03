@@ -45,7 +45,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |
-| Select and cache a project-specific Node.js version | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | 🔜 |
 | Install a system dependency such as ImageMagick | 🔜 | 🔜 | 🔜 | 🔜 |
 | Customize cache keys, paths, scope, retention, or disable caching | 🔜 | 🔜 | 🔜 | 🔜 |
 | Fan one prepared snapshot out to parallel Containers | — | 🔜 | — | 🔜 |

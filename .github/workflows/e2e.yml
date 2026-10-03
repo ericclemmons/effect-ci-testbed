@@ -22,6 +22,7 @@ jobs:
           - optional-checks
           - local-container
           - mise-toolchain
+          - node-version
           - cloudflare-runner
           - cloudflare-toolchain
           - vite-plus-cache
@@ -80,6 +81,7 @@ jobs:
           - runner-selection
           - local-container
           - mise-toolchain
+          - node-version
         mode:
           - plan
           - execute
@@ -179,6 +181,12 @@ jobs:
             cache-path: ""
             cache-key: ""
             cache-key-files: ""
+            runs-on: '["ubuntu-latest"]'
+          - example: node-version
+            workflow: examples/node-version/.cloudflare/ci/workflow.ts
+            cache-path: examples/node-version/.effect-ci/cache/mise
+            cache-key: node-version
+            cache-key-files: examples/node-version/.node-version
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
