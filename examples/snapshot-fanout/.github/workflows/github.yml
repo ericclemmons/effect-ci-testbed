@@ -16,6 +16,7 @@ jobs:
       - run: printf prepared > prepared.txt
         working-directory: app
       - uses: actions/upload-artifact@v7
+        if: ${{ !env.ACT }}
         with:
           name: prepared
           path: app/prepared.txt
@@ -29,9 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
+        if: ${{ !env.ACT }}
         with:
           name: prepared
           path: app
+      - name: Recreate the prepared fixture under act
+        if: ${{ env.ACT }}
+        working-directory: app
+        run: printf prepared > prepared.txt
       - name: Isolated ${{ matrix.name }} check
         working-directory: app
         run: |
