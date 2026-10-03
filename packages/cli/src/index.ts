@@ -20,9 +20,13 @@ export interface Invocation {
 
 export interface Program {
   readonly actions?: Readonly<Record<string, unknown>>
-  readonly local?: CI.RunOptions | (() => CI.RunOptions)
+  readonly local?: LocalRunOptions | (() => LocalRunOptions)
   readonly remote?: (invocation: Invocation) => Promise<unknown>
   readonly workflow: CI.Workflow<unknown>
+}
+
+export interface LocalRunOptions extends CI.RunOptions {
+  readonly dispose?: () => Promise<void>
 }
 
 export const ExitCode = {
@@ -168,7 +172,7 @@ const printJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
 }
 
-const defaultLocalOptions = (): CI.RunOptions => {
+const defaultLocalOptions = (): LocalRunOptions => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
   const decision = process.env.EFFECT_CI_APPROVAL
   const approval: CI.ApprovalHandler | undefined = decision === "approved" || decision === "rejected"
@@ -312,15 +316,21 @@ export const main = async (
     const configured = typeof program.local === "function"
       ? program.local()
       : program.local ?? defaultLocalOptions()
-    const result = await CI.runPromise(workflow, {
-      ...configured,
-      mode: invocation.command === "plan" ? "plan" : "execute",
-      ...(format === "json"
-        ? { output: "silent" as const }
-        : configured.output
-        ? { output: configured.output }
-        : {}),
-    })
+    const result = await (async () => {
+      try {
+        return await CI.runPromise(workflow, {
+          ...configured,
+          mode: invocation.command === "plan" ? "plan" : "execute",
+          ...(format === "json"
+            ? { output: "silent" as const }
+            : configured.output
+            ? { output: configured.output }
+            : {}),
+        })
+      } finally {
+        await configured.dispose?.()
+      }
+    })()
 
     if (format === "json") {
       printJson({

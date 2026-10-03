@@ -34,6 +34,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | --- | :---: | :---: | :---: | :---: |
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
+| [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔜 |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |

@@ -172,6 +172,9 @@ importers:
       '@effect-ci-testbed/cli':
         specifier: workspace:*
         version: link:packages/cli
+      '@effect-ci-testbed/local-container':
+        specifier: workspace:*
+        version: link:packages/local-container
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
@@ -256,13 +259,13 @@ importers:
 
   examples/hitl-deploy: {}
 
+  examples/local-container: {}
+
   examples/node-npm: {}
 
   examples/node-pnpm: {}
 
   examples/optional-checks: {}
-
-  examples/runner-selection: {}
 
   examples/package-manager-cache:
     dependencies:
@@ -285,6 +288,8 @@ importers:
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+
+  examples/runner-selection: {}
 
   examples/turborepo-cache:
     dependencies:
@@ -414,6 +419,22 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1
         version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/local-container:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../ci
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
