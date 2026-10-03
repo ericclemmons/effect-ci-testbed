@@ -42,6 +42,10 @@ jobs:
         working-directory: app
         run: |
           test "$(cat prepared.txt)" = prepared
-          printf '${{ matrix.name }}' > branch.txt
+          branch_file=branch.txt
+          if [[ "${ACT:-}" == true ]]; then
+            branch_file='branch-${{ matrix.name }}.txt'
+          fi
+          printf '${{ matrix.name }}' > "$branch_file"
           sleep 2
-          test "$(cat branch.txt)" = '${{ matrix.name }}'
+          test "$(cat "$branch_file")" = '${{ matrix.name }}'
