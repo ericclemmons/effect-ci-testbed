@@ -1,9 +1,9 @@
-# Reuse the Turborepo cache on Cloudflare
+# Reuse the Turborepo cache
 
 This example answers one question:
 
-> How can separate Cloudflare Workflow instances reuse Turborepo task results while
-> Turborepo remains responsible for deciding whether a build is valid?
+> How can separate CI runs reuse Turborepo task results while Turborepo remains
+> responsible for deciding whether a build is valid?
 
 The responsibilities are intentionally split:
 
@@ -11,6 +11,19 @@ The responsibilities are intentionally split:
    declares `dist/**` as the build output to restore on a cache hit.
 2. Effect CI persists the opaque `.turbo/cache` directory in a rolling Container
    snapshot. It does not reproduce Turborepo's hashing rules.
+
+## Compare GitHub and Effect CI
+
+- [`.github/workflows/github.yml`](./.github/workflows/github.yml) restores
+  `.turbo/cache` with `actions/cache` and invokes Turborepo directly.
+- [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
+  supplies the same path to the reusable GitHub runner before executing
+  [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts).
+- [`src/worker.ts`](./src/worker.ts) supplies Cloudflare's snapshot-backed cache to the
+  same workflow.
+
+This is the intended layer boundary: orchestration names no cache vendor; the runner
+owns persistence; Turborepo owns cache validity.
 
 The userland action is an ordinary command:
 

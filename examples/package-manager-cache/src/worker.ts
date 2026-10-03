@@ -1,6 +1,6 @@
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 
-import workflow from "../.cloudflare/workflows/install.ts"
+import workflow from "../.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 

@@ -33,6 +33,19 @@ The two persistence mechanisms remain separate:
 - The reusable cache owns only `.effect-ci/cache/npm` and may be absent without
   changing correctness.
 
+## Compare GitHub and Effect CI
+
+- [`.github/workflows/github.yml`](./.github/workflows/github.yml) uses the conventional
+  `setup-node` npm cache and runs the install and verification commands directly.
+- [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
+  gives `.effect-ci/cache/npm` to the reusable GitHub runner and executes
+  [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts).
+- [`src/worker.ts`](./src/worker.ts) maps that same logical cache path to a Cloudflare
+  snapshot.
+
+In both Effect variants, `CI.PackageManager.JavaScript(workspace)` chooses the npm
+cache location. The platform adapter only decides how that directory persists.
+
 Run the production-shaped path locally with Docker and Wrangler:
 
 ```sh

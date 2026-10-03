@@ -1,6 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
 
-import workflow from "../.cloudflare/workflows/build.ts"
+import workflow from "../.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
 

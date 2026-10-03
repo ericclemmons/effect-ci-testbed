@@ -381,6 +381,39 @@ export class PackageManagerError extends Error {
 export namespace PackageManager {
   export type JavaScriptName = "npm" | "pnpm" | "yarn" | "bun"
 
+  export interface Apt {
+    readonly workspace: Workspace
+    readonly install: (
+      packages: ReadonlyArray<string>,
+    ) => Effect.Effect<Workspace, CommandError | PackageManagerError, Runtime | CurrentStep>
+  }
+
+  export const Apt = (workspace: Workspace): Effect.Effect<Apt, PackageManagerError> =>
+    Effect.gen(function* () {
+      const packageName = /^[a-zA-Z0-9][a-zA-Z0-9+.-]*$/
+
+      return {
+        workspace,
+        install: (packages) => {
+          const invalid = packages.find((name) => !packageName.test(name))
+
+          if (invalid) {
+            return Effect.fail(new PackageManagerError(
+              workspace.cwd,
+              `Invalid apt package name: ${invalid}`,
+            ))
+          }
+
+          const names = packages.join(" ")
+          const install = `apt-get install --yes --no-install-recommends ${names}`
+
+          return workspace.exec(
+            `if [ "$(id -u)" -eq 0 ]; then apt-get update && DEBIAN_FRONTEND=noninteractive ${install}; else sudo apt-get update && sudo env DEBIAN_FRONTEND=noninteractive ${install}; fi`,
+          )
+        },
+      }
+    })
+
   export interface InstallOptions {
     readonly frozenLockfile?: boolean
     readonly offline?: boolean

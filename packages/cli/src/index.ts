@@ -152,9 +152,9 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
-  ci.run.ts [run] [target] [--local|--remote] [--format=text|json]
-  ci.run.ts plan [target] [--local|--remote] [--format=text|json]
-  ci.run.ts list [--format=text|json]
+  workflow.ts [run] [target] [--local|--remote] [--format=text|json]
+  workflow.ts plan [target] [--local|--remote] [--format=text|json]
+  workflow.ts list [--format=text|json]
 
 Commands:
   run     Execute the default workflow or one exported action (default)

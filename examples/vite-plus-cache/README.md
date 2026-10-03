@@ -1,8 +1,9 @@
-# Reuse the Vite+ task cache on Cloudflare
+# Reuse the Vite+ task cache
 
 This example answers one question:
 
-> How can separate Cloudflare Workflow instances reuse Vite+ task results without teaching Effect CI how Vite+ fingerprints a build?
+> How can separate CI runs reuse Vite+ task results without teaching Effect CI how
+> Vite+ fingerprints a build?
 
 The two cache layers have deliberately different jobs:
 
@@ -14,9 +15,23 @@ The two cache layers have deliberately different jobs:
    next Workflow instance forks that snapshot before checking out its requested revision.
 
 Vite Task stores its local cache at `node_modules/.vite/task-cache`. The runner protects
-that path across destructive commands such as `npm ci`, so package installation cannot
-erase the restored cache. Effect CI does not hash source files or decide whether `build`
-is reusable; Vite+ makes that decision after seeing the restored cache.
+that path across destructive commands on Cloudflare. On GitHub, `actions/cache` restores
+the same path and the portable install action uses non-destructive `npm install`, so the
+restored task cache survives until Vite+ validates it. Effect CI does not hash source
+files or decide whether `build` is reusable; Vite+ makes that decision after seeing the
+restored cache.
+
+## Compare GitHub and Effect CI
+
+- [`.github/workflows/github.yml`](./.github/workflows/github.yml) installs the app,
+  restores Vite Task's directory with `actions/cache`, and invokes Vite+ directly.
+- [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
+  gives that same directory to the reusable GitHub runner, then executes the portable
+  Effect workflow.
+- [`src/worker.ts`](./src/worker.ts) gives the same logical cache path to the Cloudflare
+  snapshot adapter.
+
+The cache provider changes; the Vite+ command and its correctness model do not.
 
 The userland workflow remains ordinary:
 
