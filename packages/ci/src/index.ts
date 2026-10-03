@@ -624,6 +624,15 @@ export class ToolchainError extends Error {
 }
 
 export namespace Toolchain {
+  export interface Node {
+    readonly version: string
+    readonly workspace: Workspace
+    readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+    readonly exec: (
+      command: string,
+    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  }
+
   export interface MiseInstallOptions {
     readonly locked?: boolean
   }
@@ -642,6 +651,74 @@ export namespace Toolchain {
     "MISE_DATA_DIR=.effect-ci/cache/mise/data",
     "MISE_CACHE_DIR=.effect-ci/cache/mise/cache",
   ].join(" ")
+
+  const nodeVersion = (packageJson: string | undefined): string | undefined => {
+    if (!packageJson) return undefined
+
+    const value = JSON.parse(packageJson) as {
+      readonly devEngines?: {
+        readonly runtime?: ReadonlyArray<{
+          readonly name?: string
+          readonly version?: string
+        }> | {
+          readonly name?: string
+          readonly version?: string
+        }
+      }
+    }
+    const runtime = Array.isArray(value.devEngines?.runtime)
+      ? value.devEngines.runtime[0]
+      : value.devEngines?.runtime
+
+    return runtime?.name === "node" ? runtime.version : undefined
+  }
+
+  export const Node = (
+    workspace: Workspace,
+  ): Effect.Effect<Node, ToolchainError, Runtime | CurrentStep> =>
+    Effect.gen(function* () {
+      let version: string | undefined
+
+      for (const path of [".node-version", ".nvmrc"]) {
+        const contents = yield* workspace.readFile(path)
+
+        if (contents) {
+          version = contents.trim()
+          break
+        }
+      }
+
+      version ??= nodeVersion(yield* workspace.readFile("package.json"))
+
+      if (!version) {
+        return yield* Effect.fail(new ToolchainError(
+          workspace.cwd,
+          "Could not find a Node.js version in .node-version, .nvmrc, or package.json#devEngines.runtime",
+        ))
+      }
+
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9._+*/-]*$/.test(version)) {
+        return yield* Effect.fail(new ToolchainError(
+          workspace.cwd,
+          `Invalid Node.js version request: ${version}`,
+        ))
+      }
+
+      const tool = `node@${version}`
+
+      return {
+        version,
+        workspace,
+        install: () => workspace.exec(`${miseEnvironment} mise --yes install ${tool}`),
+        exec: (command: string) => workspace.exec(
+          `${miseEnvironment} mise exec ${tool} -- ${command}`,
+        ),
+      }
+    }).pipe(
+      Effect.mapError((error) => error instanceof ToolchainError
+        ? error
+        : new ToolchainError(workspace.cwd, String(error))),
+    )
 
   export const Mise = (
     workspace: Workspace,
