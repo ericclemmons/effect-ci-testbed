@@ -23,16 +23,9 @@ export const lint = CI.action("lint", () => function* () {
   return yield* npm.run("lint")
 })
 
-export const test = CI.action("test", () => function* () {
+export const format = CI.action("format", () => function* () {
   const workspace = yield* install()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return yield* npm.run("test")
-})
-
-export const build = CI.action("build", () => function* () {
-  const workspace = yield* install()
-  const npm = yield* CI.PackageManager.JavaScript(workspace)
-
-  return yield* npm.run("build")
+  return yield* npm.run("format")
 })

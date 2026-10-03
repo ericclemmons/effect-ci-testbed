@@ -32,7 +32,8 @@ means that execution model is genuinely irrelevant to the use-case.
 
 | Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔜 |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |

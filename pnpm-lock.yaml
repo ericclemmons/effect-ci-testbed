@@ -260,6 +260,8 @@ importers:
 
   examples/node-pnpm: {}
 
+  examples/optional-checks: {}
+
   examples/runner-selection: {}
 
   examples/package-manager-cache:
