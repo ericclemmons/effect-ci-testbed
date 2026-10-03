@@ -1,0 +1,19 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --tag effect-ci-custom-image:review .
+      - run: docker image inspect effect-ci-custom-image:review
+      - run: echo docker push registry.example/effect-ci-custom-image:review

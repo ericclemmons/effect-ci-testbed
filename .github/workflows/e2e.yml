@@ -32,6 +32,9 @@ jobs:
           - turborepo-cache
           - package-manager-cache
           - runner-selection
+          - d1-migration
+          - ordered-deploy
+          - custom-container-image
     steps:
       - uses: actions/checkout@v7
 
@@ -87,6 +90,9 @@ jobs:
           - node-version
           - system-package
           - cache-policy
+          - d1-migration
+          - ordered-deploy
+          - custom-container-image
         mode:
           - plan
           - execute
@@ -211,6 +217,15 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: runner-selection
             workflow: examples/runner-selection/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: d1-migration
+            workflow: examples/d1-migration/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: ordered-deploy
+            workflow: examples/ordered-deploy/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: custom-container-image
+            workflow: examples/custom-container-image/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
     uses: ./.github/workflows/effect-ci.yml
     with:
