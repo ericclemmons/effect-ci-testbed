@@ -9,29 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: ${{ matrix.check }}${{ matrix.optional && ' (optional)' || '' }}
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.optional }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - check: lint
-            optional: false
-          - check: format
-            optional: true
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm ci
-      - run: npm run ${{ matrix.check }}
-
   pipeline:
-    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -40,5 +18,6 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build

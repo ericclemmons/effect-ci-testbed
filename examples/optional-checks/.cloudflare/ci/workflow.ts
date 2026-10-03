@@ -5,17 +5,11 @@ import * as CI from "@effect-ci-testbed/ci"
 
 import * as actions from "./actions.ts"
 
-const workflow = CI.workflow("node-npm", function* () {
-  const event = yield* CI.WorkflowEvent
-
-  if (!["pull_request", "push", "workflow_dispatch"].includes(event.type)) {
-    return
-  }
-
-  yield* actions.lint()
-  yield* actions.test()
-
-  return yield* actions.build()
+const workflow = CI.workflow("optional-checks", function* () {
+  return yield* CI.parallel([
+    actions.lint(),
+    CI.optional(actions.format()),
+  ])
 })
 
 export * from "./actions.ts"

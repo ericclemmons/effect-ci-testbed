@@ -2,20 +2,19 @@
 
 This example answers one question:
 
-> How do I run an ordinary npm project's required and optional checks with parity
-> between GitHub Actions and Effect CI?
+> How do I run an ordinary npm project with parity between GitHub Actions and
+> Effect CI?
 
 The fixture is deliberately ordinary: a dependency-free Node application using npm.
 Its lockfile also demonstrates JavaScript package-manager inference selecting npm.
 
-Its pipeline is:
+Its pipeline focuses only on npm detection and ordinary dependent actions:
 
 ```text
-checkout → install → [lint (required) ∥ format (optional)] → test → build
+checkout → install → lint → test → build
 ```
 
-The GitHub validation matrix and Effect parallel group express the same concurrency and
-failure policy: both branches finish, but only lint blocks the later stages.
+See [`../optional-checks`](../optional-checks) for parallel required and optional checks.
 
 Compare:
 
