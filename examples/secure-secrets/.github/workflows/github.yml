@@ -16,5 +16,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: Require a credential without printing it
         env:
-          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: test -n "$REGISTRY_TOKEN"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: test -n "$GITHUB_TOKEN"

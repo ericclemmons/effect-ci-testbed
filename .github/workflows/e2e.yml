@@ -176,7 +176,7 @@ jobs:
       - run: node --import tsx examples/immutable-attempts/verify.ts
 
   sdk-semantics:
-    name: ${{ matrix.example }} / effect-on-github
+    name: ${{ matrix.example }} / tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -196,7 +196,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - run: node --import tsx examples/${{ matrix.example }}/verify.ts
+      - run: node --test --import tsx examples/${{ matrix.example }}/.cloudflare/ci/tests/${{ matrix.example }}.test.ts
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
@@ -215,6 +215,24 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: local-container
             workflow: examples/local-container/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: execution-policy
+            workflow: examples/execution-policy/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: conditional-deploy
+            workflow: examples/conditional-deploy/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: rollback-compensation
+            workflow: examples/rollback-compensation/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: secure-secrets
+            workflow: examples/secure-secrets/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: portable-artifacts
+            workflow: examples/portable-artifacts/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: verification-evidence
+            workflow: examples/verification-evidence/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: mise-toolchain
             workflow: examples/mise-toolchain/.cloudflare/ci/workflow.ts

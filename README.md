@@ -30,6 +30,21 @@ The consumer model is intentionally small:
 - Side-effect-free checks may opt into signed commit evidence. A runner verifies exact
   inputs and signatures; missing or invalid evidence always falls back to execution.
 
+Each focused example separates the program from its tests and its platform adapter:
+
+```text
+.cloudflare/ci/actions.ts                 reusable action definitions
+.cloudflare/ci/workflow.ts                canonical local/remote executable
+.cloudflare/ci/tests/*.test.ts            ordinary SDK assertions
+.github/workflows/github.yml              conventional GitHub Actions comparison
+.github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
+```
+
+Tests never launch CI. Locally, a developer or agent executes `workflow.ts` directly.
+On GitHub, the thin Effect caller passes that same file to the reusable runner. The
+conventional YAML is intentionally independent so every example shows the native
+GitHub approach beside the portable Effect approach.
+
 ## Examples, in implementation order
 
 The matrix is stack-ranked. Rows marked for conventional GitHub Actions include

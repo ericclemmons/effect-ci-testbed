@@ -12,11 +12,17 @@ runtime owns its retry history and cancellation.
 The conventional GitHub Actions comparison uses a shell retry loop because Actions has
 a timeout setting but no equivalent native per-step retry policy.
 
-Run the executable verification:
+The same Effect workflow is the executable local entry point and the input to the
+reusable GitHub runner:
 
 ```sh
-node --import tsx examples/execution-policy/verify.ts
+./examples/execution-policy/.cloudflare/ci/workflow.ts
 ```
+
+Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). Assertions about retry
+and interruption behavior live separately in
+[`tests/execution-policy.test.ts`](./.cloudflare/ci/tests/execution-policy.test.ts).
 
 `limit: 2` means two retries after the initial attempt. Timeout applies to each
 attempt, not to the combined lifetime of all retries.

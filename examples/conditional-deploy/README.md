@@ -13,8 +13,14 @@ Property-based tests are useful for exercising combinations of events and refs, 
 they cannot make an arbitrary JavaScript `if` inspectable. The declarative predicate is
 what makes planning possible; tests verify its algebra.
 
-Run the executable verification:
+Run the canonical workflow locally:
 
 ```sh
-node --import tsx examples/conditional-deploy/verify.ts
+./examples/conditional-deploy/.cloudflare/ci/workflow.ts
 ```
+
+Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). The exhaustive event/ref
+assertions live in
+[`tests/conditional-deploy.test.ts`](./.cloudflare/ci/tests/conditional-deploy.test.ts),
+not in the workflow entry point.

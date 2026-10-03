@@ -3,21 +3,8 @@ import { generateKeyPairSync, sign, verify } from "node:crypto"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 
-const checkout = CI.action("verification checkout", function* () {
-  const source = yield* CI.Source
+import workflow from "../workflow.ts"
 
-  return () => source.checkout(".")
-})
-
-const lint = CI.action("verified lint", () => function* () {
-  const workspace = yield* checkout()
-
-  return yield* workspace.exec("lint")
-}, {
-  verification: { scope: "commit" },
-})
-
-const workflow = CI.workflow("verification-evidence", () => lint())
 const { privateKey, publicKey } = generateKeyPairSync("ed25519")
 const proofs = new Map<string, Buffer>()
 
@@ -45,6 +32,7 @@ const verification: CI.VerificationStore = {
   record: (request) => Effect.sync(() => {
     if (!request.event.revision) return
     const message = fingerprint(request)
+
     proofs.set(message, sign(null, Buffer.from(message), privateKey))
   }),
 }
@@ -53,6 +41,7 @@ let executions = 0
 const executor: CI.CommandExecutor = {
   execute: () => {
     executions++
+
     return Effect.succeed({ exitCode: 0, stderr: "", stdout: "" })
   },
 }
@@ -72,4 +61,3 @@ assert.equal(reused.plan.nodes.find((node) => node.id === "verified lint")?.stat
 
 await run("commit-b")
 assert.equal(executions, 2)
-console.log("signed verification evidence passed")

@@ -19,6 +19,9 @@ for the signed envelope, while the verifier's configured public key establishes 
 Only side-effect-free checks belong here. Builds, migrations, deployments, and checks
 whose outputs are consumed by later steps must not opt in.
 
-```sh
-node --import tsx examples/verification-evidence/verify.ts
-```
+Run the canonical workflow locally with
+`./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). The in-memory Ed25519
+proof store is test infrastructure, so it lives in
+[`tests/verification-evidence.test.ts`](./.cloudflare/ci/tests/verification-evidence.test.ts)
+rather than masquerading as the workflow entry point.

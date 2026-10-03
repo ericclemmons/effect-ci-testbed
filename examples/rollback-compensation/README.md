@@ -16,8 +16,13 @@ The conventional GitHub Actions comparison needs `continue-on-error` so its roll
 step can run, followed by a final step that deliberately restores the original failing
 conclusion. Effect CI keeps that control flow as one inspectable recovery edge.
 
-Run the executable verification:
+Run the canonical workflow locally:
 
 ```sh
-node --import tsx examples/rollback-compensation/verify.ts
+./examples/rollback-compensation/.cloudflare/ci/workflow.ts
 ```
+
+Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). Forced failure and
+double-failure assertions live in
+[`tests/rollback-compensation.test.ts`](./.cloudflare/ci/tests/rollback-compensation.test.ts).

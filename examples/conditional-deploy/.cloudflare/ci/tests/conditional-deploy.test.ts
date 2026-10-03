@@ -2,22 +2,7 @@ import assert from "node:assert/strict"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 
-const checkout = CI.action("checkout", function* () {
-  const source = yield* CI.Source
-
-  return () => source.checkout(".")
-})
-
-const deploy = CI.action("deploy", () => function* () {
-  const workspace = yield* checkout()
-
-  return yield* workspace.exec("deploy")
-})
-
-const production = CI.Condition.all(
-  CI.Condition.event("push"),
-  CI.Condition.ref("refs/heads/main"),
-)
+import workflow, { production } from "../workflow.ts"
 
 for (const type of ["pull_request", "push", "release"] as const) {
   for (const ref of ["refs/heads/main", "refs/heads/feature", "refs/tags/v1"] as const) {
@@ -27,10 +12,6 @@ for (const type of ["pull_request", "push", "release"] as const) {
     )
   }
 }
-
-const workflow = CI.workflow("conditional-deploy", function* () {
-  return yield* CI.when(production, deploy())
-})
 
 const planned = await CI.runPromise(workflow, {
   event: { type: "pull_request", ref: "refs/pull/1/merge" },
@@ -45,6 +26,7 @@ let executions = 0
 const executor: CI.CommandExecutor = {
   execute: () => {
     executions++
+
     return Effect.succeed({ exitCode: 0, stderr: "", stdout: "" })
   },
 }
@@ -65,4 +47,3 @@ await CI.runPromise(workflow, {
 })
 
 assert.equal(executions, 1)
-console.log("inspectable conditions passed")
