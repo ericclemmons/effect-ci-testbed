@@ -1285,6 +1285,10 @@ export interface RunOptions {
   readonly workspaceFileSystem?: WorkspaceFileSystem
 }
 
+export interface RunConfiguration extends RunOptions {
+  readonly dispose?: () => Promise<void>
+}
+
 const toPlan = (
   workflowId: string,
   runtime: RuntimeShape,

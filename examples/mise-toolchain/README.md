@@ -18,7 +18,8 @@ export const installToolchain = CI.action("install toolchain", () => function* (
 
 `CI.Toolchain.Mise` owns `.effect-ci/cache/mise`; workflows do not need to know Mise's
 data or download-cache layout. Commands use `mise.exec(...)` so shell activation is not
-required in local or CI environments.
+required in local or CI environments. The workflow exports its `local` runner so both
+the executable entrypoint and Effect CI's GitHub adapter use the same Mise image.
 
 Compare:
 

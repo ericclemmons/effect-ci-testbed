@@ -12,13 +12,11 @@ const workflow = CI.workflow("local-container", function* () {
   return yield* actions.test()
 })
 
+export const local = () => LocalContainer.makeRunner({ image: "node:24-bookworm" })
+
 export * from "./actions.ts"
 export default workflow
 
 if (CLI.isMain(import.meta.url)) {
-  await CLI.runMain({
-    actions,
-    local: () => LocalContainer.makeRunner({ image: "node:24-bookworm" }),
-    workflow,
-  })
+  await CLI.runMain({ actions, local, workflow })
 }

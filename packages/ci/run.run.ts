@@ -12,6 +12,7 @@ const required = (name: string): string => {
 const workflowPath = required("EFFECT_CI_WORKFLOW")
 const module = await import(pathToFileURL(resolve(workflowPath)).href) as {
   readonly default?: CI.Workflow<unknown>
+  readonly local?: CI.RunConfiguration | (() => CI.RunConfiguration)
 }
 const workflow = module.default
 
@@ -28,9 +29,18 @@ if (configuredDecision === "approved" || configuredDecision === "rejected") {
   }
 }
 
-await CI.runPromise(workflow, {
-  ...(approval ? { approval } : {}),
-  env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
-  event: { type: event ?? "workflow_dispatch" },
-  mode: process.env.DRY_RUN ? "plan" : "execute",
-})
+const configured = typeof module.local === "function"
+  ? module.local()
+  : module.local ?? {}
+
+try {
+  await CI.runPromise(workflow, {
+    ...configured,
+    ...(approval ? { approval } : {}),
+    env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
+    event: { type: event ?? "workflow_dispatch" },
+    mode: process.env.DRY_RUN ? "plan" : "execute",
+  })
+} finally {
+  await configured.dispose?.()
+}

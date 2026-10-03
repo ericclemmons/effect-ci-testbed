@@ -12,15 +12,13 @@ const workflow = CI.workflow("mise-toolchain", function* () {
   return yield* actions.verifyPython()
 })
 
+export const local = () => LocalContainer.makeRunner({
+  image: "ghcr.io/jdx/mise:2026.9.11-debian",
+})
+
 export * from "./actions.ts"
 export default workflow
 
 if (CLI.isMain(import.meta.url)) {
-  await CLI.runMain({
-    actions,
-    local: () => LocalContainer.makeRunner({
-      image: "ghcr.io/jdx/mise:2026.9.11-debian",
-    }),
-    workflow,
-  })
+  await CLI.runMain({ actions, local, workflow })
 }

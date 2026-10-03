@@ -8,6 +8,8 @@ The workflow selects `node:24-bookworm` at its local entrypoint. Effect CI start
 long-lived Docker container lazily, bind-mounts the example as `/workspace`, and uses
 that container for every action. Repository changes remain visible on the host, while
 tools or operating-system packages installed during CI remain inside the container.
+The exported `local` runner is shared by the executable entrypoint and Effect CI's
+GitHub adapter, so both environments interpret the workflow the same way.
 
 Compare:
 
