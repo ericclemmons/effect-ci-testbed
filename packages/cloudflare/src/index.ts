@@ -423,7 +423,15 @@ export interface WorkflowEntrypointOptions {
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
-  const container = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
+  const primary = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
+  const containerFor = (
+    stepId: string,
+    workspace?: CI.Workspace,
+  ): WorkspaceContainerStub => workspace?.revision
+    ? options.binding.getByName(
+        `${options.workspaceId}:step=${stepId}`,
+      ) as unknown as WorkspaceContainerStub
+    : primary
   const cache = options.cache
     ? options.binding.getByName(
         `cache:${options.cache.key}:image=${options.container?.image ?? defaultImage}`,
@@ -441,7 +449,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
             if (snapshot) {
               await options.step.do("workspace-cache:materialize", () =>
-                container.restore(snapshot))
+                primary.restore(snapshot))
             }
           }
 
@@ -450,7 +458,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               ? await options.token()
               : options.token
 
-            await container.checkout(
+            await primary.checkout(
               options.repository,
               options.revision,
               targetDirectory,
@@ -478,6 +486,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
           }
 
+          const container = containerFor(stepId, workspace)
           const result = await options.step.do(stepId, () =>
             container.execute(
               command,
@@ -520,6 +529,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
+          const container = containerFor(stepId, workspace)
 
           return options.step.do(`${stepId}:exists-${pathId}`, () =>
             container.exists(
@@ -543,6 +553,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
+          const container = containerFor(stepId, workspace)
 
           return options.step.do(`${stepId}:read-${pathId}`, () =>
             container.readFile(
@@ -562,6 +573,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
           }
 
+          const container = containerFor(stepId, workspace)
           const snapshot = await options.step.do(`${stepId}:commit`, () =>
             container.checkpoint(
               `${stepId}-workspace`,
@@ -588,6 +600,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
           }
 
+          const container = containerFor(stepId, workspace)
           const snapshot = await options.step.do(`${stepId}:checkpoint`, () =>
             container.checkpoint(name))
 
@@ -604,6 +617,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Cannot restore ${checkpoint.handle.provider} with Cloudflare`)
           }
 
+          const container = containerFor(stepId, checkpoint.workspace)
           await options.step.do(`${stepId}:restore`, () =>
             container.restore(checkpoint.handle.value as ContainerSnapshotValue))
 
