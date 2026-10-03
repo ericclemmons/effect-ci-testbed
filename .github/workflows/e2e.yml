@@ -25,6 +25,7 @@ jobs:
           - node-version
           - system-package
           - cache-policy
+          - snapshot-fanout
           - cloudflare-runner
           - cloudflare-toolchain
           - vite-plus-cache
@@ -263,6 +264,9 @@ jobs:
           - example: cloudflare-toolchain
             package: effect-ci-cloudflare-toolchain-fixture
             workflow: effect-ci-cloudflare-toolchain
+          - example: snapshot-fanout
+            package: effect-ci-snapshot-fanout-fixture
+            workflow: effect-ci-snapshot-fanout
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4

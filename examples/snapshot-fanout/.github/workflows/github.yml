@@ -1,0 +1,51 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: printf prepared > prepared.txt
+        working-directory: app
+      - uses: actions/upload-artifact@v7
+        if: ${{ !env.ACT }}
+        with:
+          name: prepared
+          path: app/prepared.txt
+
+  check:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        name: [left, right]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        if: ${{ !env.ACT }}
+        with:
+          name: prepared
+          path: app
+      - name: Recreate the prepared fixture under act
+        if: ${{ env.ACT }}
+        working-directory: app
+        run: printf prepared > prepared.txt
+      - name: Isolated ${{ matrix.name }} check
+        working-directory: app
+        run: |
+          test "$(cat prepared.txt)" = prepared
+          branch_file=branch.txt
+          if [[ "${ACT:-}" == true ]]; then
+            branch_file='branch-${{ matrix.name }}.txt'
+          fi
+          printf '${{ matrix.name }}' > "$branch_file"
+          sleep 2
+          test "$(cat "$branch_file")" = '${{ matrix.name }}'
