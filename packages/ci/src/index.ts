@@ -67,6 +67,66 @@ export interface WorkflowPlan {
   readonly nodes: ReadonlyArray<PlanNode>
 }
 
+export interface WorkflowRerunPlan {
+  readonly requested: ReadonlyArray<string>
+  readonly rerun: ReadonlyArray<string>
+  readonly reuse: ReadonlyArray<string>
+}
+
+export class WorkflowPlanError extends Error {
+  readonly _tag = "WorkflowPlanError"
+
+  constructor(message: string) {
+    super(message)
+  }
+}
+
+/**
+ * Selects the requested nodes and every node that transitively needs them.
+ * Ordering-only `after` edges do not carry values and therefore do not
+ * invalidate downstream work.
+ */
+export const planRerun = (
+  plan: WorkflowPlan,
+  requested: ReadonlyArray<string>,
+): WorkflowRerunPlan => {
+  const nodes = new Map(plan.nodes.map((node) => [node.id, node]))
+  const requestedIds = new Set(requested)
+  const uniqueRequested = [...requestedIds]
+
+  for (const id of uniqueRequested) {
+    if (!nodes.has(id)) {
+      throw new WorkflowPlanError(`Unknown workflow node: ${id}`)
+    }
+  }
+
+  const dependents = new Map<string, Set<string>>()
+  for (const node of plan.nodes) {
+    for (const dependency of node.needs) {
+      const children = dependents.get(dependency) ?? new Set<string>()
+      children.add(node.id)
+      dependents.set(dependency, children)
+    }
+  }
+
+  const affected = new Set(uniqueRequested)
+  const pending = [...uniqueRequested]
+  for (let index = 0; index < pending.length; index += 1) {
+    const id = pending[index]!
+    for (const dependent of dependents.get(id) ?? []) {
+      if (affected.has(dependent)) continue
+      affected.add(dependent)
+      pending.push(dependent)
+    }
+  }
+
+  return {
+    requested: plan.nodes.filter((node) => requestedIds.has(node.id)).map((node) => node.id),
+    rerun: plan.nodes.filter((node) => affected.has(node.id)).map((node) => node.id),
+    reuse: plan.nodes.filter((node) => !affected.has(node.id)).map((node) => node.id),
+  }
+}
+
 export type RuntimeEvent =
   | {
       readonly type: "approval.requested"
