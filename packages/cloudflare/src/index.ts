@@ -4,6 +4,7 @@ import {
   WorkflowEntrypoint,
   type WorkflowEvent,
   type WorkflowStep,
+  type WorkflowStepConfig as CloudflareWorkflowStepConfig,
 } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
 
@@ -416,10 +417,12 @@ export interface WorkflowEnvironment {
   readonly Workspace: DurableObjectNamespace
 }
 
-export interface WorkflowEntrypointOptions {
+export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment> {
   readonly cache?: CI.WorkflowCachePolicy | false
   readonly container?: WorkspaceContainerOptions
   readonly reuseWorkspace?: boolean
+  readonly secrets?: (environment: Environment) => CI.SecretResolver
+  readonly verification?: (environment: Environment) => CI.VerificationStore
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -475,7 +478,8 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
     },
     executor: {
-      execute: ({ command, onOutput, stepId, workspace }) => Effect.tryPromise({
+      handlesStepOptions: true,
+      execute: ({ command, onOutput, options: stepOptions, stepId, workspace }) => Effect.tryPromise({
         try: async () => {
           if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
@@ -487,15 +491,22 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const result = await options.step.do(stepId, () =>
-            container.execute(
+          const nativeStepOptions = {
+            ...(stepOptions.retries ? { retries: stepOptions.retries } : {}),
+            ...(stepOptions.timeout === undefined ? {} : { timeout: stepOptions.timeout }),
+          } as CloudflareWorkflowStepConfig
+          const result = await options.step.do(
+            stepId,
+            nativeStepOptions,
+            () => container.execute(
               command,
               workspace.cwd,
               stepId,
               revision?.value as ContainerSnapshotValue | undefined,
               options.cache?.paths,
               targetDirectory,
-            ))
+            ),
+          )
 
           if (result.stdout) onOutput("stdout", result.stdout)
           if (result.stderr) onOutput("stderr", result.stderr)
@@ -601,7 +612,8 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const snapshot = await options.step.do(`${stepId}:checkpoint`, () =>
+          const checkpointId = name.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
+          const snapshot = await options.step.do(`${stepId}:checkpoint-${checkpointId}`, () =>
             container.checkpoint(name))
 
           return {
@@ -629,11 +641,14 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   }
 }
 
-export const workflowEntrypoint = <A>(
+export const workflowEntrypoint = <
+  A,
+  Environment extends WorkflowEnvironment = WorkflowEnvironment,
+>(
   workflow: CI.Workflow<A>,
-  options: WorkflowEntrypointOptions = {},
+  options: WorkflowEntrypointOptions<Environment> = {},
 ) => class EffectCIWorkflow extends WorkflowEntrypoint<
-  WorkflowEnvironment,
+  Environment,
   WorkflowParameters
 > {
   override async run(
@@ -666,10 +681,18 @@ export const workflowEntrypoint = <A>(
     const result = await CI.runPromise(workflow, {
       ci: true,
       env: "cloudflare",
-      event: { type: "workflow_dispatch", payload: event.payload },
+      event: {
+        type: "workflow_dispatch",
+        payload: event.payload,
+        revision: event.payload.revision,
+      },
       executor: runner.executor,
       output: "silent",
+      ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
       source: runner.source,
+      ...(options.verification
+        ? { verification: options.verification(this.env) }
+        : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,
     })

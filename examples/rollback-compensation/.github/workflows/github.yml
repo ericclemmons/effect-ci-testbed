@@ -1,0 +1,32 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      fail-deploy:
+        description: Exercise the compensation path
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - id: deploy
+        continue-on-error: true
+        env:
+          FAIL_DEPLOY: ${{ inputs.fail-deploy || 'false' }}
+        run: test "$FAIL_DEPLOY" != true
+      - name: Redeploy the previous version
+        if: steps.deploy.outcome == 'failure'
+        run: echo rollback
+      - name: Preserve the original deployment failure
+        if: steps.deploy.outcome == 'failure'
+        run: exit 1

@@ -63,6 +63,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           EFFECT_CI_EVENT: ${{ inputs.event || github.event_name }}
+          EFFECT_CI_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

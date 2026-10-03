@@ -1,0 +1,35 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: mkdir -p dist && echo worker > dist/worker.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ !env.ACT }}
+        with:
+          name: worker
+          path: dist/worker.js
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        if: ${{ !env.ACT }}
+        with:
+          name: worker
+          path: dist
+      - if: ${{ env.ACT }}
+        run: mkdir -p dist && echo worker > dist/worker.js
+      - run: test -f dist/worker.js

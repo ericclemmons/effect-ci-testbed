@@ -156,6 +156,7 @@ export const verifyWebhookSignature = async (
 export interface CheckSuiteWebhook {
   readonly action: "requested" | "rerequested"
   readonly check_suite: {
+    readonly head_branch: string | null
     readonly head_sha: string
   }
   readonly installation: {
@@ -177,6 +178,7 @@ export const parseCheckSuiteWebhook = (value: unknown): CheckSuiteWebhook | unde
 
   if (
     (payload.action !== "requested" && payload.action !== "rerequested") ||
+    (typeof suite?.head_branch !== "string" && suite?.head_branch !== null) ||
     typeof suite?.head_sha !== "string" ||
     typeof installation?.id !== "number" ||
     typeof repository?.clone_url !== "string" ||

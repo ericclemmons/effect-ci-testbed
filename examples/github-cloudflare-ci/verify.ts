@@ -6,7 +6,7 @@ const deliveryId = "delivery-1"
 const secret = "test-secret"
 const payload = {
   action: "requested",
-  check_suite: { head_sha: "abc123" },
+  check_suite: { head_branch: "feature", head_sha: "abc123" },
   installation: { id: 42 },
   repository: {
     clone_url: "https://github.com/example/project.git",
@@ -86,6 +86,7 @@ assert.deepEqual(instances.get(deliveryId), {
   installationId: 42,
   repository: "https://github.com/example/project.git",
   repositoryName: "example/project",
+  ref: "refs/heads/feature",
   revision: "abc123",
   summaryCheckId: 99,
 })

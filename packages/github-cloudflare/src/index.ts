@@ -17,7 +17,7 @@ const credentials = (environment: Environment): GitHub.GitHubAppCredentials => (
   privateKey: environment.GITHUB_PRIVATE_KEY,
 })
 
-export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions {}
+export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions<Environment> {}
 
 export const workflowEntrypoint = <A>(
   workflow: CI.Workflow<A>,
@@ -80,11 +80,20 @@ export const workflowEntrypoint = <A>(
     try {
       const result = await CI.runPromise(workflow, {
         env: "cloudflare",
-        event: { type: "push", payload: event.payload },
+        event: {
+          type: "push",
+          payload: event.payload,
+          ...(event.payload.ref ? { ref: event.payload.ref } : {}),
+          revision: event.payload.revision,
+        },
         executor: runner.executor,
         onEvent: (runtimeEvent) => reporter.report(runtimeEvent),
         output: "silent",
+        ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,
+        ...(options.verification
+          ? { verification: options.verification(this.env) }
+          : {}),
         workspacePersistence: runner.persistence,
       })
 

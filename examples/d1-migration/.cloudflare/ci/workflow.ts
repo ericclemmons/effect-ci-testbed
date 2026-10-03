@@ -12,7 +12,7 @@ const workflow = CI.workflow("d1-migration", function* () {
     return
   }
 
-  return yield* actions.deploy()
+  return yield* CI.compensate(actions.deploy(), actions.rollback())
 })
 
 export * from "./actions.ts"

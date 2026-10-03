@@ -1,4 +1,4 @@
-import type { PlanNode, RuntimeEvent, WorkflowPlan } from "@effect-ci-testbed/ci"
+import { formatCondition, type PlanNode, type RuntimeEvent, type WorkflowPlan } from "@effect-ci-testbed/ci"
 import {
   createCheck,
   updateCheck,
@@ -52,7 +52,11 @@ const planStages = (value: WorkflowPlan) => {
       node.id,
       1 + Math.max(
         0,
-        ...[...node.needs, ...node.after]
+        ...[
+          ...node.needs,
+          ...node.after,
+          ...(node.compensationFor ? [node.compensationFor] : []),
+        ]
           .map((dependency) => stages.get(dependency) ?? 0),
       ),
     )
@@ -96,6 +100,12 @@ const planDiagram = (value: WorkflowPlan): string => {
       const to = identifiers.get(node.id)
       if (from && to) lines.push(`  ${from} -. after .-> ${to}`)
     }
+
+    if (node.compensationFor) {
+      const from = identifiers.get(node.compensationFor)
+      const to = identifiers.get(node.id)
+      if (from && to) lines.push(`  ${from} -. on failure .-> ${to}`)
+    }
   }
 
   return lines.join("\n")
@@ -127,7 +137,11 @@ const planSummary = (value: WorkflowPlan): string => {
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const optional = node.optional ? " — **optional**" : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}${after}${optional}`)
+      const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
+      const compensation = node.compensationFor
+        ? ` — compensates \`${node.compensationFor}\``
+        : ""
+      lines.push(`${stage}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
       continue
     }
 
@@ -141,7 +155,11 @@ const planSummary = (value: WorkflowPlan): string => {
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const optional = node.optional ? " — **optional**" : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${optional}`)
+      const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
+      const compensation = node.compensationFor
+        ? ` — compensates \`${node.compensationFor}\``
+        : ""
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
     }
   }
 
@@ -151,7 +169,9 @@ const planSummary = (value: WorkflowPlan): string => {
 }
 
 const planText = (value: WorkflowPlan): string => value.nodes
-  .filter((node) => node.commands.length > 0 || node.approval)
+  .filter((node) =>
+    node.commands.length > 0 || node.approval || node.artifacts.length > 0 ||
+    node.secrets.length > 0 || node.condition || node.compensationFor)
   .map((node) => {
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
@@ -159,7 +179,14 @@ const planText = (value: WorkflowPlan): string => value.nodes
     const approval = node.approval
       ? `**Approval:** ${node.approval.title}\n\n${node.approval.summary}`
       : ""
-    const details = [approval, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
+    const metadata = [
+      node.condition ? `**Condition:** \`${formatCondition(node.condition)}\`` : "",
+      node.compensationFor ? `**Compensates:** \`${node.compensationFor}\`` : "",
+      node.secrets.length > 0 ? `**Secrets required:** ${node.secrets.map((name) => `\`${name}\``).join(", ")}` : "",
+      ...node.artifacts.map((artifact) =>
+        `**Artifact ${artifact.direction}:** \`${artifact.name}\` (${artifact.paths.map((path) => `\`${path}\``).join(", ")})`),
+    ].filter(Boolean).join("\n\n")
+    const details = [approval, metadata, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
       .filter(Boolean)
       .join("\n\n")
 
@@ -202,6 +229,12 @@ const checkOutput = (
       return {
         title: `${stepId} was reused`,
         summary: `Reused from an unaffected earlier attempt of ${workflowId}.`,
+        conclusion: "success",
+      }
+    case "verified":
+      return {
+        title: `${stepId} was already verified`,
+        summary: `Trusted signed evidence matched this exact revision and action in ${workflowId}.`,
         conclusion: "success",
       }
     case "warning":
