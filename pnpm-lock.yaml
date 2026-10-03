@@ -260,6 +260,8 @@ importers:
 
   examples/node-pnpm: {}
 
+  examples/runner-selection: {}
+
   examples/package-manager-cache:
     dependencies:
       '@effect-ci-testbed/ci':

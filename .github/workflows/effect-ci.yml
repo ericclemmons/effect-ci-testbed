@@ -7,6 +7,11 @@ on:
         description: Path to the Effect CI entry point
         required: true
         type: string
+      runs-on:
+        description: JSON array of labels selecting the GitHub runner
+        required: false
+        type: string
+        default: '["ubuntu-latest"]'
       event:
         description: Optional portable workflow event override
         required: false
@@ -38,7 +43,7 @@ permissions:
 jobs:
   run:
     name: ${{ matrix.mode }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     strategy:
       fail-fast: false
       matrix:

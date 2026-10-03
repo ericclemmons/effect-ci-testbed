@@ -27,32 +27,33 @@ The matrix is stack-ranked. Each implemented example compares conventional GitHu
 Actions YAML with the portable Effect CI version. A checkmark means the use-case is
 exercised end-to-end in that actual environment. `wrangler dev --local` counts as
 Effect CI Local, not Cloudflare. Cloudflare remains unchecked until the example is
-deployed to an account and exercised there. Empty boxes are useful gaps.
+deployed to an account and exercised there. `🔜` is committed roadmap work; `—`
+means that execution model is genuinely irrelevant to the use-case.
 
 | Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | ✅ | 🔲 |
-| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔲 |
-| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔲 |
-| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔲 |
-| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔲 |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | 🔲 | 🔲 | 🔲 | 🔲 |
-| Run the canonical CI script on GitHub-hosted, Blacksmith, or self-hosted compute | 🔲 | 🔲 | 🔲 | 🔲 |
-| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔲 |
-| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔲 |
-| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔲 |
-| Install all runtimes declared by Mise | 🔲 | 🔲 | 🔲 | 🔲 |
-| Select and cache a project-specific Node.js version | 🔲 | 🔲 | 🔲 | 🔲 |
-| Install a system dependency such as ImageMagick | 🔲 | 🔲 | 🔲 | 🔲 |
-| Customize cache keys, paths, scope, retention, or disable caching | 🔲 | 🔲 | 🔲 | 🔲 |
-| Fan one prepared snapshot out to parallel Containers | 🔲 | 🔲 | 🔲 | 🔲 |
-| [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔲 | ✅ | 🔲 | 🔲 |
-| Preserve immutable attempts and reuse unaffected checkpoints | 🔲 | 🔲 | 🔲 | 🔲 |
-| Pause and durably resume a Cloudflare Workflow for approval | 🔲 | 🔲 | 🔲 | 🔲 |
-| Resolve an approval request from Slack or Discord | 🔲 | 🔲 | 🔲 | 🔲 |
-| Deploy a built workspace to Cloudflare Workers | 🔲 | 🔲 | 🔲 | 🔲 |
-| Create and clean up pull-request preview deployments | 🔲 | 🔲 | 🔲 | 🔲 |
-| Repair, verify, and propose a fix for a failed action | 🔲 | 🔲 | 🔲 | 🔲 |
+| [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔜 |
+| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |
+| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
+| [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
+| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
+| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
+| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
+| Install all runtimes declared by Mise | 🔜 | 🔜 | 🔜 | 🔜 |
+| Select and cache a project-specific Node.js version | 🔜 | 🔜 | 🔜 | 🔜 |
+| Install a system dependency such as ImageMagick | 🔜 | 🔜 | 🔜 | 🔜 |
+| Customize cache keys, paths, scope, retention, or disable caching | 🔜 | 🔜 | 🔜 | 🔜 |
+| Fan one prepared snapshot out to parallel Containers | — | 🔜 | — | 🔜 |
+| [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
+| Preserve immutable attempts and reuse unaffected checkpoints | 🔜 | 🔜 | 🔜 | 🔜 |
+| Pause and durably resume a Cloudflare Workflow for approval | — | 🔜 | — | 🔜 |
+| Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
+| Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
+| Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
+| Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 
 ## Try it locally
 
