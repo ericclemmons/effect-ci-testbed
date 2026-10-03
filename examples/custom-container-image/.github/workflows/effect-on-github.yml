@@ -1,0 +1,16 @@
+name: Effect on GitHub
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: .cloudflare/ci/workflow.ts

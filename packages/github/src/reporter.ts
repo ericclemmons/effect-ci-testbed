@@ -198,6 +198,12 @@ const checkOutput = (
         summary: `Completed successfully as part of ${workflowId}.`,
         conclusion: "success",
       }
+    case "reused":
+      return {
+        title: `${stepId} was reused`,
+        summary: `Reused from an unaffected earlier attempt of ${workflowId}.`,
+        conclusion: "success",
+      }
     case "warning":
       return {
         title: `${stepId} completed with a warning`,

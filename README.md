@@ -54,11 +54,11 @@ means that execution model is genuinely irrelevant to the use-case.
 | Pause and durably resume a Cloudflare Workflow for approval | — | 🔜 | — | 🔜 |
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
-| Apply a D1 migration before deploying the Worker that requires it | 🔜 | 🔜 | 🔜 | 🔜 |
-| Deploy two dependent applications in an explicit order | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | ✅ | ✅ | ✅ | 🔜 |
+| [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | Derive a monorepo deployment order from its Turborepo or Vite+ graph | 🔜 | 🔜 | 🔜 | 🔜 |
 | Define multiple Workers as code with Cloudflare `defineConfig` and prevent settings drift | 🔜 | 🔜 | 🔜 | 🔜 |
-| Build and publish a custom container image alongside Cloudflare services | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Build and publish a custom container image alongside Cloudflare services](./examples/custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
 | Pin a compatible Worker version throughout a long external rollout | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
