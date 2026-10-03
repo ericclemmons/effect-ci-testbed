@@ -19,6 +19,7 @@ const workflow = module.default
 if (!workflow) throw new Error(`${workflowPath} must default-export a CI workflow`)
 
 const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
+const revision = process.env.EFFECT_CI_REVISION ?? process.env.GITHUB_SHA
 const configuredDecision = process.env.EFFECT_CI_APPROVAL
 
 let approval: CI.ApprovalHandler | undefined
@@ -38,7 +39,11 @@ try {
     ...configured,
     ...(approval ? { approval } : {}),
     env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
-    event: { type: event ?? "workflow_dispatch" },
+    event: {
+      type: event ?? "workflow_dispatch",
+      ...(process.env.GITHUB_REF ? { ref: process.env.GITHUB_REF } : {}),
+      ...(revision ? { revision } : {}),
+    },
     mode: process.env.DRY_RUN ? "plan" : "execute",
   })
 } finally {

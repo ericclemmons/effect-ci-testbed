@@ -5,6 +5,7 @@ export interface WorkflowParameters {
   readonly installationId: number
   readonly repository: string
   readonly repositoryName: string
+  readonly ref?: string
   readonly revision: string
   readonly summaryCheckId: number
 }
@@ -133,6 +134,9 @@ export const worker = (options: WorkerOptions = {}) => {
             installationId: payload.installation.id,
             repository: payload.repository.clone_url,
             repositoryName: payload.repository.full_name,
+            ...(payload.check_suite.head_branch
+              ? { ref: `refs/heads/${payload.check_suite.head_branch}` }
+              : {}),
             revision: payload.check_suite.head_sha,
             summaryCheckId: check.id,
           },

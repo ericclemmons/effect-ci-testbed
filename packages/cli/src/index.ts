@@ -170,6 +170,7 @@ const printJson = (value: unknown): void => {
 
 const defaultLocalOptions = (): CI.RunConfiguration => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
+  const revision = process.env.EFFECT_CI_REVISION ?? process.env.GITHUB_SHA
   const decision = process.env.EFFECT_CI_APPROVAL
   const approval: CI.ApprovalHandler | undefined = decision === "approved" || decision === "rejected"
     ? { request: () => Effect.succeed({ decision }) }
@@ -178,7 +179,11 @@ const defaultLocalOptions = (): CI.RunConfiguration => {
   return {
     ...(approval ? { approval } : {}),
     env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
-    event: { type: event ?? "workflow_dispatch" },
+    event: {
+      type: event ?? "workflow_dispatch",
+      ...(process.env.GITHUB_REF ? { ref: process.env.GITHUB_REF } : {}),
+      ...(revision ? { revision } : {}),
+    },
   }
 }
 
@@ -205,6 +210,24 @@ const classifyFailure = (error: unknown): CliFailure => {
         exitCode: error.exitCode,
         stepId: error.stepId,
       },
+    )
+  }
+
+  if (error instanceof CI.SecretError) {
+    return new CliFailure(
+      "CI_SECRET_MISSING",
+      ExitCode.workflowFailure,
+      error.message,
+      { name: error.secret },
+    )
+  }
+
+  if (error instanceof CI.CompensationError) {
+    return new CliFailure(
+      "CI_COMPENSATION_FAILED",
+      ExitCode.workflowFailure,
+      error.message,
+      { stepId: error.stepId },
     )
   }
 

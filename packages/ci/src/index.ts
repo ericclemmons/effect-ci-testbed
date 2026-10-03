@@ -5,19 +5,27 @@ import * as Cache from "effect/Cache"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Redacted from "effect/Redacted"
+import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
+
+export type WorkflowDuration =
+  | number
+  | `${number} ${"second" | "minute" | "hour" | "day" | "week"}${"s" | ""}`
 
 export interface WorkflowStepConfig {
   readonly retries?: {
     readonly limit: number
-    readonly delay: string | number
+    readonly delay: WorkflowDuration
     readonly backoff?: "constant" | "linear" | "exponential"
   }
-  readonly timeout?: string | number
+  readonly timeout?: WorkflowDuration
 }
 
 export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
+  /** Allow a trusted runner to reuse signed evidence for this side-effect-free action. */
+  readonly verification?: { readonly scope: "commit" }
 }
 
 export type WorkflowBody<A> =
@@ -54,10 +62,29 @@ export interface PlanNode {
   readonly after: ReadonlyArray<string>
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
+  readonly condition?: Condition
+  /** This node runs only after the referenced node exhausts its retry policy. */
+  readonly compensationFor?: string
   readonly approval?: ApprovalRequest
+  readonly artifacts: ReadonlyArray<{
+    readonly direction: "publish" | "restore"
+    readonly name: string
+    readonly paths: ReadonlyArray<string>
+  }>
   readonly optional: boolean
   readonly options: StepOptions
-  readonly status: "planned" | "queued" | "running" | "complete" | "reused" | "warning" | "failed" | "skipped"
+  /** Secret names required by the step. Values are never part of the plan. */
+  readonly secrets: ReadonlyArray<string>
+  readonly status:
+    | "planned"
+    | "queued"
+    | "running"
+    | "complete"
+    | "reused"
+    | "verified"
+    | "warning"
+    | "failed"
+    | "skipped"
 }
 
 export interface WorkflowPlan {
@@ -208,8 +235,18 @@ export type RuntimeEvent =
 
 interface RuntimeNode {
   readonly id: string
+  readonly artifacts: Array<{
+    readonly direction: "publish" | "restore"
+    readonly name: string
+    readonly paths: ReadonlyArray<string>
+  }>
   readonly commands: Array<PlannedCommand>
   approval?: ApprovalRequest
+  condition?: Condition
+  compensationFor?: string
+  readonly secrets: Set<string>
+  executedCommands: number
+  verifiedCommands: number
   status: PlanNode["status"]
 }
 
@@ -229,6 +266,21 @@ interface RuntimeShape {
     steps: ReadonlyArray<{ readonly id: string; readonly optional: boolean }>,
   ) => Effect.Effect<void>
   readonly markOptional: (stepId: string) => Effect.Effect<void>
+  readonly skip: (stepId: string, condition: Condition) => Effect.Effect<void>
+  readonly registerCompensation: (
+    primaryId: string,
+    compensationId: string,
+    compensation: Effect.Effect<unknown, unknown, any>,
+  ) => Effect.Effect<void, unknown, any>
+  readonly requireSecret: (stepId: string, name: string) => Effect.Effect<void>
+  readonly recordArtifact: (
+    stepId: string,
+    artifact: {
+      readonly direction: "publish" | "restore"
+      readonly name: string
+      readonly paths: ReadonlyArray<string>
+    },
+  ) => Effect.Effect<void>
   readonly recoverOptional: (stepId: string) => Effect.Effect<boolean>
   readonly execute: (
     stepId: string,
@@ -348,6 +400,62 @@ export class ApprovalError extends Error {
   }
 }
 
+export class SecretError extends Error {
+  readonly _tag = "SecretError"
+
+  constructor(readonly secret: string, message = `Missing required secret: ${secret}`) {
+    super(message)
+  }
+}
+
+export interface SecretResolver {
+  readonly resolve: (
+    name: string,
+  ) => Effect.Effect<Redacted.Redacted<string>, SecretError>
+}
+
+class SecretStore extends ServiceMap.Service<SecretStore, SecretResolver>()(
+  "@effect-ci-testbed/SecretStore",
+) {}
+
+/**
+ * Declares and resolves a secret without making its value plan-serializable.
+ * Runners may back this with environment variables, Varlock, Cloudflare's
+ * secret store, or an RPC capability that never enters the workload container.
+ */
+export const Secret = (
+  name: string,
+): Effect.Effect<Redacted.Redacted<string>, SecretError, Runtime | CurrentStep | SecretStore> => {
+  if (!name.trim()) throw new Error("CI secret name cannot be empty")
+
+  return Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const stepId = yield* CurrentStep
+    yield* runtime.requireSecret(stepId, name)
+
+    if (runtime.mode === "plan") {
+      return Redacted.make("", { label: name })
+    }
+
+    const store = yield* SecretStore
+    return yield* store.resolve(name)
+  })
+}
+
+export class CompensationError extends Error {
+  readonly _tag = "CompensationError"
+
+  constructor(
+    readonly stepId: string,
+    readonly original: unknown,
+    readonly compensation: unknown,
+  ) {
+    super(`Compensation for ${stepId} failed after the original action failed`, {
+      cause: new AggregateError([original, compensation]),
+    })
+  }
+}
+
 export interface ApprovalService {
   readonly request: (
     request: ApprovalRequest,
@@ -459,6 +567,64 @@ export class WorkspaceCheckpoint {
     })
   }
 }
+
+/** A runner-owned, restorable filesystem result. */
+export class WorkspaceArtifact {
+  constructor(
+    readonly name: string,
+    readonly paths: ReadonlyArray<string>,
+    readonly checkpoint: WorkspaceCheckpoint,
+  ) {}
+}
+
+const validateArtifact = (
+  name: string,
+  paths: ReadonlyArray<string>,
+): void => {
+  if (!name.trim()) throw new Error("CI artifact name cannot be empty")
+  if (paths.length === 0) throw new Error("CI artifact requires at least one path")
+
+  for (const path of paths) {
+    if (!path || path.startsWith("/") || path.split("/").includes("..")) {
+      throw new Error(`CI artifact path must be repository-relative: ${path}`)
+    }
+  }
+}
+
+export const Artifact = {
+  publish: (
+    workspace: Workspace,
+    options: { readonly name: string; readonly paths: ReadonlyArray<string> },
+  ): Effect.Effect<WorkspaceArtifact, unknown, Runtime | CurrentStep> => {
+    validateArtifact(options.name, options.paths)
+
+    return Effect.gen(function* () {
+      const runtime = yield* Runtime
+      const stepId = yield* CurrentStep
+      yield* runtime.recordArtifact(stepId, {
+        direction: "publish",
+        name: options.name,
+        paths: options.paths,
+      })
+      const checkpoint = yield* workspace.checkpoint(`artifact:${options.name}`)
+
+      return new WorkspaceArtifact(options.name, [...options.paths], checkpoint)
+    })
+  },
+  restore: (
+    artifact: WorkspaceArtifact,
+  ): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> => Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const stepId = yield* CurrentStep
+    yield* runtime.recordArtifact(stepId, {
+      direction: "restore",
+      name: artifact.name,
+      paths: artifact.paths,
+    })
+
+    return yield* artifact.checkpoint.restore()
+  }),
+} as const
 
 export class PackageManagerError extends Error {
   readonly _tag = "PackageManagerError"
@@ -802,6 +968,7 @@ const localSource: SourceService = {
 export interface CommandExecutionRequest {
   readonly command: string
   readonly onOutput: (stream: "stdout" | "stderr", text: string) => void
+  readonly options: WorkflowStepConfig
   readonly stepId: string
   readonly workflowId: string
   readonly workspace: Workspace
@@ -814,9 +981,29 @@ export interface CommandExecutionResult {
 }
 
 export interface CommandExecutor {
+  /**
+   * The executor maps retry and timeout options to its native runtime. When
+   * omitted, Effect applies the policy around the complete action body.
+   */
+  readonly handlesStepOptions?: boolean
   readonly execute: (
     request: CommandExecutionRequest,
   ) => Effect.Effect<CommandExecutionResult, CommandError>
+}
+
+export interface VerificationRequest {
+  readonly command: string
+  readonly event: WorkflowEventShape
+  readonly policy: { readonly scope: "commit" }
+  readonly stepId: string
+  readonly workflowId: string
+  readonly workspace: Workspace
+}
+
+/** The implementation verifies signatures and binds evidence to exact inputs. */
+export interface VerificationStore {
+  readonly lookup: (request: VerificationRequest) => Effect.Effect<boolean, unknown>
+  readonly record: (request: VerificationRequest) => Effect.Effect<void, unknown>
 }
 
 export interface WorkspaceFileSystem {
@@ -907,11 +1094,67 @@ export type WorkflowEventName =
 export interface WorkflowEventShape {
   readonly type: WorkflowEventName
   readonly payload?: unknown
+  /** A normalized source ref such as `refs/heads/main` or `refs/tags/v1.0.0`. */
+  readonly ref?: string
+  /** The immutable source revision, normally a commit SHA. */
+  readonly revision?: string
 }
 
 export class WorkflowEvent extends ServiceMap.Service<WorkflowEvent, WorkflowEventShape>()(
   "@effect-ci-testbed/WorkflowEvent",
 ) {}
+
+/** A serializable predicate that can be rendered in a plan before it runs. */
+export type Condition =
+  | { readonly _tag: "event"; readonly oneOf: ReadonlyArray<WorkflowEventName> }
+  | { readonly _tag: "ref"; readonly oneOf: ReadonlyArray<string> }
+  | { readonly _tag: "all"; readonly conditions: ReadonlyArray<Condition> }
+  | { readonly _tag: "any"; readonly conditions: ReadonlyArray<Condition> }
+  | { readonly _tag: "not"; readonly condition: Condition }
+
+export const Condition = {
+  event: (...oneOf: ReadonlyArray<WorkflowEventName>): Condition => ({
+    _tag: "event",
+    oneOf,
+  }),
+  ref: (...oneOf: ReadonlyArray<string>): Condition => ({
+    _tag: "ref",
+    oneOf,
+  }),
+  all: (...conditions: ReadonlyArray<Condition>): Condition => ({
+    _tag: "all",
+    conditions,
+  }),
+  any: (...conditions: ReadonlyArray<Condition>): Condition => ({
+    _tag: "any",
+    conditions,
+  }),
+  not: (condition: Condition): Condition => ({ _tag: "not", condition }),
+} as const
+
+export const matchesCondition = (
+  condition: Condition,
+  event: WorkflowEventShape,
+): boolean => {
+  const payloadRef = event.payload && typeof event.payload === "object" &&
+      "ref" in event.payload && typeof event.payload.ref === "string"
+    ? event.payload.ref
+    : undefined
+  const ref = event.ref ?? payloadRef
+
+  switch (condition._tag) {
+    case "event":
+      return condition.oneOf.includes(event.type)
+    case "ref":
+      return ref !== undefined && condition.oneOf.includes(ref)
+    case "all":
+      return condition.conditions.every((child) => matchesCondition(child, event))
+    case "any":
+      return condition.conditions.some((child) => matchesCondition(child, event))
+    case "not":
+      return !matchesCondition(condition.condition, event)
+  }
+}
 
 const definitions = new Map<string, StepDefinition>()
 
@@ -936,6 +1179,20 @@ const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
 
     return Effect.succeed(result as A)
   })
+}
+
+const validateStepOptions = (id: string, options: StepOptions): void => {
+  if (options.retries) {
+    if (!Number.isInteger(options.retries.limit) || options.retries.limit < 0) {
+      throw new Error(`CI step ${id} retry limit must be a non-negative integer`)
+    }
+    if (typeof options.retries.delay === "number" && options.retries.delay < 0) {
+      throw new Error(`CI step ${id} retry delay cannot be negative`)
+    }
+  }
+  if (typeof options.timeout === "number" && options.timeout <= 0) {
+    throw new Error(`CI step ${id} timeout must be greater than zero`)
+  }
 }
 
 const runStep = <A>(
@@ -980,6 +1237,84 @@ export const optional = <A, E, R>(
   return optionalEffect
 }
 
+/**
+ * Conditionally executes an action while preserving the predicate in the plan.
+ * Use ordinary Effect control flow for runtime-only decisions; use `when` when
+ * operators and remote runners need to inspect the branch before execution.
+ */
+export const when = <A, E, R>(
+  condition: Condition,
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A | undefined, E, R | Runtime | CurrentStep | WorkflowEvent> => {
+  const stepId = actionIds.get(effect as object)
+  if (!stepId) throw new Error("CI.when expects a CI action or step")
+
+  const conditional = Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const parent = yield* CurrentStep
+
+    if (runtime.mode === "plan") {
+      const value = yield* effect
+      const node = runtime.nodes.get(stepId)
+      if (node) node.condition = condition
+      return value
+    }
+
+    const event = yield* WorkflowEvent
+    if (matchesCondition(condition, event)) return yield* effect
+
+    yield* runtime.addDependency(parent, stepId)
+    yield* runtime.skip(stepId, condition)
+    return undefined
+  })
+
+  actionIds.set(conditional as object, stepId)
+  return conditional
+}
+
+/**
+ * Runs `compensation` only when `effect` has failed after exhausting its own
+ * retry policy. The recovery edge is visible in plan mode.
+ */
+export const compensate = <A, E, R, B, E2, R2>(
+  effect: Effect.Effect<A, E, R>,
+  compensation: Effect.Effect<B, E2, R2>,
+): Effect.Effect<A, E | CompensationError, R | R2 | Runtime> => {
+  const primaryId = actionIds.get(effect as object)
+  const compensationId = actionIds.get(compensation as object)
+  if (!primaryId || !compensationId) {
+    throw new Error("CI.compensate expects two CI actions or steps")
+  }
+
+  const compensated = Effect.gen(function* () {
+    const runtime = yield* Runtime
+
+    if (runtime.mode === "plan") {
+      const value = yield* effect
+      yield* runtime.registerCompensation(primaryId, compensationId, compensation)
+      return value
+    }
+
+    yield* runtime.registerCompensation(primaryId, compensationId, compensation)
+
+    return yield* effect.pipe(
+      Effect.catch((original) => compensation.pipe(
+        Effect.matchEffect({
+          onFailure: (rollbackFailure) => Effect.fail(new CompensationError(
+            primaryId,
+            original,
+            rollbackFailure,
+          )),
+          onSuccess: () => Effect.fail(original),
+        }),
+      )),
+    )
+  })
+
+  actionIds.set(compensated as object, primaryId)
+  return compensated as Effect.Effect<A, E | CompensationError, R | R2 | Runtime>
+}
+
 export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, any>>>(
   effects: Effects,
 ) => {
@@ -1006,6 +1341,7 @@ export const step = <A>(
   body: StepBody<A>,
   options: StepOptions = {},
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
+  validateStepOptions(id, options)
   if (definitions.has(id)) {
     throw new Error(`Duplicate CI step id: ${id}`)
   }
@@ -1027,6 +1363,7 @@ export const action = <
 
   return (...args: Args) => {
     if (!registered) {
+      validateStepOptions(id, options)
       if (definitions.has(id)) {
         throw new Error(`Duplicate CI action id: ${id}`)
       }
@@ -1093,12 +1430,39 @@ const makeLocalCommandExecutor = (): CommandExecutor => ({
   }),
 })
 
+const withStepPolicy = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  options: WorkflowStepConfig,
+): Effect.Effect<A, any, R> => {
+  const timed = options.timeout === undefined
+    ? effect
+    : effect.pipe(Effect.timeout(options.timeout))
+  const retries = options.retries
+
+  if (!retries || retries.limit <= 0) return timed
+
+  const schedule: Schedule.Schedule<any, any> = retries.backoff === "exponential"
+    ? Schedule.exponential(retries.delay)
+    : retries.backoff === "linear"
+    ? Schedule.addDelay(
+        Schedule.forever,
+        (attempt) => Effect.succeed(Duration.times(
+          Duration.fromInputUnsafe(retries.delay),
+          attempt + 1,
+        )),
+      )
+    : Schedule.spaced(retries.delay)
+
+  return timed.pipe(Effect.retry({ times: retries.limit, schedule }))
+}
+
 const makeRuntime = (
   workflowId: string,
   ci: boolean,
   mode: WorkflowPlan["mode"],
   output: "inherit" | "silent",
   emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
+  event: WorkflowEventShape,
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor(),
   workspaceFileSystem: WorkspaceFileSystem = localWorkspaceFileSystem,
@@ -1107,6 +1471,7 @@ const makeRuntime = (
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
     restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
   },
+  verification?: VerificationStore,
   rerun?: {
     readonly previous: WorkflowAttempt
     readonly selection: WorkflowRerunPlan
@@ -1148,8 +1513,16 @@ const makeRuntime = (
       if (previousNode.optional) optionalSteps.add(id)
       nodes.set(id, {
         id,
+        artifacts: [...(previousNode.artifacts ?? [])],
         commands: [...previousNode.commands],
         ...(previousNode.approval ? { approval: previousNode.approval } : {}),
+        ...(previousNode.condition ? { condition: previousNode.condition } : {}),
+        ...(previousNode.compensationFor
+          ? { compensationFor: previousNode.compensationFor }
+          : {}),
+        secrets: new Set(previousNode.secrets ?? []),
+        executedCommands: 0,
+        verifiedCommands: 0,
         status: "reused",
       })
       outputs.set(id, rerun!.previous.outputs[id])
@@ -1173,7 +1546,11 @@ const makeRuntime = (
 
         const node: RuntimeNode = nodes.get(id) ?? {
           id,
+          artifacts: [],
           commands: [],
+          secrets: new Set(),
+          executedCommands: 0,
+          verifiedCommands: 0,
           status: "planned" as const,
         }
         nodes.set(id, node)
@@ -1192,8 +1569,12 @@ const makeRuntime = (
           timestamp: new Date().toISOString(),
         })
 
+        const body = commandExecutor.handlesStepOptions
+          ? definition.body
+          : withStepPolicy(definition.body, definition.options)
+
         return queued.pipe(
-          Effect.andThen(definition.body),
+          Effect.andThen(body),
           Effect.provideService(CurrentStep, id),
           Effect.flatMap((value) =>
             mode === "execute" && value instanceof Workspace
@@ -1207,7 +1588,11 @@ const makeRuntime = (
             outputs.set(id, value)
           })),
           Effect.tap(() => {
-            node.status = mode === "plan" ? "planned" : "complete"
+            node.status = mode === "plan"
+              ? "planned"
+              : node.verifiedCommands > 0 && node.executedCommands === 0
+              ? "verified"
+              : "complete"
 
             return emitEvent({
               type: "step.status",
@@ -1289,6 +1674,68 @@ const makeRuntime = (
       markOptional: (stepId) => Effect.sync(() => {
         optionalSteps.add(stepId)
       }),
+      skip: (stepId, condition) => Effect.gen(function* () {
+        const definition = definitions.get(stepId)
+        if (!definition) {
+          return yield* Effect.die(new Error(`Unknown CI step: ${stepId}`))
+        }
+        const node = nodes.get(stepId) ?? {
+          id: stepId,
+          artifacts: [],
+          commands: [],
+          secrets: new Set(),
+          executedCommands: 0,
+          verifiedCommands: 0,
+          status: "skipped" as const,
+        }
+        node.condition = condition
+        node.status = "skipped"
+        nodes.set(stepId, node)
+        yield* emitEvent({
+          type: "step.status",
+          workflowId,
+          stepId,
+          status: "skipped",
+          optional: optionalSteps.has(stepId),
+          timestamp: new Date().toISOString(),
+        })
+      }),
+      registerCompensation: (primaryId, compensationId, compensation) => Effect.gen(function* () {
+        const node = nodes.get(compensationId) ?? {
+          id: compensationId,
+          artifacts: [],
+          commands: [],
+          secrets: new Set(),
+          executedCommands: 0,
+          verifiedCommands: 0,
+          status: mode === "plan" ? "planned" as const : "skipped" as const,
+        }
+        node.compensationFor = primaryId
+        nodes.set(compensationId, node)
+
+        if (mode !== "plan") return
+
+        const barrier = workflowBarrier
+        workflowBarrier = { after: [], needs: [] }
+        yield* compensation.pipe(
+          Effect.asVoid,
+          Effect.ensuring(Effect.sync(() => {
+            workflowBarrier = barrier
+          })),
+        )
+        const planned = nodes.get(compensationId)
+        if (planned) planned.compensationFor = primaryId
+      }),
+      requireSecret: (stepId, name) => Effect.sync(() => {
+        const node = nodes.get(stepId)
+        if (!node) throw new Error(`Missing plan node for ${stepId}`)
+        node.secrets.add(name)
+      }),
+      recordArtifact: (stepId, artifact) => Effect.sync(() => {
+        const node = nodes.get(stepId)
+        if (!node) throw new Error(`Missing plan node for ${stepId}`)
+        node.artifacts.push(artifact)
+      }),
       recoverOptional: (stepId) => Effect.gen(function* () {
         const node = nodes.get(stepId)
         if (!node || node.status !== "failed") return false
@@ -1328,42 +1775,74 @@ const makeRuntime = (
           })()
           : Effect.void
 
+        const policy = definitions.get(stepId)?.options.verification
+        const verificationRequest = policy
+          ? { command, event, policy, stepId, workflowId, workspace }
+          : undefined
+        const verified = verification && verificationRequest
+          ? verification.lookup(verificationRequest).pipe(
+              Effect.catch(() => Effect.succeed(false)),
+            )
+          : Effect.succeed(false)
+
         return started.pipe(
-          Effect.andThen(commandExecutor.execute({
-            command,
-            onOutput: (stream, text) => {
-              if (output !== "inherit") return
-              if (stream === "stdout") process.stdout.write(text)
-              else process.stderr.write(text)
-            },
-            stepId,
-            workflowId,
-            workspace,
-          })),
-          Effect.flatMap((result) => Effect.gen(function* () {
-            if (result.stdout) {
-              yield* emitEvent({
-                type: "step.output",
-                workflowId,
-                stepId,
-                stream: "stdout",
-                text: result.stdout,
-                timestamp: new Date().toISOString(),
-              })
-            }
-            if (result.stderr) {
-              yield* emitEvent({
-                type: "step.output",
-                workflowId,
-                stepId,
-                stream: "stderr",
-                text: result.stderr,
-                timestamp: new Date().toISOString(),
-              })
+          Effect.andThen(verified),
+          Effect.flatMap((isVerified) => {
+            if (isVerified) {
+              node.verifiedCommands++
+              return Effect.succeed(workspace)
             }
 
-            return workspace
-          })),
+            node.executedCommands++
+            const definitionOptions = definitions.get(stepId)?.options
+            return commandExecutor.execute({
+              command,
+              onOutput: (stream, text) => {
+                if (output !== "inherit") return
+                if (stream === "stdout") process.stdout.write(text)
+                else process.stderr.write(text)
+              },
+              options: {
+                ...(definitionOptions?.retries
+                  ? { retries: definitionOptions.retries }
+                  : {}),
+                ...(definitionOptions?.timeout === undefined
+                  ? {}
+                  : { timeout: definitionOptions.timeout }),
+              },
+              stepId,
+              workflowId,
+              workspace,
+            }).pipe(
+              Effect.tap(() => verification && verificationRequest
+                ? verification.record(verificationRequest).pipe(Effect.ignore)
+                : Effect.void),
+              Effect.flatMap((result) => Effect.gen(function* () {
+                if (result.stdout) {
+                  yield* emitEvent({
+                    type: "step.output",
+                    workflowId,
+                    stepId,
+                    stream: "stdout",
+                    text: result.stdout,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+                if (result.stderr) {
+                  yield* emitEvent({
+                    type: "step.output",
+                    workflowId,
+                    stepId,
+                    stream: "stderr",
+                    text: result.stderr,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+
+                return workspace
+              })),
+            )
+          }),
         )
       },
       readFile: (stepId, workspace, path) => workspaceFileSystem.readFile(
@@ -1478,9 +1957,11 @@ export interface RunOptions {
   readonly onEvent?: RuntimeEventHandler
   readonly output?: "inherit" | "silent"
   readonly rerun?: WorkflowRerun
+  readonly secrets?: SecretResolver
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
+  readonly verification?: VerificationStore
 }
 
 export interface RunConfiguration extends RunOptions {
@@ -1532,11 +2013,30 @@ const toPlan = (
       after: [...(after.get(node.id) ?? [])].sort(),
       needs: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
+      artifacts: [...node.artifacts],
+      ...(node.condition ? { condition: node.condition } : {}),
+      ...(node.compensationFor ? { compensationFor: node.compensationFor } : {}),
       ...(node.approval ? { approval: node.approval } : {}),
       optional: runtime.optionalSteps.has(node.id),
       options: definitions.get(node.id)?.options ?? {},
+      secrets: [...node.secrets].sort(),
       status: node.status,
     })),
+  }
+}
+
+export const formatCondition = (condition: Condition): string => {
+  switch (condition._tag) {
+    case "event":
+      return `event in [${condition.oneOf.join(", ")}]`
+    case "ref":
+      return `ref in [${condition.oneOf.join(", ")}]`
+    case "all":
+      return condition.conditions.map(formatCondition).join(" and ")
+    case "any":
+      return `(${condition.conditions.map(formatCondition).join(" or ")})`
+    case "not":
+      return `not (${formatCondition(condition.condition)})`
   }
 }
 
@@ -1550,11 +2050,16 @@ export const formatPlan = (plan: WorkflowPlan): string => {
     const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""
     const needs = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
     const optional = node.optional ? " (optional)" : ""
-    const suffix = `${needs}${after}${optional}`
+    const compensation = node.compensationFor
+      ? ` compensates ${node.compensationFor}`
+      : ""
+    const suffix = `${needs}${after}${compensation}${optional}`
     const status = node.status === "complete"
       ? "✓"
       : node.status === "reused"
       ? "↻"
+      : node.status === "verified"
+      ? "◆"
       : node.status === "warning"
       ? "⚠"
       : node.status === "failed"
@@ -1563,9 +2068,20 @@ export const formatPlan = (plan: WorkflowPlan): string => {
       ? "–"
       : "○"
     lines.push("", `${status} ${node.id}${suffix}`)
+    if (node.condition) {
+      lines.push(`  if: ${formatCondition(node.condition)}`)
+    }
     if (plan.mode === "plan") {
       if (node.approval) {
         lines.push(`  approval: ${node.approval.title}`)
+      }
+      if (node.secrets.length > 0) {
+        lines.push(`  secrets: ${node.secrets.join(", ")}`)
+      }
+      for (const artifact of node.artifacts) {
+        lines.push(
+          `  artifact ${artifact.direction}: ${artifact.name} (${artifact.paths.join(", ")})`,
+        )
       }
       for (const entry of node.commands) {
         lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
@@ -1614,10 +2130,12 @@ const interpret = <A>(
       mode,
       options.output ?? "inherit",
       emitEvent,
+      event,
       options.approval,
       options.executor ?? makeLocalCommandExecutor(),
       options.workspaceFileSystem,
       options.workspacePersistence,
+      options.verification,
       previous && selection ? { previous, selection } : undefined,
     )
     const approval: ApprovalService = {
@@ -1628,12 +2146,21 @@ const interpret = <A>(
         return yield* currentRuntime.requestApproval(stepId, request)
       }),
     }
+    const secrets: SecretResolver = options.secrets ?? {
+      resolve: (name) => {
+        const value = typeof process === "undefined" ? undefined : process.env[name]
+        return value === undefined
+          ? Effect.fail(new SecretError(name))
+          : Effect.succeed(Redacted.make(value, { label: name }))
+      },
+    }
     const result = yield* workflowDefinition.effect.pipe(
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(Source, options.source ?? localSource),
       Effect.provideService(WorkflowEvent, event),
       Effect.provideService(Approval, approval),
+      Effect.provideService(SecretStore, secrets),
       Effect.exit,
     )
 

@@ -35,6 +35,11 @@ jobs:
           - d1-migration
           - ordered-deploy
           - custom-container-image
+          - execution-policy
+          - conditional-deploy
+          - portable-artifacts
+          - secure-secrets
+          - rollback-compensation
     steps:
       - uses: actions/checkout@v7
 
@@ -169,6 +174,29 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: node --import tsx examples/immutable-attempts/verify.ts
+
+  sdk-semantics:
+    name: ${{ matrix.example }} / effect-on-github
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - execution-policy
+          - conditional-deploy
+          - rollback-compensation
+          - secure-secrets
+          - portable-artifacts
+          - verification-evidence
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - run: node --import tsx examples/${{ matrix.example }}/verify.ts
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github

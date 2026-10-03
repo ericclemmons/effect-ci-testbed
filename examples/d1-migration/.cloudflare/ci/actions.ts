@@ -25,4 +25,12 @@ export const deploy = CI.action("deploy worker", () => function* () {
   const workspace = yield* migrate()
 
   return yield* workspace.exec("node scripts/deploy.mjs")
+}, {
+  retries: { limit: 2, delay: "1 second", backoff: "exponential" },
+})
+
+export const rollback = CI.action("redeploy previous worker", () => function* () {
+  const workspace = yield* migrate()
+
+  return yield* workspace.exec("node scripts/rollback.mjs")
 })

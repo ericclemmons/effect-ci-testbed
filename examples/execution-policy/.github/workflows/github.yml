@@ -1,0 +1,29 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retry-and-timeout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v7
+      - name: Retry a transient command
+        shell: bash
+        run: |
+          attempt=0
+          until [ "$attempt" -ge 3 ]; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -lt 3 ]; then
+              sleep 0.01
+              continue
+            fi
+            exit 0
+          done
