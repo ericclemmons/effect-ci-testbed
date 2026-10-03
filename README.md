@@ -55,6 +55,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | ✅ | ✅ | ✅ | 🔜 |
+| [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-compensation-not-rewind) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | Derive a monorepo deployment order from its Turborepo or Vite+ graph | 🔜 | 🔜 | 🔜 | 🔜 |
 | Define multiple Workers as code with Cloudflare `defineConfig` and prevent settings drift | 🔜 | 🔜 | 🔜 | 🔜 |
