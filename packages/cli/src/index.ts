@@ -20,13 +20,9 @@ export interface Invocation {
 
 export interface Program {
   readonly actions?: Readonly<Record<string, unknown>>
-  readonly local?: LocalRunOptions | (() => LocalRunOptions)
+  readonly local?: CI.RunConfiguration | (() => CI.RunConfiguration)
   readonly remote?: (invocation: Invocation) => Promise<unknown>
   readonly workflow: CI.Workflow<unknown>
-}
-
-export interface LocalRunOptions extends CI.RunOptions {
-  readonly dispose?: () => Promise<void>
 }
 
 export const ExitCode = {
@@ -172,7 +168,7 @@ const printJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
 }
 
-const defaultLocalOptions = (): LocalRunOptions => {
+const defaultLocalOptions = (): CI.RunConfiguration => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
   const decision = process.env.EFFECT_CI_APPROVAL
   const approval: CI.ApprovalHandler | undefined = decision === "approved" || decision === "rejected"

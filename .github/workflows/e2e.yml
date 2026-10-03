@@ -21,6 +21,7 @@ jobs:
           - node-pnpm
           - optional-checks
           - local-container
+          - mise-toolchain
           - cloudflare-runner
           - cloudflare-toolchain
           - vite-plus-cache
@@ -78,6 +79,7 @@ jobs:
           - optional-checks
           - runner-selection
           - local-container
+          - mise-toolchain
         mode:
           - plan
           - execute
@@ -168,6 +170,12 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: local-container
             workflow: examples/local-container/.cloudflare/ci/workflow.ts
+            cache-path: ""
+            cache-key: ""
+            cache-key-files: ""
+            runs-on: '["ubuntu-latest"]'
+          - example: mise-toolchain
+            workflow: examples/mise-toolchain/.cloudflare/ci/workflow.ts
             cache-path: ""
             cache-key: ""
             cache-key-files: ""

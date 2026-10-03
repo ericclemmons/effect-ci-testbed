@@ -615,6 +615,71 @@ export namespace PackageManager {
     )
 }
 
+export class ToolchainError extends Error {
+  readonly _tag = "ToolchainError"
+
+  constructor(readonly cwd: string, message: string) {
+    super(message)
+  }
+}
+
+export namespace Toolchain {
+  export interface MiseInstallOptions {
+    readonly locked?: boolean
+  }
+
+  export interface Mise {
+    readonly workspace: Workspace
+    readonly install: (
+      options?: MiseInstallOptions,
+    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+    readonly exec: (
+      command: string,
+    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  }
+
+  const miseEnvironment = [
+    "MISE_DATA_DIR=.effect-ci/cache/mise/data",
+    "MISE_CACHE_DIR=.effect-ci/cache/mise/cache",
+  ].join(" ")
+
+  export const Mise = (
+    workspace: Workspace,
+  ): Effect.Effect<Mise, ToolchainError, Runtime | CurrentStep> =>
+    Effect.gen(function* () {
+      const configurations = ["mise.toml", ".mise.toml", ".tool-versions"]
+      let configured = false
+
+      for (const path of configurations) {
+        if (yield* workspace.exists(path)) {
+          configured = true
+          break
+        }
+      }
+
+      if (!configured) {
+        return yield* Effect.fail(new ToolchainError(
+          workspace.cwd,
+          `Could not find a Mise configuration (${configurations.join(", ")})`,
+        ))
+      }
+
+      return {
+        workspace,
+        install: (options?: MiseInstallOptions) => workspace.exec(
+          `${miseEnvironment} mise --yes${options?.locked ? " --locked" : ""} install`,
+        ),
+        exec: (command: string) => workspace.exec(
+          `${miseEnvironment} mise exec -- ${command}`,
+        ),
+      }
+    }).pipe(
+      Effect.mapError((error) => error instanceof ToolchainError
+        ? error
+        : new ToolchainError(workspace.cwd, String(error))),
+    )
+}
+
 export interface SourceService {
   readonly checkout: (root: string) => Effect.Effect<Workspace, unknown>
 }
@@ -1218,6 +1283,10 @@ export interface RunOptions {
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
+}
+
+export interface RunConfiguration extends RunOptions {
+  readonly dispose?: () => Promise<void>
 }
 
 const toPlan = (

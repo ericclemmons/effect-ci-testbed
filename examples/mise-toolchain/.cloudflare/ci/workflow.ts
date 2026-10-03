@@ -6,13 +6,15 @@ import * as LocalContainer from "@effect-ci-testbed/local-container"
 
 import * as actions from "./actions.ts"
 
-const workflow = CI.workflow("local-container", function* () {
-  yield* actions.verifyContainer()
+const workflow = CI.workflow("mise-toolchain", function* () {
+  yield* actions.verifyNode()
 
-  return yield* actions.test()
+  return yield* actions.verifyPython()
 })
 
-export const local = () => LocalContainer.makeRunner({ image: "node:24-bookworm" })
+export const local = () => LocalContainer.makeRunner({
+  image: "ghcr.io/jdx/mise:2026.9.11-debian",
+})
 
 export * from "./actions.ts"
 export default workflow

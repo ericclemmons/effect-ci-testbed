@@ -44,7 +44,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
-| Install all runtimes declared by Mise | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | Select and cache a project-specific Node.js version | 🔜 | 🔜 | 🔜 | 🔜 |
 | Install a system dependency such as ImageMagick | 🔜 | 🔜 | 🔜 | 🔜 |
 | Customize cache keys, paths, scope, retention, or disable caching | 🔜 | 🔜 | 🔜 | 🔜 |
