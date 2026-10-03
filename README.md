@@ -50,7 +50,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Customize cache keys, paths, invalidation, or disable caching](./examples/cache-policy) | ✅ | ✅ | ✅ | 🔜 |
 | [Fan one prepared snapshot out to isolated parallel checks](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | 🔜 |
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
-| Preserve immutable attempts and reuse unaffected checkpoints | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
 | Pause and durably resume a Cloudflare Workflow for approval | — | 🔜 | — | 🔜 |
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
