@@ -117,6 +117,18 @@ export default GitHubCloudflare.worker()
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow)
 ```
 
+The repository's executable verification injects fake GitHub APIs and a fake Workflow
+binding into the reusable bridge. It proves that one valid signed delivery creates one
+queued check and one Workflow instance, while redelivering the same
+`X-GitHub-Delivery` creates neither again:
+
+```sh
+node --import tsx examples/github-cloudflare-ci/verify.ts
+```
+
+This does not count as hosted Cloudflare coverage. The matrix remains unchecked until
+the Worker is deployed, its GitHub App is installed, and a real commit completes.
+
 ## First-slice contract
 
 - A real GitHub webhook starts exactly one native Workflow instance.
