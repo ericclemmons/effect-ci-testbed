@@ -46,7 +46,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | 🔜 |
-| Install a system dependency such as ImageMagick | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | 🔜 |
 | Customize cache keys, paths, scope, retention, or disable caching | 🔜 | 🔜 | 🔜 | 🔜 |
 | Fan one prepared snapshot out to parallel Containers | — | 🔜 | — | 🔜 |
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
