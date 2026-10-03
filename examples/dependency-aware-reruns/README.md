@@ -20,6 +20,6 @@ The example proves these cases:
 - rerun `install` → rerun all checks and `build`; reuse `checkout`
 - rerun optional `format` → rerun only `format`
 
-This is deliberately the selection primitive, not attempt persistence. A later slice
-will create a new immutable attempt, restore reusable node checkpoints, and execute
-the selected subgraph in a new Cloudflare Workflow instance.
+This example is deliberately only the selection primitive. See
+[`immutable-attempts`](../immutable-attempts) for creating a new attempt, restoring
+reusable node outputs, and executing the selected subgraph without changing history.

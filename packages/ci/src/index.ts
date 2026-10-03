@@ -57,7 +57,7 @@ export interface PlanNode {
   readonly approval?: ApprovalRequest
   readonly optional: boolean
   readonly options: StepOptions
-  readonly status: "planned" | "queued" | "running" | "complete" | "warning" | "failed" | "skipped"
+  readonly status: "planned" | "queued" | "running" | "complete" | "reused" | "warning" | "failed" | "skipped"
 }
 
 export interface WorkflowPlan {
@@ -71,6 +71,24 @@ export interface WorkflowRerunPlan {
   readonly requested: ReadonlyArray<string>
   readonly rerun: ReadonlyArray<string>
   readonly reuse: ReadonlyArray<string>
+}
+
+export interface WorkflowAttempt {
+  readonly id: string
+  readonly number: number
+  readonly workflowId: string
+  readonly previousAttemptId?: string
+  readonly requested: ReadonlyArray<string>
+  readonly plan: WorkflowPlan
+  readonly outputs: Readonly<Record<string, unknown>>
+  readonly conclusion: "success" | "failure"
+  readonly startedAt: string
+  readonly completedAt: string
+}
+
+export interface WorkflowRerun {
+  readonly previous: WorkflowAttempt
+  readonly steps: ReadonlyArray<string>
 }
 
 export class WorkflowPlanError extends Error {
@@ -203,6 +221,7 @@ interface RuntimeShape {
   readonly afterEdges: Set<string>
   readonly edges: Set<string>
   readonly optionalSteps: Set<string>
+  readonly outputs: Map<string, unknown>
   readonly cache: Cache.Cache<string, unknown, unknown, Runtime>
   readonly addDependency: (parent: string, child: string) => Effect.Effect<void>
   readonly addParallel: (
@@ -244,6 +263,7 @@ interface RuntimeShape {
 const eventFileDescriptor = Number(process.env.EFFECT_CI_EVENT_FD)
 
 export type RuntimeEventHandler = (event: RuntimeEvent) => void | Promise<void>
+export type WorkflowAttemptHandler = (attempt: WorkflowAttempt) => void | Promise<void>
 
 const writeEvent = (event: RuntimeEvent): void => {
   if (!Number.isInteger(eventFileDescriptor)) return
@@ -258,6 +278,16 @@ const makeEventEmitter = (handler?: RuntimeEventHandler) =>
     },
     catch: (error) => error,
   }).pipe(Effect.orDie)
+
+const publishAttempt = (
+  handler: WorkflowAttemptHandler | undefined,
+  attempt: WorkflowAttempt,
+): Effect.Effect<void> => Effect.tryPromise({
+  try: async () => {
+    await handler?.(attempt)
+  },
+  catch: (error) => error,
+}).pipe(Effect.orDie)
 
 class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
   "@effect-ci-testbed/Runtime",
@@ -1077,6 +1107,10 @@ const makeRuntime = (
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
     restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
   },
+  rerun?: {
+    readonly previous: WorkflowAttempt
+    readonly selection: WorkflowRerunPlan
+  },
 ) =>
   Effect.gen(function* () {
     const nodes = new Map<string, RuntimeNode>()
@@ -1084,12 +1118,50 @@ const makeRuntime = (
     const edges = new Set<string>()
     const failureOrigins = new Map<unknown, string>()
     const optionalSteps = new Set<string>()
+    const outputs = new Map<string, unknown>()
     const parallelSteps = new Set<string>()
+    const reusable = new Set(rerun?.selection.reuse ?? [])
+    const previousNodes = new Map(
+      rerun?.previous.plan.nodes.map((node) => [node.id, node]) ?? [],
+    )
     let workflowBarrier: {
       readonly after: ReadonlyArray<string>
       readonly needs: ReadonlyArray<string>
     } = { after: [], needs: [] }
     let runtime!: RuntimeShape
+
+    for (const id of reusable) {
+      const previousNode = previousNodes.get(id)
+      if (!previousNode) {
+        return yield* Effect.fail(new WorkflowPlanError(
+          `Previous attempt has no plan node for reusable step: ${id}`,
+        ))
+      }
+      if (!Object.hasOwn(rerun?.previous.outputs ?? {}, id)) {
+        return yield* Effect.fail(new WorkflowPlanError(
+          `Previous attempt has no output for reusable step: ${id}`,
+        ))
+      }
+
+      for (const dependency of previousNode.needs) edges.add(`${id}->${dependency}`)
+      for (const dependency of previousNode.after) afterEdges.add(`${id}->${dependency}`)
+      if (previousNode.optional) optionalSteps.add(id)
+      nodes.set(id, {
+        id,
+        commands: [...previousNode.commands],
+        ...(previousNode.approval ? { approval: previousNode.approval } : {}),
+        status: "reused",
+      })
+      outputs.set(id, rerun!.previous.outputs[id])
+      yield* emitEvent({
+        type: "step.status",
+        workflowId,
+        stepId: id,
+        status: "reused",
+        optional: previousNode.optional,
+        timestamp: new Date().toISOString(),
+      })
+    }
 
     const cache = yield* Cache.make<string, unknown, unknown, Runtime, "lookup">({
       capacity: 1_000,
@@ -1105,6 +1177,11 @@ const makeRuntime = (
           status: "planned" as const,
         }
         nodes.set(id, node)
+
+        if (reusable.has(id)) {
+          return Effect.succeed(outputs.get(id))
+        }
+
         node.status = mode === "plan" ? "planned" : "queued"
         const queued = emitEvent({
           type: "step.status",
@@ -1126,6 +1203,9 @@ const makeRuntime = (
                   workspace: value,
                 })
               : Effect.succeed(value)),
+          Effect.tap((value) => Effect.sync(() => {
+            outputs.set(id, value)
+          })),
           Effect.tap(() => {
             node.status = mode === "plan" ? "planned" : "complete"
 
@@ -1164,6 +1244,7 @@ const makeRuntime = (
       afterEdges,
       edges,
       optionalSteps,
+      outputs,
       cache,
       addDependency: (parent, child) => Effect.gen(function* () {
         if (parent === "$workflow") {
@@ -1393,8 +1474,10 @@ export interface RunOptions {
   readonly env?: string
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
+  readonly onAttempt?: WorkflowAttemptHandler
   readonly onEvent?: RuntimeEventHandler
   readonly output?: "inherit" | "silent"
+  readonly rerun?: WorkflowRerun
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
@@ -1470,6 +1553,8 @@ export const formatPlan = (plan: WorkflowPlan): string => {
     const suffix = `${needs}${after}${optional}`
     const status = node.status === "complete"
       ? "✓"
+      : node.status === "reused"
+      ? "↻"
       : node.status === "warning"
       ? "⚠"
       : node.status === "failed"
@@ -1500,6 +1585,20 @@ const interpret = <A>(
     const environment = options.env ?? "development"
     const event: WorkflowEventShape = options.event ?? { type: "workflow_dispatch" }
     const emitEvent = makeEventEmitter(options.onEvent)
+    const startedAt = new Date().toISOString()
+    const previous = options.rerun?.previous
+
+    if (previous && previous.workflowId !== workflowDefinition.id) {
+      return yield* Effect.fail(new WorkflowPlanError(
+        `Cannot rerun ${previous.workflowId} as ${workflowDefinition.id}`,
+      ))
+    }
+
+    const selection = previous
+      ? planRerun(previous.plan, options.rerun?.steps ?? [])
+      : undefined
+    const attemptNumber = previous ? previous.number + 1 : 1
+    const attemptId = `${workflowDefinition.id}:${attemptNumber}:${globalThis.crypto.randomUUID()}`
 
     yield* emitEvent({
       type: "workflow.started",
@@ -1519,6 +1618,7 @@ const interpret = <A>(
       options.executor ?? makeLocalCommandExecutor(),
       options.workspaceFileSystem,
       options.workspacePersistence,
+      previous && selection ? { previous, selection } : undefined,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {
@@ -1542,6 +1642,19 @@ const interpret = <A>(
       runtime,
       environment,
     )
+    const completedAt = new Date().toISOString()
+    const attempt = Object.freeze({
+      id: attemptId,
+      number: attemptNumber,
+      workflowId: workflowDefinition.id,
+      ...(previous ? { previousAttemptId: previous.id } : {}),
+      requested: Object.freeze([...(selection?.requested ?? [])]),
+      plan,
+      outputs: Object.freeze(Object.fromEntries(runtime.outputs)),
+      conclusion: Exit.isFailure(result) ? "failure" as const : "success" as const,
+      startedAt,
+      completedAt,
+    }) satisfies WorkflowAttempt
     yield* emitEvent({
       type: "workflow.plan",
       workflowId: workflowDefinition.id,
@@ -1556,6 +1669,7 @@ const interpret = <A>(
         conclusion: "failure",
         timestamp: new Date().toISOString(),
       })
+      yield* publishAttempt(options.onAttempt, attempt)
       return yield* Effect.failCause(result.cause)
     }
 
@@ -1565,8 +1679,9 @@ const interpret = <A>(
       conclusion: "success",
       timestamp: new Date().toISOString(),
     })
+    yield* publishAttempt(options.onAttempt, attempt)
 
-    return { plan, value: result.value }
+    return { attempt, plan, value: result.value }
   })
 
 export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
