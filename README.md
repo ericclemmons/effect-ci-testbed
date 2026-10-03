@@ -46,7 +46,8 @@ deployed to an account and exercised there. Empty boxes are useful gaps.
 | Install a system dependency such as ImageMagick | 🔲 | 🔲 | 🔲 | 🔲 |
 | Customize cache keys, paths, scope, retention, or disable caching | 🔲 | 🔲 | 🔲 | 🔲 |
 | Fan one prepared snapshot out to parallel Containers | 🔲 | 🔲 | 🔲 | 🔲 |
-| Preserve attempts and rerun only a dependency-affected subgraph | 🔲 | 🔲 | 🔲 | 🔲 |
+| [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔲 | ✅ | 🔲 | 🔲 |
+| Preserve immutable attempts and reuse unaffected checkpoints | 🔲 | 🔲 | 🔲 | 🔲 |
 | Pause and durably resume a Cloudflare Workflow for approval | 🔲 | 🔲 | 🔲 | 🔲 |
 | Resolve an approval request from Slack or Discord | 🔲 | 🔲 | 🔲 | 🔲 |
 | Deploy a built workspace to Cloudflare Workers | 🔲 | 🔲 | 🔲 | 🔲 |

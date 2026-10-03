@@ -123,6 +123,19 @@ jobs:
           test "$status" -eq 3
           grep --fixed-strings '"code": "CI_REMOTE_UNAVAILABLE"' "$output"
 
+  dependency-aware-reruns:
+    name: dependency-aware rerun selection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - run: node --import tsx examples/dependency-aware-reruns/verify.ts
+
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
     strategy:
