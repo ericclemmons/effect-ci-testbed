@@ -834,8 +834,37 @@ export interface WorkspacePersistence {
 }
 
 export interface Workflow<A> {
+  readonly cache?: WorkflowCachePolicy | false
   readonly id: string
   readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep | WorkflowEvent | Approval>
+}
+
+/**
+ * Portable cache intent. Paths and key files are repository-relative; the runner
+ * decides how those paths are persisted.
+ */
+export interface WorkflowCachePolicy {
+  readonly key: string
+  readonly keyFiles: ReadonlyArray<string>
+  readonly paths: ReadonlyArray<string>
+}
+
+export interface WorkflowOptions {
+  readonly cache?: WorkflowCachePolicy | false
+}
+
+const validateCachePolicy = (
+  cache: WorkflowCachePolicy | false | undefined,
+): void => {
+  if (cache === undefined || cache === false) return
+  if (!cache.key.trim()) throw new Error("CI workflow cache key cannot be empty")
+  if (cache.paths.length === 0) throw new Error("CI workflow cache requires at least one path")
+
+  for (const path of [...cache.paths, ...cache.keyFiles]) {
+    if (!path || path.startsWith("/") || path.split("/").includes("..")) {
+      throw new Error(`CI workflow cache path must be repository-relative: ${path}`)
+    }
+  }
 }
 
 export type WorkflowEventName =
@@ -988,7 +1017,16 @@ export const action = <
 export const workflow = <A>(
   id: string,
   body: WorkflowBody<A>,
-): Workflow<A> => ({ id, effect: bodyToEffect(body) })
+  options: WorkflowOptions = {},
+): Workflow<A> => {
+  validateCachePolicy(options.cache)
+
+  return {
+    id,
+    effect: bodyToEffect(body),
+    ...(options.cache === undefined ? {} : { cache: options.cache }),
+  }
+}
 
 const makeLocalCommandExecutor = (): CommandExecutor => ({
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {

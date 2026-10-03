@@ -33,6 +33,6 @@ With Docker running:
 
 The current local runner provides Mise as the Node capability's interpreter. The
 workflow depends on `CI.Toolchain.Node`, so another runner can satisfy the same
-capability with its native tool cache without changing the actions. Effect CI's GitHub
-job restores the capability-owned `.effect-ci/cache/mise` path using `.node-version` as
-its invalidation input.
+capability with its native tool cache without changing the actions. The portable
+workflow declares `.effect-ci/cache/mise` and `.node-version` as cache intent; GitHub
+and Cloudflare choose how to persist it.

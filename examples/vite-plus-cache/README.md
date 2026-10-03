@@ -50,15 +50,20 @@ a new logical filesystem revision. The Cloudflare interpreter snapshots that rev
 including Vite+'s updated task cache. The action does not return a Cloudflare snapshot
 or a hand-written artifact manifest.
 
-The Worker opts into one rolling cache and identifies the tool-owned path to protect:
+The portable workflow declares one rolling cache and the tool-owned path to protect:
 
 ```ts
-export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
-  cacheKey: "vite-plus-cache",
-  cachePaths: ["node_modules/.vite/task-cache"],
-  reuseWorkspace: false,
+CI.workflow("vite-plus-cache", workflow, {
+  cache: {
+    key: "vite-task",
+    keyFiles: ["examples/vite-plus-cache/app/package-lock.json"],
+    paths: ["examples/vite-plus-cache/app/node_modules/.vite/task-cache"],
+  },
 })
 ```
+
+GitHub translates this policy to `actions/cache`; Cloudflare translates it to a
+snapshot cache. The Worker contains no Vite-specific cache configuration.
 
 Run Wrangler locally with Docker available:
 

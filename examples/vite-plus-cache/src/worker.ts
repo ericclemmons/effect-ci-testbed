@@ -11,7 +11,5 @@ export default {
 }
 
 export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
-  cacheKey: "vite-plus-cache",
-  cachePaths: ["node_modules/.vite/task-cache"],
   reuseWorkspace: false,
 })

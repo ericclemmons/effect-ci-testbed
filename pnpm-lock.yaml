@@ -188,6 +188,22 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  examples/cache-policy:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   examples/cloudflare-runner:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -261,9 +277,13 @@ importers:
 
   examples/local-container: {}
 
+  examples/mise-toolchain: {}
+
   examples/node-npm: {}
 
   examples/node-pnpm: {}
+
+  examples/node-version: {}
 
   examples/optional-checks: {}
 
@@ -290,6 +310,8 @@ importers:
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
   examples/runner-selection: {}
+
+  examples/system-package: {}
 
   examples/turborepo-cache:
     dependencies:
