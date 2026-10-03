@@ -21,24 +21,24 @@ Compare:
 
 - [`.github/workflows/github.yml`](./.github/workflows/github.yml): the standalone conventional workflow with its steps inline, based on the current [`setup-node` basic example](https://github.com/actions/setup-node#basic).
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml): the short Effect workflow that calls the testbed's reusable workflow.
-- [`.cloudflare/workflows/pull-request.ts`](./.cloudflare/workflows/pull-request.ts):
-  the events and orchestration for the Effect workflow.
-- [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts): how each action
+- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the executable events
+  and orchestration for the Effect workflow.
+- [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts): how each action
   runs and which earlier action is a true blocker.
 
-The executable [`.cloudflare/workflows/ci.run.ts`](./.cloudflare/workflows/ci.run.ts)
+The executable [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts)
 is the canonical interface for developers and coding agents. It default-exports the
 workflow and re-exports the actions as named run targets:
 
 ```bash
-./.cloudflare/workflows/ci.run.ts
-./.cloudflare/workflows/ci.run.ts run lint
-./.cloudflare/workflows/ci.run.ts plan lint --format=json
-./.cloudflare/workflows/ci.run.ts list
+./.cloudflare/ci/workflow.ts
+./.cloudflare/ci/workflow.ts run lint
+./.cloudflare/ci/workflow.ts plan lint --format=json
+./.cloudflare/ci/workflow.ts list
 ```
 
 `run` is the default command, so the first form executes the complete workflow and
-`./.cloudflare/workflows/ci.run.ts lint` is shorthand for `run lint`. Explicit
+`./.cloudflare/ci/workflow.ts lint` is shorthand for `run lint`. Explicit
 `--format=text` and `--format=json` override output selection. Without an override,
 a directly detected coding agent receives JSON while interactive and hybrid terminals
 receive text. `--local` is the default; `--remote` selects a configured remote provider

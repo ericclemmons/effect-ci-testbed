@@ -35,9 +35,9 @@ repositories. Private repositories need a plan that supports this protection rul
   GitHub Actions version. Its deployment job `needs: build` and targets `production`.
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
   runs the Effect workflow inside a `production` deployment job.
-- [`.cloudflare/workflows/deploy.ts`](./.cloudflare/workflows/deploy.ts) declares the
+- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) declares the
   event boundary and requests only `deploy()`.
-- [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts) makes `build()` an
+- [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts) makes `build()` an
   intrinsic dependency of `deploy()` and contains the portable approval request.
 
 The deploy command is intentionally harmless:

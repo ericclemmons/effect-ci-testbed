@@ -10,7 +10,7 @@ GitHub examples. The Worker is intentionally userland-only:
 ```ts
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 
-import workflow from "../.cloudflare/workflows/build.ts"
+import workflow from "../.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
@@ -52,6 +52,18 @@ export const build = CI.action("build", () => function* () {
   return yield* workspace.exec("npm run build")
 })
 ```
+
+## Compare GitHub and Effect CI
+
+- [`.github/workflows/github.yml`](./.github/workflows/github.yml) expresses the same
+  `checkout → install → build` pipeline directly in GitHub Actions YAML.
+- [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
+  runs [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) on a GitHub runner.
+- [`src/worker.ts`](./src/worker.ts) imports that same workflow and supplies the
+  Cloudflare Workflow, Container, and snapshot implementation.
+
+The action graph does not select a runner. GitHub and Cloudflare are adapters around
+the same two userland files: `actions.ts` and `workflow.ts`.
 
 `CI.action` expects a workspace by default; actions that intentionally produce another
 value opt into it with a generic such as `CI.action<void>`. `install()` returns the

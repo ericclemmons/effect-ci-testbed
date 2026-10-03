@@ -16,37 +16,42 @@ The consumer model is intentionally small:
 - A durable checkpoint restores one exact action revision. A reusable cache restores
   only its owned paths into the current revision and must never replace dependency
   lineage.
+- Runner capabilities are supplied at the entrypoint, not inside the workflow. GitHub
+  YAML provides its runner and `actions/cache`; a Cloudflare Worker provides Workflow,
+  Container, checkpoint, and snapshot-cache implementations. The same
+  `.cloudflare/ci/{actions,workflow}.ts` files import neither platform.
 
 ## Examples, in implementation order
 
-The matrix is stack-ranked. Each link opens one focused example that answers the stated
-use-case. A checkmark means the use-case is exercised end-to-end in that actual
-environment. `wrangler dev --local` counts as Local, not Cloudflare. Cloudflare remains
-unchecked until the example is deployed to an account and exercised there. Empty boxes
-are useful gaps, not a separate status system.
+The matrix is stack-ranked. Each implemented example compares conventional GitHub
+Actions YAML with the portable Effect CI version. A checkmark means the use-case is
+exercised end-to-end in that actual environment. `wrangler dev --local` counts as
+Effect CI Local, not Cloudflare. Cloudflare remains unchecked until the example is
+deployed to an account and exercised there. Empty boxes are useful gaps.
 
-| Use-case | Local | GitHub | Cloudflare |
-| --- | :---: | :---: | :---: |
-| [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | 🔲 |
-| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | 🔲 |
-| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | 🔲 |
-| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | 🔲 | 🔲 |
-| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | 🔲 | 🔲 |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | 🔲 | 🔲 | 🔲 |
-| Run the canonical CI script on GitHub-hosted, Blacksmith, or self-hosted compute | 🔲 | 🔲 | 🔲 |
-| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | 🔲 | 🔲 |
-| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | 🔲 | 🔲 |
-| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | 🔲 | 🔲 |
-| Install all runtimes declared by Mise | 🔲 | 🔲 | 🔲 |
-| Select and cache a project-specific Node.js version | 🔲 | 🔲 | 🔲 |
-| Install a system dependency such as ImageMagick | 🔲 | 🔲 | 🔲 |
-| Customize cache keys, paths, scope, retention, or disable caching | 🔲 | 🔲 | 🔲 |
-| Fan one prepared snapshot out to parallel Containers | 🔲 | 🔲 | 🔲 |
-| Pause and durably resume a Cloudflare Workflow for approval | 🔲 | 🔲 | 🔲 |
-| Resolve an approval request from Slack or Discord | 🔲 | 🔲 | 🔲 |
-| Deploy a built workspace to Cloudflare Workers | 🔲 | 🔲 | 🔲 |
-| Create and clean up pull-request preview deployments | 🔲 | 🔲 | 🔲 |
-| Repair, verify, and propose a fix for a failed action | 🔲 | 🔲 | 🔲 |
+| Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Run required and optional npm checks](./examples/node-npm) | ✅ | ✅ | ✅ | 🔲 |
+| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔲 |
+| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔲 |
+| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔲 |
+| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔲 |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | 🔲 | 🔲 | 🔲 | 🔲 |
+| Run the canonical CI script on GitHub-hosted, Blacksmith, or self-hosted compute | 🔲 | 🔲 | 🔲 | 🔲 |
+| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔲 |
+| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔲 |
+| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔲 |
+| Install all runtimes declared by Mise | 🔲 | 🔲 | 🔲 | 🔲 |
+| Select and cache a project-specific Node.js version | 🔲 | 🔲 | 🔲 | 🔲 |
+| Install a system dependency such as ImageMagick | 🔲 | 🔲 | 🔲 | 🔲 |
+| Customize cache keys, paths, scope, retention, or disable caching | 🔲 | 🔲 | 🔲 | 🔲 |
+| Fan one prepared snapshot out to parallel Containers | 🔲 | 🔲 | 🔲 | 🔲 |
+| Preserve attempts and rerun only a dependency-affected subgraph | 🔲 | 🔲 | 🔲 | 🔲 |
+| Pause and durably resume a Cloudflare Workflow for approval | 🔲 | 🔲 | 🔲 | 🔲 |
+| Resolve an approval request from Slack or Discord | 🔲 | 🔲 | 🔲 | 🔲 |
+| Deploy a built workspace to Cloudflare Workers | 🔲 | 🔲 | 🔲 | 🔲 |
+| Create and clean up pull-request preview deployments | 🔲 | 🔲 | 🔲 | 🔲 |
+| Repair, verify, and propose a fix for a failed action | 🔲 | 🔲 | 🔲 | 🔲 |
 
 ## Try it locally
 
@@ -54,13 +59,13 @@ are useful gaps, not a separate status system.
 pnpm install
 
 # Discover the graph without executing it.
-./examples/node-npm/.cloudflare/workflows/ci.run.ts plan
+./examples/node-npm/.cloudflare/ci/workflow.ts plan
 
 # List or run one exported action for an agent or developer.
-./examples/node-npm/.cloudflare/workflows/ci.run.ts list
-./examples/node-npm/.cloudflare/workflows/ci.run.ts run lint --format=json
+./examples/node-npm/.cloudflare/ci/workflow.ts list
+./examples/node-npm/.cloudflare/ci/workflow.ts run lint --format=json
 
 # Run the repository workflow and type-check the testbed.
-./examples/node-npm/.cloudflare/workflows/ci.run.ts
+./examples/node-npm/.cloudflare/ci/workflow.ts
 pnpm check
 ```

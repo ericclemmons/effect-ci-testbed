@@ -1,0 +1,29 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+        working-directory: app
+      - uses: actions/cache@v5
+        with:
+          path: app/node_modules/.vite/task-cache
+          key: vite-task-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            vite-task-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-
+      - run: npx vp run -t vite-plus-cache-app#build
+        working-directory: app

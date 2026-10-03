@@ -24,12 +24,12 @@ Compare:
   action.
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml):
   the small Effect workflow caller.
-- [`.cloudflare/workflows/pull-request.ts`](./.cloudflare/workflows/pull-request.ts):
-  the events and orchestration for the Effect workflow.
-- [`.cloudflare/actions/index.ts`](./.cloudflare/actions/index.ts): how each action
+- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the executable events
+  and orchestration for the Effect workflow.
+- [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts): how each action
   runs and which earlier action is a true blocker.
 
-The executable `.cloudflare/workflows/ci.run.ts` exposes the same default workflow,
+The executable `.cloudflare/ci/workflow.ts` exposes the same default workflow,
 named action targets, text/JSON formats, and local/remote selection as the npm example;
 the inferred package-manager resource is the only runtime difference.
 

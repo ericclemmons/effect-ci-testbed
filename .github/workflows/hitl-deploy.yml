@@ -30,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           EFFECT_CI_APPROVAL: approved
           EFFECT_CI_EVENT: workflow_dispatch
-          EFFECT_CI_WORKFLOW: examples/hitl-deploy/.cloudflare/workflows/deploy.ts
+          EFFECT_CI_WORKFLOW: examples/hitl-deploy/.cloudflare/ci/workflow.ts
           EFFECT_CI_SHA: ${{ github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:production
         run: pnpm exec tsx packages/github/run.run.ts

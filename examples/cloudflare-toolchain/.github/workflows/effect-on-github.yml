@@ -1,4 +1,4 @@
-name: Effect on GitHub
+name: Effect CI on GitHub
 
 on:
   pull_request:
@@ -13,3 +13,4 @@ jobs:
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: .cloudflare/ci/workflow.ts
+    secrets: inherit
