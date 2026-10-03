@@ -12,7 +12,6 @@ jobs:
   checks:
     name: ${{ matrix.check }}${{ matrix.optional && ' (optional)' || '' }}
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.optional }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,3 +28,4 @@ jobs:
           package-manager-cache: false
       - run: npm ci
       - run: npm run ${{ matrix.check }}
+        continue-on-error: ${{ matrix.optional }}

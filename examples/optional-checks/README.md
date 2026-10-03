@@ -9,7 +9,7 @@ The fixture deliberately makes `format` fail while `lint` passes. Both implement
 run them in parallel and wait for both outcomes:
 
 - [plain GitHub Actions](./.github/workflows/github.yml) uses a matrix with
-  `fail-fast: false` and `continue-on-error` only for `format`;
+  `fail-fast: false` and puts `continue-on-error` on only the `format` step;
 - [Effect CI](./.cloudflare/ci/workflow.ts) uses one parallel group and marks only the
   format action optional.
 
