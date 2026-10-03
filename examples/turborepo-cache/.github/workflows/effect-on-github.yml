@@ -13,7 +13,4 @@ jobs:
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: .cloudflare/ci/workflow.ts
-      cache-path: app/.turbo/cache
-      cache-key: turbo
-      cache-key-files: app/package-lock.json
     secrets: inherit

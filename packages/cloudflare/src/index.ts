@@ -48,6 +48,7 @@ interface WorkspaceContainerStub {
     stepId: string,
     revision?: ContainerSnapshotValue,
     cachePaths?: ReadonlyArray<string>,
+    cacheRoot?: string,
   ) => Promise<ContainerExecutionResult>
   readonly exists: (
     path: string,
@@ -265,6 +266,7 @@ export class WorkspaceContainer extends DurableObject {
     stepId: string,
     revision?: ContainerSnapshotValue,
     cachePaths: ReadonlyArray<string> = [],
+    cacheRoot = cwd,
   ): Promise<ContainerExecutionResult> {
     await this.materialize(stepId, revision)
     this.dirty = true
@@ -274,7 +276,7 @@ export class WorkspaceContainer extends DurableObject {
         throw new Error(`Cache path must be relative to the workspace: ${path}`)
       }
 
-      return `${cwd}/${path}`
+      return `${cacheRoot}/${path}`
     })
     const backups = paths.map((_, index) => `/tmp/effect-ci-cache/${index}`)
 
@@ -415,8 +417,7 @@ export interface WorkflowEnvironment {
 }
 
 export interface WorkflowEntrypointOptions {
-  readonly cacheKey?: string
-  readonly cachePaths?: ReadonlyArray<string>
+  readonly cache?: CI.WorkflowCachePolicy | false
   readonly container?: WorkspaceContainerOptions
   readonly reuseWorkspace?: boolean
 }
@@ -484,6 +485,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               stepId,
               revision?.value as ContainerSnapshotValue | undefined,
               options.cache?.paths,
+              targetDirectory,
             ))
 
           if (result.stdout) onOutput("stdout", result.stdout)
@@ -624,13 +626,16 @@ export const workflowEntrypoint = <A>(
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
+    const cache = options.cache === false
+      ? undefined
+      : options.cache ?? (workflow.cache === false ? undefined : workflow.cache)
     const runner = makeRunner({
       binding: this.env.Workspace,
-      ...(options.cacheKey
+      ...(cache
         ? {
             cache: {
-              key: options.cacheKey,
-              ...(options.cachePaths ? { paths: options.cachePaths } : {}),
+              key: cache.key,
+              paths: cache.paths,
             },
           }
         : {}),

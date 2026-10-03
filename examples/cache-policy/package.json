@@ -1,0 +1,14 @@
+{
+  "name": "effect-ci-cache-policy-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

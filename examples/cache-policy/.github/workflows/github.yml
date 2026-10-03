@@ -1,0 +1,28 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/cache@v5
+        with:
+          path: app/.cache/build
+          key: custom-build-cache-${{ runner.os }}-${{ hashFiles('app/cache-version.txt', 'app/src/input.txt') }}-${{ github.sha }}
+          restore-keys: |
+            custom-build-cache-${{ runner.os }}-${{ hashFiles('app/cache-version.txt', 'app/src/input.txt') }}-
+      - run: npm --prefix app ci
+      - run: npm --prefix app run build
+      - run: npm --prefix app run verify

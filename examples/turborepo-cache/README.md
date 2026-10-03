@@ -52,16 +52,21 @@ second run to also see Turborepo restore the declared output.
 
 ## Verify it across Workflow instances
 
-The Worker opts into a rolling snapshot and identifies Turborepo's default local
-cache directory:
+The portable workflow opts into a rolling cache and identifies Turborepo's default
+local cache directory:
 
 ```ts
-export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
-  cacheKey: "turborepo-cache",
-  cachePaths: ["examples/turborepo-cache/app/.turbo/cache"],
-  reuseWorkspace: false,
+CI.workflow("turborepo-cache", workflow, {
+  cache: {
+    key: "turbo-task",
+    keyFiles: ["examples/turborepo-cache/app/package-lock.json"],
+    paths: ["examples/turborepo-cache/app/.turbo/cache"],
+  },
 })
 ```
+
+GitHub translates this policy to `actions/cache`; Cloudflare translates it to a
+snapshot cache. The Worker contains no Turborepo-specific cache configuration.
 
 Start Wrangler locally with Docker available:
 

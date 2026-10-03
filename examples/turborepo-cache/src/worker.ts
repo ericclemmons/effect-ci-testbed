@@ -11,7 +11,5 @@ export default {
 }
 
 export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
-  cacheKey: "turborepo-cache",
-  cachePaths: ["examples/turborepo-cache/app/.turbo/cache"],
   reuseWorkspace: false,
 })

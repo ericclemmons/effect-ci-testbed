@@ -24,6 +24,7 @@ jobs:
           - mise-toolchain
           - node-version
           - system-package
+          - cache-policy
           - cloudflare-runner
           - cloudflare-toolchain
           - vite-plus-cache
@@ -84,6 +85,7 @@ jobs:
           - mise-toolchain
           - node-version
           - system-package
+          - cache-policy
         mode:
           - plan
           - execute
@@ -156,88 +158,49 @@ jobs:
         include:
           - example: node-npm
             workflow: examples/node-npm/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: node-pnpm
             workflow: examples/node-pnpm/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: optional-checks
             workflow: examples/optional-checks/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: local-container
             workflow: examples/local-container/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: mise-toolchain
             workflow: examples/mise-toolchain/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: node-version
             workflow: examples/node-version/.cloudflare/ci/workflow.ts
-            cache-path: examples/node-version/.effect-ci/cache/mise
-            cache-key: node-version
-            cache-key-files: examples/node-version/.node-version
             runs-on: '["ubuntu-latest"]'
           - example: system-package
             workflow: examples/system-package/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
+            runs-on: '["ubuntu-latest"]'
+          - example: cache-policy
+            workflow: examples/cache-policy/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-toolchain
             workflow: examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
           - example: vite-plus-cache
             workflow: examples/vite-plus-cache/.cloudflare/ci/workflow.ts
-            cache-path: examples/vite-plus-cache/app/node_modules/.vite/task-cache
-            cache-key: vite-task
-            cache-key-files: examples/vite-plus-cache/app/package-lock.json
             runs-on: '["ubuntu-latest"]'
           - example: turborepo-cache
             workflow: examples/turborepo-cache/.cloudflare/ci/workflow.ts
-            cache-path: examples/turborepo-cache/app/.turbo/cache
-            cache-key: turbo
-            cache-key-files: examples/turborepo-cache/app/package-lock.json
             runs-on: '["ubuntu-latest"]'
           - example: package-manager-cache
             workflow: examples/package-manager-cache/.cloudflare/ci/workflow.ts
-            cache-path: examples/package-manager-cache/app/.effect-ci/cache/npm
-            cache-key: npm-downloads
-            cache-key-files: examples/package-manager-cache/app/package-lock.json
             runs-on: '["ubuntu-latest"]'
           - example: runner-selection
             workflow: examples/runner-selection/.cloudflare/ci/workflow.ts
-            cache-path: ""
-            cache-key: ""
-            cache-key-files: ""
             runs-on: '["ubuntu-latest"]'
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: ${{ matrix.workflow }}
-      cache-path: ${{ matrix.cache-path }}
-      cache-key: ${{ matrix.cache-key }}
-      cache-key-files: ${{ matrix.cache-key-files }}
       runs-on: ${{ matrix.runs-on }}
     secrets: inherit
 

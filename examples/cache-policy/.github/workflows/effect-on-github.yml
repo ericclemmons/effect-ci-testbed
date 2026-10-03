@@ -1,4 +1,4 @@
-name: Effect CI on GitHub
+name: Effect on GitHub
 
 on:
   pull_request:
