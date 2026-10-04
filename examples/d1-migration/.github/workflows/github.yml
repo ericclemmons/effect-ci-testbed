@@ -19,8 +19,23 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: node scripts/build.mjs
-      - run: node scripts/migrate.mjs
+      - id: migrate
+        continue-on-error: true
+        run: node scripts/migrate.mjs
       - id: deploy
+        if: steps.migrate.outcome == 'success'
+        continue-on-error: true
         run: node scripts/deploy.mjs
-      - if: failure() && steps.deploy.outcome == 'failure'
+      - id: verify
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/verify-deployment.mjs
+      - name: Roll back deployment
+        if: steps.deploy.outcome == 'failure' || steps.verify.outcome == 'failure'
         run: node scripts/rollback.mjs
+      - name: Roll back migration
+        if: steps.migrate.outcome == 'failure' || steps.deploy.outcome == 'failure' || steps.verify.outcome == 'failure'
+        run: node scripts/rollback-migration.mjs
+      - name: Preserve the original failure
+        if: steps.migrate.outcome == 'failure' || steps.deploy.outcome == 'failure' || steps.verify.outcome == 'failure'
+        run: exit 1

@@ -1,8 +1,17 @@
 # Run Effect CI on Cloudflare
 
-This example answers one question:
-
 > How does one logical workspace survive durable `checkout → install → build` actions on Cloudflare?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_build
+```
+
+---
 
 The action and workflow files use the same portable Effect CI API as the local and
 GitHub examples. The Worker is intentionally userland-only:
@@ -25,15 +34,14 @@ export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
 })
 ```
 
-`@effect-ci-testbed/cloudflare` uses the Durable Object Container API directly. There
-is no Sandbox SDK dependency or custom image in this example. Each run gets a
-`WorkspaceContainer` Durable Object backed by Cloudflare's managed
-`cloudflare/debian-trixie` image, which includes Node.js 24.
+`@effect-ci-testbed/cloudflare` uses Sandbox SDK 1.0 over a Durable Object Container.
+The package supplies the common runner image: Node.js 24, Git, and the matching 1.0
+`sandbox-shim`. Repositories do not copy that infrastructure into their own Workers.
 
 - `CI.Source` clones the requested Git repository into the Container.
 - An action that returns `CI.Workspace` commits a durable logical revision.
-- `CI.Workspace.exec()` materializes that revision and uses native
-  `ctx.container.exec()`.
+- `CI.Workspace.exec()` materializes that revision and uses the Container API.
+- workspace file operations use Sandbox's file API rather than shell probes.
 - The example disables live workspace reuse, forcing each consumer to restore the
   preceding revision and proving that persistence remains invisible to its actions.
 
@@ -91,7 +99,7 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-runner \
 ```
 
 This local run intentionally exercises the production-shaped path: Workflow → Durable
-Object → managed Container → automatic commit → release → transparent restore → build.
+Object → Sandbox Container → automatic commit → release → transparent restore → build.
 It requires Docker and Wrangler 4.145 or newer. You can inspect the resulting instance
 with Wrangler's local Workflow commands.
 

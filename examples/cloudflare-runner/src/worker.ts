@@ -11,5 +11,6 @@ export default {
 }
 
 export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
+  root: "examples/cloudflare-runner",
   reuseWorkspace: false,
 })

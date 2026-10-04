@@ -190,16 +190,22 @@ importers:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../../packages/ci
-      '@effect-ci-testbed/cli':
+      '@effect-ci-testbed/cloudflare':
         specifier: workspace:*
-        version: link:../../packages/cli
+        version: link:../../packages/cloudflare
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
   examples/cloudflare-runner:
     dependencies:
@@ -245,6 +251,25 @@ importers:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
+  examples/custom-container-image: {}
+
+  examples/d1-migration: {}
+
+  examples/exported-actions:
+    devDependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   examples/github-cloudflare-ci:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -284,6 +309,8 @@ importers:
 
   examples/optional-checks: {}
 
+  examples/ordered-deploy: {}
+
   examples/package-manager-cache:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -313,9 +340,6 @@ importers:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../../packages/ci
-      '@effect-ci-testbed/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@effect-ci-testbed/cloudflare':
         specifier: workspace:*
         version: link:../../packages/cloudflare
@@ -419,6 +443,9 @@ importers:
 
   packages/cloudflare:
     dependencies:
+      '@cloudflare/sandbox':
+        specifier: 1.0.0
+        version: 1.0.0
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../ci
@@ -506,6 +533,9 @@ packages:
   '@cloudflare/kv-asset-handler@0.5.0':
     resolution: {integrity: sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg==}
     engines: {node: '>=22.0.0'}
+
+  '@cloudflare/sandbox@1.0.0':
+    resolution: {integrity: sha512-+TZVuCey6OBDTvPLWisq4Ie7/R5Zy3zFyYOFCNRpdEIyQsKq3xwzpctonE43DfZ+wYZvvu6QYpR138PayDjF+A==}
 
   '@cloudflare/unenv-preset@2.16.2':
     resolution: {integrity: sha512-JBP1+Z7ZSNG/d4mRP+y8VC5dka3tZVMLEZRvS+rzQ4DGV1EoxRFQckcJTTkXbHSQiTj0DtNI01Zwb/V2fX0mvQ==}
@@ -1826,6 +1856,9 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
+
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
 
@@ -2302,6 +2335,9 @@ packages:
   yuku-parser@0.9.5:
     resolution: {integrity: sha512-IBnAdNVMswWbJcM7woPluOudectJzFjJ1N8jVRxP9Uq4CIv5hZdBIcdmtRbFDYF/Ph2j2gVup4YJ4N9mh0jYFA==}
 
+  zod@4.5.4:
+    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
 snapshots:
 
   '@babel/code-frame@7.29.7':
@@ -2317,6 +2353,11 @@ snapshots:
   '@blazediff/core@1.10.0': {}
 
   '@cloudflare/kv-asset-handler@0.5.0': {}
+
+  '@cloudflare/sandbox@1.0.0':
+    dependencies:
+      aws4fetch: 1.0.20
+      zod: 4.5.4
 
   '@cloudflare/unenv-preset@2.16.2(unenv@2.0.0-rc.24)(workerd@1.20260930.2)':
     dependencies:
@@ -3096,6 +3137,8 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
+  aws4fetch@1.0.20: {}
+
   blake3-wasm@2.1.5: {}
 
   chai@6.2.2: {}
@@ -3184,6 +3227,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.2
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
+    optional: true
 
   estree-walker@3.0.3:
     dependencies:
@@ -3475,6 +3519,7 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   typescript@7.0.2:
     optionalDependencies:
@@ -3675,3 +3720,5 @@ snapshots:
       '@yuku-parser/binding-linux-x64-musl': 0.9.5
       '@yuku-parser/binding-win32-arm64': 0.9.5
       '@yuku-parser/binding-win32-x64': 0.9.5
+
+  zod@4.5.4: {}

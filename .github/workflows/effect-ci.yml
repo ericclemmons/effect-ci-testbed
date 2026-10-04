@@ -17,6 +17,21 @@ on:
         required: false
         type: string
         default: ""
+      cache-key:
+        description: Runner-owned cache namespace
+        required: false
+        type: string
+        default: ""
+      cache-key-files:
+        description: Glob used to fingerprint the runner cache
+        required: false
+        type: string
+        default: ""
+      cache-path:
+        description: Newline-separated paths persisted by the runner
+        required: false
+        type: string
+        default: ""
     secrets:
       EFFECT_CI_APP_PRIVATE_KEY:
         description: Private key for the Effect CI GitHub App
@@ -41,18 +56,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - name: Resolve Effect CI cache policy
-        id: effect-ci-cache
-        env:
-          EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
-        run: node packages/ci/cache.run.ts
       - uses: actions/cache@v5
-        if: matrix.mode == 'execute' && steps.effect-ci-cache.outputs.enabled == 'true'
+        if: matrix.mode == 'execute' && inputs.cache-path != ''
         with:
-          path: ${{ steps.effect-ci-cache.outputs.paths }}
-          key: ${{ steps.effect-ci-cache.outputs.key }}-${{ runner.os }}-${{ steps.effect-ci-cache.outputs.fingerprint }}-${{ github.sha }}
-          restore-keys: |
-            ${{ steps.effect-ci-cache.outputs.key }}-${{ runner.os }}-${{ steps.effect-ci-cache.outputs.fingerprint }}-
+          path: ${{ inputs.cache-path }}
+          key: ${{ inputs.cache-key }}-${{ runner.os }}-${{ hashFiles(inputs.cache-key-files) }}
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:

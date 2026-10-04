@@ -1,11 +1,20 @@
-# Prepare and reuse a Cloudflare toolchain
+# Install Python at runtime on Cloudflare
 
-This example answers one question:
+> How do I install an additional operating-system tool without creating a project-specific runner image?
 
-> How do I add tools that are not in Cloudflare's managed image without maintaining a Dockerfile?
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_prepare_python_toolchain["prepare python toolchain"]
+  step_build_python_package["build python package"]
+  step_checkout --> step_prepare_python_toolchain
+  step_prepare_python_toolchain --> step_build_python_package
+```
 
-The Workflow starts from Cloudflare's managed `cloudflare/debian-trixie` image. An
-ordinary Effect CI action yields the apt package-manager capability, installs Python,
+---
+
+The shared Effect CI Sandbox 1.0 image supplies Node.js, Git, and `sandbox-shim`. An
+ordinary action yields the apt package-manager capability, installs Python at runtime,
 and returns the prepared logical workspace:
 
 ```ts
@@ -35,10 +44,12 @@ export const build = CI.action("build python package", () => function* () {
 })
 ```
 
-There is intentionally no Dockerfile, named-image configuration, or explicit snapshot
-plumbing. The managed image provides the base system; commands describe how to prepare
-the workspace; the Cloudflare runner commits returned workspaces as native snapshots.
-Future Containers can materialize that logical revision without repeating setup.
+There is intentionally no project-specific Dockerfile or explicit snapshot plumbing.
+The package-owned image supplies the runner contract; commands describe the additional
+project toolchain; the Cloudflare runner commits returned workspaces as native
+snapshots. Future Containers can materialize that logical revision without repeating
+setup. Use a custom runner image instead when the OS layer itself is part of the
+project's reproducibility or the packages cannot be installed at runtime.
 
 ## Compare GitHub and Effect CI
 
@@ -47,7 +58,7 @@ Future Containers can materialize that logical revision without repeating setup.
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml)
   runs the portable [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) on a
   GitHub runner.
-- [`src/worker.ts`](./src/worker.ts) supplies Cloudflare's managed image and durable
+- [`src/worker.ts`](./src/worker.ts) supplies Cloudflare's Sandbox and durable
   workspace implementation to that same workflow.
 
 `CI.PackageManager.Apt(workspace)` hides the one relevant runner difference: GitHub's

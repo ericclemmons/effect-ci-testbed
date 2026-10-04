@@ -21,11 +21,15 @@ The consumer model is intentionally small:
   YAML provides its runner and `actions/cache`; a Cloudflare Worker provides Workflow,
   Container, checkpoint, and snapshot-cache implementations. The same
   `.cloudflare/ci/{actions,workflow}.ts` files import neither platform.
+- Event adapters normalize repository and revision into `CI.WorkflowEvent` and provide
+  the matching `CI.Source`; `source.checkout()` therefore has no repository path or URL
+  argument. Non-source events, such as an observability issue, may omit source entirely
+  and route directly to diagnosis or healing actions.
 - Retry and timeout policy lives on an action and is lowered by the runner: Effect
   handles it locally, while Cloudflare receives native `step.do` options.
 - `CI.when` is the small, serializable condition algebra for branches operators must
   inspect. Ordinary Effect control flow remains available for runtime-only decisions.
-- `CI.compensate` is terminal recovery after retries, not a retry or filesystem rewind.
+- Actions own rollback behavior; terminal failure unwinds completed actions in reverse order.
 - `CI.Secret` returns a redacted host-side capability; `CI.Artifact` publishes a
   runner-owned checkpoint only when output must cross a workload boundary.
 - Side-effect-free checks may opt into signed commit evidence. A runner verifies exact
@@ -38,14 +42,15 @@ Each focused example separates the program from its tests and its platform adapt
 
 ```text
 .cloudflare/ci/actions.ts                 reusable action definitions
-.cloudflare/ci/workflow.ts                canonical local/remote executable
+.cloudflare/ci/workflow.ts                default workflow and public action exports
 .cloudflare/ci/tests/*.test.ts            ordinary SDK assertions
 .github/workflows/github.yml              conventional GitHub Actions comparison
 .github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
 ```
 
-Tests never launch CI. Locally, a developer or agent executes `workflow.ts` directly.
-On GitHub, the thin Effect caller passes that same file to the reusable runner. The
+Tests never launch CI. Locally, a developer or agent runs `cf-ci`; the CLI discovers
+`.cloudflare/ci/workflow.ts` by walking up from the current directory. On GitHub, the
+thin Effect caller passes that same module to the reusable runner. The
 conventional YAML is intentionally independent so every example shows the native
 GitHub approach beside the portable Effect approach.
 
@@ -61,15 +66,17 @@ means that execution model is genuinely irrelevant to the use-case.
 | Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | 🔜 |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
-| [Compensate only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
+| [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
 | [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔜 |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |
-| [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
+| [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
+| Customize the Cloudflare runner with a project Dockerfile | — | — | — | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | Run lint, format, tests, and builds in a Dynamic Worker without starting a container | — | 🔜 | — | 🔜 |
@@ -90,7 +97,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | ✅ | ✅ | ✅ | 🔜 |
-| [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-compensation-not-rewind) | ✅ | ✅ | ✅ | 🔜 |
+| [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | ✅ | ✅ | ✅ | 🔜 |
 | [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | Derive a monorepo deployment order from its Turborepo or Vite+ graph | 🔜 | 🔜 | 🔜 | 🔜 |
 | Define multiple Workers as code with Cloudflare `defineConfig` and prevent settings drift | 🔜 | 🔜 | 🔜 | 🔜 |
@@ -98,6 +105,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | Pin a compatible Worker version throughout a long external rollout | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
+| Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 
 The Dynamic Worker target is the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—
 running without a VM, Sandbox, or Container. Until those engines expose compatible
@@ -117,13 +125,13 @@ custom loader.
 pnpm install
 
 # Discover the graph without executing it.
-./examples/node-npm/.cloudflare/ci/workflow.ts plan
+pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts plan
 
 # List or run one exported action for an agent or developer.
-./examples/node-npm/.cloudflare/ci/workflow.ts list
-./examples/node-npm/.cloudflare/ci/workflow.ts run lint --format=json
+pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts list
+pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts run lint --format=json
 
 # Run the repository workflow and type-check the testbed.
-./examples/node-npm/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts
 pnpm check
 ```

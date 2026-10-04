@@ -1,8 +1,15 @@
 # Reuse signed evidence for side-effect-free checks
 
-This example answers one question:
-
 > If the exact commit already passed lint locally, can trusted CI avoid doing the same work again?
+
+```mermaid
+flowchart LR
+  step_verification_checkout["verification checkout"]
+  step_verified_lint["verified lint"]
+  step_verification_checkout --> step_verified_lint
+```
+
+---
 
 An action opts in explicitly:
 

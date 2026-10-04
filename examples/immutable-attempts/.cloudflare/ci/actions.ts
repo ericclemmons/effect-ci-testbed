@@ -3,7 +3,7 @@ import * as CI from "@effect-ci-testbed/ci"
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout(".")
+  return () => source.checkout()
 })
 
 export const install = CI.action("install", () => function* () {

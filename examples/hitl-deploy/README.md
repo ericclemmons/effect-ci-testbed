@@ -1,8 +1,19 @@
 # Human-approved production deployment
 
-This example answers one question:
-
 > How do I require a human to approve a production deployment after its build dependency succeeds?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_deploy["deploy"]
+  step_checkout --> step_install
+  step_install --> step_build
+  step_build --> step_deploy
+```
+
+---
 
 Its dependency graph is deliberately small:
 

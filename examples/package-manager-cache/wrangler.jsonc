@@ -7,7 +7,12 @@
   "containers": [
     {
       "class_name": "WorkspaceContainer",
-      "scheduling_policy": "durable_object"
+      "scheduling_policy": "durable_object",
+      "images": {
+        "workspace": {
+          "dockerfile": "../../packages/cloudflare/Dockerfile"
+        }
+      }
     }
   ],
   "durable_objects": {

@@ -1,8 +1,25 @@
 # Preserve immutable attempts
 
-This example answers one question:
-
 > How can I rerun one action without erasing the previous run or recomputing unrelated work?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_format["format (optional)"]
+  step_lint["lint"]
+  step_test["test"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_format
+  step_install --> step_lint
+  step_install --> step_test
+  step_lint --> step_build
+  step_test --> step_build
+  step_format -.-> step_build
+```
+
+---
 
 Every Effect CI execution returns an immutable `attempt`. A rerun receives that attempt
 and the selected action IDs. Effect CI follows the plan's explicit `needs` edges, restores
@@ -28,7 +45,7 @@ The verification proves that rerunning `test`:
 Run the ordinary workflow locally with:
 
 ```sh
-./examples/immutable-attempts/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/immutable-attempts/.cloudflare/ci/workflow.ts
 ```
 
 The forced first-attempt failure and selective rerun are test-only scenarios in

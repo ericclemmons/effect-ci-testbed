@@ -13,10 +13,4 @@ export default CI.workflow("package-manager-cache", function* () {
   return yield* actions.verify(
     parameters.offline === undefined ? {} : { offline: parameters.offline },
   )
-}, {
-  cache: {
-    key: "npm-downloads",
-    keyFiles: ["examples/package-manager-cache/app/package-lock.json"],
-    paths: ["examples/package-manager-cache/app/.effect-ci/cache/npm"],
-  },
 })

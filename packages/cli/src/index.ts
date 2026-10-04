@@ -1,11 +1,12 @@
-import { parseArgs } from "node:util"
-import { resolve } from "node:path"
+import { existsSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import { parseArgs } from "node:util"
 import { detectAgenticEnvironment } from "am-i-vibing"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 
-export type OutputFormat = "json" | "text"
+export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
 
 export type ActionTarget = () => Effect.Effect<unknown, unknown, any>
@@ -20,9 +21,20 @@ export interface Invocation {
 
 export interface Program {
   readonly actions?: Readonly<Record<string, unknown>>
-  readonly local?: CI.RunConfiguration | (() => CI.RunConfiguration)
+  readonly local?: CI.RunConfiguration | ((context: LocalContext) => CI.RunConfiguration)
   readonly remote?: (invocation: Invocation) => Promise<unknown>
   readonly workflow: CI.Workflow<unknown>
+}
+
+export interface LocalContext {
+  readonly root: string
+  readonly workflowPath: string
+}
+
+export interface LoadedProgram {
+  readonly args: ReadonlyArray<string>
+  readonly path: string
+  readonly program: Program
 }
 
 export const ExitCode = {
@@ -56,7 +68,7 @@ class CliFailure extends Error {
 const actionTargets = (actions: Program["actions"]): Readonly<Record<string, ActionTarget>> =>
   Object.fromEntries(
     Object.entries(actions ?? {}).filter(
-      (entry): entry is [string, ActionTarget] => typeof entry[1] === "function",
+      (entry): entry is [string, ActionTarget] => CI.isAction(entry[1]),
     ),
   )
 
@@ -106,11 +118,11 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
 
   const format = parsed.values.format ?? detectedFormat()
 
-  if (format !== "json" && format !== "text") {
+  if (format !== "json" && format !== "mermaid" && format !== "text") {
     throw new CliFailure(
       "CI_USAGE_ERROR",
       ExitCode.usage,
-      `Unknown output format: ${format}. Expected text or json.`,
+      `Unknown output format: ${format}. Expected text, json, or mermaid.`,
     )
   }
 
@@ -159,25 +171,142 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
-  workflow.ts [run] [target] [--local|--remote] [--format=text|json]
-  workflow.ts plan [target] [--local|--remote] [--format=text|json]
-  workflow.ts list [--format=text|json]
+  cf-ci [run] [target] [--local|--remote] [--format=text|json]
+  cf-ci plan [target] [--local|--remote] [--format=text|json|mermaid]
+  cf-ci list [--format=text|json]
+  cf-ci run path/to/workflow.ts [target]
+  cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
 
 Commands:
   run     Execute the default workflow or one exported action (default)
   plan    Resolve the graph without executing commands
   list    List the default workflow and exported action targets
 
+Without an explicit path, cf-ci finds .cloudflare/ci/workflow.ts from the current
+directory or one of its parents.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 An explicit --format always wins.`
+
+const workflowNames = ["workflow.ts", "workflow.mts", "workflow.js", "workflow.mjs"] as const
+const findWorkflow = (cwd: string): string | undefined => {
+  let directory = resolve(cwd)
+
+  while (true) {
+    for (const name of workflowNames) {
+      const candidate = join(directory, ".cloudflare", "ci", name)
+      if (existsSync(candidate)) return candidate
+    }
+
+    const parent = dirname(directory)
+    if (parent === directory) return undefined
+    directory = parent
+  }
+}
+
+const looksLikeWorkflowPath = (value: string): boolean =>
+  value.includes("/") || value.includes("\\") || /\.(?:[cm]?[jt]s)$/.test(value)
+
+const extractWorkflow = (
+  args: ReadonlyArray<string>,
+  cwd: string,
+): { readonly args: ReadonlyArray<string>; readonly path: string } => {
+  const remaining = [...args]
+  let explicit: string | undefined
+
+  for (let index = 0; index < remaining.length; index += 1) {
+    const argument = remaining[index]
+
+    if (argument === "--workflow") {
+      explicit = remaining[index + 1]
+      if (!explicit) {
+        throw new CliFailure(
+          "CI_USAGE_ERROR",
+          ExitCode.usage,
+          "--workflow requires a path",
+        )
+      }
+      remaining.splice(index, 2)
+      break
+    }
+
+    if (argument?.startsWith("--workflow=")) {
+      explicit = argument.slice("--workflow=".length)
+      remaining.splice(index, 1)
+      break
+    }
+  }
+
+  if (!explicit) {
+    const positional = remaining.findIndex((argument, index) =>
+      argument !== undefined &&
+      !argument.startsWith("-") &&
+      !(index === 0 && ["list", "plan", "run"].includes(argument)) &&
+      looksLikeWorkflowPath(argument)
+    )
+
+    if (positional >= 0) {
+      explicit = remaining[positional]
+      remaining.splice(positional, 1)
+    }
+  }
+
+  const path = explicit ? resolve(cwd, explicit) : findWorkflow(cwd)
+
+  if (!path || !existsSync(path)) {
+    throw new CliFailure(
+      "CI_WORKFLOW_NOT_FOUND",
+      ExitCode.usage,
+      explicit
+        ? `Workflow not found: ${resolve(cwd, explicit)}`
+        : `No .cloudflare/ci/workflow.ts found from ${resolve(cwd)}`,
+    )
+  }
+
+  return { args: remaining, path }
+}
+
+export const loadProgram = async (
+  args: ReadonlyArray<string> = process.argv.slice(2),
+  cwd: string = process.cwd(),
+): Promise<LoadedProgram> => {
+  const selected = extractWorkflow(args, cwd)
+  const module = await import(pathToFileURL(selected.path).href) as Readonly<Record<string, unknown>> & {
+    readonly default?: CI.Workflow<unknown>
+    readonly local?: CI.RunConfiguration | ((context: LocalContext) => CI.RunConfiguration)
+    readonly remote?: Program["remote"]
+  }
+
+  if (!module.default) {
+    throw new CliFailure(
+      "CI_WORKFLOW_INVALID",
+      ExitCode.usage,
+      `${selected.path} must default-export a CI workflow`,
+    )
+  }
+
+  return {
+    args: selected.args,
+    path: selected.path,
+    program: {
+      actions: module,
+      ...(module.local ? { local: module.local } : {}),
+      ...(module.remote ? { remote: module.remote } : {}),
+      workflow: module.default,
+    },
+  }
+}
 
 const printJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
 }
 
-const defaultLocalOptions = (): CI.RunConfiguration => {
+const projectRoot = (workflowPath: string): string =>
+  resolve(dirname(workflowPath), "../..")
+
+const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
   const revision = process.env.EFFECT_CI_REVISION ?? process.env.GITHUB_SHA
+  const repository = process.env.GITHUB_REPOSITORY
   const decision = process.env.EFFECT_CI_APPROVAL
   const approval: CI.ApprovalHandler | undefined = decision === "approved" || decision === "rejected"
     ? { request: () => Effect.succeed({ decision }) }
@@ -190,6 +319,17 @@ const defaultLocalOptions = (): CI.RunConfiguration => {
       type: event ?? "workflow_dispatch",
       ...(process.env.GITHUB_REF ? { ref: process.env.GITHUB_REF } : {}),
       ...(revision ? { revision } : {}),
+      ...(repository && revision
+        ? {
+            source: {
+              repository: `https://github.com/${repository}.git`,
+              revision,
+            },
+          }
+        : {}),
+    },
+    source: {
+      checkout: () => Effect.succeed(CI.Workspace.local(projectRoot(workflowPath))),
     },
   }
 }
@@ -229,9 +369,9 @@ const classifyFailure = (error: unknown): CliFailure => {
     )
   }
 
-  if (error instanceof CI.CompensationError) {
+  if (error instanceof CI.RollbackError) {
     return new CliFailure(
-      "CI_COMPENSATION_FAILED",
+      "CI_ROLLBACK_FAILED",
       ExitCode.workflowFailure,
       error.message,
       { stepId: error.stepId },
@@ -287,6 +427,7 @@ const list = (program: Program, format: OutputFormat): void => {
 export const main = async (
   program: Program,
   args: ReadonlyArray<string> = process.argv.slice(2),
+  workflowPath: string = resolve(process.cwd(), ".cloudflare/ci/workflow.ts"),
 ): Promise<ExitCode> => {
   let format: OutputFormat = detectedFormat()
 
@@ -300,6 +441,13 @@ export const main = async (
     }
 
     if (invocation.command === "list") {
+      if (format === "mermaid") {
+        throw new CliFailure(
+          "CI_USAGE_ERROR",
+          ExitCode.usage,
+          "Mermaid output is available for plan, not list",
+        )
+      }
       list(program, format)
       return ExitCode.success
     }
@@ -340,14 +488,14 @@ export const main = async (
     }
 
     const configured = typeof program.local === "function"
-      ? program.local()
-      : program.local ?? defaultLocalOptions()
+      ? program.local({ root: projectRoot(workflowPath), workflowPath })
+      : program.local ?? defaultLocalOptions(workflowPath)
     const result = await (async () => {
       try {
         return await CI.runPromise(workflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
-          ...(format === "json"
+          ...(format === "json" || format === "mermaid"
             ? { output: "silent" as const }
             : configured.output
             ? { output: configured.output }
@@ -368,6 +516,8 @@ export const main = async (
         workflow: workflow.id,
         plan: result.plan,
       })
+    } else if (format === "mermaid") {
+      console.log(CI.formatPlanMermaid(result.plan))
     }
 
     return ExitCode.success
@@ -392,12 +542,16 @@ export const main = async (
   }
 }
 
-export const runMain = async (program: Program): Promise<void> => {
-  process.exitCode = await main(program)
-}
-
-export const isMain = (moduleUrl: string): boolean => {
-  const entry = process.argv[1]
-
-  return entry !== undefined && pathToFileURL(resolve(entry)).href === moduleUrl
+export const runCli = async (
+  args: ReadonlyArray<string> = process.argv.slice(2),
+  cwd: string = process.cwd(),
+): Promise<void> => {
+  try {
+    const loaded = await loadProgram(args, cwd)
+    process.exitCode = await main(loaded.program, loaded.args, loaded.path)
+  } catch (error) {
+    const failure = classifyFailure(error)
+    console.error(`Error [${failure.code}]: ${failure.message}`)
+    process.exitCode = failure.exitCode
+  }
 }

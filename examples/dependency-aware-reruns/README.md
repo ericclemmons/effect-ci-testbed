@@ -1,8 +1,26 @@
 # Select dependency-aware reruns
 
-This example answers one question:
-
 > If one action is rerun, which successful actions can Effect CI safely reuse?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_format["format (optional)"]
+  step_lint["lint"]
+  step_test["test"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_format
+  step_install --> step_lint
+  step_install --> step_test
+  step_lint --> step_test
+  step_format -.-> step_test
+  step_install --> step_build
+  step_test --> step_build
+```
+
+---
 
 Effect CI uses the workflow plan's explicit `needs` edges. It reruns the requested
 action and its transitive dependents, while preserving unrelated siblings. An `after`
@@ -11,7 +29,7 @@ edge controls ordering only, so it does not invalidate later work.
 Run the workflow locally:
 
 ```sh
-./examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
 ```
 
 The rerun-selection assertions live separately in

@@ -1,9 +1,18 @@
 # Reuse the Turborepo cache
 
-This example answers one question:
-
 > How can separate CI runs reuse Turborepo task results while Turborepo remains
 > responsible for deciding whether a build is valid?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_build
+```
+
+---
 
 The responsibilities are intentionally split:
 
@@ -32,7 +41,7 @@ export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
   return yield* workspace.exec(
-    "cd examples/turborepo-cache/app && npx turbo run build",
+    "cd app && npx turbo run build",
   )
 })
 ```
@@ -50,13 +59,13 @@ npm --prefix app run build
 The second run reports a cache hit. Delete `app/packages/message/dist` before the
 second run to also see Turborepo restore the declared output.
 
-## Verify it across Workflow instances
+## Runner-owned persistence
 
-The portable workflow opts into a rolling cache and identifies Turborepo's default
-local cache directory:
+The portable workflow remains cache-agnostic. A runner opts into persistence and
+identifies Turborepo's local cache directory:
 
 ```ts
-CI.workflow("turborepo-cache", workflow, {
+Cloudflare.workflowEntrypoint(workflow, {
   cache: {
     key: "turbo-task",
     keyFiles: ["examples/turborepo-cache/app/package-lock.json"],
@@ -65,30 +74,7 @@ CI.workflow("turborepo-cache", workflow, {
 })
 ```
 
-GitHub translates this policy to `actions/cache`; Cloudflare translates it to a
-snapshot cache. The Worker contains no Turborepo-specific cache configuration.
-
-Start Wrangler locally with Docker available:
-
-```sh
-pnpm dev
-```
-
-Then trigger two independent instances against the same revision:
-
-```sh
-pnpm exec wrangler workflows trigger effect-ci-turborepo-cache \
-  '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' \
-  --id turbo-cache-1 \
-  --local
-
-pnpm exec wrangler workflows trigger effect-ci-turborepo-cache \
-  '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' \
-  --id turbo-cache-2 \
-  --local
-```
-
-The second Workflow reports `cache hit` even though it receives a fresh Container.
-The same Effect CI persistence mechanism now supports two different task-cache
-engines: Vite+ owns automatically tracked cache correctness, while Turborepo owns its
-task hash and declared outputs.
+GitHub supplies the equivalent policy to `actions/cache`. Cloudflare persistence is
+still roadmap work: it must merge only `.turbo/cache` into the current workspace and
+must not restore a whole stale workspace snapshot. Turborepo continues to own task
+hashing and output correctness after the runner makes those bytes available.

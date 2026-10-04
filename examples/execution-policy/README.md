@@ -1,8 +1,13 @@
 # Retry and time out actions consistently
 
-This example answers one question:
-
 > How do retries and timeouts mean the same thing locally and on a durable runner?
+
+```mermaid
+flowchart LR
+  step_flaky["flaky"]
+```
+
+---
 
 Step policy belongs to the runner layer. Local and ordinary GitHub execution use
 Effect's interruption-safe retry and timeout operators around the action body.
@@ -16,7 +21,7 @@ The same Effect workflow is the executable local entry point and the input to th
 reusable GitHub runner:
 
 ```sh
-./examples/execution-policy/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/execution-policy/.cloudflare/ci/workflow.ts
 ```
 
 Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with

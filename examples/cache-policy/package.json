@@ -5,10 +5,12 @@
   "type": "module",
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
-    "@effect-ci-testbed/cli": "workspace:*"
+    "@effect-ci-testbed/cloudflare": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20261001.1",
     "@types/node": "^26.6.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "4.145.0"
   }
 }

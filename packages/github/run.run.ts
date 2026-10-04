@@ -23,8 +23,13 @@ const reporter = new Reporter({
     ? { externalId: process.env.EFFECT_CI_EXTERNAL_ID }
     : {}),
 })
-const runtime = fileURLToPath(new URL("../ci/run.run.ts", import.meta.url))
-const child = spawn(process.execPath, [runtime], {
+const runtime = fileURLToPath(new URL("../cli/src/bin.ts", import.meta.url))
+const child = spawn(process.execPath, [
+  runtime,
+  "--workflow",
+  required("EFFECT_CI_WORKFLOW"),
+  process.env.DRY_RUN ? "plan" : "run",
+], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],
 })

@@ -1,8 +1,15 @@
 # Put inspectable conditions in a workflow plan
 
-This example answers one question:
-
 > How do I deploy only for a push to `main` without hiding that rule in arbitrary JavaScript?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_deploy["deploy (conditional)"]
+  step_checkout --> step_deploy
+```
+
+---
 
 `CI.when` accepts a small serializable condition algebra. The plan can display and
 validate the branch before execution, and every runner evaluates the same predicate.
@@ -16,7 +23,7 @@ what makes planning possible; tests verify its algebra.
 Run the canonical workflow locally:
 
 ```sh
-./examples/conditional-deploy/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/conditional-deploy/.cloudflare/ci/workflow.ts
 ```
 
 Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with

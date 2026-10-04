@@ -1,9 +1,27 @@
 # Node + pnpm
 
-This example answers one question:
-
 > How do I run the same CI shape with pnpm while keeping package-manager-specific setup
 > out of the workflow orchestration?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_format["format (optional)"]
+  step_lint["lint"]
+  step_test["test"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_format
+  step_install --> step_lint
+  step_install --> step_test
+  step_lint --> step_test
+  step_format -.-> step_test
+  step_install --> step_build
+  step_test --> step_build
+```
+
+---
 
 The fixture is a dependency-free Node application whose `packageManager` field and
 lockfile demonstrate JavaScript package-manager inference selecting pnpm.
@@ -24,14 +42,15 @@ Compare:
   action.
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml):
   the small Effect workflow caller.
-- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the executable events
-  and orchestration for the Effect workflow.
+- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the events,
+  orchestration, and explicitly exported CLI targets for the Effect workflow.
 - [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts): how each action
   runs and which earlier action is a true blocker.
 
-The executable `.cloudflare/ci/workflow.ts` exposes the same default workflow,
-named action targets, text/JSON formats, and local/remote selection as the npm example;
-the inferred package-manager resource is the only runtime difference.
+`cf-ci` discovers `.cloudflare/ci/workflow.ts`, which exposes the same default workflow
+and named action targets as the npm example. Text/JSON formats and local/remote
+selection belong to the CLI; the inferred package-manager resource is the only runtime
+difference.
 
 ```bash
 NODE_ENV=staging pnpm ci:node-pnpm:dry-run

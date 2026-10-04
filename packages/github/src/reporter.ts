@@ -55,7 +55,7 @@ const planStages = (value: WorkflowPlan) => {
         ...[
           ...node.needs,
           ...node.after,
-          ...(node.compensationFor ? [node.compensationFor] : []),
+          ...(node.rollbackFor ? [node.rollbackFor] : []),
         ]
           .map((dependency) => stages.get(dependency) ?? 0),
       ),
@@ -101,10 +101,10 @@ const planDiagram = (value: WorkflowPlan): string => {
       if (from && to) lines.push(`  ${from} -. after .-> ${to}`)
     }
 
-    if (node.compensationFor) {
-      const from = identifiers.get(node.compensationFor)
+    if (node.rollbackFor) {
+      const from = identifiers.get(node.rollbackFor)
       const to = identifiers.get(node.id)
-      if (from && to) lines.push(`  ${from} -. on failure .-> ${to}`)
+      if (from && to) lines.push(`  ${from} -. rollback .-> ${to}`)
     }
   }
 
@@ -138,10 +138,10 @@ const planSummary = (value: WorkflowPlan): string => {
         : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const compensation = node.compensationFor
-        ? ` — compensates \`${node.compensationFor}\``
+      const rollback = node.rollbackFor
+        ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
+      lines.push(`${stage}. \`${node.id}\`${needs}${after}${condition}${rollback}${optional}`)
       continue
     }
 
@@ -156,10 +156,10 @@ const planSummary = (value: WorkflowPlan): string => {
         : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const compensation = node.compensationFor
-        ? ` — compensates \`${node.compensationFor}\``
+      const rollback = node.rollbackFor
+        ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${condition}${rollback}${optional}`)
     }
   }
 
@@ -171,7 +171,7 @@ const planSummary = (value: WorkflowPlan): string => {
 const planText = (value: WorkflowPlan): string => value.nodes
   .filter((node) =>
     node.commands.length > 0 || node.approval || node.artifacts.length > 0 ||
-    node.secrets.length > 0 || node.condition || node.compensationFor)
+    node.secrets.length > 0 || node.condition || node.rollbackFor)
   .map((node) => {
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
@@ -181,7 +181,7 @@ const planText = (value: WorkflowPlan): string => value.nodes
       : ""
     const metadata = [
       node.condition ? `**Condition:** \`${formatCondition(node.condition)}\`` : "",
-      node.compensationFor ? `**Compensates:** \`${node.compensationFor}\`` : "",
+      node.rollbackFor ? `**Rolls back:** \`${node.rollbackFor}\`` : "",
       node.secrets.length > 0 ? `**Secrets required:** ${node.secrets.map((name) => `\`${name}\``).join(", ")}` : "",
       ...node.artifacts.map((artifact) =>
         `**Artifact ${artifact.direction}:** \`${artifact.name}\` (${artifact.paths.map((path) => `\`${path}\``).join(", ")})`),
