@@ -24,8 +24,23 @@ export interface WorkflowStepConfig {
 
 export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
+  /** Capabilities the action needs. Runners use this to select the cheapest safe tier. */
+  readonly execution?: ExecutionRequirements
   /** Allow a trusted runner to reuse signed evidence for this side-effect-free action. */
   readonly verification?: { readonly scope: "commit" }
+}
+
+export type ExecutionCapability =
+  | "filesystem"
+  | "javascript"
+  | "native-binary"
+  | "network"
+  | "process"
+  | "wasm"
+
+export interface ExecutionRequirements {
+  readonly capabilities: ReadonlyArray<ExecutionCapability>
+  readonly preference?: "container" | "isolate-first"
 }
 
 export type WorkflowBody<A> =
@@ -57,11 +72,17 @@ export interface PlannedCommand {
   readonly cwd: string
 }
 
+export interface PlannedSourceTransform {
+  readonly files: ReadonlyArray<string>
+  readonly tool: string
+}
+
 export interface PlanNode {
   readonly id: string
   readonly after: ReadonlyArray<string>
   readonly needs: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
+  readonly sourceTransforms?: ReadonlyArray<PlannedSourceTransform>
   readonly condition?: Condition
   /** This node runs only after the referenced node exhausts its retry policy. */
   readonly compensationFor?: string
@@ -241,6 +262,7 @@ interface RuntimeNode {
     readonly paths: ReadonlyArray<string>
   }>
   readonly commands: Array<PlannedCommand>
+  readonly sourceTransforms: Array<PlannedSourceTransform>
   approval?: ApprovalRequest
   condition?: Condition
   compensationFor?: string
@@ -287,6 +309,10 @@ interface RuntimeShape {
     workspace: Workspace,
     command: string,
   ) => Effect.Effect<Workspace, CommandError>
+  readonly transformSources: (
+    stepId: string,
+    request: SourceTransformRequest,
+  ) => Effect.Effect<SourceTransformResult, unknown>
   readonly readFile: (
     stepId: string,
     workspace: Workspace,
@@ -348,6 +374,17 @@ class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
 class CurrentStep extends ServiceMap.Service<CurrentStep, string>()(
   "@effect-ci-testbed/CurrentStep",
 ) {}
+
+/** Run a source-in/result-out tool without implying a shell or persistent filesystem. */
+export const transformSources = (
+  request: SourceTransformRequest,
+): Effect.Effect<SourceTransformResult, unknown, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    const runtime = yield* Runtime
+    const stepId = yield* CurrentStep
+
+    return yield* runtime.transformSources(stepId, request)
+  })
 
 export class CommandError extends Error {
   readonly _tag = "CommandError"
@@ -1022,7 +1059,7 @@ const localSource: SourceService = {
 export interface CommandExecutionRequest {
   readonly command: string
   readonly onOutput: (stream: "stdout" | "stderr", text: string) => void
-  readonly options: WorkflowStepConfig
+  readonly options: StepOptions
   readonly stepId: string
   readonly workflowId: string
   readonly workspace: Workspace
@@ -1043,6 +1080,30 @@ export interface CommandExecutor {
   readonly execute: (
     request: CommandExecutionRequest,
   ) => Effect.Effect<CommandExecutionResult, CommandError>
+}
+
+export interface SourceTransformRequest {
+  readonly files: Readonly<Record<string, string>>
+  readonly options?: Readonly<Record<string, unknown>>
+  readonly tool: string
+}
+
+export interface SourceTransformResult {
+  readonly changed: boolean
+  readonly files: Readonly<Record<string, string>>
+  readonly tier: "container" | "dynamic-worker" | "local" | "planned"
+}
+
+export interface SourceExecutionRequest extends SourceTransformRequest {
+  readonly requirements: ExecutionRequirements
+  readonly stepId: string
+  readonly workflowId: string
+}
+
+export interface SourceExecutor {
+  readonly execute: (
+    request: SourceExecutionRequest,
+  ) => Effect.Effect<SourceTransformResult, unknown>
 }
 
 export interface VerificationRequest {
@@ -1246,6 +1307,9 @@ const validateStepOptions = (id: string, options: StepOptions): void => {
   }
   if (typeof options.timeout === "number" && options.timeout <= 0) {
     throw new Error(`CI step ${id} timeout must be greater than zero`)
+  }
+  if (options.execution?.capabilities.length === 0) {
+    throw new Error(`CI step ${id} execution capabilities cannot be empty`)
   }
 }
 
@@ -1484,6 +1548,12 @@ const makeLocalCommandExecutor = (): CommandExecutor => ({
   }),
 })
 
+const unavailableSourceExecutor: SourceExecutor = {
+  execute: ({ tool }) => Effect.fail(new Error(
+    `No source executor is configured for ${tool}`,
+  )),
+}
+
 const withStepPolicy = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   options: WorkflowStepConfig,
@@ -1519,6 +1589,7 @@ const makeRuntime = (
   event: WorkflowEventShape,
   approvalHandler?: ApprovalHandler,
   commandExecutor: CommandExecutor = makeLocalCommandExecutor(),
+  sourceExecutor: SourceExecutor = unavailableSourceExecutor,
   workspaceFileSystem: WorkspaceFileSystem = localWorkspaceFileSystem,
   workspacePersistence: WorkspacePersistence = {
     commit: ({ workspace }) => Effect.succeed(workspace),
@@ -1569,6 +1640,7 @@ const makeRuntime = (
         id,
         artifacts: [...(previousNode.artifacts ?? [])],
         commands: [...previousNode.commands],
+        sourceTransforms: [...(previousNode.sourceTransforms ?? [])],
         ...(previousNode.approval ? { approval: previousNode.approval } : {}),
         ...(previousNode.condition ? { condition: previousNode.condition } : {}),
         ...(previousNode.compensationFor
@@ -1602,6 +1674,7 @@ const makeRuntime = (
           id,
           artifacts: [],
           commands: [],
+          sourceTransforms: [],
           secrets: new Set(),
           executedCommands: 0,
           verifiedCommands: 0,
@@ -1737,6 +1810,7 @@ const makeRuntime = (
           id: stepId,
           artifacts: [],
           commands: [],
+          sourceTransforms: [],
           secrets: new Set(),
           executedCommands: 0,
           verifiedCommands: 0,
@@ -1759,6 +1833,7 @@ const makeRuntime = (
           id: compensationId,
           artifacts: [],
           commands: [],
+          sourceTransforms: [],
           secrets: new Set(),
           executedCommands: 0,
           verifiedCommands: 0,
@@ -1856,14 +1931,7 @@ const makeRuntime = (
                 if (stream === "stdout") process.stdout.write(text)
                 else process.stderr.write(text)
               },
-              options: {
-                ...(definitionOptions?.retries
-                  ? { retries: definitionOptions.retries }
-                  : {}),
-                ...(definitionOptions?.timeout === undefined
-                  ? {}
-                  : { timeout: definitionOptions.timeout }),
-              },
+              options: definitionOptions ?? {},
               stepId,
               workflowId,
               workspace,
@@ -1898,6 +1966,35 @@ const makeRuntime = (
             )
           }),
         )
+      },
+      transformSources: (stepId, request) => {
+        const node = nodes.get(stepId)
+        if (!node) return Effect.die(new Error(`Missing plan node for ${stepId}`))
+
+        node.sourceTransforms.push({
+          files: Object.keys(request.files).sort(),
+          tool: request.tool,
+        })
+
+        const requirements = definitions.get(stepId)?.options.execution ?? {
+          capabilities: ["filesystem", "process"] as const,
+          preference: "container" as const,
+        }
+
+        if (mode === "plan") {
+          return Effect.succeed({
+            changed: false,
+            files: request.files,
+            tier: "planned" as const,
+          })
+        }
+
+        return sourceExecutor.execute({
+          ...request,
+          requirements,
+          stepId,
+          workflowId,
+        })
       },
       readFile: (stepId, workspace, path) => workspaceFileSystem.readFile(
         workspace,
@@ -2013,6 +2110,7 @@ export interface RunOptions {
   readonly rerun?: WorkflowRerun
   readonly secrets?: SecretResolver
   readonly source?: SourceService
+  readonly sourceExecutor?: SourceExecutor
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
   readonly verification?: VerificationStore
@@ -2067,6 +2165,7 @@ const toPlan = (
       after: [...(after.get(node.id) ?? [])].sort(),
       needs: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
+      sourceTransforms: [...node.sourceTransforms],
       artifacts: [...node.artifacts],
       ...(node.condition ? { condition: node.condition } : {}),
       ...(node.compensationFor ? { compensationFor: node.compensationFor } : {}),
@@ -2140,6 +2239,9 @@ export const formatPlan = (plan: WorkflowPlan): string => {
       for (const entry of node.commands) {
         lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
       }
+      for (const transform of node.sourceTransforms ?? []) {
+        lines.push(`  ${transform.tool}: ${transform.files.join(", ")}`)
+      }
     }
   }
 
@@ -2187,6 +2289,7 @@ const interpret = <A>(
       event,
       options.approval,
       options.executor ?? makeLocalCommandExecutor(),
+      options.sourceExecutor,
       options.workspaceFileSystem,
       options.workspacePersistence,
       options.verification,

@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "effect-ci-dynamic-worker-format",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-30",
+  "worker_loaders": [
+    {
+      "binding": "LOADER"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "EFFECT_CI",
+      "class_name": "EffectCIWorkflow",
+      "name": "effect-ci-dynamic-worker-format"
+    }
+  ]
+}
