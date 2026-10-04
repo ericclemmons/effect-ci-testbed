@@ -20,9 +20,8 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: app/.cache/build
-          key: custom-build-cache-${{ runner.os }}-${{ hashFiles('app/cache-version.txt', 'app/src/input.txt') }}-${{ github.sha }}
+          key: custom-build-cache-${{ runner.os }}-${{ hashFiles('app/src/input.txt') }}-${{ github.sha }}
           restore-keys: |
-            custom-build-cache-${{ runner.os }}-${{ hashFiles('app/cache-version.txt', 'app/src/input.txt') }}-
-      - run: npm --prefix app ci
-      - run: npm --prefix app run build
-      - run: npm --prefix app run verify
+            custom-build-cache-${{ runner.os }}-${{ hashFiles('app/src/input.txt') }}-
+      - run: node app/build.ts
+      - run: node --test app/build.test.ts

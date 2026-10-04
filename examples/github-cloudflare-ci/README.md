@@ -123,7 +123,7 @@ queued check and one Workflow instance, while redelivering the same
 `X-GitHub-Delivery` creates neither again:
 
 ```sh
-node --test --import tsx examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
+node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
 ```
 
 This does not count as hosted Cloudflare coverage. The matrix remains unchecked until

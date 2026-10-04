@@ -351,14 +351,22 @@ class CurrentStep extends ServiceMap.Service<CurrentStep, string>()(
 
 export class CommandError extends Error {
   readonly _tag = "CommandError"
+  readonly stepId: string
+  readonly command: string
+  readonly cwd: string
+  readonly exitCode: number
 
   constructor(
-    readonly stepId: string,
-    readonly command: string,
-    readonly cwd: string,
-    readonly exitCode: number,
+    stepId: string,
+    command: string,
+    cwd: string,
+    exitCode: number,
   ) {
     super(`Command failed (${exitCode}): ${command}`)
+    this.stepId = stepId
+    this.command = command
+    this.cwd = cwd
+    this.exitCode = exitCode
   }
 }
 
@@ -390,21 +398,27 @@ export interface ApprovalHandler {
 
 export class ApprovalError extends Error {
   readonly _tag = "ApprovalError"
+  readonly stepId: string
+  readonly decision: "rejected" | "unavailable"
 
   constructor(
-    readonly stepId: string,
-    readonly decision: "rejected" | "unavailable",
+    stepId: string,
+    decision: "rejected" | "unavailable",
     message: string,
   ) {
     super(message)
+    this.stepId = stepId
+    this.decision = decision
   }
 }
 
 export class SecretError extends Error {
   readonly _tag = "SecretError"
+  readonly secret: string
 
-  constructor(readonly secret: string, message = `Missing required secret: ${secret}`) {
+  constructor(secret: string, message = `Missing required secret: ${secret}`) {
     super(message)
+    this.secret = secret
   }
 }
 
@@ -444,15 +458,21 @@ export const Secret = (
 
 export class CompensationError extends Error {
   readonly _tag = "CompensationError"
+  readonly stepId: string
+  readonly original: unknown
+  readonly compensation: unknown
 
   constructor(
-    readonly stepId: string,
-    readonly original: unknown,
-    readonly compensation: unknown,
+    stepId: string,
+    original: unknown,
+    compensation: unknown,
   ) {
     super(`Compensation for ${stepId} failed after the original action failed`, {
       cause: new AggregateError([original, compensation]),
     })
+    this.stepId = stepId
+    this.original = original
+    this.compensation = compensation
   }
 }
 
@@ -469,12 +489,22 @@ export class Approval extends ServiceMap.Service<Approval, ApprovalService>()(
 export type WorkspaceKind = "local" | "remote"
 
 export class Workspace {
+  readonly cwd: string
+  readonly kind: WorkspaceKind
+  readonly id: string | undefined
+  readonly revision: WorkspaceCheckpointHandle | undefined
+
   private constructor(
-    readonly cwd: string,
-    readonly kind: WorkspaceKind,
-    readonly id?: string,
-    readonly revision?: WorkspaceCheckpointHandle,
-  ) {}
+    cwd: string,
+    kind: WorkspaceKind,
+    id?: string,
+    revision?: WorkspaceCheckpointHandle,
+  ) {
+    this.cwd = cwd
+    this.kind = kind
+    this.id = id
+    this.revision = revision
+  }
 
   static local(cwd: string): Workspace {
     return new Workspace(cwd, "local")
@@ -550,11 +580,19 @@ export interface WorkspaceCheckpointHandle {
 }
 
 export class WorkspaceCheckpoint {
+  readonly name: string
+  readonly workspace: Workspace
+  readonly handle: WorkspaceCheckpointHandle
+
   constructor(
-    readonly name: string,
-    readonly workspace: Workspace,
-    readonly handle: WorkspaceCheckpointHandle,
-  ) {}
+    name: string,
+    workspace: Workspace,
+    handle: WorkspaceCheckpointHandle,
+  ) {
+    this.name = name
+    this.workspace = workspace
+    this.handle = handle
+  }
 
   restore(): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> {
     const checkpoint = this
@@ -570,11 +608,19 @@ export class WorkspaceCheckpoint {
 
 /** A runner-owned, restorable filesystem result. */
 export class WorkspaceArtifact {
+  readonly name: string
+  readonly paths: ReadonlyArray<string>
+  readonly checkpoint: WorkspaceCheckpoint
+
   constructor(
-    readonly name: string,
-    readonly paths: ReadonlyArray<string>,
-    readonly checkpoint: WorkspaceCheckpoint,
-  ) {}
+    name: string,
+    paths: ReadonlyArray<string>,
+    checkpoint: WorkspaceCheckpoint,
+  ) {
+    this.name = name
+    this.paths = paths
+    this.checkpoint = checkpoint
+  }
 }
 
 const validateArtifact = (
@@ -628,330 +674,338 @@ export const Artifact = {
 
 export class PackageManagerError extends Error {
   readonly _tag = "PackageManagerError"
+  readonly cwd: string
 
-  constructor(readonly cwd: string, message: string) {
+  constructor(cwd: string, message: string) {
     super(message)
+    this.cwd = cwd
   }
 }
 
-export namespace PackageManager {
-  export type JavaScriptName = "npm" | "pnpm" | "yarn" | "bun"
+export type JavaScriptPackageManagerName = "npm" | "pnpm" | "yarn" | "bun"
 
-  export interface Apt {
-    readonly workspace: Workspace
-    readonly install: (
-      packages: ReadonlyArray<string>,
-    ) => Effect.Effect<Workspace, CommandError | PackageManagerError, Runtime | CurrentStep>
+export interface AptPackageManager {
+  readonly workspace: Workspace
+  readonly install: (
+    packages: ReadonlyArray<string>,
+  ) => Effect.Effect<Workspace, CommandError | PackageManagerError, Runtime | CurrentStep>
+}
+
+export const Apt = (
+  workspace: Workspace,
+): Effect.Effect<AptPackageManager, PackageManagerError> =>
+  Effect.gen(function* () {
+    const packageName = /^[a-zA-Z0-9][a-zA-Z0-9+.-]*$/
+
+    return {
+      workspace,
+      install: (packages) => {
+        const invalid = packages.find((name) => !packageName.test(name))
+
+        if (invalid) {
+          return Effect.fail(new PackageManagerError(
+            workspace.cwd,
+            `Invalid apt package name: ${invalid}`,
+          ))
+        }
+
+        const names = packages.join(" ")
+        const install = `apt-get install --yes --no-install-recommends ${names}`
+
+        return workspace.exec(
+          `if [ "$(id -u)" -eq 0 ]; then apt-get update && DEBIAN_FRONTEND=noninteractive ${install}; else sudo apt-get update && sudo env DEBIAN_FRONTEND=noninteractive ${install}; fi`,
+        )
+      },
+    }
+  })
+
+export interface JavaScriptInstallOptions {
+  readonly frozenLockfile?: boolean
+  readonly offline?: boolean
+}
+
+export interface JavaScriptPackageManager {
+  readonly name: JavaScriptPackageManagerName
+  readonly workspace: Workspace
+  readonly install: (
+    options?: JavaScriptInstallOptions,
+  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  readonly run: (script: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+}
+
+const fromPackageManagerField = (
+  contents: string | undefined,
+): JavaScriptPackageManagerName | undefined => {
+  if (!contents) return undefined
+  const packageJson = JSON.parse(contents) as {
+    readonly packageManager?: string
   }
+  const name = packageJson.packageManager?.split("@")[0]
+  return name === "npm" || name === "pnpm" || name === "yarn" || name === "bun"
+    ? name
+    : undefined
+}
 
-  export const Apt = (workspace: Workspace): Effect.Effect<Apt, PackageManagerError> =>
-    Effect.gen(function* () {
-      const packageName = /^[a-zA-Z0-9][a-zA-Z0-9+.-]*$/
+const lockfiles = [
+  ["npm", "package-lock.json"],
+  ["pnpm", "pnpm-lock.yaml"],
+  ["yarn", "yarn.lock"],
+  ["bun", "bun.lock"],
+  ["bun", "bun.lockb"],
+] as const
 
-      return {
-        workspace,
-        install: (packages) => {
-          const invalid = packages.find((name) => !packageName.test(name))
+export const JavaScript = (
+  workspace: Workspace,
+): Effect.Effect<JavaScriptPackageManager, PackageManagerError, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    const packageJson = yield* workspace.readFile("package.json")
+    const lockfileMatches: Array<JavaScriptPackageManagerName> = []
 
-          if (invalid) {
-            return Effect.fail(new PackageManagerError(
-              workspace.cwd,
-              `Invalid apt package name: ${invalid}`,
-            ))
-          }
-
-          const names = packages.join(" ")
-          const install = `apt-get install --yes --no-install-recommends ${names}`
-
-          return workspace.exec(
-            `if [ "$(id -u)" -eq 0 ]; then apt-get update && DEBIAN_FRONTEND=noninteractive ${install}; else sudo apt-get update && sudo env DEBIAN_FRONTEND=noninteractive ${install}; fi`,
-          )
-        },
+    for (const [name, file] of lockfiles) {
+      if (yield* workspace.exists(file)) {
+        lockfileMatches.push(name)
       }
+    }
+
+    const names = [...new Set(lockfileMatches)]
+
+    if (names.length > 1) {
+      return yield* Effect.fail(new PackageManagerError(
+        workspace.cwd,
+        `Multiple JavaScript package-manager lockfiles found: ${names.join(", ")}`,
+      ))
+    }
+
+    const name = yield* Effect.try({
+      try: () => {
+        const detected = fromPackageManagerField(packageJson) ?? names[0]
+
+        if (!detected) {
+          throw new PackageManagerError(
+            workspace.cwd,
+            "Could not detect a JavaScript package manager from packageManager or a lockfile",
+          )
+        }
+
+        return detected
+      },
+      catch: (error) => error instanceof PackageManagerError
+        ? error
+        : new PackageManagerError(workspace.cwd, String(error)),
     })
 
-  export interface InstallOptions {
-    readonly frozenLockfile?: boolean
-    readonly offline?: boolean
-  }
+    const command = (
+      operation: "install" | "run" | "exec",
+      value?: string,
+      frozenLockfile = false,
+      offline = false,
+    ) => {
+      switch (operation) {
+        case "install": {
+          const offlineFlag = offline ? " --offline" : ""
 
-  export interface JavaScript {
-    readonly name: JavaScriptName
-    readonly workspace: Workspace
-    readonly install: (
-      options?: InstallOptions,
-    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-    readonly run: (script: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-    readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-  }
-
-  const fromPackageManagerField = (contents: string | undefined): JavaScriptName | undefined => {
-    if (!contents) return undefined
-    const packageJson = JSON.parse(contents) as {
-      readonly packageManager?: string
-    }
-    const name = packageJson.packageManager?.split("@")[0]
-    return name === "npm" || name === "pnpm" || name === "yarn" || name === "bun"
-      ? name
-      : undefined
-  }
-
-  const lockfiles = [
-    ["npm", "package-lock.json"],
-    ["pnpm", "pnpm-lock.yaml"],
-    ["yarn", "yarn.lock"],
-    ["bun", "bun.lock"],
-    ["bun", "bun.lockb"],
-  ] as const
-
-  export const JavaScript = (
-    workspace: Workspace,
-  ): Effect.Effect<JavaScript, PackageManagerError, Runtime | CurrentStep> =>
-    Effect.gen(function* () {
-      const packageJson = yield* workspace.readFile("package.json")
-      const lockfileMatches: Array<JavaScriptName> = []
-
-      for (const [name, file] of lockfiles) {
-        if (yield* workspace.exists(file)) {
-          lockfileMatches.push(name)
-        }
-      }
-
-      const names = [...new Set(lockfileMatches)]
-
-      if (names.length > 1) {
-        return yield* Effect.fail(new PackageManagerError(
-          workspace.cwd,
-          `Multiple JavaScript package-manager lockfiles found: ${names.join(", ")}`,
-        ))
-      }
-
-      const name = yield* Effect.try({
-        try: () => {
-          const detected = fromPackageManagerField(packageJson) ?? names[0]
-
-          if (!detected) {
-            throw new PackageManagerError(
-              workspace.cwd,
-              "Could not detect a JavaScript package manager from packageManager or a lockfile",
-            )
-          }
-
-          return detected
-        },
-        catch: (error) => error instanceof PackageManagerError
-          ? error
-          : new PackageManagerError(workspace.cwd, String(error)),
-      })
-
-      const command = (
-        operation: "install" | "run" | "exec",
-        value?: string,
-        frozenLockfile = false,
-        offline = false,
-      ) => {
-        switch (operation) {
-          case "install": {
-            const offlineFlag = offline ? " --offline" : ""
-
-            if (!frozenLockfile) {
-              switch (name) {
-                case "npm":
-                  return `npm_config_cache=.effect-ci/cache/npm npm install${offlineFlag}`
-                case "pnpm":
-                  return `pnpm install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
-                case "yarn":
-                  return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install${offlineFlag}`
-                case "bun":
-                  return `bun install --cache-dir .effect-ci/cache/bun${offlineFlag}`
-              }
-            }
-
+          if (!frozenLockfile) {
             switch (name) {
               case "npm":
-                return `npm_config_cache=.effect-ci/cache/npm npm ci${offlineFlag}`
+                return `npm_config_cache=.effect-ci/cache/npm npm install${offlineFlag}`
               case "pnpm":
-                return `pnpm install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+                return `pnpm install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
               case "yarn":
-                return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install --immutable${offlineFlag}`
+                return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install${offlineFlag}`
               case "bun":
-                return `bun install --frozen-lockfile --cache-dir .effect-ci/cache/bun${offlineFlag}`
+                return `bun install --cache-dir .effect-ci/cache/bun${offlineFlag}`
             }
           }
-          case "run":
-            return `${name} run ${JSON.stringify(value)}`
-          case "exec":
-            return name === "bun"
-              ? `bunx ${value}`
-              : `${name} exec ${value}`
+
+          switch (name) {
+            case "npm":
+              return `npm_config_cache=.effect-ci/cache/npm npm ci${offlineFlag}`
+            case "pnpm":
+              return `pnpm install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+            case "yarn":
+              return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install --immutable${offlineFlag}`
+            case "bun":
+              return `bun install --frozen-lockfile --cache-dir .effect-ci/cache/bun${offlineFlag}`
+          }
         }
+        case "run":
+          return `${name} run ${JSON.stringify(value)}`
+        case "exec":
+          return name === "bun"
+            ? `bunx ${value}`
+            : `${name} exec ${value}`
       }
+    }
 
-      return {
-        name,
-        workspace,
-        install: (options?: InstallOptions) => Effect.gen(function* () {
-          const runtime = yield* Runtime
-          const frozenLockfile = options?.frozenLockfile ?? runtime.ci
+    return {
+      name,
+      workspace,
+      install: (options?: JavaScriptInstallOptions) => Effect.gen(function* () {
+        const runtime = yield* Runtime
+        const frozenLockfile = options?.frozenLockfile ?? runtime.ci
 
-          return yield* workspace.exec(command(
-            "install",
-            undefined,
-            frozenLockfile,
-            options?.offline ?? false,
-          ))
-        }),
-        run: (script: string) => workspace.exec(command("run", script)),
-        exec: (executable: string) => workspace.exec(command("exec", executable)),
-      }
-    }).pipe(
-      Effect.mapError((error) => error instanceof PackageManagerError
-        ? error
-        : new PackageManagerError(workspace.cwd, String(error))),
-    )
-}
+        return yield* workspace.exec(command(
+          "install",
+          undefined,
+          frozenLockfile,
+          options?.offline ?? false,
+        ))
+      }),
+      run: (script: string) => workspace.exec(command("run", script)),
+      exec: (executable: string) => workspace.exec(command("exec", executable)),
+    }
+  }).pipe(
+    Effect.mapError((error) => error instanceof PackageManagerError
+      ? error
+      : new PackageManagerError(workspace.cwd, String(error))),
+  )
+
+export const PackageManager = { Apt, JavaScript } as const
 
 export class ToolchainError extends Error {
   readonly _tag = "ToolchainError"
+  readonly cwd: string
 
-  constructor(readonly cwd: string, message: string) {
+  constructor(cwd: string, message: string) {
     super(message)
+    this.cwd = cwd
   }
 }
 
-export namespace Toolchain {
-  export interface Node {
-    readonly version: string
-    readonly workspace: Workspace
-    readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-    readonly exec: (
-      command: string,
-    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-  }
+export interface NodeToolchain {
+  readonly version: string
+  readonly workspace: Workspace
+  readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  readonly exec: (
+    command: string,
+  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+}
 
-  export interface MiseInstallOptions {
-    readonly locked?: boolean
-  }
+export interface MiseInstallOptions {
+  readonly locked?: boolean
+}
 
-  export interface Mise {
-    readonly workspace: Workspace
-    readonly install: (
-      options?: MiseInstallOptions,
-    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-    readonly exec: (
-      command: string,
-    ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-  }
+export interface MiseToolchain {
+  readonly workspace: Workspace
+  readonly install: (
+    options?: MiseInstallOptions,
+  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  readonly exec: (
+    command: string,
+  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+}
 
-  const miseEnvironment = [
-    "MISE_DATA_DIR=.effect-ci/cache/mise/data",
-    "MISE_CACHE_DIR=.effect-ci/cache/mise/cache",
-  ].join(" ")
+const miseEnvironment = [
+  "MISE_DATA_DIR=.effect-ci/cache/mise/data",
+  "MISE_CACHE_DIR=.effect-ci/cache/mise/cache",
+].join(" ")
 
-  const nodeVersion = (packageJson: string | undefined): string | undefined => {
-    if (!packageJson) return undefined
+const nodeVersion = (packageJson: string | undefined): string | undefined => {
+  if (!packageJson) return undefined
 
-    const value = JSON.parse(packageJson) as {
-      readonly devEngines?: {
-        readonly runtime?: ReadonlyArray<{
-          readonly name?: string
-          readonly version?: string
-        }> | {
-          readonly name?: string
-          readonly version?: string
-        }
+  const value = JSON.parse(packageJson) as {
+    readonly devEngines?: {
+      readonly runtime?: ReadonlyArray<{
+        readonly name?: string
+        readonly version?: string
+      }> | {
+        readonly name?: string
+        readonly version?: string
       }
     }
-    const runtime = Array.isArray(value.devEngines?.runtime)
-      ? value.devEngines.runtime[0]
-      : value.devEngines?.runtime
-
-    return runtime?.name === "node" ? runtime.version : undefined
   }
+  const runtime = Array.isArray(value.devEngines?.runtime)
+    ? value.devEngines.runtime[0]
+    : value.devEngines?.runtime
 
-  export const Node = (
-    workspace: Workspace,
-  ): Effect.Effect<Node, ToolchainError, Runtime | CurrentStep> =>
-    Effect.gen(function* () {
-      let version: string | undefined
-
-      for (const path of [".node-version", ".nvmrc"]) {
-        const contents = yield* workspace.readFile(path)
-
-        if (contents) {
-          version = contents.trim()
-          break
-        }
-      }
-
-      version ??= nodeVersion(yield* workspace.readFile("package.json"))
-
-      if (!version) {
-        return yield* Effect.fail(new ToolchainError(
-          workspace.cwd,
-          "Could not find a Node.js version in .node-version, .nvmrc, or package.json#devEngines.runtime",
-        ))
-      }
-
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9._+*/-]*$/.test(version)) {
-        return yield* Effect.fail(new ToolchainError(
-          workspace.cwd,
-          `Invalid Node.js version request: ${version}`,
-        ))
-      }
-
-      const tool = `node@${version}`
-
-      return {
-        version,
-        workspace,
-        install: () => workspace.exec(`${miseEnvironment} mise --yes install ${tool}`),
-        exec: (command: string) => workspace.exec(
-          `${miseEnvironment} mise exec ${tool} -- ${command}`,
-        ),
-      }
-    }).pipe(
-      Effect.mapError((error) => error instanceof ToolchainError
-        ? error
-        : new ToolchainError(workspace.cwd, String(error))),
-    )
-
-  export const Mise = (
-    workspace: Workspace,
-  ): Effect.Effect<Mise, ToolchainError, Runtime | CurrentStep> =>
-    Effect.gen(function* () {
-      const configurations = ["mise.toml", ".mise.toml", ".tool-versions"]
-      let configured = false
-
-      for (const path of configurations) {
-        if (yield* workspace.exists(path)) {
-          configured = true
-          break
-        }
-      }
-
-      if (!configured) {
-        return yield* Effect.fail(new ToolchainError(
-          workspace.cwd,
-          `Could not find a Mise configuration (${configurations.join(", ")})`,
-        ))
-      }
-
-      return {
-        workspace,
-        install: (options?: MiseInstallOptions) => workspace.exec(
-          `${miseEnvironment} mise --yes${options?.locked ? " --locked" : ""} install`,
-        ),
-        exec: (command: string) => workspace.exec(
-          `${miseEnvironment} mise exec -- ${command}`,
-        ),
-      }
-    }).pipe(
-      Effect.mapError((error) => error instanceof ToolchainError
-        ? error
-        : new ToolchainError(workspace.cwd, String(error))),
-    )
+  return runtime?.name === "node" ? runtime.version : undefined
 }
+
+const Node = (
+  workspace: Workspace,
+): Effect.Effect<NodeToolchain, ToolchainError, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    let version: string | undefined
+
+    for (const path of [".node-version", ".nvmrc"]) {
+      const contents = yield* workspace.readFile(path)
+
+      if (contents) {
+        version = contents.trim()
+        break
+      }
+    }
+
+    version ??= nodeVersion(yield* workspace.readFile("package.json"))
+
+    if (!version) {
+      return yield* Effect.fail(new ToolchainError(
+        workspace.cwd,
+        "Could not find a Node.js version in .node-version, .nvmrc, or package.json#devEngines.runtime",
+      ))
+    }
+
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._+*/-]*$/.test(version)) {
+      return yield* Effect.fail(new ToolchainError(
+        workspace.cwd,
+        `Invalid Node.js version request: ${version}`,
+      ))
+    }
+
+    const tool = `node@${version}`
+
+    return {
+      version,
+      workspace,
+      install: () => workspace.exec(`${miseEnvironment} mise --yes install ${tool}`),
+      exec: (command: string) => workspace.exec(
+        `${miseEnvironment} mise exec ${tool} -- ${command}`,
+      ),
+    }
+  }).pipe(
+    Effect.mapError((error) => error instanceof ToolchainError
+      ? error
+      : new ToolchainError(workspace.cwd, String(error))),
+  )
+
+const Mise = (
+  workspace: Workspace,
+): Effect.Effect<MiseToolchain, ToolchainError, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    const configurations = ["mise.toml", ".mise.toml", ".tool-versions"]
+    let configured = false
+
+    for (const path of configurations) {
+      if (yield* workspace.exists(path)) {
+        configured = true
+        break
+      }
+    }
+
+    if (!configured) {
+      return yield* Effect.fail(new ToolchainError(
+        workspace.cwd,
+        `Could not find a Mise configuration (${configurations.join(", ")})`,
+      ))
+    }
+
+    return {
+      workspace,
+      install: (options?: MiseInstallOptions) => workspace.exec(
+        `${miseEnvironment} mise --yes${options?.locked ? " --locked" : ""} install`,
+      ),
+      exec: (command: string) => workspace.exec(
+        `${miseEnvironment} mise exec -- ${command}`,
+      ),
+    }
+  }).pipe(
+    Effect.mapError((error) => error instanceof ToolchainError
+      ? error
+      : new ToolchainError(workspace.cwd, String(error))),
+  )
+
+export const Toolchain = { Node, Mise } as const
 
 export interface SourceService {
   readonly checkout: (root: string) => Effect.Effect<Workspace, unknown>

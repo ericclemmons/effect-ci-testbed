@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --import tsx
+#!/usr/bin/env node
 
 import * as CLI from "@effect-ci-testbed/cli"
 import * as CI from "@effect-ci-testbed/ci"
@@ -12,10 +12,7 @@ const workflow = CI.workflow("cache-policy", function* () {
     ? false
     : {
         key: "custom-build-cache",
-        keyFiles: [
-          "examples/cache-policy/app/cache-version.txt",
-          "examples/cache-policy/app/src/input.txt",
-        ],
+        keyFiles: ["examples/cache-policy/app/src/input.txt"],
         paths: ["examples/cache-policy/app/.cache/build"],
       },
 })

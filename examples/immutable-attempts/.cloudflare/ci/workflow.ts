@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --import tsx
+#!/usr/bin/env node
 
 import * as CLI from "@effect-ci-testbed/cli"
 import * as CI from "@effect-ci-testbed/ci"

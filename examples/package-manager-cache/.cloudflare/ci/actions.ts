@@ -7,7 +7,7 @@ export const checkout = CI.action("checkout", function* () {
 })
 
 export const install = CI.action("install", () => function* (
-  options: CI.PackageManager.InstallOptions = {},
+  options: CI.JavaScriptInstallOptions = {},
 ) {
   const workspace = yield* checkout()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
@@ -16,7 +16,7 @@ export const install = CI.action("install", () => function* (
 })
 
 export const verify = CI.action("verify", () => function* (
-  options: CI.PackageManager.InstallOptions = {},
+  options: CI.JavaScriptInstallOptions = {},
 ) {
   const workspace = yield* install(options)
   const npm = yield* CI.PackageManager.JavaScript(workspace)

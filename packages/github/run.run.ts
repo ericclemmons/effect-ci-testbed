@@ -24,7 +24,7 @@ const reporter = new Reporter({
     : {}),
 })
 const runtime = fileURLToPath(new URL("../ci/run.run.ts", import.meta.url))
-const child = spawn(process.execPath, ["--import", "tsx", runtime], {
+const child = spawn(process.execPath, [runtime], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],
 })

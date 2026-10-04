@@ -45,7 +45,7 @@ jobs:
         id: effect-ci-cache
         env:
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
-        run: pnpm exec tsx packages/ci/cache.run.ts
+        run: node packages/ci/cache.run.ts
       - uses: actions/cache@v5
         if: matrix.mode == 'execute' && steps.effect-ci-cache.outputs.enabled == 'true'
         with:
@@ -68,4 +68,4 @@ jobs:
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}
-        run: pnpm exec tsx packages/github/run.run.ts
+        run: node packages/github/run.run.ts

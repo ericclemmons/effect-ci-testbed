@@ -6,7 +6,7 @@ import {
   type CreateCheckOptions,
   type CheckConclusion,
   type UpdateCheckOptions,
-} from "./index.js"
+} from "./index.ts"
 
 export interface ReporterOptions {
   readonly detailsUrl?: string
@@ -267,11 +267,13 @@ export class Reporter {
   private workflowId = "effect-ci"
 
   private readonly client: ReporterClient
+  private readonly options: ReporterOptions
 
   constructor(
-    private readonly options: ReporterOptions,
+    options: ReporterOptions,
     client: ReporterClient = { createCheck, updateCheck },
   ) {
+    this.options = options
     this.client = client
   }
 

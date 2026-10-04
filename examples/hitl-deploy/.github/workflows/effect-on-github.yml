@@ -32,4 +32,4 @@ jobs:
           EFFECT_CI_WORKFLOW: examples/hitl-deploy/.cloudflare/ci/workflow.ts
           EFFECT_CI_SHA: ${{ github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:production
-        run: pnpm exec tsx packages/github/run.run.ts
+        run: node packages/github/run.run.ts
