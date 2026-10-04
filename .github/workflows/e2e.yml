@@ -198,6 +198,19 @@ jobs:
       - run: pnpm install
       - run: node --test examples/${{ matrix.example }}/.cloudflare/ci/tests/${{ matrix.example }}.test.ts
 
+  automatic-data-tracking:
+    name: vite-plus-cache / automatic data tracking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - run: node --test examples/vite-plus-cache/.cloudflare/ci/tests/automatic-data-tracking.test.ts
+
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
     strategy:
