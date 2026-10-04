@@ -30,6 +30,9 @@ The consumer model is intentionally small:
   runner-owned checkpoint only when output must cross a workload boundary.
 - Side-effect-free checks may opt into signed commit evidence. A runner verifies exact
   inputs and signatures; missing or invalid evidence always falls back to execution.
+- Eligible source-only actions should run in lightweight isolates before Effect CI
+  escalates to a container. The workflow describes the capability it needs; the runner
+  chooses the least expensive compatible execution tier.
 
 Each focused example separates the program from its tests and its platform adapter:
 
@@ -69,6 +72,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
+| Run lint, format, tests, and builds in a Dynamic Worker without starting a container | — | 🔜 | — | 🔜 |
 | [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
@@ -94,6 +98,14 @@ means that execution model is genuinely irrelevant to the use-case.
 | Pin a compatible Worker version throughout a long external rollout | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
+
+The Dynamic Worker target is the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—
+running without a VM, Sandbox, or Container. Until those engines expose compatible
+JavaScript or Wasm APIs, proving the execution tier with another source-in/result-out
+tool such as Prettier, ESLint, or Biome is valid roadmap progress. The architectural
+goal is broader than linting: formatting, tests, builds, and other SDLC work should use
+an isolate whenever their declared capabilities permit it, because compute and memory
+should only be reserved for a container when the work actually requires one.
 
 ## Try it locally
 
