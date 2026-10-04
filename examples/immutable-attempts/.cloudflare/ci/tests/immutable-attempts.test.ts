@@ -2,47 +2,7 @@ import assert from "node:assert/strict"
 import * as Effect from "effect/Effect"
 import * as CI from "@effect-ci-testbed/ci"
 
-const checkout = CI.action("checkout", function* () {
-  const source = yield* CI.Source
-
-  return () => source.checkout(".")
-})
-
-const install = CI.action("install", () => function* () {
-  const workspace = yield* checkout()
-
-  return yield* workspace.exec("install")
-})
-
-const lint = CI.action("lint", () => function* () {
-  const workspace = yield* install()
-
-  return yield* workspace.exec("lint")
-})
-
-const format = CI.action("format", () => function* () {
-  const workspace = yield* install()
-
-  return yield* workspace.exec("format")
-})
-
-const test = CI.action("test", () => function* () {
-  const workspace = yield* install()
-
-  return yield* workspace.exec("test")
-})
-
-const build = CI.action("build", () => function* () {
-  const workspace = yield* test()
-
-  return yield* workspace.exec("build")
-})
-
-const workflow = CI.workflow("immutable-attempts", function* () {
-  yield* CI.parallel([lint(), CI.optional(format())])
-
-  return yield* build()
-})
+import workflow from "../workflow.ts"
 
 const commands: Array<string> = []
 const attempts: Array<CI.WorkflowAttempt> = []
@@ -52,10 +12,11 @@ let failTest = true
 const options = {
   executor: {
     execute: ({ command, stepId }: CI.CommandExecutionRequest) => Effect.suspend(() => {
-      commands.push(`${stepId}:${command}`)
+      commands.push(stepId)
 
       if (stepId === "test" && failTest) {
         failTest = false
+
         return Effect.fail(new CI.CommandError(stepId, command, "/workspace", 1))
       }
 
@@ -72,10 +33,10 @@ const options = {
   workspacePersistence: {
     commit: ({ stepId, workspace }: Parameters<CI.WorkspacePersistence["commit"]>[0]) =>
       Effect.sync(() => workspace.withRevision({
-        provider: "verification",
+        provider: "test",
         value: `${stepId}:${++revision}`,
       })),
-    checkpoint: () => Effect.succeed({ provider: "verification", value: undefined }),
+    checkpoint: () => Effect.succeed({ provider: "test", value: undefined }),
     restore: ({ checkpoint }: Parameters<CI.WorkspacePersistence["restore"]>[0]) =>
       Effect.succeed(checkpoint.workspace),
   },
@@ -88,12 +49,7 @@ const firstSnapshot = JSON.stringify(first)
 
 assert.equal(first.number, 1)
 assert.equal(first.conclusion, "failure")
-assert.deepEqual([...commands].sort(), [
-  "format:format",
-  "install:install",
-  "lint:lint",
-  "test:test",
-])
+assert.deepEqual([...commands].sort(), ["format", "install", "lint", "test"])
 
 commands.length = 0
 
@@ -105,7 +61,7 @@ const second = await CI.runPromise(workflow, {
 assert.equal(second.attempt.number, 2)
 assert.equal(second.attempt.previousAttemptId, first.id)
 assert.deepEqual(second.attempt.requested, ["test"])
-assert.deepEqual(commands, ["test:test", "build:build"])
+assert.deepEqual(commands, ["test", "build"])
 assert.deepEqual(
   second.plan.nodes.filter((node) => node.status === "reused").map((node) => node.id),
   ["checkout", "install", "format", "lint"],
@@ -115,5 +71,3 @@ assert.deepEqual(
   ["test", "build"],
 )
 assert.equal(JSON.stringify(first), firstSnapshot)
-
-console.log("immutable attempts and checkpoint reuse passed")

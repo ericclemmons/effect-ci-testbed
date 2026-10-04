@@ -8,11 +8,14 @@ Effect CI uses the workflow plan's explicit `needs` edges. It reruns the request
 action and its transitive dependents, while preserving unrelated siblings. An `after`
 edge controls ordering only, so it does not invalidate later work.
 
-Run the executable verification:
+Run the workflow locally:
 
 ```sh
-node --import tsx examples/dependency-aware-reruns/verify.ts
+./examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
 ```
+
+The rerun-selection assertions live separately in
+[`ci/tests/dependency-aware-reruns.test.ts`](./.cloudflare/ci/tests/dependency-aware-reruns.test.ts).
 
 The example proves these cases:
 
@@ -20,6 +23,7 @@ The example proves these cases:
 - rerun `install` → rerun all checks and `build`; reuse `checkout`
 - rerun optional `format` → rerun only `format`
 
-This example is deliberately only the selection primitive. See
+This example is deliberately only the selection primitive, so GitHub and Cloudflare
+rerun adapters remain roadmap work. See
 [`immutable-attempts`](../immutable-attempts) for creating a new attempt, restoring
 reusable node outputs, and executing the selected subgraph without changing history.
