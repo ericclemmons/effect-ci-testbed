@@ -2,10 +2,11 @@
 
 > Experimental prototype. The examples are the product specification.
 
-Effect CI authors a pipeline once in TypeScript and runs that same program locally,
-on compute selected by a GitHub job, or in a Cloudflare Workflow. Actions own their required
-dependencies; workflows coordinate sequencing, parallelism, optional work, recovery,
-approval, and deployment.
+Effect CI is an agent-first execution and verification layer. It runs one pipeline
+locally, in the background on compute selected by a GitHub job, or in a Cloudflare
+Workflow, and aims to avoid repeating work already proven for the same inputs. Actions
+own their required dependencies; workflows coordinate sequencing, parallelism,
+optional work, recovery, approval, and deployment.
 
 The consumer model is intentionally small:
 
@@ -68,7 +69,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Install and snapshot tools without a Dockerfile](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
-| [Reuse Vite+'s task cache](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
+| [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |

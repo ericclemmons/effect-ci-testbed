@@ -16,6 +16,27 @@ a miss, changed revision, invalid signature, or verifier error runs it normally.
 never trusts a Git note merely because it exists. A Git note is one possible transport
 for the signed envelope, while the verifier's configured public key establishes trust.
 
+Trust is repository policy, not something the signature decides:
+
+- **Developer-authorized:** a collaborator with push access signs both the commit and
+  the verification envelope using an enrolled GPG, SSH, or device key. This proves who
+  asserted the result, not that an independent machine observed the execution. It is a
+  pragmatic policy for lint, formatting, type checking, and ordinary tests.
+- **Managed-agent:** only keys issued to approved agent sandboxes are accepted. This
+  reduces trust in arbitrary developer machines while still allowing agents to finish
+  checks before pushing.
+- **Remote-attested:** local execution dispatches a trusted remote runner, which signs
+  the result and returns asynchronously. This gives stronger execution provenance but
+  intentionally does not save remote compute.
+
+A signed Git commit by itself is insufficient because it contains no assertion about
+which action ran or what result it produced. The evidence needs its own signature (or
+must be included in signed commit content) and must bind to that exact commit. The
+GitHub App verifies the configured policy and publishes the required check; GitHub is
+never asked to trust an arbitrary status submitted by the developer. Repositories can
+mix policies—for example, accepting developer proofs for lint while always rerunning
+release and security checks remotely.
+
 Only side-effect-free checks belong here. Builds, migrations, deployments, and checks
 whose outputs are consumed by later steps must not opt in.
 

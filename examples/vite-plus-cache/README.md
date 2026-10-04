@@ -7,9 +7,10 @@ This example answers one question:
 
 The two cache layers have deliberately different jobs:
 
-1. Vite Task owns correctness. `vp run build` tracks the command's inputs, environment,
-   output files, and terminal output. On a matching run it restores `dist/`, replays the
-   output, and skips the command.
+1. Vite Task owns correctness. `vp run build` observes the command's file reads,
+   missing-file probes, directory listings, and writes. On a matching run it restores
+   `dist/`, replays the output, and skips the command. The task declares no input or
+   output globs.
 2. Effect CI owns persistence. After each successful action, the Cloudflare runner saves
    an immutable Container snapshot in a repository- and image-scoped rolling cache. The
    next Workflow instance forks that snapshot before checking out its requested revision.
@@ -32,6 +33,26 @@ restored cache.
   snapshot adapter.
 
 The cache provider changes; the Vite+ command and its correctness model do not.
+
+The complete Vite+ configuration is intentionally this small:
+
+```ts
+export default defineConfig({
+  run: {
+    tasks: {
+      build: "node scripts/build.ts",
+    },
+  },
+})
+```
+
+The example's behavioral test verifies a cold miss, restoration of a deleted output,
+a hit after an unrelated file changes, and a miss after the file actually read by the
+build changes. That test deliberately wraps a shell build rather than a JavaScript
+program: Vite+ requires a Node runtime, but the observed task can invoke Python, Rust,
+Ruby, a compiler, or any other child process. Effect CI does not require every project
+to adopt Vite itself. Manual tracking remains an escape hatch for environment, network,
+time, or other dependencies that filesystem observation cannot see.
 
 The userland workflow remains ordinary:
 
