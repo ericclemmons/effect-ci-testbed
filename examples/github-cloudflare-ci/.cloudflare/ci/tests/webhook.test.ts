@@ -72,6 +72,7 @@ const request = (id = deliveryId) => new Request("https://ci.example.com/webhook
 })
 
 const accepted = await application.fetch(request(), environment)
+
 assert.equal(accepted.status, 202)
 assert.deepEqual(await accepted.json(), {
   accepted: true,
@@ -92,6 +93,7 @@ assert.deepEqual(instances.get(deliveryId), {
 })
 
 const duplicate = await application.fetch(request(), environment)
+
 assert.equal(duplicate.status, 202)
 assert.deepEqual(await duplicate.json(), {
   accepted: true,
@@ -122,5 +124,3 @@ assert.equal(checks.length, 2)
 assert.equal(updates.length, 1)
 assert.equal(updates[0]?.conclusion, "failure")
 assert.equal(updates[0]?.summary, "Workflow unavailable")
-
-console.log("signed GitHub delivery and idempotent Workflow dispatch passed")
