@@ -22,6 +22,10 @@ directory cache. Local execution simply uses the directory already present in th
 working tree. Set `EFFECT_CI_DISABLE_CACHE=1` to make the same workflow declare
 `cache: false`.
 
+The fixture is intentionally dependency-free: `build.ts` reads one input, reuses or
+creates one cached output, and `build.test.ts` verifies the result with Node's built-in
+test runner. There is no nested package installation or JavaScript runtime shim.
+
 Compare:
 
 - [plain GitHub Actions with explicit `actions/cache`](./.github/workflows/github.yml)

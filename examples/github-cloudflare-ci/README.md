@@ -117,13 +117,13 @@ export default GitHubCloudflare.worker()
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow)
 ```
 
-The repository's executable verification injects fake GitHub APIs and a fake Workflow
+The repository's integration test injects fake GitHub APIs and a fake Workflow
 binding into the reusable bridge. It proves that one valid signed delivery creates one
 queued check and one Workflow instance, while redelivering the same
 `X-GitHub-Delivery` creates neither again:
 
 ```sh
-node --import tsx examples/github-cloudflare-ci/verify.ts
+node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
 ```
 
 This does not count as hosted Cloudflare coverage. The matrix remains unchecked until

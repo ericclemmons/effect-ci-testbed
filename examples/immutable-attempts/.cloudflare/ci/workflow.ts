@@ -5,14 +5,10 @@ import * as CI from "@effect-ci-testbed/ci"
 
 import * as actions from "./actions.ts"
 
-const workflow = CI.workflow("d1-migration", function* () {
-  const event = yield* CI.WorkflowEvent
+const workflow = CI.workflow("immutable-attempts", function* () {
+  yield* CI.parallel([actions.lint(), CI.optional(actions.format())])
 
-  if (!["pull_request", "push", "workflow_dispatch"].includes(event.type)) {
-    return
-  }
-
-  return yield* CI.compensate(actions.deploy(), actions.rollback())
+  return yield* actions.build()
 })
 
 export * from "./actions.ts"

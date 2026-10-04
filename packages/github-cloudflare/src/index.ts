@@ -6,9 +6,9 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers"
-import { detailsUrl, type WorkerEnvironment, type WorkflowParameters } from "./worker.js"
-export { worker } from "./worker.js"
-export type { GitHubClient, WorkerEnvironment, WorkerOptions, WorkflowParameters } from "./worker.js"
+import { detailsUrl, type WorkerEnvironment, type WorkflowParameters } from "./worker.ts"
+export { worker } from "./worker.ts"
+export type { GitHubClient, WorkerEnvironment, WorkerOptions, WorkflowParameters } from "./worker.ts"
 
 export interface Environment extends Cloudflare.WorkflowEnvironment, WorkerEnvironment {}
 

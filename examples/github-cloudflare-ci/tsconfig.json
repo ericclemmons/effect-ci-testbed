@@ -4,5 +4,5 @@
     "allowImportingTsExtensions": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": [".cloudflare/**/*.ts", "src/worker.ts", "verify.ts"]
+  "include": [".cloudflare/**/*.ts", "src/worker.ts"]
 }

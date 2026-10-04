@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { spawn } from "node:child_process"
+import { existsSync, readFileSync } from "node:fs"
+import { isAbsolute, join } from "node:path"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 
@@ -49,14 +51,6 @@ const run = (
   }))
 })
 
-const workspacePath = (root: string, path: string): string => {
-  if (path.startsWith("/") || path.split("/").includes("..")) {
-    throw new Error(`Workspace path must be relative: ${path}`)
-  }
-
-  return `${root}/${path}`
-}
-
 export const makeRunner = (options: RunnerOptions): Runner => {
   const engine = options.engine ?? "docker"
   const name = `effect-ci-${process.pid}-${randomUUID().slice(0, 8)}`
@@ -67,6 +61,16 @@ export const makeRunner = (options: RunnerOptions): Runner => {
     if (workspace.kind !== "remote" || workspace.id !== name) {
       throw new Error(`Workspace ${workspace.cwd} does not belong to ${name}`)
     }
+  }
+
+  const hostWorkspacePath = (workspace: CI.Workspace, path: string): string => {
+    ensureWorkspace(workspace)
+    if (!hostRoot) throw new Error("CI.Source.checkout must run before workspace access")
+    if (isAbsolute(path) || path.split("/").includes("..")) {
+      throw new Error(`Workspace path must be relative: ${path}`)
+    }
+
+    return join(hostRoot, path)
   }
 
   const ensureStarted = async (): Promise<void> => {
@@ -157,25 +161,15 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
     },
     workspaceFileSystem: {
-      exists: (workspace, path) => Effect.tryPromise({
-        try: async () => {
-          const result = await executeArgs(
-            workspace,
-            ["test", "-e", workspacePath(workspace.cwd, path)],
-          )
-
-          return result.exitCode === 0
-        },
+      exists: (workspace, path) => Effect.try({
+        try: () => existsSync(hostWorkspacePath(workspace, path)),
         catch: (error) => error,
       }),
-      readFile: (workspace, path) => Effect.tryPromise({
-        try: async () => {
-          const result = await executeArgs(
-            workspace,
-            ["cat", workspacePath(workspace.cwd, path)],
-          )
+      readFile: (workspace, path) => Effect.try({
+        try: () => {
+          const target = hostWorkspacePath(workspace, path)
 
-          return result.exitCode === 0 ? result.stdout : undefined
+          return existsSync(target) ? readFileSync(target, "utf8") : undefined
         },
         catch: (error) => error,
       }),

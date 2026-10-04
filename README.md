@@ -96,6 +96,10 @@ means that execution model is genuinely irrelevant to the use-case.
 
 ## Try it locally
 
+Effect CI targets Node.js 24+, which executes the repository's erasable TypeScript
+directly. Workflow entrypoints therefore need no `tsx`, `ts-node`, build step, or
+custom loader.
+
 ```sh
 pnpm install
 

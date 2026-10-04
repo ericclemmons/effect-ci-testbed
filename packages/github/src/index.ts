@@ -112,5 +112,5 @@ export const updateCheck = async (
   return { id: check.id, htmlUrl: check.html_url }
 }
 
-export * from "./app.js"
-export * from "./reporter.js"
+export * from "./app.ts"
+export * from "./reporter.ts"

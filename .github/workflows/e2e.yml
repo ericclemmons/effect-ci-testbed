@@ -160,7 +160,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - run: node --import tsx examples/dependency-aware-reruns/verify.ts
+      - run: node --test examples/dependency-aware-reruns/.cloudflare/ci/tests/dependency-aware-reruns.test.ts
 
   immutable-attempts:
     name: immutable attempts and checkpoint reuse
@@ -173,7 +173,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - run: node --import tsx examples/immutable-attempts/verify.ts
+      - run: node --test examples/immutable-attempts/.cloudflare/ci/tests/immutable-attempts.test.ts
 
   sdk-semantics:
     name: ${{ matrix.example }} / tests
@@ -196,7 +196,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - run: node --test --import tsx examples/${{ matrix.example }}/.cloudflare/ci/tests/${{ matrix.example }}.test.ts
+      - run: node --test examples/${{ matrix.example }}/.cloudflare/ci/tests/${{ matrix.example }}.test.ts
 
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
@@ -307,7 +307,7 @@ jobs:
           output="$RUNNER_TEMP/hitl-deploy-${{ matrix.mode }}.log"
 
           if [ "${{ matrix.mode }}" = "rejected" ]; then
-            if pnpm exec tsx packages/ci/run.run.ts >"$output" 2>&1; then
+            if node packages/ci/run.run.ts >"$output" 2>&1; then
               cat "$output"
               echo "Expected the rejected approval to fail" >&2
               exit 1
@@ -321,7 +321,7 @@ jobs:
               exit 1
             fi
           else
-            pnpm exec tsx packages/ci/run.run.ts
+            node packages/ci/run.run.ts
           fi
 
   cloudflare-runner:
@@ -354,7 +354,7 @@ jobs:
           EFFECT_CI_EVENT: workflow_dispatch
           EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts
         run: |
-          DRY_RUN=1 pnpm exec tsx packages/ci/run.run.ts
+          DRY_RUN=1 node packages/ci/run.run.ts
           pnpm --filter ${{ matrix.package }} exec wrangler deploy \
             --dry-run \
             --containers-rollout=none
@@ -439,7 +439,7 @@ jobs:
             --dry-run \
             --containers-rollout=none
       - name: Verify signed dispatch and duplicate delivery
-        run: node --import tsx examples/github-cloudflare-ci/verify.ts
+        run: node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
       - name: Verify webhook authentication locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"

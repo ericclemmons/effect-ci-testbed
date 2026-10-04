@@ -25,11 +25,14 @@ The verification proves that rerunning `test`:
 - executes only `test` and its dependent `build`;
 - carries Workspace snapshot handles through the reused action outputs.
 
-Run it with:
+Run the ordinary workflow locally with:
 
 ```sh
-node --import tsx examples/immutable-attempts/verify.ts
+./examples/immutable-attempts/.cloudflare/ci/workflow.ts
 ```
+
+The forced first-attempt failure and selective rerun are test-only scenarios in
+[`ci/tests/immutable-attempts.test.ts`](./.cloudflare/ci/tests/immutable-attempts.test.ts).
 
 This is the portable attempt model. A hosted runner can persist each returned attempt
 under its own ID and map a reused Workspace revision to Cloudflare snapshots, GitHub

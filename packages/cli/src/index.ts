@@ -36,13 +36,20 @@ export const ExitCode = {
 type ExitCode = typeof ExitCode[keyof typeof ExitCode]
 
 class CliFailure extends Error {
+  readonly code: string
+  readonly exitCode: ExitCode
+  readonly details?: unknown
+
   constructor(
-    readonly code: string,
-    readonly exitCode: ExitCode,
+    code: string,
+    exitCode: ExitCode,
     message: string,
-    readonly details?: unknown,
+    details?: unknown,
   ) {
     super(message)
+    this.code = code
+    this.exitCode = exitCode
+    this.details = details
   }
 }
 
