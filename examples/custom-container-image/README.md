@@ -6,7 +6,7 @@
 flowchart LR
   step_checkout["checkout"]
   step_build_container_image["build container image"]
-  step_publish_container_image["publish container image"]
+  step_publish_container_image["publish container image (conditional)"]
   step_checkout --> step_build_container_image
   step_build_container_image --> step_publish_container_image
 ```

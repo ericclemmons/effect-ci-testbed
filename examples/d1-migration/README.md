@@ -7,12 +7,12 @@ flowchart LR
   step_checkout["checkout"]
   step_build["build"]
   step_migrate_database["migrate database"]
-  step_rollback_database_migration["rollback database migration"]
   step_deploy_worker["deploy worker (conditional)"]
+  step_rollback_database_migration["rollback database migration"]
   step_checkout --> step_build
   step_build --> step_migrate_database
-  step_build --> step_rollback_database_migration
   step_migrate_database --> step_deploy_worker
+  step_build --> step_rollback_database_migration
   step_migrate_database -. rollback .-> step_rollback_database_migration
 ```
 

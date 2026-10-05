@@ -22,9 +22,7 @@ export interface WorkflowStepConfig {
   readonly timeout?: WorkflowDuration
 }
 
-export interface StepOptions extends WorkflowStepConfig {
-  readonly cache?: boolean | "auto"
-}
+export type StepOptions = WorkflowStepConfig
 
 export interface CheckOptions extends StepOptions {
   /** Allow a trusted runner to reuse this side-effect-free check for the same commit. */
@@ -80,7 +78,7 @@ export interface PlannedCommand {
 export interface PlanNode {
   readonly id: string
   readonly after: ReadonlyArray<string>
-  readonly needs: ReadonlyArray<string>
+  readonly dependencies: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly condition?: Condition
   /** This node runs only after the referenced node exhausts its retry policy. */
@@ -167,7 +165,7 @@ export const planRerun = (
 
   const dependents = new Map<string, Set<string>>()
   for (const node of plan.nodes) {
-    for (const dependency of node.needs) {
+    for (const dependency of node.dependencies) {
       const children = dependents.get(dependency) ?? new Set<string>()
       children.add(node.id)
       dependents.set(dependency, children)
@@ -221,7 +219,7 @@ export type RuntimeEvent =
       readonly type: "dependency.added"
       readonly workflowId: string
       readonly stepId: string
-      readonly needs: string
+      readonly dependency: string
       readonly timestamp: string
     }
   | {
@@ -1265,13 +1263,13 @@ const validateStepOptions = (id: string, options: StepOptions): void => {
 
 const runStep = <A>(
   id: string,
-  needs: ReadonlyArray<string> = [],
+  dependencies: ReadonlyArray<string> = [],
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
   const effect = Effect.gen(function* () {
     const runtime = yield* Runtime
     const parent = yield* CurrentStep
     yield* runtime.addDependency(parent, id)
-    for (const dependency of needs) {
+    for (const dependency of dependencies) {
       yield* runtime.addDependency(id, dependency)
     }
     return (yield* Cache.get(runtime.cache, id)) as A
@@ -1548,8 +1546,8 @@ const makeRuntime = (
     )
     let workflowBarrier: {
       readonly after: ReadonlyArray<string>
-      readonly needs: ReadonlyArray<string>
-    } = { after: [], needs: [] }
+      readonly dependencies: ReadonlyArray<string>
+    } = { after: [], dependencies: [] }
     let runtime!: RuntimeShape
 
     for (const id of reusable) {
@@ -1565,7 +1563,7 @@ const makeRuntime = (
         ))
       }
 
-      for (const dependency of previousNode.needs) edges.add(`${id}->${dependency}`)
+      for (const dependency of previousNode.dependencies) edges.add(`${id}->${dependency}`)
       for (const dependency of previousNode.after) afterEdges.add(`${id}->${dependency}`)
       if (previousNode.optional) optionalSteps.add(id)
       nodes.set(id, {
@@ -1730,15 +1728,15 @@ const makeRuntime = (
       addDependency: (parent, child) => Effect.gen(function* () {
         if (parent === "$workflow") {
           if (parallelSteps.delete(child)) return
-          for (const dependency of workflowBarrier.needs) {
+          for (const dependency of workflowBarrier.dependencies) {
             edges.add(`${child}->${dependency}`)
           }
           for (const dependency of workflowBarrier.after) {
             afterEdges.add(`${child}->${dependency}`)
           }
           workflowBarrier = optionalSteps.has(child)
-            ? { after: [child], needs: [] }
-            : { after: [], needs: [child] }
+            ? { after: [child], dependencies: [] }
+            : { after: [], dependencies: [child] }
           return
         }
         edges.add(`${parent}->${child}`)
@@ -1746,7 +1744,7 @@ const makeRuntime = (
           type: "dependency.added",
           workflowId,
           stepId: parent,
-          needs: child,
+          dependency: child,
           timestamp: new Date().toISOString(),
         })
       }),
@@ -1755,7 +1753,7 @@ const makeRuntime = (
         for (const step of steps) {
           if (step.optional) optionalSteps.add(step.id)
           parallelSteps.add(step.id)
-          for (const dependency of workflowBarrier.needs) {
+          for (const dependency of workflowBarrier.dependencies) {
             edges.add(`${step.id}->${dependency}`)
           }
           for (const dependency of workflowBarrier.after) {
@@ -1764,7 +1762,7 @@ const makeRuntime = (
         }
         workflowBarrier = {
           after: steps.filter((step) => step.optional).map((step) => step.id),
-          needs: steps.filter((step) => !step.optional).map((step) => step.id),
+          dependencies: steps.filter((step) => !step.optional).map((step) => step.id),
         }
       }),
       markOptional: (stepId) => Effect.sync(() => {
@@ -1812,7 +1810,7 @@ const makeRuntime = (
         if (mode !== "plan") return
 
         const barrier = workflowBarrier
-        workflowBarrier = { after: [], needs: [] }
+        workflowBarrier = { after: [], dependencies: [] }
         yield* rollback.pipe(
           Effect.provideService(CurrentStep, "$rollback"),
           Effect.asVoid,
@@ -2154,7 +2152,7 @@ const toPlan = (
     nodes: ordered.map((node) => ({
       id: node.id,
       after: [...(after.get(node.id) ?? [])].sort(),
-      needs: [...(dependencies.get(node.id) ?? [])].sort(),
+      dependencies: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
       artifacts: [...node.artifacts],
       ...(node.condition ? { condition: node.condition } : {}),
@@ -2191,14 +2189,14 @@ export const formatPlan = (plan: WorkflowPlan): string => {
 
   for (const node of plan.nodes) {
     const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""
-    const needs = node.needs.length > 0
-      ? ` depends on ${node.needs.join(", ")}`
+    const dependencies = node.dependencies.length > 0
+      ? ` depends on ${node.dependencies.join(", ")}`
       : ""
     const optional = node.optional ? " (optional)" : ""
     const rollback = node.rollbackFor
       ? ` rolls back ${node.rollbackFor}`
       : ""
-    const suffix = `${needs}${after}${rollback}${optional}`
+    const suffix = `${dependencies}${after}${rollback}${optional}`
     const status = node.status === "complete"
       ? "✓"
       : node.status === "reused"
@@ -2256,7 +2254,7 @@ export const formatPlanMermaid = (plan: WorkflowPlan): string => {
   }
 
   for (const node of plan.nodes) {
-    for (const dependency of node.needs) {
+    for (const dependency of node.dependencies) {
       lines.push(`  ${mermaidId(dependency)} --> ${mermaidId(node.id)}`)
     }
     for (const predecessor of node.after) {

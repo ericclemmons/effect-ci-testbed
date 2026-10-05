@@ -6,9 +6,9 @@
 flowchart LR
   step_checkout["checkout"]
   step_build_applications["build applications"]
-  step_deploy["deploy (conditional)"]
   step_deploy_backend["deploy backend"]
   step_deploy_frontend["deploy frontend"]
+  step_deploy["deploy (conditional)"]
   step_checkout --> step_build_applications
   step_build_applications --> step_deploy_backend
   step_deploy_backend --> step_deploy_frontend

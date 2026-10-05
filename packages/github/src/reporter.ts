@@ -53,7 +53,7 @@ const planStages = (value: WorkflowPlan) => {
       1 + Math.max(
         0,
         ...[
-          ...node.needs,
+          ...node.dependencies,
           ...node.after,
           ...(node.rollbackFor ? [node.rollbackFor] : []),
         ]
@@ -89,7 +89,7 @@ const planDiagram = (value: WorkflowPlan): string => {
   }
 
   for (const node of value.nodes) {
-    for (const dependency of node.needs) {
+    for (const dependency of node.dependencies) {
       const from = identifiers.get(dependency)
       const to = identifiers.get(node.id)
       if (from && to) lines.push(`  ${from} --> ${to}`)
@@ -130,8 +130,8 @@ const planSummary = (value: WorkflowPlan): string => {
 
     if (ordered.length === 1) {
       const node = ordered[0]!
-      const needs = node.needs.length > 0
-        ? ` — depends on ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+      const dependencies = node.dependencies.length > 0
+        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
@@ -141,15 +141,15 @@ const planSummary = (value: WorkflowPlan): string => {
       const rollback = node.rollbackFor
         ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}${after}${condition}${rollback}${optional}`)
+      lines.push(`${stage}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
       continue
     }
 
     lines.push(`${stage}. **In parallel**`)
 
     for (const [index, node] of ordered.entries()) {
-      const needs = node.needs.length > 0
-        ? ` — depends on ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+      const dependencies = node.dependencies.length > 0
+        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
@@ -159,7 +159,7 @@ const planSummary = (value: WorkflowPlan): string => {
       const rollback = node.rollbackFor
         ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${condition}${rollback}${optional}`)
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
     }
   }
 
