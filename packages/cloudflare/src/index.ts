@@ -454,7 +454,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
   /** Project directory within the checked-out repository. */
   readonly root?: string
   readonly secrets?: (environment: Environment) => CI.SecretResolver
-  readonly verification?: (environment: Environment) => CI.VerificationStore
+  readonly checkCache?: (environment: Environment) => CI.CheckCache
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -727,8 +727,8 @@ export const workflowEntrypoint = <
       output: "silent",
       ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
       source: runner.source,
-      ...(options.verification
-        ? { verification: options.verification(this.env) }
+      ...(options.checkCache
+        ? { checkCache: options.checkCache(this.env) }
         : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,

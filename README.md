@@ -32,8 +32,9 @@ The consumer model is intentionally small:
 - Actions own rollback behavior; terminal failure unwinds completed actions in reverse order.
 - `CI.Secret` returns a redacted host-side capability; `CI.Artifact` publishes a
   runner-owned checkpoint only when output must cross a workload boundary.
-- Side-effect-free checks may opt into signed commit evidence. A runner verifies exact
-  inputs and signatures; missing or invalid evidence always falls back to execution.
+- Side-effect-free `CI.check` values return `void` and may opt into runner reuse. A
+  `CheckCache` can verify signed commit evidence or a trusted remote-cache hit; missing
+  or invalid evidence always falls back to execution.
 - Eligible source-only actions should run in lightweight isolates before Effect CI
   escalates to a container. The workflow describes the capability it needs; the runner
   chooses the least expensive compatible execution tier.
@@ -53,6 +54,20 @@ Tests never launch CI. Locally, a developer or agent runs `cf-ci`; the CLI disco
 thin Effect caller passes that same module to the reusable runner. The
 conventional YAML is intentionally independent so every example shows the native
 GitHub approach beside the portable Effect approach.
+
+Workflows and exported actions serve different entrypoints:
+
+- A workflow routes normalized external events. `CI.when` keeps event/ref predicates
+  inspectable in the plan; ordinary Effect matching can route runtime-only payloads.
+  A push, deleted branch, deployment hook, or observability issue can therefore enter
+  the same program and request a different desired outcome.
+- Exported actions are the local and agent interface. `cf-ci list` shows what the
+  project intentionally exposes, and `cf-ci run lint`, `cf-ci run build`, or
+  `cf-ci run deploy` invokes one target with all of its prerequisites. Runner policy
+  decides whether a sensitive target such as deployment is allowed locally.
+- Running `cf-ci` with no target executes the default workflow using the local event
+  adapter. This is useful for full local validation, but agents can choose the smallest
+  exported action instead of pretending to emit a GitHub event.
 
 ## Examples, in implementation order
 
@@ -92,7 +107,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
 | [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | 🔜 |
-| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
+| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | 🔜 | 🔜 |
 | Pause and durably resume a Cloudflare Workflow for approval | — | 🔜 | — | 🔜 |
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |

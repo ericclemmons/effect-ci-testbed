@@ -9,40 +9,33 @@ export const checkout = CI.action("checkout", function* () {
 export const build = CI.action("build", () => function* () {
   const workspace = yield* checkout()
 
-  return yield* workspace.exec("node scripts/build.mjs")
+  return yield* workspace.exec("npx cf build --mode production")
 })
 
 const rollbackMigration = CI.action("rollback database migration", () => function* () {
   const workspace = yield* build()
 
-  return yield* workspace.exec("node scripts/rollback-migration.mjs")
+  return yield* workspace.exec(
+    "npx cf d1 raw 11111111-1111-4111-8111-111111111111 --sql \"DROP TABLE IF EXISTS users; DELETE FROM d1_migrations WHERE name = '0001_create_users.sql'\" --local --persist-to .effect-ci-state",
+  )
 })
 
 export const migrate = CI.action("migrate database", () => function* () {
   const workspace = yield* build()
 
-  return yield* workspace.exec("node scripts/migrate.mjs")
+  return yield* workspace.exec(
+    "npx cf d1 migrations apply 11111111-1111-4111-8111-111111111111 --dir migrations --local --persist-to .effect-ci-state",
+  )
 }, {
   rollback: rollbackMigration,
-})
-
-const rollbackDeployment = CI.action("redeploy previous worker", () => function* () {
-  const workspace = yield* migrate()
-
-  return yield* workspace.exec("node scripts/rollback.mjs")
 })
 
 export const deploy = CI.action("deploy worker", () => function* () {
   const workspace = yield* migrate()
 
-  return yield* workspace.exec("node scripts/deploy.mjs")
+  return yield* workspace.exec(
+    "npx cf deploy --prebuilt --mode production --dry-run",
+  )
 }, {
   retries: { limit: 2, delay: "1 second", backoff: "exponential" },
-  rollback: rollbackDeployment,
-})
-
-export const verifyDeployment = CI.action("verify deployment", () => function* () {
-  const workspace = yield* deploy()
-
-  return yield* workspace.exec("node scripts/verify-deployment.mjs")
 })

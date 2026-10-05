@@ -1,2 +1,4 @@
 .effect-ci-state/
+.cloudflare/output/
+.cloudflare/types/
 dist/

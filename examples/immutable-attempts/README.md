@@ -22,7 +22,7 @@ flowchart LR
 ---
 
 Every Effect CI execution returns an immutable `attempt`. A rerun receives that attempt
-and the selected action IDs. Effect CI follows the plan's explicit `needs` edges, restores
+and the selected action IDs. Effect CI follows the dependencies derived from yielded actions, restores
 the outputs of unaffected actions, and executes only the selected transitive subgraph.
 
 ```ts

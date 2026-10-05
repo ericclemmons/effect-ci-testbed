@@ -11,17 +11,28 @@ flowchart LR
 
 ---
 
-An action opts in explicitly:
+A reusable assertion is a `CI.check`, not an ordinary state-producing action:
 
 ```ts
-CI.action("lint", ..., { verification: { scope: "commit" } })
+CI.check("lint", () => function* () {
+  const workspace = yield* checkout()
+
+  yield* workspace.exec("npm run lint")
+}, {
+  reuse: { scope: "commit" },
+})
 ```
 
-The runner's `VerificationStore` binds evidence to the immutable revision, workflow,
-action, command, workspace identity, and policy. A valid signature skips the command;
-a miss, changed revision, invalid signature, or verifier error runs it normally. Core
-never trusts a Git note merely because it exists. A Git note is one possible transport
-for the signed envelope, while the verifier's configured public key establishes trust.
+`CI.check` can only return `void`: success or failure is its entire public result. That
+does not magically prove purity—the command must still avoid modifying external state
+or producing a workspace consumed later—but it makes the contract visible and prevents
+the check from returning a new workspace revision or deployable artifact.
+
+The runner's `CheckCache` decides whether the same check already succeeded for the
+exact commit, workflow, command, workspace identity, and policy. It may verify a signed
+commit trailer or Git note, find a Vite+/Turbo remote-cache entry, or consult a managed
+agent execution record. A valid hit skips the command; a miss, changed revision,
+invalid signature, or lookup error runs it normally.
 
 Trust is repository policy, not something the signature decides:
 
@@ -44,12 +55,13 @@ never asked to trust an arbitrary status submitted by the developer. Repositorie
 mix policies—for example, accepting developer proofs for lint while always rerunning
 release and security checks remotely.
 
-Only side-effect-free checks belong here. Builds, migrations, deployments, and checks
-whose outputs are consumed by later steps must not opt in.
+Only side-effect-free checks belong here. Checkout, install, builds, migrations,
+deployments, and artifact-producing work remain ordinary actions even if a runner can
+separately cache their bytes or workspace snapshots.
 
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). The in-memory Ed25519
-proof store is test infrastructure, so it lives in
+check cache is test infrastructure, so it lives in
 [`tests/verification-evidence.test.ts`](./.cloudflare/ci/tests/verification-evidence.test.ts)
 rather than masquerading as the workflow entry point.

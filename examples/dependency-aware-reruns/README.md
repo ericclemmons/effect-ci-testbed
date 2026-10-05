@@ -22,9 +22,10 @@ flowchart LR
 
 ---
 
-Effect CI uses the workflow plan's explicit `needs` edges. It reruns the requested
-action and its transitive dependents, while preserving unrelated siblings. An `after`
-edge controls ordering only, so it does not invalidate later work.
+Effect CI derives dependencies from actions yielding other actions. It reruns the
+requested action and everything that consumed it, while preserving unrelated siblings.
+Plain sequencing controls order without pretending that the later action consumed the
+earlier action's output.
 
 Run the workflow locally:
 

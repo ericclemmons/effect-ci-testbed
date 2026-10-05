@@ -16,7 +16,7 @@ flowchart LR
 
 The two cache layers have deliberately different jobs:
 
-1. Vite Task owns correctness. `vp run build` observes the command's file reads,
+1. Vite Task owns correctness. `vp run --cache build` observes the command's file reads,
    missing-file probes, directory listings, and writes. On a matching run it restores
    `dist/`, replays the output, and skips the command. The task declares no input or
    output globs.
@@ -43,17 +43,19 @@ restored cache.
 
 The cache provider changes; the Vite+ command and its correctness model do not.
 
-The complete Vite+ configuration is intentionally this small:
+No Vite+ task configuration is required. The project keeps its ordinary package
+script:
 
-```ts
-export default defineConfig({
-  run: {
-    tasks: {
-      build: "node scripts/build.ts",
-    },
-  },
-})
+```json
+{
+  "scripts": {
+    "build": "node scripts/build.ts"
+  }
+}
 ```
+
+`vp run --cache build` opts that existing script into automatic task caching. The
+installed Vite+ release spells the flag `--cache` (not `--cached`).
 
 The example's behavioral test verifies a cold miss, restoration of a deleted output,
 a hit after an unrelated file changes, and a miss after the file actually read by the
@@ -70,7 +72,7 @@ export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
   return yield* workspace.exec(
-    "cd app && npx vp run -t vite-plus-cache-app#build",
+    "cd app && npx vp run --cache build",
   )
 })
 ```

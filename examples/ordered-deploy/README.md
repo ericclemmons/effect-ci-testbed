@@ -6,11 +6,14 @@
 flowchart LR
   step_checkout["checkout"]
   step_build_applications["build applications"]
+  step_deploy["deploy (conditional)"]
   step_deploy_backend["deploy backend"]
   step_deploy_frontend["deploy frontend"]
   step_checkout --> step_build_applications
   step_build_applications --> step_deploy_backend
   step_deploy_backend --> step_deploy_frontend
+  step_deploy_backend --> step_deploy
+  step_deploy_frontend --> step_deploy
 ```
 
 ---
@@ -18,13 +21,19 @@ flowchart LR
 The outer deployment owns the ordering constraint:
 
 ```text
-checkout → build applications → deploy backend → deploy frontend
+checkout → build applications → deploy → backend, then frontend
 ```
 
-`deployFrontend()` yields `deployBackend()`, which yields `build()`. The workflow only
-needs to request the final desired state. Running `cf-ci run deployFrontend` directly
-has the same prerequisites, and a planner can render the dependency edges without AST
-or closure analysis.
+The public `deploy()` action yields both application deployments in their required
+order. Each application deployment yields the shared build itself, so it remains valid
+when targeted or reused elsewhere. The workflow asks for the aggregate desired state;
+locally, a developer or agent can discover it with `cf-ci list` and invoke it directly
+with `cf-ci run deploy`.
+
+That separation is intentional. Workflows route external events such as pushes,
+deleted branches, deployment hooks, or observability incidents. Exported actions are
+the universal local interface. A local `deploy` can be prohibited or supplied a safer
+runner implementation without changing what production events invoke.
 
 The fixture records deployment order locally and rejects an out-of-order frontend
 deployment. The commands are harmless stand-ins for two Wrangler deployments.

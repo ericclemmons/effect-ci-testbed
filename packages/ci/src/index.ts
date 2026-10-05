@@ -24,9 +24,14 @@ export interface WorkflowStepConfig {
 
 export interface StepOptions extends WorkflowStepConfig {
   readonly cache?: boolean | "auto"
-  /** Allow a trusted runner to reuse signed evidence for this side-effect-free action. */
-  readonly verification?: { readonly scope: "commit" }
 }
+
+export interface CheckOptions extends StepOptions {
+  /** Allow a trusted runner to reuse this side-effect-free check for the same commit. */
+  readonly reuse?: { readonly scope: "commit" }
+}
+
+type InternalStepOptions = StepOptions & Pick<CheckOptions, "reuse">
 
 export interface ActionOptions extends StepOptions {
   /**
@@ -60,7 +65,7 @@ export type ActionTarget = () => Effect.Effect<unknown, unknown, any>
 interface StepDefinition<A = unknown> {
   readonly id: string
   readonly body: Effect.Effect<A, unknown, Runtime | CurrentStep>
-  readonly options: StepOptions
+  readonly options: InternalStepOptions
   readonly rollback?: {
     readonly id: string
     readonly effect: Effect.Effect<unknown, unknown, any>
@@ -87,7 +92,7 @@ export interface PlanNode {
     readonly paths: ReadonlyArray<string>
   }>
   readonly optional: boolean
-  readonly options: StepOptions
+  readonly options: InternalStepOptions
   /** Secret names required by the step. Values are never part of the plan. */
   readonly secrets: ReadonlyArray<string>
   readonly status:
@@ -142,7 +147,7 @@ export class WorkflowPlanError extends Error {
 }
 
 /**
- * Selects the requested nodes and every node that transitively needs them.
+ * Selects the requested nodes and everything that transitively consumes them.
  * Ordering-only `after` edges do not carry values and therefore do not
  * invalidate downstream work.
  */
@@ -1070,7 +1075,7 @@ export interface CommandExecutor {
   ) => Effect.Effect<CommandExecutionResult, CommandError>
 }
 
-export interface VerificationRequest {
+export interface CheckCacheRequest {
   readonly command: string
   readonly event: WorkflowEventShape
   readonly policy: { readonly scope: "commit" }
@@ -1079,10 +1084,10 @@ export interface VerificationRequest {
   readonly workspace: Workspace
 }
 
-/** The implementation verifies signatures and binds evidence to exact inputs. */
-export interface VerificationStore {
-  readonly lookup: (request: VerificationRequest) => Effect.Effect<boolean, unknown>
-  readonly record: (request: VerificationRequest) => Effect.Effect<void, unknown>
+/** Runner policy for reusing side-effect-free checks with the same exact inputs. */
+export interface CheckCache {
+  readonly lookup: (request: CheckCacheRequest) => Effect.Effect<boolean, unknown>
+  readonly record: (request: CheckCacheRequest) => Effect.Effect<void, unknown>
 }
 
 export interface WorkspaceFileSystem {
@@ -1419,6 +1424,17 @@ export const action = <
   return factory
 }
 
+/**
+ * A side-effect-free assertion whose success can be reused by a trusted runner.
+ * Checks return no workspace revision or domain output: they either succeed or fail.
+ */
+export const check = <Args extends ReadonlyArray<unknown> = ReadonlyArray<never>>(
+  id: string,
+  construction: ActionConstruction<Args, void>,
+  options: CheckOptions = {},
+): ((...args: Args) => Effect.Effect<void, unknown, Runtime | CurrentStep>) =>
+  action<void, Args>(id, construction, options as ActionOptions)
+
 /** Identifies action factories exported as direct CLI targets. */
 export const isAction = (value: unknown): value is ActionTarget =>
   typeof value === "function" && actionFactories.has(value)
@@ -1507,7 +1523,7 @@ const makeRuntime = (
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
     restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
   },
-  verification?: VerificationStore,
+  checkCache?: CheckCache,
   rerun?: {
     readonly previous: WorkflowAttempt
     readonly selection: WorkflowRerunPlan
@@ -1902,12 +1918,12 @@ const makeRuntime = (
           })()
           : Effect.void
 
-        const policy = definitions.get(stepId)?.options.verification
-        const verificationRequest = policy
+        const policy = definitions.get(stepId)?.options.reuse
+        const checkCacheRequest = policy
           ? { command, event, policy, stepId, workflowId, workspace }
           : undefined
-        const verified = verification && verificationRequest
-          ? verification.lookup(verificationRequest).pipe(
+        const verified = checkCache && checkCacheRequest
+          ? checkCache.lookup(checkCacheRequest).pipe(
               Effect.catch(() => Effect.succeed(false)),
             )
           : Effect.succeed(false)
@@ -1941,8 +1957,8 @@ const makeRuntime = (
               workflowId,
               workspace,
             }).pipe(
-              Effect.tap(() => verification && verificationRequest
-                ? verification.record(verificationRequest).pipe(Effect.ignore)
+              Effect.tap(() => checkCache && checkCacheRequest
+                ? checkCache.record(checkCacheRequest).pipe(Effect.ignore)
                 : Effect.void),
               Effect.flatMap((result) => Effect.gen(function* () {
                 if (result.stdout) {
@@ -2088,7 +2104,7 @@ export interface RunOptions {
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
-  readonly verification?: VerificationStore
+  readonly checkCache?: CheckCache
 }
 
 export interface RunConfiguration extends RunOptions {
@@ -2175,7 +2191,9 @@ export const formatPlan = (plan: WorkflowPlan): string => {
 
   for (const node of plan.nodes) {
     const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""
-    const needs = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
+    const needs = node.needs.length > 0
+      ? ` depends on ${node.needs.join(", ")}`
+      : ""
     const optional = node.optional ? " (optional)" : ""
     const rollback = node.rollbackFor
       ? ` rolls back ${node.rollbackFor}`
@@ -2297,7 +2315,7 @@ const interpret = <A>(
       options.executor ?? makeLocalCommandExecutor(),
       options.workspaceFileSystem,
       options.workspacePersistence,
-      options.verification,
+      options.checkCache,
       previous && selection ? { previous, selection } : undefined,
     )
     const approval: ApprovalService = {

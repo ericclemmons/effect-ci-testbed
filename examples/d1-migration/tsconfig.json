@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": [".cloudflare/**/*.ts"]
+  "include": [
+    ".cloudflare/**/*.ts",
+    "cloudflare.config.ts",
+    "src/**/*.ts",
+    "vite.config.ts"
+  ]
 }

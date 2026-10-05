@@ -8,7 +8,7 @@ import workflow from "../workflow.ts"
 const { privateKey, publicKey } = generateKeyPairSync("ed25519")
 const proofs = new Map<string, Buffer>()
 
-const fingerprint = (request: CI.VerificationRequest): string => JSON.stringify({
+const fingerprint = (request: CI.CheckCacheRequest): string => JSON.stringify({
   command: request.command,
   revision: request.event.revision,
   scope: request.policy.scope,
@@ -21,7 +21,7 @@ const fingerprint = (request: CI.VerificationRequest): string => JSON.stringify(
   },
 })
 
-const verification: CI.VerificationStore = {
+const checkCache: CI.CheckCache = {
   lookup: (request) => Effect.sync(() => {
     if (!request.event.revision) return false
     const message = fingerprint(request)
@@ -50,7 +50,7 @@ const run = (revision: string) => CI.runPromise(workflow, {
   event: { type: "push", ref: "refs/heads/main", revision },
   executor,
   output: "silent",
-  verification,
+  checkCache,
 })
 
 await run("commit-a")

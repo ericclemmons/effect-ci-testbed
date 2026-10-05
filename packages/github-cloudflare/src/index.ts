@@ -96,8 +96,8 @@ export const workflowEntrypoint = <A>(
         output: "silent",
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,
-        ...(options.verification
-          ? { verification: options.verification(this.env) }
+        ...(options.checkCache
+          ? { checkCache: options.checkCache(this.env) }
           : {}),
         workspacePersistence: runner.persistence,
       })

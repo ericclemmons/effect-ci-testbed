@@ -131,7 +131,7 @@ const planSummary = (value: WorkflowPlan): string => {
     if (ordered.length === 1) {
       const node = ordered[0]!
       const needs = node.needs.length > 0
-        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        ? ` — depends on ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
@@ -149,7 +149,7 @@ const planSummary = (value: WorkflowPlan): string => {
 
     for (const [index, node] of ordered.entries()) {
       const needs = node.needs.length > 0
-        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+        ? ` — depends on ${node.needs.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`

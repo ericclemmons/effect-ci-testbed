@@ -2,6 +2,9 @@
   "name": "vite-plus-cache-app",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "node scripts/build.ts"
+  },
   "dependencies": {
     "vite-plus": "1.0.0"
   }

@@ -12,14 +12,20 @@ export const build = CI.action("build applications", () => function* () {
   return yield* workspace.exec("node scripts/build.mjs")
 })
 
-export const deployBackend = CI.action("deploy backend", () => function* () {
+const deployBackend = CI.action("deploy backend", () => function* () {
   const workspace = yield* build()
 
   return yield* workspace.exec("node scripts/deploy.mjs backend")
 })
 
-export const deployFrontend = CI.action("deploy frontend", () => function* () {
+const deployFrontend = CI.action("deploy frontend", () => function* () {
   const workspace = yield* deployBackend()
 
   return yield* workspace.exec("node scripts/deploy.mjs frontend")
+})
+
+export const deploy = CI.action("deploy", () => function* () {
+  yield* deployBackend()
+
+  return yield* deployFrontend()
 })
