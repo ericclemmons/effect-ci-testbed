@@ -14,5 +14,4 @@ export const local = ({ root }: { readonly root: string }) => LocalContainer.mak
   root,
 })
 
-export * from "./actions.ts"
 export default workflow

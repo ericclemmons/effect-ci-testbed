@@ -35,29 +35,26 @@ Compare:
 
 - [`.github/workflows/github.yml`](./.github/workflows/github.yml): the standalone conventional workflow with its steps inline, based on the current [`setup-node` basic example](https://github.com/actions/setup-node#basic).
 - [`.github/workflows/effect-on-github.yml`](./.github/workflows/effect-on-github.yml): the short Effect workflow that calls the testbed's reusable workflow.
-- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the events,
-  orchestration, and explicitly exported CLI targets for the Effect workflow.
+- [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts): the events and
+  orchestration for the Effect workflow.
 - [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts): how each action
   runs and which earlier action is a true blocker.
 
 `cf-ci` is the canonical interface for developers and coding agents. It discovers
-[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts), whose default export is
-the workflow and whose named action exports are direct run targets:
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) and executes its default
+workflow:
 
 ```bash
 pnpm exec cf-ci
-pnpm exec cf-ci run lint
-pnpm exec cf-ci plan lint --format=json
-pnpm exec cf-ci list
+pnpm exec cf-ci plan --format=json
 ```
 
-`run` is the default command, so the first form executes the complete workflow and
-`pnpm exec cf-ci lint` is shorthand for `run lint`. Explicit
-`--format=text` and `--format=json` override output selection. Without an override,
-a directly detected coding agent receives JSON while interactive and hybrid terminals
-receive text. `--local` is the default; `--remote` selects a configured remote provider
-without changing the workflow, and fails with `CI_REMOTE_UNAVAILABLE` / exit code `3`
-until the entry point supplies one.
+Explicit `--format=text` and `--format=json` override output selection. Without an
+override, a directly detected coding agent receives JSON while interactive and hybrid
+terminals receive text. See [`../exported-actions`](../exported-actions) for the
+opt-in direct-action interface. `--local` is the default; `--remote` selects a
+configured remote provider without changing the workflow, and fails with
+`CI_REMOTE_UNAVAILABLE` / exit code `3` until the entry point supplies one.
 
 ```bash
 NODE_ENV=staging pnpm ci:node-npm:dry-run

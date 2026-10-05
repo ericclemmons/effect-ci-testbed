@@ -36,6 +36,9 @@ on:
       EFFECT_CI_APP_PRIVATE_KEY:
         description: Private key for the Effect CI GitHub App
         required: true
+      EFFECT_CI_CHECK_PUBLIC_KEY:
+        description: Optional public key for verifying signed local check evidence
+        required: false
 
 permissions:
   contents: read
@@ -67,6 +70,9 @@ jobs:
           client-id: ${{ vars.EFFECT_CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
           permission-checks: write
+      - name: Fetch signed Effect CI evidence
+        if: matrix.mode == 'execute' && secrets.EFFECT_CI_CHECK_PUBLIC_KEY != ''
+        run: git fetch origin refs/notes/effect-ci:refs/notes/effect-ci
       - name: Run ${{ inputs.workflow }} (${{ matrix.mode }})
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -76,4 +82,5 @@ jobs:
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}
+          EFFECT_CI_CHECK_PUBLIC_KEY: ${{ secrets.EFFECT_CI_CHECK_PUBLIC_KEY }}
         run: node packages/github/run.run.ts

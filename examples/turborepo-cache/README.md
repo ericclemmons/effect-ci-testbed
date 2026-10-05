@@ -17,7 +17,8 @@ flowchart LR
 The responsibilities are intentionally split:
 
 1. Turborepo hashes the task, its inputs, and its dependencies. Its `turbo.json`
-   declares `dist/**` as the build output to restore on a cache hit.
+   declares `dist/**` as the build output to restore on a cache hit and requires
+   signatures for remote artifacts.
 2. Effect CI persists the opaque `.turbo/cache` directory in a rolling Container
    snapshot. It does not reproduce Turborepo's hashing rules.
 
@@ -33,6 +34,27 @@ The responsibilities are intentionally split:
 
 This is the intended layer boundary: orchestration names no cache vendor; the runner
 owns persistence; Turborepo owns cache validity.
+
+## Native remote cache
+
+No Effect CI evidence is required when a developer and CI use the same native Turbo
+Remote Cache. The developer's successful `turbo run build` uploads the hashed outputs;
+CI invokes the same command, verifies the HMAC-SHA256 artifact signature, restores the
+output, and reports a cache hit without executing the build again.
+
+Turborepo reads its standard configuration directly:
+
+```sh
+TURBO_API=https://cache.example.test
+TURBO_TEAM=example
+TURBO_TOKEN=...
+TURBO_REMOTE_CACHE_SIGNATURE_KEY=...
+```
+
+Those credentials belong to the runner. On GitHub they can be ordinary job secrets.
+On Cloudflare they should terminate at the host-side credential proxy rather than be
+copied into the workspace Container. Effect CI does not reinterpret Turbo's cache key,
+artifact, or signature protocol.
 
 The userland action is an ordinary command:
 

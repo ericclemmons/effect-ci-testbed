@@ -9,7 +9,7 @@ const checkout = CI.action("verification checkout", function* () {
 export const lint = CI.check("verified lint", () => function* () {
   const workspace = yield* checkout()
 
-  yield* workspace.exec("echo lint")
+  yield* workspace.exec("node --check app/index.js")
 }, {
   reuse: { scope: "commit" },
 })

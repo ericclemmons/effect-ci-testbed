@@ -6,5 +6,4 @@ const workflow = CI.workflow("cache-policy", function* () {
   return yield* actions.verify()
 })
 
-export * from "./actions.ts"
 export default workflow

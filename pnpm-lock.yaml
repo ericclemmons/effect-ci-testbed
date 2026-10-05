@@ -253,6 +253,28 @@ importers:
 
   examples/custom-container-image: {}
 
+  examples/custom-runner-image:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+
   examples/d1-migration:
     devDependencies:
       '@cloudflare/vite-plugin':
@@ -267,6 +289,34 @@ importers:
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  examples/dynamic-worker-checks:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+      prettier:
+        specifier: 3.6.2
+        version: 3.6.2
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
   examples/exported-actions:
     devDependencies:
@@ -323,6 +373,36 @@ importers:
   examples/optional-checks: {}
 
   examples/ordered-deploy: {}
+
+  examples/ordered-deploy/apps/backend:
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  examples/ordered-deploy/apps/frontend:
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/package-manager-cache:
     dependencies:
@@ -393,6 +473,25 @@ importers:
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+
+  examples/verification-evidence:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/github':
+        specifier: workspace:*
+        version: link:../../packages/github
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
   examples/vite-plus-cache:
     dependencies:
@@ -2342,6 +2441,11 @@ packages:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
 
+  prettier@3.6.2:
+    resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   pretty-format@27.5.1:
     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
@@ -3890,6 +3994,8 @@ snapshots:
       nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  prettier@3.6.2: {}
 
   pretty-format@27.5.1:
     dependencies:

@@ -9,5 +9,4 @@ const workflow = CI.workflow("snapshot-fanout", function* () {
   ])
 })
 
-export * from "./actions.ts"
 export default workflow

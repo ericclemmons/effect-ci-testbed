@@ -4,5 +4,4 @@ import * as actions from "./actions.ts"
 
 const workflow = CI.workflow("portable-artifacts", () => actions.deploy())
 
-export * from "./actions.ts"
 export default workflow

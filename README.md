@@ -43,7 +43,7 @@ Each focused example separates the program from its tests and its platform adapt
 
 ```text
 .cloudflare/ci/actions.ts                 reusable action definitions
-.cloudflare/ci/workflow.ts                default workflow and public action exports
+.cloudflare/ci/workflow.ts                default workflow and intentional public targets
 .cloudflare/ci/tests/*.test.ts            ordinary SDK assertions
 .github/workflows/github.yml              conventional GitHub Actions comparison
 .github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
@@ -61,10 +61,10 @@ Workflows and exported actions serve different entrypoints:
   inspectable in the plan; ordinary Effect matching can route runtime-only payloads.
   A push, deleted branch, deployment hook, or observability issue can therefore enter
   the same program and request a different desired outcome.
-- Exported actions are the local and agent interface. `cf-ci list` shows what the
-  project intentionally exposes, and `cf-ci run lint`, `cf-ci run build`, or
-  `cf-ci run deploy` invokes one target with all of its prerequisites. Runner policy
-  decides whether a sensitive target such as deployment is allowed locally.
+- Actions become local and agent commands only when the workflow deliberately
+  re-exports them. `cf-ci list` shows that narrow public surface and `cf-ci run check`
+  invokes a target with all of its prerequisites. Internal checkout, install, and
+  deployment actions stay private by default.
 - Running `cf-ci` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.
@@ -83,6 +83,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | 🔜 |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
 | [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
@@ -91,12 +92,12 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |
 | [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
-| Customize the Cloudflare runner with a project Dockerfile | — | — | — | 🔜 |
+| [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
-| Run lint, format, tests, and builds in a Dynamic Worker without starting a container | — | 🔜 | — | 🔜 |
+| [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |
 | [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
-| [Reuse Turborepo's task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
+| [Reuse Turborepo's local or remote task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | 🔜 |
@@ -107,7 +108,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
 | [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | 🔜 |
-| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
 | Pause and durably resume a Cloudflare Workflow for approval | — | 🔜 | — | 🔜 |
 | Resolve an approval request from Slack or Discord | 🔜 | 🔜 | 🔜 | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
@@ -122,13 +123,13 @@ means that execution model is genuinely irrelevant to the use-case.
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 | Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 
-The Dynamic Worker target is the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—
-running without a VM, Sandbox, or Container. Until those engines expose compatible
-JavaScript or Wasm APIs, proving the execution tier with another source-in/result-out
-tool such as Prettier, ESLint, or Biome is valid roadmap progress. The architectural
-goal is broader than linting: formatting, tests, builds, and other SDLC work should use
-an isolate whenever their declared capabilities permit it, because compute and memory
-should only be reserved for a container when the work actually requires one.
+The Worker-isolate slice is now proven with Prettier: source crosses the workspace
+boundary, while formatting executes outside the Container. The larger Dynamic Worker
+target remains the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—plus untrusted
+project modules loaded with explicit capabilities. The architectural goal is broader
+than linting: formatting, tests, builds, and other SDLC work should use an isolate
+whenever their declared capabilities permit it, because compute and memory should only
+be reserved for a container when the work actually requires one.
 
 ## Try it locally
 
@@ -142,9 +143,9 @@ pnpm install
 # Discover the graph without executing it.
 pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts plan
 
-# List or run one exported action for an agent or developer.
-pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts list
-pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts run lint --format=json
+# List or run an intentionally exported action for an agent or developer.
+pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts list
+pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts run check --format=json
 
 # Run the repository workflow and type-check the testbed.
 pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts

@@ -1,2 +1,2 @@
 .effect-ci-state/
-dist/
+apps/*/.cloudflare/

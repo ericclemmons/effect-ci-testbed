@@ -9,5 +9,4 @@ const workflow = CI.workflow("custom-container-image", function* () {
   )
 })
 
-export * from "./actions.ts"
 export default workflow

@@ -12,5 +12,4 @@ const workflow = CI.workflow("dependency-aware-reruns", function* () {
   return yield* actions.build()
 })
 
-export * from "./actions.ts"
 export default workflow

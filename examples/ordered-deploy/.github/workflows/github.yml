@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: node scripts/build.mjs
-      - run: node scripts/deploy.mjs backend
-      - run: node scripts/deploy.mjs frontend
+      - run: cd apps/backend && npx cf build --mode production
+      - run: cd apps/frontend && npx cf build --mode production
+      - run: cd apps/backend && npx cf deploy --prebuilt --mode production --dry-run
+      - run: cd apps/frontend && npx cf deploy --prebuilt --mode production --dry-run

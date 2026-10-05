@@ -17,5 +17,4 @@ const workflow = CI.workflow("node-pnpm", function* () {
   return yield* actions.build()
 })
 
-export * from "./actions.ts"
 export default workflow

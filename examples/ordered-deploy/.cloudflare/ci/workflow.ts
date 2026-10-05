@@ -9,5 +9,4 @@ const workflow = CI.workflow("ordered-deploy", function* () {
   )
 })
 
-export * from "./actions.ts"
 export default workflow

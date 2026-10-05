@@ -9,5 +9,4 @@ const workflow = CI.workflow("d1-migration", function* () {
   )
 })
 
-export * from "./actions.ts"
 export default workflow

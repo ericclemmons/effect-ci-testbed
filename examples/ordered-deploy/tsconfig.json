@@ -4,5 +4,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": [".cloudflare/**/*.ts"]
+  "include": [".cloudflare/**/*.ts", "apps/**/*.ts"]
 }

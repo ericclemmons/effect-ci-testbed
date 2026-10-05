@@ -17,7 +17,7 @@ A reusable assertion is a `CI.check`, not an ordinary state-producing action:
 CI.check("lint", () => function* () {
   const workspace = yield* checkout()
 
-  yield* workspace.exec("npm run lint")
+  yield* workspace.exec("node --check app/index.js")
 }, {
   reuse: { scope: "commit" },
 })
@@ -28,11 +28,24 @@ does not magically prove purity—the command must still avoid modifying externa
 or producing a workspace consumed later—but it makes the contract visible and prevents
 the check from returning a new workspace revision or deployable artifact.
 
-The runner's `CheckCache` decides whether the same check already succeeded for the
-exact commit, workflow, command, workspace identity, and policy. It may verify a signed
-commit trailer or Git note, find a Vite+/Turbo remote-cache entry, or consult a managed
-agent execution record. A valid hit skips the command; a miss, changed revision,
-invalid signature, or lookup error runs it normally.
+The fingerprint binds repository, commit, workflow, check, policy, and command—not a
+machine-specific checkout path. `gitNotesCheckCache` signs it with Ed25519 and stores the
+envelope under `refs/notes/effect-ci`. Recording requires a private key; CI receives
+only the enrolled public key. A valid note skips the command. A missing note, changed
+revision, invalid signature, or lookup error runs it normally.
+
+```ts
+const local = gitNotesCheckCache({ cwd, privateKey, publicKey })
+const ci = gitNotesCheckCache({ cwd, publicKey })
+```
+
+Git notes do not change the commit hash, so evidence can be attached after an agent
+finishes checking the commit. The notes ref must be pushed and fetched explicitly:
+
+```sh
+git push origin refs/notes/effect-ci
+git fetch origin refs/notes/effect-ci:refs/notes/effect-ci
+```
 
 Trust is repository policy, not something the signature decides:
 
@@ -61,7 +74,6 @@ separately cache their bytes or workspace snapshots.
 
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
-[Effect on GitHub](./.github/workflows/effect-on-github.yml). The in-memory Ed25519
-check cache is test infrastructure, so it lives in
-[`tests/verification-evidence.test.ts`](./.cloudflare/ci/tests/verification-evidence.test.ts)
-rather than masquerading as the workflow entry point.
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). The executable test
+creates a real Git repository, records a signed note, verifies it with a public-only
+runner, and proves that changing the commit forces execution again.

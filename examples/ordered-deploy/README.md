@@ -24,19 +24,19 @@ The outer deployment owns the ordering constraint:
 checkout → build applications → deploy → backend, then frontend
 ```
 
-The public `deploy()` action yields both application deployments in their required
+The private `deploy()` action yields both application deployments in their required
 order. Each application deployment yields the shared build itself, so it remains valid
-when targeted or reused elsewhere. The workflow asks for the aggregate desired state;
-locally, a developer or agent can discover it with `cf-ci list` and invoke it directly
-with `cf-ci run deploy`.
+when reused by another action. The workflow asks for the aggregate desired state;
+the action is intentionally not exported as a public `cf-ci` target.
 
 That separation is intentional. Workflows route external events such as pushes,
-deleted branches, deployment hooks, or observability incidents. Exported actions are
-the universal local interface. A local `deploy` can be prohibited or supplied a safer
-runner implementation without changing what production events invoke.
+deleted branches, deployment hooks, or observability incidents. Projects may expose
+selected actions as local commands, but a production deploy should not become one by
+accident.
 
-The fixture records deployment order locally and rejects an out-of-order frontend
-deployment. The commands are harmless stand-ins for two Wrangler deployments.
+The fixture contains two real Workers. Both are built with `cf build`; then the backend
+and frontend are deployed in order with `cf deploy --prebuilt --dry-run`. Dry-run mode
+exercises the production bundling and deployment path without credentials or writes.
 
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and

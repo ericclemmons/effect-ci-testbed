@@ -6,5 +6,4 @@ const workflow = CI.workflow("runner-selection", function* () {
   return yield* actions.test()
 })
 
-export * from "./actions.ts"
 export default workflow

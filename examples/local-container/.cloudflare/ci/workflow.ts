@@ -12,5 +12,4 @@ const workflow = CI.workflow("local-container", function* () {
 export const local = ({ root }: { readonly root: string }) =>
   LocalContainer.makeRunner({ image: "node:24-bookworm", root })
 
-export * from "./actions.ts"
 export default workflow

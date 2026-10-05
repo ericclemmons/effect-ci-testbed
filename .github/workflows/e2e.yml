@@ -29,6 +29,7 @@ jobs:
           - snapshot-fanout
           - cloudflare-runner
           - cloudflare-toolchain
+          - dynamic-worker-checks
           - vite-plus-cache
           - turborepo-cache
           - package-manager-cache
@@ -97,6 +98,7 @@ jobs:
           - node-version
           - system-package
           - cache-policy
+          - dynamic-worker-checks
           - d1-migration
           - ordered-deploy
           - custom-container-image
@@ -225,6 +227,47 @@ jobs:
       - run: pnpm install
       - run: node --test examples/vite-plus-cache/.cloudflare/ci/tests/automatic-data-tracking.test.ts
 
+  signed-evidence:
+    name: verification-evidence / signed Git note reuse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Record locally and verify with a public-only CI runner
+        env:
+          EFFECT_CI_EVENT: push
+          EFFECT_CI_REVISION: ${{ github.sha }}
+        run: |
+          git config user.name "Effect CI"
+          git config user.email "effect-ci@users.noreply.github.com"
+          node --input-type=module -e '
+            import { generateKeyPairSync } from "node:crypto"
+            import { writeFileSync } from "node:fs"
+            const pair = generateKeyPairSync("ed25519", {
+              privateKeyEncoding: { format: "pem", type: "pkcs8" },
+              publicKeyEncoding: { format: "pem", type: "spki" },
+            })
+            writeFileSync(process.env.RUNNER_TEMP + "/effect-ci-private.pem", pair.privateKey)
+            writeFileSync(process.env.RUNNER_TEMP + "/effect-ci-public.pem", pair.publicKey)
+          '
+          export EFFECT_CI_CHECK_PRIVATE_KEY="$(cat "$RUNNER_TEMP/effect-ci-private.pem")"
+          export EFFECT_CI_CHECK_PUBLIC_KEY="$(cat "$RUNNER_TEMP/effect-ci-public.pem")"
+          pnpm cf-ci --workflow examples/verification-evidence/.cloudflare/ci/workflow.ts run --format=json
+
+          unset EFFECT_CI_CHECK_PRIVATE_KEY
+          output=$(pnpm --silent cf-ci --workflow examples/verification-evidence/.cloudflare/ci/workflow.ts run --format=json)
+          echo "$output"
+          OUTPUT="$output" node -e '
+            const value = JSON.parse(process.env.OUTPUT)
+            const lint = value.plan.nodes.find((node) => node.id === "verified lint")
+            if (lint?.status !== "verified") process.exit(1)
+          '
+
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
     strategy:
@@ -287,6 +330,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-toolchain
             workflow: examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: dynamic-worker-checks
+            workflow: examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: vite-plus-cache
             workflow: examples/vite-plus-cache/.cloudflare/ci/workflow.ts
@@ -384,6 +430,12 @@ jobs:
           - example: cloudflare-toolchain
             package: effect-ci-cloudflare-toolchain-fixture
             workflow: effect-ci-cloudflare-toolchain
+          - example: custom-runner-image
+            package: effect-ci-custom-runner-image-fixture
+            workflow: effect-ci-custom-runner-image
+          - example: dynamic-worker-checks
+            package: effect-ci-dynamic-worker-checks-fixture
+            workflow: effect-ci-dynamic-worker-checks
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout

@@ -8,5 +8,4 @@ const workflow = CI.workflow("immutable-attempts", function* () {
   return yield* actions.build()
 })
 
-export * from "./actions.ts"
 export default workflow

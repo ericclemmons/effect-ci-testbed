@@ -9,5 +9,4 @@ const workflow = CI.workflow("optional-checks", function* () {
   ])
 })
 
-export * from "./actions.ts"
 export default workflow

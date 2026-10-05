@@ -487,9 +487,11 @@ export const main = async (
       return ExitCode.success
     }
 
-    const configured = typeof program.local === "function"
+    const defaults = defaultLocalOptions(workflowPath)
+    const overrides = typeof program.local === "function"
       ? program.local({ root: projectRoot(workflowPath), workflowPath })
-      : program.local ?? defaultLocalOptions(workflowPath)
+      : program.local ?? {}
+    const configured: CI.RunConfiguration = { ...defaults, ...overrides }
     const result = await (async () => {
       try {
         return await CI.runPromise(workflow, {
