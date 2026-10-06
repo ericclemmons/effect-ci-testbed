@@ -47,6 +47,8 @@ jobs:
   run:
     name: ${{ matrix.mode }}
     runs-on: ${{ fromJSON(inputs.runs-on) }}
+    env:
+      EFFECT_CI_CHECK_PUBLIC_KEY: ${{ secrets.EFFECT_CI_CHECK_PUBLIC_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,7 +73,7 @@ jobs:
           private-key: ${{ secrets.EFFECT_CI_APP_PRIVATE_KEY }}
           permission-checks: write
       - name: Fetch signed Effect CI evidence
-        if: matrix.mode == 'execute' && secrets.EFFECT_CI_CHECK_PUBLIC_KEY != ''
+        if: matrix.mode == 'execute' && env.EFFECT_CI_CHECK_PUBLIC_KEY != ''
         run: git fetch origin refs/notes/effect-ci:refs/notes/effect-ci
       - name: Run ${{ inputs.workflow }} (${{ matrix.mode }})
         env:
@@ -82,5 +84,4 @@ jobs:
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}
-          EFFECT_CI_CHECK_PUBLIC_KEY: ${{ secrets.EFFECT_CI_CHECK_PUBLIC_KEY }}
         run: node packages/github/run.run.ts
