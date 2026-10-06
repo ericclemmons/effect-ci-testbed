@@ -18,6 +18,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - zero-config
           - exported-actions
           - node-pnpm
           - optional-checks
@@ -89,6 +90,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - zero-config
           - exported-actions
           - node-pnpm
           - optional-checks
@@ -102,6 +104,7 @@ jobs:
           - d1-migration
           - ordered-deploy
           - custom-container-image
+          - deploy-hook
         mode:
           - plan
           - execute
@@ -115,7 +118,7 @@ jobs:
       - run: pnpm install
       - name: Run examples/${{ matrix.example }} (${{ matrix.mode }})
         env:
-          EFFECT_CI_EVENT: pull_request
+          EFFECT_CI_EVENT: ${{ matrix.example == 'deploy-hook' && 'deploy_hook' || 'pull_request' }}
         run: pnpm cf-ci --workflow examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
   agent-cli:
@@ -204,6 +207,7 @@ jobs:
           - secure-secrets
           - portable-artifacts
           - verification-evidence
+          - source-providers
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -277,6 +281,13 @@ jobs:
           - example: node-npm
             workflow: examples/node-npm/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+          - example: zero-config
+            workflow: examples/zero-config/.cloudflare/ci/ci.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: deploy-hook
+            workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+            event: deploy_hook
           - example: exported-actions
             workflow: examples/exported-actions/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
@@ -368,6 +379,7 @@ jobs:
     with:
       workflow: ${{ matrix.workflow }}
       runs-on: ${{ matrix.runs-on }}
+      event: ${{ matrix.event || '' }}
       cache-key: ${{ matrix.cache-key || '' }}
       cache-key-files: ${{ matrix.cache-key-files || '' }}
       cache-path: ${{ matrix.cache-path || '' }}
@@ -436,6 +448,9 @@ jobs:
           - example: dynamic-worker-checks
             package: effect-ci-dynamic-worker-checks-fixture
             workflow: effect-ci-dynamic-worker-checks
+          - example: docker-in-docker
+            package: effect-ci-docker-in-docker-fixture
+            workflow: effect-ci-docker-in-docker
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout

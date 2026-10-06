@@ -135,6 +135,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
         return CI.Workspace.remote(name, containerRoot)
       }),
+      reference: { kind: "local", path: options.root ?? process.cwd() },
     },
     executor: {
       execute: ({ command, onOutput, stepId, workspace }) => Effect.tryPromise({

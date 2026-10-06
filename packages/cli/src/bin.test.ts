@@ -6,6 +6,7 @@ import test from "node:test"
 const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
 const repository = fileURLToPath(new URL("../../../", import.meta.url))
 const example = fileURLToPath(new URL("../../../examples/exported-actions/", import.meta.url))
+const zeroConfig = fileURLToPath(new URL("../../../examples/zero-config/", import.meta.url))
 
 const run = (args: ReadonlyArray<string>, cwd: string = repository) =>
   spawnSync(process.execPath, [bin, ...args], {
@@ -62,4 +63,21 @@ test("renders the planned action graph as Mermaid", () => {
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /^flowchart LR/m)
   assert.match(result.stdout, /step_checkout --> step_check/)
+})
+
+test("an empty ci.ts infers conventional package scripts", () => {
+  const listed = run(["list", "--format=json"], zeroConfig)
+
+  assert.equal(listed.status, 0, listed.stderr)
+  const output = JSON.parse(listed.stdout) as {
+    readonly targets: ReadonlyArray<string>
+    readonly workflow: string
+  }
+  assert.equal(output.workflow, "effect-ci-zero-config-fixture")
+  assert.deepEqual(output.targets, ["build", "format", "lint", "test"])
+
+  const planned = run(["plan", "--format=mermaid"], zeroConfig)
+  assert.equal(planned.status, 0, planned.stderr)
+  assert.match(planned.stdout, /step_checkout --> step_install/)
+  assert.match(planned.stdout, /step_test --> step_build/)
 })

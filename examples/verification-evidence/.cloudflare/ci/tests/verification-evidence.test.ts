@@ -44,7 +44,7 @@ const run = (checkCache: CI.CheckCache, checkout = repository) => CI.runPromise(
     type: "push",
     ref: "refs/heads/main",
     revision,
-    source: { repository: "https://example.test/repository.git", revision },
+    source: { kind: "git", repository: "https://example.test/repository.git", revision },
   },
   executor,
   output: "silent",
@@ -70,6 +70,7 @@ await CI.runPromise(workflow, {
     ref: "refs/heads/main",
     revision: changedRevision,
     source: {
+      kind: "git",
       repository: "https://example.test/repository.git",
       revision: changedRevision,
     },

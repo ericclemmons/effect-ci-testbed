@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { existsSync, readFileSync } from "node:fs"
+import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
 import { detectAgenticEnvironment } from "am-i-vibing"
@@ -187,7 +187,16 @@ directory or one of its parents.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 An explicit --format always wins.`
 
-const workflowNames = ["workflow.ts", "workflow.mts", "workflow.js", "workflow.mjs"] as const
+const workflowNames = [
+  "workflow.ts",
+  "workflow.mts",
+  "workflow.js",
+  "workflow.mjs",
+  "ci.ts",
+  "ci.mts",
+  "ci.js",
+  "ci.mjs",
+] as const
 const findWorkflow = (cwd: string): string | undefined => {
   let directory = resolve(cwd)
 
@@ -276,6 +285,14 @@ export const loadProgram = async (
     readonly remote?: Program["remote"]
   }
 
+  if (!module.default && basename(selected.path).startsWith("ci.")) {
+    return {
+      args: selected.args,
+      path: selected.path,
+      program: inferJavaScriptProgram(projectRoot(selected.path)),
+    }
+  }
+
   if (!module.default) {
     throw new CliFailure(
       "CI_WORKFLOW_INVALID",
@@ -293,6 +310,75 @@ export const loadProgram = async (
       ...(module.remote ? { remote: module.remote } : {}),
       workflow: module.default,
     },
+  }
+}
+
+const inferredScriptOrder = [
+  "format",
+  "lint",
+  "check",
+  "typecheck",
+  "test",
+  "build",
+] as const
+
+const inferJavaScriptProgram = (root: string): Program => {
+  const manifestPath = join(root, "package.json")
+
+  if (!existsSync(manifestPath)) {
+    throw new CliFailure(
+      "CI_ZERO_CONFIG_UNSUPPORTED",
+      ExitCode.usage,
+      `Zero-config CI requires a package.json at ${manifestPath}`,
+    )
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+    readonly name?: string
+    readonly scripts?: Readonly<Record<string, string>>
+  }
+  const names = inferredScriptOrder.filter((name) => manifest.scripts?.[name])
+
+  if (names.length === 0) {
+    throw new CliFailure(
+      "CI_ZERO_CONFIG_NO_TASKS",
+      ExitCode.usage,
+      "Zero-config CI found no format, lint, check, typecheck, test, or build scripts",
+    )
+  }
+
+  const checkout = CI.action("checkout", function* () {
+    const source = yield* CI.Source
+
+    return () => source.checkout()
+  })
+  const install = CI.action("install", () => function* () {
+    const workspace = yield* checkout()
+    const packageManager = yield* CI.PackageManager.JavaScript(workspace)
+
+    return yield* packageManager.install()
+  })
+  const actions = Object.fromEntries(names.map((name) => [
+    name,
+    CI.action(name, () => function* () {
+      const workspace = yield* install()
+      const packageManager = yield* CI.PackageManager.JavaScript(workspace)
+
+      return yield* packageManager.run(name)
+    }),
+  ])) as Readonly<Record<string, ActionTarget>>
+
+  return {
+    actions,
+    workflow: CI.workflow(manifest.name ?? "ci", function* () {
+      let workspace: unknown
+
+      for (const name of names) {
+        workspace = yield* actions[name]!()
+      }
+
+      return workspace
+    }),
   }
 }
 
@@ -322,6 +408,7 @@ const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
       ...(repository && revision
         ? {
             source: {
+              kind: "git",
               repository: `https://github.com/${repository}.git`,
               revision,
             },
@@ -330,6 +417,7 @@ const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
     },
     source: {
       checkout: () => Effect.succeed(CI.Workspace.local(projectRoot(workflowPath))),
+      reference: { kind: "local", path: projectRoot(workflowPath) },
     },
   }
 }

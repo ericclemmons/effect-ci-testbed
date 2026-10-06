@@ -68,6 +68,7 @@ interface WorkspaceContainerStub {
 }
 
 export interface WorkspaceContainerOptions {
+  readonly entrypoint?: ReadonlyArray<string>
   readonly image?: string
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
 }
@@ -132,7 +133,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     container.start({
       image: configuredImage ?? imageName,
       instance: options.instance ?? "lite",
-      entrypoint: ["sleep", "infinity"],
+      entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
   }
@@ -510,6 +511,11 @@ export const makeRunner = (options: RunnerOptions): Runner => {
         },
         catch: (error) => error,
       }),
+      reference: {
+        kind: "git",
+        repository: options.repository,
+        revision: options.revision,
+      },
     },
     executor: {
       handlesStepOptions: true,
@@ -719,6 +725,7 @@ export const workflowEntrypoint = <
         payload: event.payload,
         revision: event.payload.revision,
         source: {
+          kind: "git",
           repository: event.payload.repository,
           revision: event.payload.revision,
         },

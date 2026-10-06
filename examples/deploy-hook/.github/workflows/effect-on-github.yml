@@ -1,0 +1,16 @@
+name: Effect CI on GitHub
+
+on:
+  deployment:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
+    secrets: inherit
