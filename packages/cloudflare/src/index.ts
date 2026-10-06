@@ -77,6 +77,8 @@ export interface WorkspaceContainerOptions {
   readonly entrypoint?: ReadonlyArray<string>
   readonly image?: string
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
+  /** Command that must succeed before a newly started or restored container is usable. */
+  readonly readyCommand?: string
 }
 
 interface WorkspaceContainerEnvironment {}
@@ -128,6 +130,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
+      await this.waitUntilReady(options)
       this.workingCheckpointId = activeCheckpoint.id
       this.dirty = false
 
@@ -143,6 +146,17 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
+    await this.waitUntilReady(options)
+  }
+
+  private async waitUntilReady(options: WorkspaceContainerOptions): Promise<void> {
+    if (!options.readyCommand) return
+
+    const ready = await this.run(["sh", "-lc", options.readyCommand])
+
+    if (ready.exitCode !== 0) {
+      throw new Error(ready.stderr || ready.stdout || "Container readiness check failed")
+    }
   }
 
   private async materialize(
@@ -178,6 +192,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
+      await this.waitUntilReady(options)
       this.workingCheckpointId = revision.id
       this.dirty = false
     }
@@ -425,6 +440,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
+    await this.waitUntilReady(options)
     this.activeStepId = undefined
     this.dirty = false
     this.workingCheckpointId = snapshot.id
