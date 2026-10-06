@@ -25,6 +25,10 @@ The consumer model is intentionally small:
   the matching `CI.Source`; `source.checkout()` therefore has no repository path or URL
   argument. Non-source events, such as an observability issue, may omit source entirely
   and route directly to diagnosis or healing actions.
+- `CI.Source` is a materialization capability, not a synonym for Git. A runner may
+  restore the same logical revision from a local directory, GitHub, R2, a Durable
+  Object snapshot, or a previously published artifact. Actions should not know which
+  provider satisfied `source.checkout()`.
 - Retry and timeout policy lives on an action and is lowered by the runner: Effect
   handles it locally, while Cloudflare receives native `step.do` options.
 - `CI.when` is the small, serializable condition algebra for branches operators must
@@ -81,9 +85,12 @@ means that execution model is genuinely irrelevant to the use-case.
 | Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| Infer lint, format, check, test, and build by adding only `ci.ts` | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | 🔜 |
+| Materialize one workspace from local, GitHub, R2, Durable Object, or artifact sources | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
+| Route deployment lifecycle hooks into an inspectable workflow branch | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | 🔜 |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
 | [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
@@ -93,6 +100,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |
 | [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
+| Build and run a user-provided Dockerfile inside a Cloudflare Sandbox | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |
@@ -130,6 +138,17 @@ project modules loaded with explicit capabilities. The architectural goal is bro
 than linting: formatting, tests, builds, and other SDLC work should use an isolate
 whenever their declared capabilities permit it, because compute and memory should only
 be reserved for a container when the work actually requires one.
+
+Zero-config discovery must still produce an ordinary inspectable plan. The intended
+flow is that a minimal `ci.ts` asks Effect CI to infer supported project tasks from
+package scripts and known tool manifests; users can then replace or refine any inferred
+action. Discovery is an authoring convenience, not a second opaque execution engine.
+
+Running a user's Dockerfile is distinct from customizing the outer runner image.
+Cloudflare supports Docker-in-Docker with `docker:dind`; the daemon must disable
+iptables and IP forwarding, and networked inner builds or runs use host networking.
+That limitation belongs in the runner layer so the portable build action can continue
+to say `docker build` without Cloudflare-specific flags.
 
 ## Try it locally
 
