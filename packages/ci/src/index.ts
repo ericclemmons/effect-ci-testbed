@@ -374,18 +374,21 @@ export class CommandError extends Error {
   readonly command: string
   readonly cwd: string
   readonly exitCode: number
+  readonly details: string | undefined
 
   constructor(
     stepId: string,
     command: string,
     cwd: string,
     exitCode: number,
+    details?: string,
   ) {
-    super(`Command failed (${exitCode}): ${command}`)
+    super(`Command failed (${exitCode}): ${command}${details ? `\n${details}` : ""}`)
     this.stepId = stepId
     this.command = command
     this.cwd = cwd
     this.exitCode = exitCode
+    this.details = details
   }
 }
 

@@ -557,6 +557,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               command,
               workspace.cwd,
               result.exitCode,
+              result.stderr || result.stdout,
             )
           }
 
