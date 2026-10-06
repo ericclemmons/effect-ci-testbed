@@ -15,10 +15,10 @@ export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
     entrypoint: [
       "sh",
       "-c",
-      "dockerd-entrypoint.sh dockerd --iptables=false --ip6tables=false --ip-forward=false >/var/log/dockerd.log 2>&1 & exec sleep infinity",
+      "rm -f /var/run/docker.pid /var/run/docker.sock; dockerd-entrypoint.sh dockerd --iptables=false --ip6tables=false --ip-forward=false >/var/log/dockerd.log 2>&1 & exec sleep infinity",
     ],
     image: "workspace",
-    readyCommand: "for attempt in $(seq 1 100); do docker info >/dev/null 2>&1 && exit 0; sleep 0.2; done; cat /var/log/dockerd.log >&2; exit 1",
+    readyCommand: "for attempt in $(seq 1 100); do timeout 1 docker info >/dev/null 2>&1 && exit 0; sleep 0.2; done; cat /var/log/dockerd.log >&2; exit 1",
   },
   root: "examples/docker-in-docker",
 })
