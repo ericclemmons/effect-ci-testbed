@@ -1,8 +1,13 @@
 # Declare secrets without putting them in a container
 
-This example answers one question:
-
 > How does an action require a credential without leaking it into plans, logs, or command environments?
+
+```mermaid
+flowchart LR
+  step_authenticate_registry["authenticate registry"]
+```
+
+---
 
 ```ts
 const token = yield* CI.Secret("GITHUB_TOKEN")

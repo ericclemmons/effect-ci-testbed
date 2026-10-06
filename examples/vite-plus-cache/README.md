@@ -1,13 +1,22 @@
 # Reuse the Vite+ task cache
 
-This example answers one question:
-
 > How can separate CI runs reuse Vite+ task results without teaching Effect CI how
 > Vite+ fingerprints a build?
 
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_build
+```
+
+---
+
 The two cache layers have deliberately different jobs:
 
-1. Vite Task owns correctness. `vp run build` observes the command's file reads,
+1. Vite Task owns correctness. `vp run --cache build` observes the command's file reads,
    missing-file probes, directory listings, and writes. On a matching run it restores
    `dist/`, replays the output, and skips the command. The task declares no input or
    output globs.
@@ -34,17 +43,19 @@ restored cache.
 
 The cache provider changes; the Vite+ command and its correctness model do not.
 
-The complete Vite+ configuration is intentionally this small:
+No Vite+ task configuration is required. The project keeps its ordinary package
+script:
 
-```ts
-export default defineConfig({
-  run: {
-    tasks: {
-      build: "node scripts/build.ts",
-    },
-  },
-})
+```json
+{
+  "scripts": {
+    "build": "node scripts/build.ts"
+  }
+}
 ```
+
+`vp run --cache build` opts that existing script into automatic task caching. The
+installed Vite+ release spells the flag `--cache` (not `--cached`).
 
 The example's behavioral test verifies a cold miss, restoration of a deleted output,
 a hit after an unrelated file changes, and a miss after the file actually read by the
@@ -61,7 +72,7 @@ export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
   return yield* workspace.exec(
-    "cd examples/vite-plus-cache/app && npx vp run -t vite-plus-cache-app#build",
+    "cd app && npx vp run --cache build",
   )
 })
 ```
@@ -71,10 +82,11 @@ a new logical filesystem revision. The Cloudflare interpreter snapshots that rev
 including Vite+'s updated task cache. The action does not return a Cloudflare snapshot
 or a hand-written artifact manifest.
 
-The portable workflow declares one rolling cache and the tool-owned path to protect:
+The portable workflow remains cache-agnostic. The runner declares the tool-owned path
+it can persist:
 
 ```ts
-CI.workflow("vite-plus-cache", workflow, {
+Cloudflare.workflowEntrypoint(workflow, {
   cache: {
     key: "vite-task",
     keyFiles: ["examples/vite-plus-cache/app/package-lock.json"],
@@ -83,33 +95,7 @@ CI.workflow("vite-plus-cache", workflow, {
 })
 ```
 
-GitHub translates this policy to `actions/cache`; Cloudflare translates it to a
-snapshot cache. The Worker contains no Vite-specific cache configuration.
-
-Run Wrangler locally with Docker available:
-
-```sh
-pnpm dev
-```
-
-Trigger two different Workflow instances against the same revision. The first build
-populates Vite Task's cache; the second restores the rolling snapshot and reports a Vite+
-cache hit:
-
-```sh
-pnpm exec wrangler workflows trigger effect-ci-vite-plus-cache \
-  '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' \
-  --id vite-cache-1 \
-  --local
-
-pnpm exec wrangler workflows trigger effect-ci-vite-plus-cache \
-  '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' \
-  --id vite-cache-2 \
-  --local
-```
-
-Container snapshots currently have an implicit 30-day lifetime, refreshed on restore.
-The cache is an optimization: a missing or expired snapshot produces a normal Vite+
-cache miss. Snapshots contain the full filesystem, so commands must not persist secrets
-to disk. Concurrent runs may replace the rolling pointer in either order, but every
-snapshot is immutable and Vite+ still validates its own fingerprints.
+GitHub supplies the equivalent policy to `actions/cache`. Cloudflare persistence is
+still roadmap work: it must merge only Vite+'s cache directory into the current
+workspace and must not replace that workspace with an earlier snapshot. Vite+ owns the
+fingerprints and cache correctness after the runner makes those bytes available.

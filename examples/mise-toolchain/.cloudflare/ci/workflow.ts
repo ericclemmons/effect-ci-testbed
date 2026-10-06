@@ -1,6 +1,3 @@
-#!/usr/bin/env node
-
-import * as CLI from "@effect-ci-testbed/cli"
 import * as CI from "@effect-ci-testbed/ci"
 import * as LocalContainer from "@effect-ci-testbed/local-container"
 
@@ -12,13 +9,9 @@ const workflow = CI.workflow("mise-toolchain", function* () {
   return yield* actions.verifyPython()
 })
 
-export const local = () => LocalContainer.makeRunner({
+export const local = ({ root }: { readonly root: string }) => LocalContainer.makeRunner({
   image: "ghcr.io/jdx/mise:2026.9.11-debian",
+  root,
 })
 
-export * from "./actions.ts"
 export default workflow
-
-if (CLI.isMain(import.meta.url)) {
-  await CLI.runMain({ actions, local, workflow })
-}

@@ -22,10 +22,21 @@ export interface WorkflowStepConfig {
   readonly timeout?: WorkflowDuration
 }
 
-export interface StepOptions extends WorkflowStepConfig {
-  readonly cache?: boolean | "auto"
-  /** Allow a trusted runner to reuse signed evidence for this side-effect-free action. */
-  readonly verification?: { readonly scope: "commit" }
+export type StepOptions = WorkflowStepConfig
+
+export interface CheckOptions extends StepOptions {
+  /** Allow a trusted runner to reuse this side-effect-free check for the same commit. */
+  readonly reuse?: { readonly scope: "commit" }
+}
+
+type InternalStepOptions = StepOptions & Pick<CheckOptions, "reuse">
+
+export interface ActionOptions extends StepOptions {
+  /**
+   * Reverses external state introduced by this action. Rollbacks run after the
+   * action exhausts its retries, then unwind in reverse completion order.
+   */
+  readonly rollback?: ActionTarget
 }
 
 export type WorkflowBody<A> =
@@ -46,10 +57,17 @@ export type ActionHandler<Args extends ReadonlyArray<unknown>, A> = (...args: Ar
 export type ActionConstruction<Args extends ReadonlyArray<unknown>, A> =
   WorkflowBody<ActionHandler<Args, A>>
 
+/** An action factory that can be exposed as a zero-argument CLI target. */
+export type ActionTarget = () => Effect.Effect<unknown, unknown, any>
+
 interface StepDefinition<A = unknown> {
   readonly id: string
   readonly body: Effect.Effect<A, unknown, Runtime | CurrentStep>
-  readonly options: StepOptions
+  readonly options: InternalStepOptions
+  readonly rollback?: {
+    readonly id: string
+    readonly effect: Effect.Effect<unknown, unknown, any>
+  }
 }
 
 export interface PlannedCommand {
@@ -60,11 +78,11 @@ export interface PlannedCommand {
 export interface PlanNode {
   readonly id: string
   readonly after: ReadonlyArray<string>
-  readonly needs: ReadonlyArray<string>
+  readonly dependencies: ReadonlyArray<string>
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly condition?: Condition
   /** This node runs only after the referenced node exhausts its retry policy. */
-  readonly compensationFor?: string
+  readonly rollbackFor?: string
   readonly approval?: ApprovalRequest
   readonly artifacts: ReadonlyArray<{
     readonly direction: "publish" | "restore"
@@ -72,7 +90,7 @@ export interface PlanNode {
     readonly paths: ReadonlyArray<string>
   }>
   readonly optional: boolean
-  readonly options: StepOptions
+  readonly options: InternalStepOptions
   /** Secret names required by the step. Values are never part of the plan. */
   readonly secrets: ReadonlyArray<string>
   readonly status:
@@ -127,7 +145,7 @@ export class WorkflowPlanError extends Error {
 }
 
 /**
- * Selects the requested nodes and every node that transitively needs them.
+ * Selects the requested nodes and everything that transitively consumes them.
  * Ordering-only `after` edges do not carry values and therefore do not
  * invalidate downstream work.
  */
@@ -147,7 +165,7 @@ export const planRerun = (
 
   const dependents = new Map<string, Set<string>>()
   for (const node of plan.nodes) {
-    for (const dependency of node.needs) {
+    for (const dependency of node.dependencies) {
       const children = dependents.get(dependency) ?? new Set<string>()
       children.add(node.id)
       dependents.set(dependency, children)
@@ -201,7 +219,7 @@ export type RuntimeEvent =
       readonly type: "dependency.added"
       readonly workflowId: string
       readonly stepId: string
-      readonly needs: string
+      readonly dependency: string
       readonly timestamp: string
     }
   | {
@@ -243,7 +261,7 @@ interface RuntimeNode {
   readonly commands: Array<PlannedCommand>
   approval?: ApprovalRequest
   condition?: Condition
-  compensationFor?: string
+  rollbackFor?: string
   readonly secrets: Set<string>
   executedCommands: number
   verifiedCommands: number
@@ -267,11 +285,12 @@ interface RuntimeShape {
   ) => Effect.Effect<void>
   readonly markOptional: (stepId: string) => Effect.Effect<void>
   readonly skip: (stepId: string, condition: Condition) => Effect.Effect<void>
-  readonly registerCompensation: (
+  readonly registerRollback: (
     primaryId: string,
-    compensationId: string,
-    compensation: Effect.Effect<unknown, unknown, any>,
+    rollbackId: string,
+    rollback: Effect.Effect<unknown, unknown, any>,
   ) => Effect.Effect<void, unknown, any>
+  readonly unwind: (original: unknown) => Effect.Effect<undefined, RollbackError>
   readonly requireSecret: (stepId: string, name: string) => Effect.Effect<void>
   readonly recordArtifact: (
     stepId: string,
@@ -456,23 +475,23 @@ export const Secret = (
   })
 }
 
-export class CompensationError extends Error {
-  readonly _tag = "CompensationError"
+export class RollbackError extends Error {
+  readonly _tag = "RollbackError"
   readonly stepId: string
   readonly original: unknown
-  readonly compensation: unknown
+  readonly rollback: unknown
 
   constructor(
     stepId: string,
     original: unknown,
-    compensation: unknown,
+    rollback: unknown,
   ) {
-    super(`Compensation for ${stepId} failed after the original action failed`, {
-      cause: new AggregateError([original, compensation]),
+    super(`Rollback for ${stepId} failed after the original action failed`, {
+      cause: new AggregateError([original, rollback]),
     })
     this.stepId = stepId
     this.original = original
-    this.compensation = compensation
+    this.rollback = rollback
   }
 }
 
@@ -520,6 +539,14 @@ export class Workspace {
 
   withRevision(revision: WorkspaceCheckpointHandle): Workspace {
     return new Workspace(this.cwd, this.kind, this.id, revision)
+  }
+
+  directory(path: string): Workspace {
+    if (!path || path.startsWith("/") || path.split("/").includes("..")) {
+      throw new Error(`Workspace directory must be relative: ${path}`)
+    }
+
+    return new Workspace(join(this.cwd, path), this.kind, this.id, this.revision)
   }
 
   exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
@@ -1008,7 +1035,8 @@ const Mise = (
 export const Toolchain = { Node, Mise } as const
 
 export interface SourceService {
-  readonly checkout: (root: string) => Effect.Effect<Workspace, unknown>
+  /** Acquire the repository and immutable revision selected by the initiating event. */
+  readonly checkout: () => Effect.Effect<Workspace, unknown>
 }
 
 export class Source extends ServiceMap.Service<Source, SourceService>()(
@@ -1016,7 +1044,7 @@ export class Source extends ServiceMap.Service<Source, SourceService>()(
 ) {}
 
 const localSource: SourceService = {
-  checkout: (root) => Effect.succeed(Workspace.local(root)),
+  checkout: () => Effect.succeed(Workspace.local(process.cwd())),
 }
 
 export interface CommandExecutionRequest {
@@ -1045,7 +1073,7 @@ export interface CommandExecutor {
   ) => Effect.Effect<CommandExecutionResult, CommandError>
 }
 
-export interface VerificationRequest {
+export interface CheckCacheRequest {
   readonly command: string
   readonly event: WorkflowEventShape
   readonly policy: { readonly scope: "commit" }
@@ -1054,10 +1082,10 @@ export interface VerificationRequest {
   readonly workspace: Workspace
 }
 
-/** The implementation verifies signatures and binds evidence to exact inputs. */
-export interface VerificationStore {
-  readonly lookup: (request: VerificationRequest) => Effect.Effect<boolean, unknown>
-  readonly record: (request: VerificationRequest) => Effect.Effect<void, unknown>
+/** Runner policy for reusing side-effect-free checks with the same exact inputs. */
+export interface CheckCache {
+  readonly lookup: (request: CheckCacheRequest) => Effect.Effect<boolean, unknown>
+  readonly record: (request: CheckCacheRequest) => Effect.Effect<void, unknown>
 }
 
 export interface WorkspaceFileSystem {
@@ -1105,41 +1133,20 @@ export interface WorkspacePersistence {
 }
 
 export interface Workflow<A> {
-  readonly cache?: WorkflowCachePolicy | false
   readonly id: string
   readonly effect: Effect.Effect<A, unknown, Runtime | CurrentStep | WorkflowEvent | Approval>
 }
 
-/**
- * Portable cache intent. Paths and key files are repository-relative; the runner
- * decides how those paths are persisted.
- */
-export interface WorkflowCachePolicy {
+/** Runner-owned reusable workspace cache policy. */
+export interface WorkspaceCachePolicy {
   readonly key: string
   readonly keyFiles: ReadonlyArray<string>
   readonly paths: ReadonlyArray<string>
 }
 
-export interface WorkflowOptions {
-  readonly cache?: WorkflowCachePolicy | false
-}
-
-const validateCachePolicy = (
-  cache: WorkflowCachePolicy | false | undefined,
-): void => {
-  if (cache === undefined || cache === false) return
-  if (!cache.key.trim()) throw new Error("CI workflow cache key cannot be empty")
-  if (cache.paths.length === 0) throw new Error("CI workflow cache requires at least one path")
-
-  for (const path of [...cache.paths, ...cache.keyFiles]) {
-    if (!path || path.startsWith("/") || path.split("/").includes("..")) {
-      throw new Error(`CI workflow cache path must be repository-relative: ${path}`)
-    }
-  }
-}
-
 export type WorkflowEventName =
   | "merge_group"
+  | "observability_issue"
   | "pull_request"
   | "push"
   | "release"
@@ -1148,6 +1155,11 @@ export type WorkflowEventName =
 export interface WorkflowEventShape {
   readonly type: WorkflowEventName
   readonly payload?: unknown
+  /** Source selected by the event adapter. Non-source events may omit it. */
+  readonly source?: {
+    readonly repository: string
+    readonly revision: string
+  }
   /** A normalized source ref such as `refs/heads/main` or `refs/tags/v1.0.0`. */
   readonly ref?: string
   /** The immutable source revision, normally a commit SHA. */
@@ -1251,13 +1263,13 @@ const validateStepOptions = (id: string, options: StepOptions): void => {
 
 const runStep = <A>(
   id: string,
-  needs: ReadonlyArray<string> = [],
+  dependencies: ReadonlyArray<string> = [],
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
   const effect = Effect.gen(function* () {
     const runtime = yield* Runtime
     const parent = yield* CurrentStep
     yield* runtime.addDependency(parent, id)
-    for (const dependency of needs) {
+    for (const dependency of dependencies) {
       yield* runtime.addDependency(id, dependency)
     }
     return (yield* Cache.get(runtime.cache, id)) as A
@@ -1267,6 +1279,8 @@ const runStep = <A>(
 }
 
 const actionIds = new WeakMap<object, string>()
+const actionFactories = new WeakSet<Function>()
+const actionFactoryIds = new WeakMap<Function, string>()
 const optionalEffects = new WeakSet<object>()
 
 export const optional = <A, E, R>(
@@ -1326,49 +1340,6 @@ export const when = <A, E, R>(
   return conditional
 }
 
-/**
- * Runs `compensation` only when `effect` has failed after exhausting its own
- * retry policy. The recovery edge is visible in plan mode.
- */
-export const compensate = <A, E, R, B, E2, R2>(
-  effect: Effect.Effect<A, E, R>,
-  compensation: Effect.Effect<B, E2, R2>,
-): Effect.Effect<A, E | CompensationError, R | R2 | Runtime> => {
-  const primaryId = actionIds.get(effect as object)
-  const compensationId = actionIds.get(compensation as object)
-  if (!primaryId || !compensationId) {
-    throw new Error("CI.compensate expects two CI actions or steps")
-  }
-
-  const compensated = Effect.gen(function* () {
-    const runtime = yield* Runtime
-
-    if (runtime.mode === "plan") {
-      const value = yield* effect
-      yield* runtime.registerCompensation(primaryId, compensationId, compensation)
-      return value
-    }
-
-    yield* runtime.registerCompensation(primaryId, compensationId, compensation)
-
-    return yield* effect.pipe(
-      Effect.catch((original) => compensation.pipe(
-        Effect.matchEffect({
-          onFailure: (rollbackFailure) => Effect.fail(new CompensationError(
-            primaryId,
-            original,
-            rollbackFailure,
-          )),
-          onSuccess: () => Effect.fail(original),
-        }),
-      )),
-    )
-  })
-
-  actionIds.set(compensated as object, primaryId)
-  return compensated as Effect.Effect<A, E | CompensationError, R | R2 | Runtime>
-}
-
 export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, any>>>(
   effects: Effects,
 ) => {
@@ -1411,43 +1382,68 @@ export const action = <
 >(
   id: string,
   construction: ActionConstruction<Args, NoInfer<A>>,
-  options: StepOptions = {},
+  options: ActionOptions = {},
 ): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
   let registered = false
 
-  return (...args: Args) => {
+  const factory = (...args: Args): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
     if (!registered) {
       validateStepOptions(id, options)
       if (definitions.has(id)) {
         throw new Error(`Duplicate CI action id: ${id}`)
       }
       registered = true
+      const rollback = options.rollback
+        ? (() => {
+            const rollbackEffect = options.rollback!()
+            const rollbackId = actionFactoryIds.get(options.rollback!)
+            if (!rollbackId) {
+              throw new Error(`Rollback for ${id} must be a CI action`)
+            }
+            return { id: rollbackId, effect: rollbackEffect }
+          })()
+        : undefined
+      const { rollback: _rollback, ...stepOptions } = options
       definitions.set(id, {
         id,
         body: bodyToEffect(construction).pipe(
           Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
         ),
-        options,
+        options: stepOptions,
+        ...(rollback ? { rollback } : {}),
       })
     }
 
     return runStep(id)
   }
+
+  actionFactories.add(factory)
+  actionFactoryIds.set(factory, id)
+  return factory
 }
+
+/**
+ * A side-effect-free assertion whose success can be reused by a trusted runner.
+ * Checks return no workspace revision or domain output: they either succeed or fail.
+ */
+export const check = <Args extends ReadonlyArray<unknown> = ReadonlyArray<never>>(
+  id: string,
+  construction: ActionConstruction<Args, void>,
+  options: CheckOptions = {},
+): ((...args: Args) => Effect.Effect<void, unknown, Runtime | CurrentStep>) =>
+  action<void, Args>(id, construction, options as ActionOptions)
+
+/** Identifies action factories exported as direct CLI targets. */
+export const isAction = (value: unknown): value is ActionTarget =>
+  typeof value === "function" && actionFactories.has(value)
 
 export const workflow = <A>(
   id: string,
   body: WorkflowBody<A>,
-  options: WorkflowOptions = {},
-): Workflow<A> => {
-  validateCachePolicy(options.cache)
-
-  return {
-    id,
-    effect: bodyToEffect(body),
-    ...(options.cache === undefined ? {} : { cache: options.cache }),
-  }
-}
+): Workflow<A> => ({
+  id,
+  effect: bodyToEffect(body),
+})
 
 const makeLocalCommandExecutor = (): CommandExecutor => ({
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
@@ -1525,7 +1521,7 @@ const makeRuntime = (
     checkpoint: () => Effect.succeed({ provider: "local", value: undefined }),
     restore: ({ checkpoint }) => Effect.succeed(checkpoint.workspace),
   },
-  verification?: VerificationStore,
+  checkCache?: CheckCache,
   rerun?: {
     readonly previous: WorkflowAttempt
     readonly selection: WorkflowRerunPlan
@@ -1539,14 +1535,19 @@ const makeRuntime = (
     const optionalSteps = new Set<string>()
     const outputs = new Map<string, unknown>()
     const parallelSteps = new Set<string>()
+    const completedRollbacks: Array<{
+      readonly primaryId: string
+      readonly rollbackId: string
+      readonly effect: Effect.Effect<unknown, unknown, any>
+    }> = []
     const reusable = new Set(rerun?.selection.reuse ?? [])
     const previousNodes = new Map(
       rerun?.previous.plan.nodes.map((node) => [node.id, node]) ?? [],
     )
     let workflowBarrier: {
       readonly after: ReadonlyArray<string>
-      readonly needs: ReadonlyArray<string>
-    } = { after: [], needs: [] }
+      readonly dependencies: ReadonlyArray<string>
+    } = { after: [], dependencies: [] }
     let runtime!: RuntimeShape
 
     for (const id of reusable) {
@@ -1562,7 +1563,7 @@ const makeRuntime = (
         ))
       }
 
-      for (const dependency of previousNode.needs) edges.add(`${id}->${dependency}`)
+      for (const dependency of previousNode.dependencies) edges.add(`${id}->${dependency}`)
       for (const dependency of previousNode.after) afterEdges.add(`${id}->${dependency}`)
       if (previousNode.optional) optionalSteps.add(id)
       nodes.set(id, {
@@ -1571,8 +1572,8 @@ const makeRuntime = (
         commands: [...previousNode.commands],
         ...(previousNode.approval ? { approval: previousNode.approval } : {}),
         ...(previousNode.condition ? { condition: previousNode.condition } : {}),
-        ...(previousNode.compensationFor
-          ? { compensationFor: previousNode.compensationFor }
+        ...(previousNode.rollbackFor
+          ? { rollbackFor: previousNode.rollbackFor }
           : {}),
         secrets: new Set(previousNode.secrets ?? []),
         executedCommands: 0,
@@ -1610,7 +1611,23 @@ const makeRuntime = (
         nodes.set(id, node)
 
         if (reusable.has(id)) {
-          return Effect.succeed(outputs.get(id))
+          const reused = Effect.succeed(outputs.get(id))
+          if (!definition.rollback || mode !== "execute") return reused
+
+          return runtime.registerRollback(
+            id,
+            definition.rollback.id,
+            definition.rollback.effect,
+          ).pipe(
+            Effect.tap(() => Effect.sync(() => {
+              completedRollbacks.push({
+                primaryId: id,
+                rollbackId: definition.rollback!.id,
+                effect: definition.rollback!.effect,
+              })
+            })),
+            Effect.andThen(reused),
+          )
         }
 
         node.status = mode === "plan" ? "planned" : "queued"
@@ -1641,6 +1658,29 @@ const makeRuntime = (
           Effect.tap((value) => Effect.sync(() => {
             outputs.set(id, value)
           })),
+          Effect.tap(() => {
+            if (!definition.rollback) return Effect.void
+
+            if (mode === "plan") {
+              return runtime.registerRollback(
+                id,
+                definition.rollback.id,
+                definition.rollback.effect,
+              )
+            }
+
+            return runtime.registerRollback(
+              id,
+              definition.rollback.id,
+              definition.rollback.effect,
+            ).pipe(Effect.tap(() => Effect.sync(() => {
+              completedRollbacks.push({
+                primaryId: id,
+                rollbackId: definition.rollback!.id,
+                effect: definition.rollback!.effect,
+              })
+            })))
+          }),
           Effect.tap(() => {
             node.status = mode === "plan"
               ? "planned"
@@ -1688,15 +1728,15 @@ const makeRuntime = (
       addDependency: (parent, child) => Effect.gen(function* () {
         if (parent === "$workflow") {
           if (parallelSteps.delete(child)) return
-          for (const dependency of workflowBarrier.needs) {
+          for (const dependency of workflowBarrier.dependencies) {
             edges.add(`${child}->${dependency}`)
           }
           for (const dependency of workflowBarrier.after) {
             afterEdges.add(`${child}->${dependency}`)
           }
           workflowBarrier = optionalSteps.has(child)
-            ? { after: [child], needs: [] }
-            : { after: [], needs: [child] }
+            ? { after: [child], dependencies: [] }
+            : { after: [], dependencies: [child] }
           return
         }
         edges.add(`${parent}->${child}`)
@@ -1704,7 +1744,7 @@ const makeRuntime = (
           type: "dependency.added",
           workflowId,
           stepId: parent,
-          needs: child,
+          dependency: child,
           timestamp: new Date().toISOString(),
         })
       }),
@@ -1713,7 +1753,7 @@ const makeRuntime = (
         for (const step of steps) {
           if (step.optional) optionalSteps.add(step.id)
           parallelSteps.add(step.id)
-          for (const dependency of workflowBarrier.needs) {
+          for (const dependency of workflowBarrier.dependencies) {
             edges.add(`${step.id}->${dependency}`)
           }
           for (const dependency of workflowBarrier.after) {
@@ -1722,7 +1762,7 @@ const makeRuntime = (
         }
         workflowBarrier = {
           after: steps.filter((step) => step.optional).map((step) => step.id),
-          needs: steps.filter((step) => !step.optional).map((step) => step.id),
+          dependencies: steps.filter((step) => !step.optional).map((step) => step.id),
         }
       }),
       markOptional: (stepId) => Effect.sync(() => {
@@ -1754,9 +1794,9 @@ const makeRuntime = (
           timestamp: new Date().toISOString(),
         })
       }),
-      registerCompensation: (primaryId, compensationId, compensation) => Effect.gen(function* () {
-        const node = nodes.get(compensationId) ?? {
-          id: compensationId,
+      registerRollback: (primaryId, rollbackId, rollback) => Effect.gen(function* () {
+        const node = nodes.get(rollbackId) ?? {
+          id: rollbackId,
           artifacts: [],
           commands: [],
           secrets: new Set(),
@@ -1764,22 +1804,69 @@ const makeRuntime = (
           verifiedCommands: 0,
           status: mode === "plan" ? "planned" as const : "skipped" as const,
         }
-        node.compensationFor = primaryId
-        nodes.set(compensationId, node)
+        node.rollbackFor = primaryId
+        nodes.set(rollbackId, node)
 
         if (mode !== "plan") return
 
         const barrier = workflowBarrier
-        workflowBarrier = { after: [], needs: [] }
-        yield* compensation.pipe(
+        workflowBarrier = { after: [], dependencies: [] }
+        yield* rollback.pipe(
+          Effect.provideService(CurrentStep, "$rollback"),
           Effect.asVoid,
           Effect.ensuring(Effect.sync(() => {
             workflowBarrier = barrier
           })),
         )
-        const planned = nodes.get(compensationId)
-        if (planned) planned.compensationFor = primaryId
+        const planned = nodes.get(rollbackId)
+        if (planned) planned.rollbackFor = primaryId
       }),
+      unwind: (original) => Effect.gen(function* () {
+        if (mode !== "execute") return
+
+        const failedId = failureOrigins.get(original)
+        const failedRollback = failedId
+          ? definitions.get(failedId)?.rollback
+          : undefined
+        const rollbacks = [
+          ...(failedId && failedRollback
+            ? [{
+                primaryId: failedId,
+                rollbackId: failedRollback.id,
+                effect: failedRollback.effect,
+              }]
+            : []),
+          ...[...completedRollbacks].reverse().filter(
+            ({ primaryId }) => primaryId !== failedId,
+          ),
+        ]
+        const failures: Array<unknown> = []
+
+        for (const rollback of rollbacks) {
+          yield* runtime.registerRollback(
+            rollback.primaryId,
+            rollback.rollbackId,
+            rollback.effect,
+          ).pipe(Effect.orDie)
+          yield* rollback.effect.pipe(
+            Effect.provideService(CurrentStep, "$rollback"),
+            Effect.matchEffect({
+              onFailure: (error) => Effect.sync(() => {
+                failures.push(error)
+              }),
+              onSuccess: () => Effect.void,
+            }),
+          )
+        }
+
+        if (failures.length > 0) {
+          return yield* Effect.fail(new RollbackError(
+            failedId ?? "workflow",
+            original,
+            failures.length === 1 ? failures[0] : new AggregateError(failures),
+          ))
+        }
+      }) as Effect.Effect<undefined, RollbackError>,
       requireSecret: (stepId, name) => Effect.sync(() => {
         const node = nodes.get(stepId)
         if (!node) throw new Error(`Missing plan node for ${stepId}`)
@@ -1829,12 +1916,12 @@ const makeRuntime = (
           })()
           : Effect.void
 
-        const policy = definitions.get(stepId)?.options.verification
-        const verificationRequest = policy
+        const policy = definitions.get(stepId)?.options.reuse
+        const checkCacheRequest = policy
           ? { command, event, policy, stepId, workflowId, workspace }
           : undefined
-        const verified = verification && verificationRequest
-          ? verification.lookup(verificationRequest).pipe(
+        const verified = checkCache && checkCacheRequest
+          ? checkCache.lookup(checkCacheRequest).pipe(
               Effect.catch(() => Effect.succeed(false)),
             )
           : Effect.succeed(false)
@@ -1868,8 +1955,8 @@ const makeRuntime = (
               workflowId,
               workspace,
             }).pipe(
-              Effect.tap(() => verification && verificationRequest
-                ? verification.record(verificationRequest).pipe(Effect.ignore)
+              Effect.tap(() => checkCache && checkCacheRequest
+                ? checkCache.record(checkCacheRequest).pipe(Effect.ignore)
                 : Effect.void),
               Effect.flatMap((result) => Effect.gen(function* () {
                 if (result.stdout) {
@@ -2015,7 +2102,7 @@ export interface RunOptions {
   readonly source?: SourceService
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
-  readonly verification?: VerificationStore
+  readonly checkCache?: CheckCache
 }
 
 export interface RunConfiguration extends RunOptions {
@@ -2065,11 +2152,11 @@ const toPlan = (
     nodes: ordered.map((node) => ({
       id: node.id,
       after: [...(after.get(node.id) ?? [])].sort(),
-      needs: [...(dependencies.get(node.id) ?? [])].sort(),
+      dependencies: [...(dependencies.get(node.id) ?? [])].sort(),
       commands: [...node.commands],
       artifacts: [...node.artifacts],
       ...(node.condition ? { condition: node.condition } : {}),
-      ...(node.compensationFor ? { compensationFor: node.compensationFor } : {}),
+      ...(node.rollbackFor ? { rollbackFor: node.rollbackFor } : {}),
       ...(node.approval ? { approval: node.approval } : {}),
       optional: runtime.optionalSteps.has(node.id),
       options: definitions.get(node.id)?.options ?? {},
@@ -2102,12 +2189,14 @@ export const formatPlan = (plan: WorkflowPlan): string => {
 
   for (const node of plan.nodes) {
     const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""
-    const needs = node.needs.length > 0 ? ` needs ${node.needs.join(", ")}` : ""
-    const optional = node.optional ? " (optional)" : ""
-    const compensation = node.compensationFor
-      ? ` compensates ${node.compensationFor}`
+    const dependencies = node.dependencies.length > 0
+      ? ` depends on ${node.dependencies.join(", ")}`
       : ""
-    const suffix = `${needs}${after}${compensation}${optional}`
+    const optional = node.optional ? " (optional)" : ""
+    const rollback = node.rollbackFor
+      ? ` rolls back ${node.rollbackFor}`
+      : ""
+    const suffix = `${dependencies}${after}${rollback}${optional}`
     const status = node.status === "complete"
       ? "✓"
       : node.status === "reused"
@@ -2140,6 +2229,41 @@ export const formatPlan = (plan: WorkflowPlan): string => {
       for (const entry of node.commands) {
         lines.push(`  $ ${entry.command}`, `    cwd: ${entry.cwd}`)
       }
+    }
+  }
+
+  return lines.join("\n")
+}
+
+const mermaidId = (id: string): string =>
+  `step_${id.replaceAll(/[^a-zA-Z0-9_]/g, "_")}`
+
+/** Render the inspectable dependency graph without coupling it to a CI provider UI. */
+export const formatPlanMermaid = (plan: WorkflowPlan): string => {
+  const lines = ["flowchart LR"]
+
+  for (const node of plan.nodes) {
+    const qualifiers = [
+      node.optional ? "optional" : undefined,
+      node.condition ? "conditional" : undefined,
+    ].filter((value): value is string => value !== undefined)
+    const label = qualifiers.length > 0
+      ? `${node.id} (${qualifiers.join(", ")})`
+      : node.id
+    lines.push(`  ${mermaidId(node.id)}[${JSON.stringify(label)}]`)
+  }
+
+  for (const node of plan.nodes) {
+    for (const dependency of node.dependencies) {
+      lines.push(`  ${mermaidId(dependency)} --> ${mermaidId(node.id)}`)
+    }
+    for (const predecessor of node.after) {
+      lines.push(`  ${mermaidId(predecessor)} -.-> ${mermaidId(node.id)}`)
+    }
+    if (node.rollbackFor) {
+      lines.push(
+        `  ${mermaidId(node.rollbackFor)} -. rollback .-> ${mermaidId(node.id)}`,
+      )
     }
   }
 
@@ -2189,7 +2313,7 @@ const interpret = <A>(
       options.executor ?? makeLocalCommandExecutor(),
       options.workspaceFileSystem,
       options.workspacePersistence,
-      options.verification,
+      options.checkCache,
       previous && selection ? { previous, selection } : undefined,
     )
     const approval: ApprovalService = {
@@ -2209,6 +2333,9 @@ const interpret = <A>(
       },
     }
     const result = yield* workflowDefinition.effect.pipe(
+      Effect.catch((original) => runtime.unwind(original).pipe(
+        Effect.flatMap(() => Effect.fail(original)),
+      )),
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(Source, options.source ?? localSource),

@@ -2,6 +2,9 @@
   "$schema": "https://turborepo.com/schema.json",
   "agentGuidance": false,
   "cacheDir": ".turbo/cache",
+  "remoteCache": {
+    "signature": true
+  },
   "tasks": {
     "build": {
       "outputs": ["dist/**"]

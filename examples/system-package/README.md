@@ -1,8 +1,17 @@
 # Install a system package
 
-This example answers one question:
-
 > How do I install an operating-system dependency before running my project?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install_imagemagick["install imagemagick"]
+  step_verify_imagemagick["verify imagemagick"]
+  step_checkout --> step_install_imagemagick
+  step_install_imagemagick --> step_verify_imagemagick
+```
+
+---
 
 The action asks for the workspace-bound Apt capability and installs ImageMagick:
 
@@ -27,7 +36,7 @@ Compare:
 With Docker running:
 
 ```sh
-./examples/system-package/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/system-package/.cloudflare/ci/workflow.ts
 ```
 
 The example uses ImageMagick because it is a familiar build dependency that is not

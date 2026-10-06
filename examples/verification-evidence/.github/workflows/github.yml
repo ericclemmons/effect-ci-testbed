@@ -14,4 +14,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Conventional Actions reruns this check because it has no trusted local proof store.
-      - run: echo lint
+      - run: node --check app/index.js

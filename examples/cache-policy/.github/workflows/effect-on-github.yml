@@ -12,5 +12,8 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
+      cache-key: custom-build-cache
+      cache-key-files: app/src/input.txt
+      cache-path: app/.cache/build
       workflow: .cloudflare/ci/workflow.ts
     secrets: inherit

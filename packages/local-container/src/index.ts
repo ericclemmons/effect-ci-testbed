@@ -10,6 +10,7 @@ const containerRoot = "/workspace"
 export interface RunnerOptions {
   readonly engine?: string
   readonly image: string
+  readonly root?: string
 }
 
 export interface Runner extends CI.RunOptions {
@@ -129,12 +130,8 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   return {
     env: "local-container",
     source: {
-      checkout: (root) => Effect.sync(() => {
-        if (hostRoot && hostRoot !== root) {
-          throw new Error(`This runner already mounted ${hostRoot}; cannot also mount ${root}`)
-        }
-
-        hostRoot = root
+      checkout: () => Effect.sync(() => {
+        hostRoot = options.root ?? process.cwd()
 
         return CI.Workspace.remote(name, containerRoot)
       }),

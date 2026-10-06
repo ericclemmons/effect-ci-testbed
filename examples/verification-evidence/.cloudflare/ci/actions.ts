@@ -3,13 +3,13 @@ import * as CI from "@effect-ci-testbed/ci"
 const checkout = CI.action("verification checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout(".")
+  return () => source.checkout()
 })
 
-export const lint = CI.action("verified lint", () => function* () {
+export const lint = CI.check("verified lint", () => function* () {
   const workspace = yield* checkout()
 
-  return yield* workspace.exec("echo lint")
+  yield* workspace.exec("node --check app/index.js")
 }, {
-  verification: { scope: "commit" },
+  reuse: { scope: "commit" },
 })

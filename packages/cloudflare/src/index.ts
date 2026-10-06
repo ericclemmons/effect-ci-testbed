@@ -1,3 +1,4 @@
+import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import * as CI from "@effect-ci-testbed/ci"
 import {
   DurableObject,
@@ -9,7 +10,7 @@ import {
 import * as Effect from "effect/Effect"
 
 const decoder = new TextDecoder()
-const defaultImage = "cloudflare/debian-trixie"
+const defaultImage = "workspace"
 const defaultTargetDirectory = "/workspace/repository"
 
 export interface ContainerExecutionResult {
@@ -71,10 +72,27 @@ export interface WorkspaceContainerOptions {
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
 }
 
-export class WorkspaceContainer extends DurableObject {
+interface WorkspaceContainerEnvironment {}
+
+export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironment> {
   private activeStepId: string | undefined
   private dirty = false
+  private readonly files: Files
   private workingCheckpointId: string | undefined
+
+  constructor(
+    state: DurableObjectState,
+    environment: WorkspaceContainerEnvironment,
+  ) {
+    super(state, environment)
+    const container = state.container
+
+    if (!container) {
+      throw new Error("No Container is configured for this Durable Object")
+    }
+
+    this.files = new Files(container)
+  }
 
   private container() {
     const container = this.ctx.container
@@ -108,12 +126,11 @@ export class WorkspaceContainer extends DurableObject {
       return
     }
 
-    const configuredImage = options.image
-      ? container.images[options.image]
-      : undefined
+    const imageName = options.image ?? defaultImage
+    const configuredImage = container.images[imageName]
 
     container.start({
-      image: configuredImage ?? options.image ?? defaultImage,
+      image: configuredImage ?? imageName,
       instance: options.instance ?? "lite",
       entrypoint: ["sleep", "infinity"],
       enableInternet: true,
@@ -321,9 +338,14 @@ export class WorkspaceContainer extends DurableObject {
 
     await this.materialize(stepId, revision)
 
-    const result = await this.run(["cat", `${cwd}/${path}`])
+    try {
+      const response = await this.files.readFile(path, { cwd })
 
-    return result.exitCode === 0 ? result.stdout : undefined
+      return response.text()
+    } catch (error) {
+      if (SandboxFileError.is(error) && error.code === "ENOENT") return undefined
+      throw error
+    }
   }
 
   async exists(
@@ -338,7 +360,14 @@ export class WorkspaceContainer extends DurableObject {
 
     await this.materialize(stepId, revision)
 
-    return (await this.run(["test", "-e", `${cwd}/${path}`])).exitCode === 0
+    try {
+      await this.files.stat(path, { cwd })
+
+      return true
+    } catch (error) {
+      if (SandboxFileError.is(error) && error.code === "ENOENT") return false
+      throw error
+    }
   }
 
   async checkpoint(
@@ -393,6 +422,7 @@ export interface RunnerOptions {
   }
   readonly container?: WorkspaceContainerOptions
   readonly repository: string
+  readonly root?: string
   readonly reuseWorkspace?: boolean
   readonly revision: string
   readonly step: WorkflowStep
@@ -418,11 +448,13 @@ export interface WorkflowEnvironment {
 }
 
 export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment> {
-  readonly cache?: CI.WorkflowCachePolicy | false
+  readonly cache?: CI.WorkspaceCachePolicy | false
   readonly container?: WorkspaceContainerOptions
   readonly reuseWorkspace?: boolean
+  /** Project directory within the checked-out repository. */
+  readonly root?: string
   readonly secrets?: (environment: Environment) => CI.SecretResolver
-  readonly verification?: (environment: Environment) => CI.VerificationStore
+  readonly checkCache?: (environment: Environment) => CI.CheckCache
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -444,7 +476,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
   return {
     source: {
-      checkout: (root) => Effect.tryPromise({
+      checkout: () => Effect.tryPromise({
         try: async () => {
           if (cache) {
             const snapshot = await options.step.do("workspace-cache:restore", () =>
@@ -470,7 +502,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             )
           })
 
-          const cwd = root === "." ? targetDirectory : `${targetDirectory}/${root}`
+          const cwd = options.root
+            ? `${targetDirectory}/${options.root}`
+            : targetDirectory
 
           return CI.Workspace.remote(options.workspaceId, cwd)
         },
@@ -655,9 +689,7 @@ export const workflowEntrypoint = <
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
-    const cache = options.cache === false
-      ? undefined
-      : options.cache ?? (workflow.cache === false ? undefined : workflow.cache)
+    const cache = options.cache === false ? undefined : options.cache
     const runner = makeRunner({
       binding: this.env.Workspace,
       ...(cache
@@ -670,6 +702,7 @@ export const workflowEntrypoint = <
         : {}),
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
+      ...(options.root ? { root: options.root } : {}),
       ...(options.reuseWorkspace === undefined
         ? {}
         : { reuseWorkspace: options.reuseWorkspace }),
@@ -685,13 +718,17 @@ export const workflowEntrypoint = <
         type: "workflow_dispatch",
         payload: event.payload,
         revision: event.payload.revision,
+        source: {
+          repository: event.payload.repository,
+          revision: event.payload.revision,
+        },
       },
       executor: runner.executor,
       output: "silent",
       ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
       source: runner.source,
-      ...(options.verification
-        ? { verification: options.verification(this.env) }
+      ...(options.checkCache
+        ? { checkCache: options.checkCache(this.env) }
         : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,

@@ -27,14 +27,8 @@ test("Vite+ learns task inputs and outputs without watchlists", async () => {
       name: "automatic-data-tracking",
       private: true,
       type: "module",
+      scripts: { build: "sh build.sh" },
     }))
-    await writeFile(join(root, "vite.config.ts"), `
-      import { defineConfig } from "vite-plus"
-
-      export default defineConfig({
-        run: { tasks: { build: "sh build.sh" } },
-      })
-    `)
     await writeFile(join(root, "build.sh"), `
       tr '[:lower:]' '[:upper:]' < src/input.txt > output.txt
     `)
@@ -42,7 +36,7 @@ test("Vite+ learns task inputs and outputs without watchlists", async () => {
     await writeFile(join(root, "unrelated.txt"), "one\n")
 
     const run = async (): Promise<string> => {
-      const result = await exec(vp.pathname, ["run", "build"], { cwd: root })
+      const result = await exec(vp.pathname, ["run", "--cache", "build"], { cwd: root })
 
       return result.stdout + result.stderr
     }

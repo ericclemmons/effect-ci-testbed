@@ -1,20 +1,51 @@
 # Reuse signed evidence for side-effect-free checks
 
-This example answers one question:
-
 > If the exact commit already passed lint locally, can trusted CI avoid doing the same work again?
 
-An action opts in explicitly:
-
-```ts
-CI.action("lint", ..., { verification: { scope: "commit" } })
+```mermaid
+flowchart LR
+  step_verification_checkout["verification checkout"]
+  step_verified_lint["verified lint"]
+  step_verification_checkout --> step_verified_lint
 ```
 
-The runner's `VerificationStore` binds evidence to the immutable revision, workflow,
-action, command, workspace identity, and policy. A valid signature skips the command;
-a miss, changed revision, invalid signature, or verifier error runs it normally. Core
-never trusts a Git note merely because it exists. A Git note is one possible transport
-for the signed envelope, while the verifier's configured public key establishes trust.
+---
+
+A reusable assertion is a `CI.check`, not an ordinary state-producing action:
+
+```ts
+CI.check("lint", () => function* () {
+  const workspace = yield* checkout()
+
+  yield* workspace.exec("node --check app/index.js")
+}, {
+  reuse: { scope: "commit" },
+})
+```
+
+`CI.check` can only return `void`: success or failure is its entire public result. That
+does not magically prove purity—the command must still avoid modifying external state
+or producing a workspace consumed later—but it makes the contract visible and prevents
+the check from returning a new workspace revision or deployable artifact.
+
+The fingerprint binds repository, commit, workflow, check, policy, and command—not a
+machine-specific checkout path. `gitNotesCheckCache` signs it with Ed25519 and stores the
+envelope under `refs/notes/effect-ci`. Recording requires a private key; CI receives
+only the enrolled public key. A valid note skips the command. A missing note, changed
+revision, invalid signature, or lookup error runs it normally.
+
+```ts
+const local = gitNotesCheckCache({ cwd, privateKey, publicKey })
+const ci = gitNotesCheckCache({ cwd, publicKey })
+```
+
+Git notes do not change the commit hash, so evidence can be attached after an agent
+finishes checking the commit. The notes ref must be pushed and fetched explicitly:
+
+```sh
+git push origin refs/notes/effect-ci
+git fetch origin refs/notes/effect-ci:refs/notes/effect-ci
+```
 
 Trust is repository policy, not something the signature decides:
 
@@ -37,12 +68,12 @@ never asked to trust an arbitrary status submitted by the developer. Repositorie
 mix policies—for example, accepting developer proofs for lint while always rerunning
 release and security checks remotely.
 
-Only side-effect-free checks belong here. Builds, migrations, deployments, and checks
-whose outputs are consumed by later steps must not opt in.
+Only side-effect-free checks belong here. Checkout, install, builds, migrations,
+deployments, and artifact-producing work remain ordinary actions even if a runner can
+separately cache their bytes or workspace snapshots.
 
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
-[Effect on GitHub](./.github/workflows/effect-on-github.yml). The in-memory Ed25519
-proof store is test infrastructure, so it lives in
-[`tests/verification-evidence.test.ts`](./.cloudflare/ci/tests/verification-evidence.test.ts)
-rather than masquerading as the workflow entry point.
+[Effect on GitHub](./.github/workflows/effect-on-github.yml). The executable test
+creates a real Git repository, records a signed note, verifies it with a public-only
+runner, and proves that changing the commit forces execution again.

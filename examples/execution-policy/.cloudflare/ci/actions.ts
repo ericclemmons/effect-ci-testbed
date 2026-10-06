@@ -27,7 +27,7 @@ export const slow = CI.action<void>("slow", () => () =>
 const checkout = CI.action("timeout checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout(".")
+  return () => source.checkout()
 })
 
 export const hangingCommand = CI.action("hanging command", () => function* () {

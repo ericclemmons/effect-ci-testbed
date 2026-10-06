@@ -3,7 +3,11 @@ import * as CI from "@effect-ci-testbed/ci"
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout("examples/snapshot-fanout/app")
+  return function* () {
+    const workspace = yield* source.checkout()
+
+    return workspace.directory("app")
+  }
 })
 
 export const prepare = CI.action("prepare", () => function* () {

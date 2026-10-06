@@ -43,6 +43,7 @@ export const workflowEntrypoint = <A>(
       },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
+      ...(options.root ? { root: options.root } : {}),
       ...(options.reuseWorkspace === undefined
         ? {}
         : { reuseWorkspace: options.reuseWorkspace }),
@@ -85,14 +86,18 @@ export const workflowEntrypoint = <A>(
           payload: event.payload,
           ...(event.payload.ref ? { ref: event.payload.ref } : {}),
           revision: event.payload.revision,
+          source: {
+            repository: event.payload.repository,
+            revision: event.payload.revision,
+          },
         },
         executor: runner.executor,
         onEvent: (runtimeEvent) => reporter.report(runtimeEvent),
         output: "silent",
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,
-        ...(options.verification
-          ? { verification: options.verification(this.env) }
+        ...(options.checkCache
+          ? { checkCache: options.checkCache(this.env) }
           : {}),
         workspacePersistence: runner.persistence,
       })

@@ -1,8 +1,20 @@
 # Install a declared toolchain with Mise
 
-This example answers one question:
-
 > How do I install every runtime declared by my project's Mise configuration?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install_toolchain["install toolchain"]
+  step_verify_node["verify node"]
+  step_verify_python["verify python"]
+  step_checkout --> step_install_toolchain
+  step_install_toolchain --> step_verify_node
+  step_install_toolchain --> step_verify_python
+  step_verify_node --> step_verify_python
+```
+
+---
 
 The project declares Node and Python in [`mise.toml`](./mise.toml). Its action acquires the
 workspace-bound Mise capability and returns the workspace after installation:
@@ -31,7 +43,7 @@ Compare:
 With Docker running:
 
 ```sh
-./examples/mise-toolchain/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/mise-toolchain/.cloudflare/ci/workflow.ts
 ```
 
 The official Mise Debian image supplies only the runner capability. Tool versions stay

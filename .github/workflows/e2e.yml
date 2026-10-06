@@ -18,6 +18,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - exported-actions
           - node-pnpm
           - optional-checks
           - local-container
@@ -28,6 +29,7 @@ jobs:
           - snapshot-fanout
           - cloudflare-runner
           - cloudflare-toolchain
+          - dynamic-worker-checks
           - vite-plus-cache
           - turborepo-cache
           - package-manager-cache
@@ -87,6 +89,7 @@ jobs:
       matrix:
         example:
           - node-npm
+          - exported-actions
           - node-pnpm
           - optional-checks
           - runner-selection
@@ -95,6 +98,7 @@ jobs:
           - node-version
           - system-package
           - cache-policy
+          - dynamic-worker-checks
           - d1-migration
           - ordered-deploy
           - custom-container-image
@@ -109,10 +113,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - name: Run examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts (${{ matrix.mode }})
+      - name: Run examples/${{ matrix.example }} (${{ matrix.mode }})
         env:
           EFFECT_CI_EVENT: pull_request
-        run: examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
+        run: pnpm cf-ci --workflow examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
   agent-cli:
     name: agent-first executable CI
@@ -125,21 +129,33 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - name: Discover exported actions
-        run: examples/node-npm/.cloudflare/ci/workflow.ts list --format=text
+      - name: Discover explicitly exported actions
+        run: pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts list --format=text
       - name: Plan one action as structured output
         run: |
-          output=$(examples/node-npm/.cloudflare/ci/workflow.ts plan lint --format=json)
+          output=$(pnpm --silent cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts plan check --format=json)
           echo "$output"
           OUTPUT="$output" node -e '
             const value = JSON.parse(process.env.OUTPUT)
-            if (!value.ok || value.target !== "lint") process.exit(1)
-            if (value.plan.nodes.at(-1)?.id !== "lint") process.exit(1)
+            if (!value.ok || value.target !== "check") process.exit(1)
+            if (value.plan.nodes.at(-1)?.id !== "check") process.exit(1)
           '
+      - name: Reject an internal action
+        run: |
+          output="$RUNNER_TEMP/effect-ci-internal.json"
+          if pnpm --silent cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts run checkout --format=json >"$output"; then
+            echo "Expected an unexported action to be rejected" >&2
+            exit 1
+          else
+            status=$?
+          fi
+          cat "$output"
+          test "$status" -eq 2
+          grep --fixed-strings '"code": "CI_UNKNOWN_TARGET"' "$output"
       - name: Return a stable remote-provider exit
         run: |
           output="$RUNNER_TEMP/effect-ci-remote.json"
-          if examples/node-npm/.cloudflare/ci/workflow.ts --remote --format=json >"$output"; then
+          if pnpm --silent cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts --remote --format=json >"$output"; then
             echo "Expected unconfigured remote execution to fail" >&2
             exit 1
           else
@@ -211,6 +227,47 @@ jobs:
       - run: pnpm install
       - run: node --test examples/vite-plus-cache/.cloudflare/ci/tests/automatic-data-tracking.test.ts
 
+  signed-evidence:
+    name: verification-evidence / signed Git note reuse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Record locally and verify with a public-only CI runner
+        env:
+          EFFECT_CI_EVENT: push
+          EFFECT_CI_REVISION: ${{ github.sha }}
+        run: |
+          git config user.name "Effect CI"
+          git config user.email "effect-ci@users.noreply.github.com"
+          node --input-type=module -e '
+            import { generateKeyPairSync } from "node:crypto"
+            import { writeFileSync } from "node:fs"
+            const pair = generateKeyPairSync("ed25519", {
+              privateKeyEncoding: { format: "pem", type: "pkcs8" },
+              publicKeyEncoding: { format: "pem", type: "spki" },
+            })
+            writeFileSync(process.env.RUNNER_TEMP + "/effect-ci-private.pem", pair.privateKey)
+            writeFileSync(process.env.RUNNER_TEMP + "/effect-ci-public.pem", pair.publicKey)
+          '
+          export EFFECT_CI_CHECK_PRIVATE_KEY="$(cat "$RUNNER_TEMP/effect-ci-private.pem")"
+          export EFFECT_CI_CHECK_PUBLIC_KEY="$(cat "$RUNNER_TEMP/effect-ci-public.pem")"
+          pnpm cf-ci --workflow examples/verification-evidence/.cloudflare/ci/workflow.ts run --format=json
+
+          unset EFFECT_CI_CHECK_PRIVATE_KEY
+          output=$(pnpm --silent cf-ci --workflow examples/verification-evidence/.cloudflare/ci/workflow.ts run --format=json)
+          echo "$output"
+          OUTPUT="$output" node -e '
+            const value = JSON.parse(process.env.OUTPUT)
+            const lint = value.plan.nodes.find((node) => node.id === "verified lint")
+            if (lint?.status !== "verified") process.exit(1)
+          '
+
   effect-on-github:
     name: ${{ matrix.example }} / effect-on-github
     strategy:
@@ -219,6 +276,9 @@ jobs:
         include:
           - example: node-npm
             workflow: examples/node-npm/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: exported-actions
+            workflow: examples/exported-actions/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: node-pnpm
             workflow: examples/node-pnpm/.cloudflare/ci/workflow.ts
@@ -253,27 +313,45 @@ jobs:
           - example: node-version
             workflow: examples/node-version/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+            cache-key: node-version
+            cache-key-files: examples/node-version/.node-version
+            cache-path: examples/node-version/.effect-ci/cache/mise
           - example: system-package
             workflow: examples/system-package/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: cache-policy
             workflow: examples/cache-policy/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+            cache-key: custom-build-cache
+            cache-key-files: examples/cache-policy/app/src/input.txt
+            cache-path: examples/cache-policy/app/.cache/build
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-toolchain
             workflow: examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+          - example: dynamic-worker-checks
+            workflow: examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
           - example: vite-plus-cache
             workflow: examples/vite-plus-cache/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+            cache-key: vite-task
+            cache-key-files: examples/vite-plus-cache/app/package-lock.json
+            cache-path: examples/vite-plus-cache/app/node_modules/.vite/task-cache
           - example: turborepo-cache
             workflow: examples/turborepo-cache/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+            cache-key: turbo-task
+            cache-key-files: examples/turborepo-cache/app/package-lock.json
+            cache-path: examples/turborepo-cache/app/.turbo/cache
           - example: package-manager-cache
             workflow: examples/package-manager-cache/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+            cache-key: npm-downloads
+            cache-key-files: examples/package-manager-cache/app/package-lock.json
+            cache-path: examples/package-manager-cache/app/.effect-ci/cache/npm
           - example: runner-selection
             workflow: examples/runner-selection/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
@@ -290,6 +368,9 @@ jobs:
     with:
       workflow: ${{ matrix.workflow }}
       runs-on: ${{ matrix.runs-on }}
+      cache-key: ${{ matrix.cache-key || '' }}
+      cache-key-files: ${{ matrix.cache-key-files || '' }}
+      cache-path: ${{ matrix.cache-path || '' }}
     secrets: inherit
 
   hitl-deploy:
@@ -312,29 +393,27 @@ jobs:
       - run: pnpm install
       - name: Verify ${{ matrix.mode }} deployment decision
         env:
-          DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_APPROVAL: ${{ matrix.mode == 'rejected' && 'rejected' || 'approved' }}
           EFFECT_CI_EVENT: workflow_dispatch
-          EFFECT_CI_WORKFLOW: examples/hitl-deploy/.cloudflare/ci/workflow.ts
         run: |
           output="$RUNNER_TEMP/hitl-deploy-${{ matrix.mode }}.log"
 
           if [ "${{ matrix.mode }}" = "rejected" ]; then
-            if node packages/ci/run.run.ts >"$output" 2>&1; then
+            if pnpm cf-ci --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts >"$output" 2>&1; then
               cat "$output"
               echo "Expected the rejected approval to fail" >&2
               exit 1
             fi
 
             cat "$output"
-            grep --fixed-strings "ApprovalError" "$output"
+            grep --fixed-strings "CI_APPROVAL_REJECTED" "$output"
 
             if grep --fixed-strings '$ echo npx cf deploy' "$output"; then
               echo "Deploy command ran after rejection" >&2
               exit 1
             fi
           else
-            node packages/ci/run.run.ts
+            pnpm cf-ci --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts ${{ matrix.mode == 'plan' && 'plan' || 'run' }}
           fi
 
   cloudflare-runner:
@@ -351,6 +430,12 @@ jobs:
           - example: cloudflare-toolchain
             package: effect-ci-cloudflare-toolchain-fixture
             workflow: effect-ci-cloudflare-toolchain
+          - example: custom-runner-image
+            package: effect-ci-custom-runner-image-fixture
+            workflow: effect-ci-custom-runner-image
+          - example: dynamic-worker-checks
+            package: effect-ci-dynamic-worker-checks-fixture
+            workflow: effect-ci-dynamic-worker-checks
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout
@@ -365,9 +450,8 @@ jobs:
       - name: Verify portable plan and Worker bundle
         env:
           EFFECT_CI_EVENT: workflow_dispatch
-          EFFECT_CI_WORKFLOW: examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts
         run: |
-          DRY_RUN=1 node packages/ci/run.run.ts
+          pnpm cf-ci --workflow examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts plan
           pnpm --filter ${{ matrix.package }} exec wrangler deploy \
             --dry-run \
             --containers-rollout=none

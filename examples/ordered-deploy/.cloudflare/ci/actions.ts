@@ -1,28 +1,41 @@
-import { fileURLToPath } from "node:url"
 import * as CI from "@effect-ci-testbed/ci"
-
-const app = fileURLToPath(new URL("../../", import.meta.url))
 
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout(app)
+  return () => source.checkout()
 })
 
 export const build = CI.action("build applications", () => function* () {
-  const workspace = yield* checkout()
+  let workspace = yield* checkout()
 
-  return yield* workspace.exec("node scripts/build.mjs")
+  workspace = yield* workspace.exec(
+    "cd apps/backend && npx cf build --mode production",
+  )
+
+  return yield* workspace.exec(
+    "cd apps/frontend && npx cf build --mode production",
+  )
 })
 
-export const deployBackend = CI.action("deploy backend", () => function* () {
+const deployBackend = CI.action("deploy backend", () => function* () {
   const workspace = yield* build()
 
-  return yield* workspace.exec("node scripts/deploy.mjs backend")
+  return yield* workspace.exec(
+    "cd apps/backend && npx cf deploy --prebuilt --mode production --dry-run",
+  )
 })
 
-export const deployFrontend = CI.action("deploy frontend", () => function* () {
+const deployFrontend = CI.action("deploy frontend", () => function* () {
   const workspace = yield* deployBackend()
 
-  return yield* workspace.exec("node scripts/deploy.mjs frontend")
+  return yield* workspace.exec(
+    "cd apps/frontend && npx cf deploy --prebuilt --mode production --dry-run",
+  )
+})
+
+export const deploy = CI.action("deploy", () => function* () {
+  yield* deployBackend()
+
+  return yield* deployFrontend()
 })

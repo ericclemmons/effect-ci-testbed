@@ -12,5 +12,8 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
+      cache-key: npm-downloads
+      cache-key-files: app/package-lock.json
+      cache-path: app/.effect-ci/cache/npm
       workflow: .cloudflare/ci/workflow.ts
     secrets: inherit

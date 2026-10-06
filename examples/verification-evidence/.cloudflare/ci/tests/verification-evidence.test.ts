@@ -1,41 +1,33 @@
 import assert from "node:assert/strict"
-import { generateKeyPairSync, sign, verify } from "node:crypto"
+import { execFileSync } from "node:child_process"
+import { generateKeyPairSync } from "node:crypto"
+import { mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import * as CI from "@effect-ci-testbed/ci"
+import { gitNotesCheckCache } from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
 
 import workflow from "../workflow.ts"
 
-const { privateKey, publicKey } = generateKeyPairSync("ed25519")
-const proofs = new Map<string, Buffer>()
+const repository = mkdtempSync(join(tmpdir(), "effect-ci-evidence-"))
+const git = (...args: ReadonlyArray<string>): string =>
+  execFileSync("git", args, { cwd: repository, encoding: "utf8" }).trim()
 
-const fingerprint = (request: CI.VerificationRequest): string => JSON.stringify({
-  command: request.command,
-  revision: request.event.revision,
-  scope: request.policy.scope,
-  stepId: request.stepId,
-  workflowId: request.workflowId,
-  workspace: {
-    cwd: request.workspace.cwd,
-    id: request.workspace.id,
-    revision: request.workspace.revision,
-  },
+git("init", "--initial-branch=main")
+git("config", "user.name", "Effect CI")
+git("config", "user.email", "effect-ci@example.test")
+writeFileSync(join(repository, "source.ts"), "export const answer = 42\n")
+git("add", "source.ts")
+git("commit", "--message", "Add source")
+
+const revision = git("rev-parse", "HEAD")
+const { privateKey, publicKey } = generateKeyPairSync("ed25519", {
+  privateKeyEncoding: { format: "pem", type: "pkcs8" },
+  publicKeyEncoding: { format: "pem", type: "spki" },
 })
-
-const verification: CI.VerificationStore = {
-  lookup: (request) => Effect.sync(() => {
-    if (!request.event.revision) return false
-    const message = fingerprint(request)
-    const proof = proofs.get(message)
-
-    return proof !== undefined && verify(null, Buffer.from(message), publicKey, proof)
-  }),
-  record: (request) => Effect.sync(() => {
-    if (!request.event.revision) return
-    const message = fingerprint(request)
-
-    proofs.set(message, sign(null, Buffer.from(message), privateKey))
-  }),
-}
+const writer = gitNotesCheckCache({ cwd: repository, privateKey, publicKey })
+const verifier = gitNotesCheckCache({ cwd: repository, publicKey })
 
 let executions = 0
 const executor: CI.CommandExecutor = {
@@ -46,18 +38,45 @@ const executor: CI.CommandExecutor = {
   },
 }
 
-const run = (revision: string) => CI.runPromise(workflow, {
-  event: { type: "push", ref: "refs/heads/main", revision },
+const run = (checkCache: CI.CheckCache, checkout = repository) => CI.runPromise(workflow, {
+  checkCache,
+  event: {
+    type: "push",
+    ref: "refs/heads/main",
+    revision,
+    source: { repository: "https://example.test/repository.git", revision },
+  },
   executor,
   output: "silent",
-  verification,
+  source: { checkout: () => Effect.succeed(CI.Workspace.local(checkout)) },
 })
 
-await run("commit-a")
-const reused = await run("commit-a")
+await run(writer)
+const reused = await run(verifier, join(tmpdir(), "different-ci-checkout"))
 
 assert.equal(executions, 1)
 assert.equal(reused.plan.nodes.find((node) => node.id === "verified lint")?.status, "verified")
+assert.match(git("notes", "--ref=effect-ci", "show", revision), /signature/)
 
-await run("commit-b")
+writeFileSync(join(repository, "source.ts"), "export const answer = 43\n")
+git("add", "source.ts")
+git("commit", "--message", "Change source")
+const changedRevision = git("rev-parse", "HEAD")
+
+await CI.runPromise(workflow, {
+  checkCache: verifier,
+  event: {
+    type: "push",
+    ref: "refs/heads/main",
+    revision: changedRevision,
+    source: {
+      repository: "https://example.test/repository.git",
+      revision: changedRevision,
+    },
+  },
+  executor,
+  output: "silent",
+  source: { checkout: () => Effect.succeed(CI.Workspace.local(repository)) },
+})
+
 assert.equal(executions, 2)

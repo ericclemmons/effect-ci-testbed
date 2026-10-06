@@ -1,8 +1,17 @@
 # Choose the GitHub runner without changing CI
 
-This example answers one question:
-
 > How can the same Effect CI program run on GitHub-hosted, Blacksmith, or self-hosted compute?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_test["test"]
+  step_checkout --> step_install
+  step_install --> step_test
+```
+
+---
 
 Runner selection belongs to the GitHub entrypoint, not the portable workflow. Both the
 conventional workflow and the Effect-on-GitHub workflow read a repository variable
@@ -30,7 +39,7 @@ Compare:
 Run the same workflow locally:
 
 ```sh
-./examples/runner-selection/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/runner-selection/.cloudflare/ci/workflow.ts
 ```
 
 Cloudflare is marked not applicable for this use-case because a Cloudflare Container,

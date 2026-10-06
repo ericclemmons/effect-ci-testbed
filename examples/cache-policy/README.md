@@ -1,26 +1,41 @@
 # Customize or disable a reusable cache
 
-This example answers one question:
+> How do I customize a runner's cache without coupling the workflow to its storage?
 
-> How do I declare a custom cache once without putting platform storage details in my actions?
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_build["build"]
+  step_verify["verify"]
+  step_checkout --> step_build
+  step_build --> step_verify
+```
 
-The portable workflow owns only cache intent:
+---
+
+The workflow contains only the dependency graph. The runner layer owns cache behavior:
 
 ```ts
-CI.workflow("cache-policy", workflow, {
+Cloudflare.workflowEntrypoint(workflow, {
   cache: {
     key: "custom-build-cache",
     keyFiles: ["examples/cache-policy/app/src/input.txt"],
     paths: ["examples/cache-policy/app/.cache/build"],
   },
+  root: "examples/cache-policy",
 })
 ```
 
-Paths and invalidating files are repository-relative. The GitHub runner translates
-the policy to `actions/cache`; the Cloudflare runner translates it to a snapshot-backed
-directory cache. Local execution simply uses the directory already present in the
-working tree. Set `EFFECT_CI_DISABLE_CACHE=1` to make the same workflow declare
-`cache: false`.
+The GitHub adapter expresses the same policy as inputs to its reusable workflow and
+translates it to `actions/cache`. The Cloudflare adapter owns the corresponding
+snapshot-backed implementation; that hosted path remains roadmap work until it can
+restore only the declared paths without replacing the current workspace revision.
+Passing `cache: false` disables cache behavior for a runner. Local execution naturally
+reuses the directory already in the working tree.
+
+This distinction is intentional: actions describe work and dependencies; the supplied
+runner layer decides where reusable bytes live, how keys are scoped, and how long they
+are retained.
 
 The fixture is intentionally dependency-free: `build.ts` reads one input, reuses or
 creates one cached output, and `build.test.ts` verifies the result with Node's built-in
@@ -30,14 +45,15 @@ Compare:
 
 - [plain GitHub Actions with explicit `actions/cache`](./.github/workflows/github.yml)
 - [Effect CI on GitHub](./.github/workflows/effect-on-github.yml), where the reusable
-  runner reads the policy from the workflow
+  runner receives the policy
 - [the portable workflow](./.cloudflare/ci/workflow.ts)
+- [the Cloudflare runner layer](./src/worker.ts)
 
 Run it twice locally to see a miss followed by a hit:
 
 ```sh
-./examples/cache-policy/.cloudflare/ci/workflow.ts
-./examples/cache-policy/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/cache-policy/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/cache-policy/.cloudflare/ci/workflow.ts
 ```
 
 Cache retention remains runner policy. GitHub configures it at repository or

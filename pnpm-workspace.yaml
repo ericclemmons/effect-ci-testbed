@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - examples/*
+  - examples/ordered-deploy/apps/*
   - examples/vite-plus-cache/app
 
 allowBuilds:

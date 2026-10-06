@@ -1,6 +1,3 @@
-#!/usr/bin/env node
-
-import * as CLI from "@effect-ci-testbed/cli"
 import * as CI from "@effect-ci-testbed/ci"
 import * as LocalContainer from "@effect-ci-testbed/local-container"
 
@@ -12,11 +9,7 @@ const workflow = CI.workflow("local-container", function* () {
   return yield* actions.test()
 })
 
-export const local = () => LocalContainer.makeRunner({ image: "node:24-bookworm" })
+export const local = ({ root }: { readonly root: string }) =>
+  LocalContainer.makeRunner({ image: "node:24-bookworm", root })
 
-export * from "./actions.ts"
 export default workflow
-
-if (CLI.isMain(import.meta.url)) {
-  await CLI.runMain({ actions, local, workflow })
-}

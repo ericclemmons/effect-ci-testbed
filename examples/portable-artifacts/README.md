@@ -1,8 +1,17 @@
 # Publish a restorable build artifact
 
-This example answers one question:
-
 > When a later workload needs build output, what crosses the runner boundary?
+
+```mermaid
+flowchart LR
+  step_artifact_checkout["artifact checkout"]
+  step_publish_build["publish build"]
+  step_restore_build["restore build"]
+  step_artifact_checkout --> step_publish_build
+  step_publish_build --> step_restore_build
+```
+
+---
 
 Most actions should simply return the next `CI.Workspace`. An explicit artifact is for
 cross-workload or retained output. `CI.Artifact.publish` records owned paths and asks the

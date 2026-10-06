@@ -3,7 +3,7 @@ import * as CI from "@effect-ci-testbed/ci"
 const checkout = CI.action("artifact checkout", function* () {
   const source = yield* CI.Source
 
-  return () => source.checkout(".")
+  return () => source.checkout()
 })
 
 export const build = CI.action<CI.WorkspaceArtifact>("publish build", () => function* () {

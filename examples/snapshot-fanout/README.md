@@ -1,8 +1,19 @@
 # Fan one prepared workspace out to isolated checks
 
-This example answers one question:
-
 > How can parallel checks start from the same prepared filesystem without mutating each other?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_prepare["prepare"]
+  step_left["left"]
+  step_right["right"]
+  step_checkout --> step_prepare
+  step_prepare --> step_left
+  step_prepare --> step_right
+```
+
+---
 
 The actions express only their real dependency:
 

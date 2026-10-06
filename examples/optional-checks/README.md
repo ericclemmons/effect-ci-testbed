@@ -1,9 +1,20 @@
 # Required and optional checks
 
-This example answers one question:
-
 > How do required and optional checks run together without an advisory failure
 > blocking the workflow?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_format["format (optional)"]
+  step_lint["lint"]
+  step_checkout --> step_install
+  step_install --> step_format
+  step_install --> step_lint
+```
+
+---
 
 The fixture deliberately makes `format` fail while `lint` passes. Both implementations
 run them in parallel and wait for both outcomes:
@@ -27,5 +38,5 @@ workflow's policy.
 Run it locally:
 
 ```sh
-./examples/optional-checks/.cloudflare/ci/workflow.ts
+pnpm cf-ci --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
 ```

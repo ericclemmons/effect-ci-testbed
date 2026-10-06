@@ -53,9 +53,9 @@ const planStages = (value: WorkflowPlan) => {
       1 + Math.max(
         0,
         ...[
-          ...node.needs,
+          ...node.dependencies,
           ...node.after,
-          ...(node.compensationFor ? [node.compensationFor] : []),
+          ...(node.rollbackFor ? [node.rollbackFor] : []),
         ]
           .map((dependency) => stages.get(dependency) ?? 0),
       ),
@@ -89,7 +89,7 @@ const planDiagram = (value: WorkflowPlan): string => {
   }
 
   for (const node of value.nodes) {
-    for (const dependency of node.needs) {
+    for (const dependency of node.dependencies) {
       const from = identifiers.get(dependency)
       const to = identifiers.get(node.id)
       if (from && to) lines.push(`  ${from} --> ${to}`)
@@ -101,10 +101,10 @@ const planDiagram = (value: WorkflowPlan): string => {
       if (from && to) lines.push(`  ${from} -. after .-> ${to}`)
     }
 
-    if (node.compensationFor) {
-      const from = identifiers.get(node.compensationFor)
+    if (node.rollbackFor) {
+      const from = identifiers.get(node.rollbackFor)
       const to = identifiers.get(node.id)
-      if (from && to) lines.push(`  ${from} -. on failure .-> ${to}`)
+      if (from && to) lines.push(`  ${from} -. rollback .-> ${to}`)
     }
   }
 
@@ -130,36 +130,36 @@ const planSummary = (value: WorkflowPlan): string => {
 
     if (ordered.length === 1) {
       const node = ordered[0]!
-      const needs = node.needs.length > 0
-        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+      const dependencies = node.dependencies.length > 0
+        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const compensation = node.compensationFor
-        ? ` — compensates \`${node.compensationFor}\``
+      const rollback = node.rollbackFor
+        ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`${stage}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
+      lines.push(`${stage}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
       continue
     }
 
     lines.push(`${stage}. **In parallel**`)
 
     for (const [index, node] of ordered.entries()) {
-      const needs = node.needs.length > 0
-        ? ` — needs ${node.needs.map((id) => `\`${id}\``).join(", ")}`
+      const dependencies = node.dependencies.length > 0
+        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const after = node.after.length > 0
         ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
         : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const compensation = node.compensationFor
-        ? ` — compensates \`${node.compensationFor}\``
+      const rollback = node.rollbackFor
+        ? ` — rolls back \`${node.rollbackFor}\``
         : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${needs}${after}${condition}${compensation}${optional}`)
+      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
     }
   }
 
@@ -171,7 +171,7 @@ const planSummary = (value: WorkflowPlan): string => {
 const planText = (value: WorkflowPlan): string => value.nodes
   .filter((node) =>
     node.commands.length > 0 || node.approval || node.artifacts.length > 0 ||
-    node.secrets.length > 0 || node.condition || node.compensationFor)
+    node.secrets.length > 0 || node.condition || node.rollbackFor)
   .map((node) => {
     const commands = node.commands
       .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
@@ -181,7 +181,7 @@ const planText = (value: WorkflowPlan): string => value.nodes
       : ""
     const metadata = [
       node.condition ? `**Condition:** \`${formatCondition(node.condition)}\`` : "",
-      node.compensationFor ? `**Compensates:** \`${node.compensationFor}\`` : "",
+      node.rollbackFor ? `**Rolls back:** \`${node.rollbackFor}\`` : "",
       node.secrets.length > 0 ? `**Secrets required:** ${node.secrets.map((name) => `\`${name}\``).join(", ")}` : "",
       ...node.artifacts.map((artifact) =>
         `**Artifact ${artifact.direction}:** \`${artifact.name}\` (${artifact.paths.map((path) => `\`${path}\``).join(", ")})`),

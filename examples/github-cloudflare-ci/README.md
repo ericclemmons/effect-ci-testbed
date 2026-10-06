@@ -1,8 +1,17 @@
 # Run GitHub-source CI entirely on Cloudflare
 
-This example answers one question:
-
 > How do I keep source and pull requests on GitHub while every CI run is a native Cloudflare Workflow instance?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_build
+```
+
+---
 
 The first slice is a single-tenant service deployed in the repository owner's
 Cloudflare account. It is similar in spirit to a hosted CI integration or Workers

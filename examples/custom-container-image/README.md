@@ -1,8 +1,17 @@
 # Build a custom container image
 
-This example answers one question:
-
 > How do I build a project-owned container image in the same CI program as my other work?
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_build_container_image["build container image"]
+  step_publish_container_image["publish container image (conditional)"]
+  step_checkout --> step_build_container_image
+  step_build_container_image --> step_publish_container_image
+```
+
+---
 
 The image is intentionally tiny and uses `FROM scratch`, so the example tests the
 Docker build boundary without downloading a base image:
