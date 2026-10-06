@@ -1,4 +1,6 @@
-FROM docker:dind
+FROM docker:dind-rootless
+
+USER root
 
 RUN apk add --no-cache bash ca-certificates git
 
