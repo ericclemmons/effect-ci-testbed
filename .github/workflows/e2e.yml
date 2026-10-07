@@ -448,9 +448,6 @@ jobs:
           - example: dynamic-worker-checks
             package: effect-ci-dynamic-worker-checks-fixture
             workflow: effect-ci-dynamic-worker-checks
-          - example: docker-in-docker
-            package: effect-ci-docker-in-docker-fixture
-            workflow: effect-ci-docker-in-docker
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout
@@ -532,6 +529,26 @@ jobs:
 
           echo "Cloudflare Workflow did not complete before the timeout" >&2
           exit 1
+
+  cloudflare-bundle:
+    name: docker-in-docker / Cloudflare bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Verify portable plan and Worker bundle
+        env:
+          EFFECT_CI_EVENT: workflow_dispatch
+        run: |
+          pnpm cf-ci --workflow examples/docker-in-docker/.cloudflare/ci/workflow.ts plan
+          pnpm --filter effect-ci-docker-in-docker-fixture exec wrangler deploy \
+            --dry-run \
+            --containers-rollout=none
 
   github-cloudflare-ci:
     name: github-cloudflare-ci / webhook bridge

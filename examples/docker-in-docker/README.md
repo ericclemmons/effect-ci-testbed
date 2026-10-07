@@ -28,8 +28,13 @@ This is different from [`../custom-runner-image`](../custom-runner-image): that 
 customizes the outer CI environment, while this one treats `app/Dockerfile` as project
 input and creates an inner image during CI.
 
-Run `pnpm dev` with Docker available, then trigger the local Workflow with:
+The portable plan and Worker bundle are covered in CI. Executing the nested daemon is
+left as a Cloudflare-hosted verification: `wrangler dev --local` runs its Containers
+without the kernel mount privileges Docker-in-Docker needs, including on GitHub-hosted
+Linux runners. That limitation belongs to the local emulator, not the workflow API.
+
+To exercise it against a deployed Worker, trigger the Workflow with:
 
 ```sh
-pnpm trigger -- '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' --local
+pnpm trigger -- '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}'
 ```
