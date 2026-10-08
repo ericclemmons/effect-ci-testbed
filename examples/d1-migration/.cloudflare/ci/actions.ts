@@ -24,7 +24,7 @@ export const migrate = CI.action("migrate database", () => function* () {
   const workspace = yield* build()
 
   return yield* workspace.exec(
-    "printf 'y\\n' | npx cf d1 migrations apply 11111111-1111-4111-8111-111111111111 --dir migrations --local --persist-to .effect-ci-state",
+    "npx cf d1 migrations apply 11111111-1111-4111-8111-111111111111 --dir migrations --local --persist-to .effect-ci-state < /dev/null",
   )
 }, {
   rollback: rollbackMigration,
