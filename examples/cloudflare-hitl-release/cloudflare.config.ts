@@ -16,7 +16,7 @@ export default defineConfig({
   worker: {
     name,
     entrypoint: "./src/worker.ts",
-    compatibilityDate: "2026-10-08",
+    compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
     exports: {
       WorkspaceContainer: exports.durableObject({
