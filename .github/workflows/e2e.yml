@@ -595,7 +595,7 @@ jobs:
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
 
-          pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler dev \
+          pnpm --filter effect-ci-github-cloudflare-fixture exec cf dev --local \
             --var GITHUB_WEBHOOK_SECRET:test-secret >"$log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
