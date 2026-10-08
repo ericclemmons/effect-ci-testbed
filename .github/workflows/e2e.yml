@@ -450,9 +450,6 @@ jobs:
           - example: custom-runner-image
             package: effect-ci-custom-runner-image-fixture
             workflow: effect-ci-custom-runner-image
-          - example: dynamic-worker-checks
-            package: effect-ci-dynamic-worker-checks-fixture
-            workflow: effect-ci-dynamic-worker-checks
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout
@@ -536,8 +533,16 @@ jobs:
           exit 1
 
   cloudflare-bundle:
-    name: docker-in-docker / Cloudflare bundle
+    name: ${{ matrix.example }} / Cloudflare bundle
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: docker-in-docker
+            package: effect-ci-docker-in-docker-fixture
+          - example: dynamic-worker-checks
+            package: effect-ci-dynamic-worker-checks-fixture
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -550,8 +555,8 @@ jobs:
         env:
           EFFECT_CI_EVENT: workflow_dispatch
         run: |
-          pnpm cf-ci --workflow examples/docker-in-docker/.cloudflare/ci/workflow.ts plan
-          pnpm --filter effect-ci-docker-in-docker-fixture exec wrangler deploy \
+          pnpm cf-ci --workflow examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts plan
+          pnpm --filter ${{ matrix.package }} exec wrangler deploy \
             --dry-run \
             --containers-rollout=none
 
