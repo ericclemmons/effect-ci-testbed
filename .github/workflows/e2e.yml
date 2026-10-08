@@ -35,7 +35,6 @@ jobs:
           - turborepo-cache
           - package-manager-cache
           - runner-selection
-          - d1-migration
           - ordered-deploy
           - custom-container-image
           - execution-policy
@@ -101,7 +100,6 @@ jobs:
           - system-package
           - cache-policy
           - dynamic-worker-checks
-          - d1-migration
           - ordered-deploy
           - custom-container-image
           - deploy-hook
@@ -185,6 +183,20 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: node --test examples/dependency-aware-reruns/.cloudflare/ci/tests/dependency-aware-reruns.test.ts
+
+  d1-migration-contract:
+    name: d1-migration / plan and Worker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm cf-ci --workflow examples/d1-migration/.cloudflare/ci/workflow.ts plan
+      - run: pnpm --dir examples/d1-migration exec cf build --mode production
 
   immutable-attempts:
     name: immutable attempts and checkpoint reuse
@@ -370,9 +382,6 @@ jobs:
             cache-path: examples/package-manager-cache/app/.effect-ci/cache/npm
           - example: runner-selection
             workflow: examples/runner-selection/.cloudflare/ci/workflow.ts
-            runs-on: '["ubuntu-latest"]'
-          - example: d1-migration
-            workflow: examples/d1-migration/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: ordered-deploy
             workflow: examples/ordered-deploy/.cloudflare/ci/workflow.ts
