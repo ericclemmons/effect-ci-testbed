@@ -583,12 +583,8 @@ jobs:
       - run: pnpm install
       - name: Verify production Worker bundle
         run: |
-          pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler deploy \
-            --dry-run \
-            --containers-rollout=none
-          pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec wrangler deploy \
-            --dry-run \
-            --containers-rollout=none
+          pnpm --filter effect-ci-github-cloudflare-fixture exec cf deploy --dry-run
+          pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec cf deploy --dry-run
       - name: Verify Cloudflare HITL locally
         env:
           EFFECT_CI_APPROVAL: approved
