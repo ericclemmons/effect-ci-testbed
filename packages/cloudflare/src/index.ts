@@ -477,7 +477,11 @@ export interface WorkflowParameters {
 }
 
 export interface WorkflowEnvironment {
-  readonly Workspace: DurableObjectNamespace
+  /**
+   * An explicit cross-Worker binding. Same-Worker entrypoints use
+   * `ctx.exports.WorkspaceContainer` instead.
+   */
+  readonly Workspace?: DurableObjectNamespace
 }
 
 export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment> {
@@ -734,9 +738,18 @@ export const workflowEntrypoint = <
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
+    const binding = this.env.Workspace ??
+      (this.ctx.exports as unknown as {
+        readonly WorkspaceContainer?: DurableObjectNamespace
+      }).WorkspaceContainer
+
+    if (!binding) {
+      throw new Error("WorkspaceContainer is not exported or bound")
+    }
+
     const cache = options.cache === false ? undefined : options.cache
     const runner = makeRunner({
-      binding: this.env.Workspace,
+      binding,
       ...(cache
         ? {
             cache: {

@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 .wrangler/
 **/.effect-ci/cache/
+**/.cloudflare/types/
 dist/
 .DS_Store
 *.tsbuildinfo

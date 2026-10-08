@@ -1,5 +1,5 @@
 {
-  "name": "effect-ci-github-cloudflare-fixture",
+  "name": "effect-ci-cloudflare-hitl-release-fixture",
   "version": "0.0.0",
   "private": true,
   "type": "module",

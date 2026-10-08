@@ -53,7 +53,7 @@ installation, repository, and head SHA.
 
 The Worker validates `X-Hub-Signature-256` before accepting a delivery. It uses
 `X-GitHub-Delivery` as the Workflow instance ID, making webhook redelivery idempotent,
-and responds after the Workflow binding accepts the instance. The durable Workflow—not
+and responds after the exported Workflow accepts the instance. The durable Workflow—not
 the request handler—owns the run.
 
 ## Authentication and secrets
@@ -69,9 +69,11 @@ secrets. The webhook payload's installation ID is durable input; installation ac
 tokens are minted just in time, expire after one hour, and are never stored in Workflow
 parameters or snapshots. The token authenticates both the Git clone and check updates.
 
-Cloudflare resource access should use bindings rather than Cloudflare API tokens. The
-Worker starts the Workflow through its binding, so deploying this example does not add
-a general-purpose Cloudflare credential to the runtime.
+Cloudflare resource access should use runtime capabilities rather than Cloudflare API
+tokens. Because the Workflow and Container-backed Durable Object belong to this Worker,
+the bridge reaches them through `ctx.exports`. Cross-Worker installations can provide
+explicit bindings instead. Neither form adds a general-purpose Cloudflare credential to
+the runtime.
 
 ## What is reusable
 
@@ -86,7 +88,7 @@ The implementation composes three reusable libraries:
   events to the GitHub reporter.
 
 The example itself contains only GitHub App registration instructions, its
-portable actions/workflow, a small Worker entrypoint, and Wrangler bindings.
+portable actions/workflow, a small Worker entrypoint, and `cloudflare.config.ts`.
 
 ## Set up the single-tenant service
 
@@ -105,11 +107,11 @@ credential:
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_APP_ID
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_PRIVATE_KEY
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_WEBHOOK_SECRET
-pnpm --filter effect-ci-github-cloudflare-fixture deploy
+pnpm --dir examples/github-cloudflare-ci deploy
 ```
 
 `GITHUB_PRIVATE_KEY` accepts the PEM directly or with newlines encoded as `\\n`.
-The Worker returns `202 Accepted` only after its Workflow binding accepts the delivery.
+The Worker returns `202 Accepted` only after its exported Workflow accepts the delivery.
 Repeating the same `X-GitHub-Delivery` returns the existing instance rather than
 starting duplicate CI.
 
@@ -127,7 +129,7 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow)
 ```
 
 The repository's integration test injects fake GitHub APIs and a fake Workflow
-binding into the reusable bridge. It proves that one valid signed delivery creates one
+capability into the reusable bridge. It proves that one valid signed delivery creates one
 queued check and one Workflow instance, while redelivering the same
 `X-GitHub-Delivery` creates neither again:
 
@@ -148,10 +150,13 @@ the Worker is deployed, its GitHub App is installed, and a real commit completes
 - A duplicate webhook delivery does not start duplicate CI.
 - A failure concludes both the action check and Workflow as failed.
 
-PR comments, annotations, cancellation, approval, caching, artifacts, deployment, and
-multi-tenant installation management are follow-up slices. Once this bridge works, the
-next examples add package-manager caching, Vite+-style cache metadata, snapshot fan-out,
-and deployment without changing how GitHub triggers or observes a run.
+The same service also exposes Access-protected `/runs` and `/runs/:id/events`
+endpoints. They power `cf-ci run --remote` without changing the GitHub webhook path.
+Durable release approval and Discord notification are kept in the focused
+[`cloudflare-hitl-release`](../cloudflare-hitl-release/README.md) example.
+
+PR comments, annotations, cancellation, artifacts, and multi-tenant installation
+management remain follow-up slices.
 
 ## Relevant platform behavior
 

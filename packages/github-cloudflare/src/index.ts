@@ -1,14 +1,29 @@
 import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
+import * as Effect from "effect/Effect"
 import {
   WorkflowEntrypoint,
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers"
-import { detailsUrl, type WorkerEnvironment, type WorkflowParameters } from "./worker.ts"
+import {
+  approvalEventType,
+  approvalToken,
+  detailsUrl,
+  type GitHubWorkflowParameters,
+  type WorkerEnvironment,
+  type WorkflowParameters,
+} from "./worker.ts"
 export { worker } from "./worker.ts"
-export type { GitHubClient, WorkerEnvironment, WorkerOptions, WorkflowParameters } from "./worker.ts"
+export type {
+  GitHubClient,
+  GitHubWorkflowParameters,
+  RemoteWorkflowParameters,
+  WorkerEnvironment,
+  WorkerOptions,
+  WorkflowParameters,
+} from "./worker.ts"
 
 export interface Environment extends Cloudflare.WorkflowEnvironment, WorkerEnvironment {}
 
@@ -18,6 +33,83 @@ const credentials = (environment: Environment): GitHub.GitHubAppCredentials => (
 })
 
 export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions<Environment> {}
+
+const isApprovalResult = (value: unknown): value is CI.ApprovalResult => {
+  if (!value || typeof value !== "object") return false
+
+  const record = value as Record<string, unknown>
+
+  return (record.decision === "approved" || record.decision === "rejected") &&
+    (record.actor === undefined || typeof record.actor === "string")
+}
+
+const approvalUrl = async (
+  environment: Environment,
+  instanceId: string,
+  requestId: string,
+): Promise<string | undefined> => {
+  if (!environment.EFFECT_CI_PUBLIC_URL || !environment.EFFECT_CI_API_TOKEN) {
+    return undefined
+  }
+
+  const origin = environment.EFFECT_CI_PUBLIC_URL.replace(/\/$/, "")
+  const token = await approvalToken(
+    environment.EFFECT_CI_API_TOKEN,
+    instanceId,
+    requestId,
+  )
+
+  return `${origin}/runs/${encodeURIComponent(instanceId)}/approvals/${encodeURIComponent(requestId)}?token=${token}`
+}
+
+const approvalHandler = (
+  environment: Environment,
+  instanceId: string,
+  step: WorkflowStep,
+): CI.ApprovalHandler => ({
+  request: (request) => Effect.tryPromise({
+    try: async () => {
+      const url = await approvalUrl(environment, instanceId, request.requestId)
+
+      if (environment.DISCORD_WEBHOOK_URL && url) {
+        await step.do(`notify:${request.stepId}`, async () => {
+          const response = await fetch(environment.DISCORD_WEBHOOK_URL!, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              content: `**${request.title}**\n${request.summary}\n${url}`,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`Discord notification failed (${response.status})`)
+          }
+
+          return { delivered: true }
+        })
+      }
+
+      const event = await step.waitForEvent<CI.ApprovalResult>(
+        `approval:${request.stepId}`,
+        {
+          type: approvalEventType(request.requestId),
+          timeout: "7 days",
+        },
+      )
+
+      if (!isApprovalResult(event.payload)) {
+        throw new Error(`Invalid approval response for ${request.stepId}`)
+      }
+
+      return event.payload
+    },
+    catch: (error) => error,
+  }),
+})
+
+const isGitHubRun = (
+  parameters: WorkflowParameters,
+): parameters is GitHubWorkflowParameters => parameters.trigger === "github"
 
 export const workflowEntrypoint = <A>(
   workflow: CI.Workflow<A>,
@@ -30,15 +122,23 @@ export const workflowEntrypoint = <A>(
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
-    const githubCredentials = credentials(this.env)
-    const token = () => GitHub.createInstallationToken(
-      githubCredentials,
-      event.payload.installationId,
-    )
+    const binding = this.env.Workspace ??
+      (this.ctx.exports as unknown as {
+        readonly WorkspaceContainer?: DurableObjectNamespace
+      }).WorkspaceContainer
+
+    if (!binding) {
+      throw new Error("WorkspaceContainer is not exported or bound")
+    }
+
+    const github = isGitHubRun(event.payload) ? event.payload : undefined
+    const token = github
+      ? () => GitHub.createInstallationToken(credentials(this.env), github.installationId)
+      : undefined
     const runner = Cloudflare.makeRunner({
-      binding: this.env.Workspace,
+      binding,
       cache: {
-        key: event.payload.repositoryName,
+        key: github?.repositoryName ?? event.payload.repository,
         paths: ["node_modules/.vite/task-cache"],
       },
       ...(options.container ? { container: options.container } : {}),
@@ -49,7 +149,7 @@ export const workflowEntrypoint = <A>(
         : { reuseWorkspace: options.reuseWorkspace }),
       revision: event.payload.revision,
       step,
-      token,
+      ...(token ? { token } : {}),
       workspaceId: event.instanceId,
     })
     let operation = 0
@@ -57,13 +157,13 @@ export const workflowEntrypoint = <A>(
       this.env.EFFECT_CI_DETAILS_URL,
       event.instanceId,
     )
-    const reporter = new GitHub.Reporter(
+    const reporter = github && token ? new GitHub.Reporter(
       {
         token: "",
-        repository: event.payload.repositoryName,
+        repository: github.repositoryName,
         sha: event.payload.revision,
-        summaryCheckId: event.payload.summaryCheckId,
-        externalId: event.payload.deliveryId,
+        summaryCheckId: github.summaryCheckId,
+        externalId: github.deliveryId,
         ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
       },
       {
@@ -76,13 +176,15 @@ export const workflowEntrypoint = <A>(
           async () => GitHub.updateCheck({ ...request, token: await token() }),
         ),
       },
-    )
+    ) : undefined
 
     try {
       const result = await CI.runPromise(workflow, {
+        approval: approvalHandler(this.env, event.instanceId, step),
+        ci: true,
         env: "cloudflare",
         event: {
-          type: "push",
+          type: github ? "push" : "workflow_dispatch",
           payload: event.payload,
           ...(event.payload.ref ? { ref: event.payload.ref } : {}),
           revision: event.payload.revision,
@@ -93,7 +195,9 @@ export const workflowEntrypoint = <A>(
           },
         },
         executor: runner.executor,
-        onEvent: (runtimeEvent) => reporter.report(runtimeEvent),
+        ...(reporter
+          ? { onEvent: (runtimeEvent: CI.RuntimeEvent) => reporter.report(runtimeEvent) }
+          : {}),
         output: "silent",
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,
@@ -105,7 +209,7 @@ export const workflowEntrypoint = <A>(
 
       return result.plan
     } catch (error) {
-      await reporter.abort()
+      await reporter?.abort()
       throw error
     }
   }

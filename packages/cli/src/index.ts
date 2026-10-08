@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs"
+import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
@@ -83,6 +84,192 @@ const detectedFormat = (): OutputFormat => {
   } catch {
     return "text"
   }
+}
+
+interface RemoteRunResponse {
+  readonly instanceId: string
+  readonly eventsUrl: string
+  readonly statusUrl: string
+}
+
+interface WorkflowInstanceEvent {
+  readonly type: string
+  readonly eventId?: number
+  readonly stepName?: string
+  readonly attempt?: number
+  readonly error?: { readonly message?: string }
+  readonly output?: unknown
+}
+
+const remoteHeaders = (): Headers => {
+  const headers = new Headers({ "content-type": "application/json" })
+
+  if (process.env.EFFECT_CI_REMOTE_TOKEN) {
+    headers.set("authorization", `Bearer ${process.env.EFFECT_CI_REMOTE_TOKEN}`)
+  }
+
+  if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
+    headers.set("cf-access-client-id", process.env.CF_ACCESS_CLIENT_ID)
+    headers.set("cf-access-client-secret", process.env.CF_ACCESS_CLIENT_SECRET)
+  }
+
+  return headers
+}
+
+const git = (root: string, ...args: ReadonlyArray<string>): string =>
+  execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
+
+const gitOptional = (root: string, ...args: ReadonlyArray<string>): string | undefined => {
+  try {
+    return git(root, ...args)
+  } catch {
+    return undefined
+  }
+}
+
+const cloneUrl = (value: string): string => {
+  const githubSsh = value.match(/^git@github\.com:(.+)$/)
+
+  return githubSsh ? `https://github.com/${githubSsh[1]}` : value
+}
+
+const describeEvent = (event: WorkflowInstanceEvent): string => {
+  switch (event.type) {
+    case "step_started": return `→ ${event.stepName}`
+    case "step_completed": {
+      const output = event.output && typeof event.output === "object"
+        ? event.output as Record<string, unknown>
+        : undefined
+      const stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
+      const stderr = typeof output?.stderr === "string" ? output.stderr.trimEnd() : ""
+      const logs = [stdout, stderr].filter(Boolean).join("\n")
+
+      return `✓ ${event.stepName}${logs ? `\n${logs}` : ""}`
+    }
+    case "step_errored": return `✗ ${event.stepName}`
+    case "attempt_errored": return `↻ ${event.stepName} attempt ${event.attempt} failed${event.error?.message ? `: ${event.error.message}` : ""}`
+    case "wait_started": return `… ${event.stepName}`
+    case "workflow_completed": return "✓ Workflow completed"
+    case "workflow_errored": return `✗ Workflow failed${event.error?.message ? `: ${event.error.message}` : ""}`
+    case "workflow_terminated": return "✗ Workflow terminated"
+    default: return event.type
+  }
+}
+
+const streamRemoteEvents = async (
+  response: Response,
+  format: OutputFormat,
+): Promise<ReadonlyArray<WorkflowInstanceEvent>> => {
+  if (!response.ok || !response.body) {
+    throw new CliFailure(
+      "CI_REMOTE_FAILED",
+      ExitCode.providerUnavailable,
+      `Could not follow the remote run (${response.status}): ${await response.text()}`,
+    )
+  }
+
+  const events: WorkflowInstanceEvent[] = []
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  while (true) {
+    const chunk = await reader.read()
+
+    buffer += decoder.decode(chunk.value, { stream: !chunk.done })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+
+    for (const line of lines) {
+      if (!line) continue
+
+      const event = JSON.parse(line) as WorkflowInstanceEvent
+      events.push(event)
+
+      if (format === "text") console.log(describeEvent(event))
+    }
+
+    if (chunk.done) break
+  }
+
+  return events
+}
+
+const builtInRemote = async (
+  invocation: Invocation,
+  root: string,
+): Promise<unknown> => {
+  const remoteUrl = process.env.EFFECT_CI_REMOTE_URL?.replace(/\/$/, "")
+
+  if (!remoteUrl) {
+    throw new CliFailure(
+      "CI_REMOTE_UNAVAILABLE",
+      ExitCode.providerUnavailable,
+      "Set EFFECT_CI_REMOTE_URL or export a custom remote runner from the workflow module",
+    )
+  }
+
+  if (invocation.target) {
+    throw new CliFailure(
+      "CI_REMOTE_TARGET_UNAVAILABLE",
+      ExitCode.providerUnavailable,
+      "The hosted runner currently executes the workflow suite, not individual exported actions",
+    )
+  }
+
+  if (invocation.command !== "run") {
+    throw new CliFailure(
+      "CI_REMOTE_COMMAND_UNAVAILABLE",
+      ExitCode.providerUnavailable,
+      "The built-in hosted runner supports `run --remote`; plan locally before dispatching",
+    )
+  }
+
+  const repository = cloneUrl(git(root, "config", "--get", "remote.origin.url"))
+  const revision = git(root, "rev-parse", "HEAD")
+  const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
+  const response = await fetch(`${remoteUrl}/runs`, {
+    method: "POST",
+    headers: remoteHeaders(),
+    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}) }),
+  })
+
+  if (!response.ok) {
+    throw new CliFailure(
+      "CI_REMOTE_FAILED",
+      ExitCode.providerUnavailable,
+      `Could not start the remote run (${response.status}): ${await response.text()}`,
+    )
+  }
+
+  const run = await response.json() as RemoteRunResponse
+
+  if (invocation.format === "text") console.log(`Remote Workflow ${run.instanceId}`)
+
+  const events = await streamRemoteEvents(await fetch(run.eventsUrl, {
+    headers: remoteHeaders(),
+  }), invocation.format)
+  const terminal = events.at(-1)
+
+  if (terminal?.type === "workflow_errored" || terminal?.type === "workflow_terminated") {
+    throw new CliFailure(
+      "CI_WORKFLOW_FAILED",
+      ExitCode.workflowFailure,
+      describeEvent(terminal),
+      { instanceId: run.instanceId, events },
+    )
+  }
+
+  if (terminal?.type !== "workflow_completed") {
+    throw new CliFailure(
+      "CI_REMOTE_STREAM_ENDED",
+      ExitCode.providerUnavailable,
+      "The remote event stream ended before the Workflow reported a terminal result",
+      { instanceId: run.instanceId, events },
+    )
+  }
+
+  return { ...run, events }
 }
 
 interface ParsedInvocation {
@@ -550,15 +737,9 @@ export const main = async (
     }
 
     if (invocation.location === "remote") {
-      if (!program.remote) {
-        throw new CliFailure(
-          "CI_REMOTE_UNAVAILABLE",
-          ExitCode.providerUnavailable,
-          "This workflow has no remote runner configured",
-        )
-      }
-
-      const result = await program.remote(request)
+      const result = program.remote
+        ? await program.remote(request)
+        : await builtInRemote(request, projectRoot(workflowPath))
 
       if (format === "json") {
         printJson({
