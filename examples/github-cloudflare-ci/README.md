@@ -53,7 +53,7 @@ installation, repository, and head SHA.
 
 The Worker validates `X-Hub-Signature-256` before accepting a delivery. It uses
 `X-GitHub-Delivery` as the Workflow instance ID, making webhook redelivery idempotent,
-and responds after the Workflow binding accepts the instance. The durable Workflow—not
+and responds after the exported Workflow accepts the instance. The durable Workflow—not
 the request handler—owns the run.
 
 ## Authentication and secrets
@@ -69,9 +69,11 @@ secrets. The webhook payload's installation ID is durable input; installation ac
 tokens are minted just in time, expire after one hour, and are never stored in Workflow
 parameters or snapshots. The token authenticates both the Git clone and check updates.
 
-Cloudflare resource access should use bindings rather than Cloudflare API tokens. The
-Worker starts the Workflow through its binding, so deploying this example does not add
-a general-purpose Cloudflare credential to the runtime.
+Cloudflare resource access should use runtime capabilities rather than Cloudflare API
+tokens. Because the Workflow and Container-backed Durable Object belong to this Worker,
+the bridge reaches them through `ctx.exports`. Cross-Worker installations can provide
+explicit bindings instead. Neither form adds a general-purpose Cloudflare credential to
+the runtime.
 
 ## What is reusable
 
@@ -109,7 +111,7 @@ pnpm --dir examples/github-cloudflare-ci deploy
 ```
 
 `GITHUB_PRIVATE_KEY` accepts the PEM directly or with newlines encoded as `\\n`.
-The Worker returns `202 Accepted` only after its Workflow binding accepts the delivery.
+The Worker returns `202 Accepted` only after its exported Workflow accepts the delivery.
 Repeating the same `X-GitHub-Delivery` returns the existing instance rather than
 starting duplicate CI.
 
@@ -127,7 +129,7 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow)
 ```
 
 The repository's integration test injects fake GitHub APIs and a fake Workflow
-binding into the reusable bridge. It proves that one valid signed delivery creates one
+capability into the reusable bridge. It proves that one valid signed delivery creates one
 queued check and one Workflow instance, while redelivering the same
 `X-GitHub-Delivery` creates neither again:
 

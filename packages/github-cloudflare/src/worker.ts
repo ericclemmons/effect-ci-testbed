@@ -22,7 +22,8 @@ export interface RemoteWorkflowParameters {
 export type WorkflowParameters = GitHubWorkflowParameters | RemoteWorkflowParameters
 
 export interface WorkerEnvironment {
-  readonly EFFECT_CI: Workflow<WorkflowParameters>
+  /** Explicit cross-Worker binding; same-Worker requests use `ctx.exports`. */
+  readonly EFFECT_CI?: Workflow<WorkflowParameters>
   readonly EFFECT_CI_API_TOKEN?: string
   readonly EFFECT_CI_DETAILS_URL?: string
   readonly EFFECT_CI_PUBLIC_URL?: string
@@ -40,6 +41,10 @@ export interface GitHubClient {
 
 export interface WorkerOptions {
   readonly github?: GitHubClient
+  readonly workflow?: (
+    environment: WorkerEnvironment,
+    context: ExecutionContext | undefined,
+  ) => Workflow<WorkflowParameters>
 }
 
 interface RemoteRunRequest {
@@ -171,6 +176,7 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
 const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
+  workflow: Workflow<WorkflowParameters>,
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -181,7 +187,7 @@ const remoteRun = async (
   if (!input) return new Response("Invalid remote run", { status: 400 })
 
   const instanceId = crypto.randomUUID()
-  await environment.EFFECT_CI.create({
+  await workflow.create({
     id: instanceId,
     params: { trigger: "remote", ...input },
   })
@@ -198,6 +204,7 @@ const remoteRun = async (
 const streamEvents = async (
   request: Request,
   environment: WorkerEnvironment,
+  workflow: Workflow<WorkflowParameters>,
   instanceId: string,
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
@@ -206,7 +213,7 @@ const streamEvents = async (
 
   const cursorValue = new URL(request.url).searchParams.get("cursor")
   const cursor = cursorValue === null ? undefined : Number.parseInt(cursorValue, 10)
-  const instance = await environment.EFFECT_CI.get(instanceId)
+  const instance = await workflow.get(instanceId)
   const subscription = await instance.subscribe(
     cursor === undefined || Number.isNaN(cursor) ? undefined : { cursor },
   )
@@ -274,6 +281,7 @@ const approvalPage = (instanceId: string): Response =>
 const resolveApproval = async (
   request: Request,
   environment: WorkerEnvironment,
+  workflow: Workflow<WorkflowParameters>,
   instanceId: string,
   requestId: string,
 ): Promise<Response> => {
@@ -290,7 +298,7 @@ const resolveApproval = async (
     return new Response("Invalid decision", { status: 400 })
   }
 
-  const instance = await environment.EFFECT_CI.get(instanceId)
+  const instance = await workflow.get(instanceId)
   const actor = request.headers.get("cf-access-authenticated-user-email")
   await instance.sendEvent({
     type: approvalEventType(requestId),
@@ -307,23 +315,43 @@ const resolveApproval = async (
 
 export const worker = (options: WorkerOptions = {}) => {
   const github = options.github ?? defaultGitHubClient
+  const getWorkflow = options.workflow ?? ((environment, context) => {
+    const workflow = environment.EFFECT_CI ??
+      (context?.exports as unknown as {
+        readonly EffectCIWorkflow?: Workflow<WorkflowParameters>
+      } | undefined)?.EffectCIWorkflow
+
+    if (!workflow) throw new Error("EffectCIWorkflow is not exported or bound")
+
+    return workflow
+  })
 
   return ({
-    async fetch(request: Request, environment: WorkerEnvironment): Promise<Response> {
+    async fetch(
+      request: Request,
+      environment: WorkerEnvironment,
+      context?: ExecutionContext,
+    ): Promise<Response> {
       const url = new URL(request.url)
+      const workflow = getWorkflow(environment, context)
 
       if (request.method === "GET" && url.pathname === "/") {
         return Response.json({ service: "Effect CI", status: "ready" })
       }
 
       if (request.method === "POST" && url.pathname === "/runs") {
-        return remoteRun(request, environment)
+        return remoteRun(request, environment, workflow)
       }
 
       const eventRoute = url.pathname.match(/^\/runs\/([^/]+)\/events$/)
 
       if (request.method === "GET" && eventRoute) {
-        return streamEvents(request, environment, decodeURIComponent(eventRoute[1]!))
+        return streamEvents(
+          request,
+          environment,
+          workflow,
+          decodeURIComponent(eventRoute[1]!),
+        )
       }
 
       const statusRoute = url.pathname.match(/^\/runs\/([^/]+)$/)
@@ -333,7 +361,7 @@ export const worker = (options: WorkerOptions = {}) => {
           return new Response("Unauthorized", { status: 401 })
         }
 
-        const instance = await environment.EFFECT_CI.get(
+        const instance = await workflow.get(
           decodeURIComponent(statusRoute[1]!),
         )
 
@@ -357,7 +385,13 @@ export const worker = (options: WorkerOptions = {}) => {
 
         if (request.method === "GET") return approvalPage(instanceId)
         if (request.method === "POST") {
-          return resolveApproval(request, environment, instanceId, requestId)
+          return resolveApproval(
+            request,
+            environment,
+            workflow,
+            instanceId,
+            requestId,
+          )
         }
       }
 
@@ -399,7 +433,7 @@ export const worker = (options: WorkerOptions = {}) => {
 
       if (!deliveryId) return new Response("Missing X-GitHub-Delivery", { status: 400 })
 
-      if (await existingInstance(environment.EFFECT_CI, deliveryId)) {
+      if (await existingInstance(workflow, deliveryId)) {
         return Response.json({ accepted: true, duplicate: true, instanceId: deliveryId }, { status: 202 })
       }
 
@@ -421,7 +455,7 @@ export const worker = (options: WorkerOptions = {}) => {
       })
 
       try {
-        await environment.EFFECT_CI.create({
+        await workflow.create({
           id: deliveryId,
           params: {
             trigger: "github",

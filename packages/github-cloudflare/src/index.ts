@@ -122,12 +122,21 @@ export const workflowEntrypoint = <A>(
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
+    const binding = this.env.Workspace ??
+      (this.ctx.exports as unknown as {
+        readonly WorkspaceContainer?: DurableObjectNamespace
+      }).WorkspaceContainer
+
+    if (!binding) {
+      throw new Error("WorkspaceContainer is not exported or bound")
+    }
+
     const github = isGitHubRun(event.payload) ? event.payload : undefined
     const token = github
       ? () => GitHub.createInstallationToken(credentials(this.env), github.installationId)
       : undefined
     const runner = Cloudflare.makeRunner({
-      binding: this.env.Workspace,
+      binding,
       cache: {
         key: github?.repositoryName ?? event.payload.repository,
         paths: ["node_modules/.vite/task-cache"],
