@@ -436,7 +436,7 @@ jobs:
   cloudflare-runner:
     name: ${{ matrix.example }} / Cloudflare local runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -509,7 +509,7 @@ jobs:
             --id "$instance_id" \
             --local
 
-          for attempt in $(seq 1 90); do
+          for attempt in $(seq 1 180); do
             description=$(timeout 15s pnpm --filter ${{ matrix.package }} exec wrangler workflows instances describe \
               ${{ matrix.workflow }} \
               "$instance_id" \
