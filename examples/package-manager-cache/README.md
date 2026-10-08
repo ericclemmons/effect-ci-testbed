@@ -35,6 +35,12 @@ Cloudflare runner will provide the same contract with directory backup or anothe
 path-scoped store; a whole-workspace snapshot is deliberately not used as a cache
 because restoring it could erase changes made after checkout.
 
+The repository test runs the Effect workflow once to populate that directory, then
+uses it to install into a fresh workspace with npm's network access disabled. The
+Cloudflare adapter is also bundled in CI. Cross-instance persistence on deployed
+Cloudflare infrastructure remains `🔜`; Wrangler's local Workflow emulator currently
+does not reliably complete the second fresh container-backed instance.
+
 The two persistence mechanisms remain separate:
 
 - Every successful action returns and durably checkpoints its complete workspace
