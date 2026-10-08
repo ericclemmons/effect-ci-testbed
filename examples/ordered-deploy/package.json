@@ -2,5 +2,6 @@
   "name": "effect-ci-ordered-deploy-fixture",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "workspaces": ["apps/*"]
 }

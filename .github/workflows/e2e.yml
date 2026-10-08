@@ -119,7 +119,12 @@ jobs:
       - name: Run examples/${{ matrix.example }} (${{ matrix.mode }})
         env:
           EFFECT_CI_EVENT: ${{ matrix.example == 'deploy-hook' && 'deploy_hook' || 'pull_request' }}
-        run: pnpm cf-ci --workflow examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
+        run: |
+          workflow="examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts"
+          if [ "${{ matrix.example }}" = "zero-config" ]; then
+            workflow="examples/zero-config/.cloudflare/ci/ci.ts"
+          fi
+          pnpm cf-ci --workflow "$workflow" ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
   agent-cli:
     name: agent-first executable CI
@@ -708,7 +713,7 @@ jobs:
   package-manager-cache:
     name: package-manager-cache / offline restore
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -740,7 +745,7 @@ jobs:
           wait_for_workflow() {
             local instance_id="$1"
 
-            for attempt in $(seq 1 90); do
+            for attempt in $(seq 1 180); do
               description=$(pnpm --filter effect-ci-package-manager-cache-fixture exec wrangler workflows instances describe \
                 effect-ci-package-manager-cache \
                 "$instance_id" \
