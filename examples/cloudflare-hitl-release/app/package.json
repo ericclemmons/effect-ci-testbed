@@ -1,0 +1,9 @@
+{
+  "name": "effect-ci-cloudflare-hitl-release-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --check src/index.js"
+  }
+}

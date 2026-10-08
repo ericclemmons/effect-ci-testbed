@@ -19,6 +19,7 @@ const signature = `sha256=${createHmac("sha256", secret).update(body).digest("he
 const instances = new Map<string, GitHubCloudflare.WorkflowParameters>()
 const checks: Array<Parameters<GitHubCloudflare.GitHubClient["createCheck"]>[0]> = []
 const updates: Array<Parameters<GitHubCloudflare.GitHubClient["updateCheck"]>[0]> = []
+const sentEvents: Array<{ readonly type: string; readonly payload: unknown }> = []
 
 const application = GitHubCloudflare.worker({
   github: {
@@ -49,7 +50,25 @@ const workflow = {
   get: async (id: string) => {
     if (!instances.has(id)) throw new Error("missing")
 
-    return { status: async () => ({ status: "running" }) }
+    const events = [
+      { instanceId: id, eventId: 1, timestamp: 1, type: "workflow_started" },
+      { instanceId: id, eventId: 2, timestamp: 2, type: "workflow_completed" },
+    ]
+
+    return {
+      status: async () => ({ status: "running" }),
+      sendEvent: async (event: { readonly type: string; readonly payload: unknown }) => {
+        sentEvents.push(event)
+      },
+      subscribe: async () => ({
+        [Symbol.dispose]() {},
+        next: async () => {
+          const value = events.shift()
+
+          return value ? { done: false as const, value } : { done: true as const, value: undefined }
+        },
+      }),
+    }
   },
 }
 
@@ -83,6 +102,7 @@ assert.equal(checks[0]?.token, "installation-token")
 assert.equal(checks[0]?.repository, "example/project")
 assert.equal(checks[0]?.sha, "abc123")
 assert.deepEqual(instances.get(deliveryId), {
+  trigger: "github",
   deliveryId,
   installationId: 42,
   repository: "https://github.com/example/project.git",
@@ -124,3 +144,74 @@ assert.equal(checks.length, 2)
 assert.equal(updates.length, 1)
 assert.equal(updates[0]?.conclusion, "failure")
 assert.equal(updates[0]?.summary, "Workflow unavailable")
+
+const unauthorized = await application.fetch(new Request("https://ci.example.com/runs", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ repository: "https://github.com/example/project.git", revision: "abc123" }),
+}), environment)
+
+assert.equal(unauthorized.status, 401)
+
+const remoteEnvironment = {
+  ...environment,
+  EFFECT_CI_API_TOKEN: "remote-secret",
+} as unknown as GitHubCloudflare.WorkerEnvironment
+const remote = await application.fetch(new Request("https://ci.example.com/runs", {
+  method: "POST",
+  headers: {
+    authorization: "Bearer remote-secret",
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    repository: "https://github.com/example/project.git",
+    revision: "abc123",
+  }),
+}), remoteEnvironment)
+
+assert.equal(remote.status, 202)
+const remoteRun = await remote.json() as { readonly instanceId: string; readonly eventsUrl: string }
+assert.deepEqual(instances.get(remoteRun.instanceId), {
+  trigger: "remote",
+  repository: "https://github.com/example/project.git",
+  revision: "abc123",
+})
+
+const stream = await application.fetch(new Request(remoteRun.eventsUrl, {
+  headers: { authorization: "Bearer remote-secret" },
+}), remoteEnvironment)
+
+assert.equal(stream.status, 200)
+assert.deepEqual(
+  (await stream.text()).trim().split("\n").map((line) => JSON.parse(line).type),
+  ["workflow_started", "workflow_completed"],
+)
+
+const requestId = "release:approve"
+const approvalPath = `https://ci.example.com/runs/${remoteRun.instanceId}/approvals/${encodeURIComponent(requestId)}`
+const signedToken = await GitHubCloudflare.approvalToken(
+  "remote-secret",
+  remoteRun.instanceId,
+  requestId,
+)
+const review = await application.fetch(new Request(`${approvalPath}?token=${signedToken}`), remoteEnvironment)
+
+assert.equal(review.status, 200)
+assert.match(await review.text(), /Approve release/)
+
+const approval = await application.fetch(new Request(approvalPath, {
+  method: "POST",
+  headers: {
+    authorization: "Bearer remote-secret",
+    "cf-access-authenticated-user-email": "reviewer@example.com",
+    "content-type": "application/x-www-form-urlencoded",
+    origin: "https://ci.example.com",
+  },
+  body: "decision=approved",
+}), remoteEnvironment)
+
+assert.equal(approval.status, 200)
+assert.deepEqual(sentEvents.at(-1), {
+  type: GitHubCloudflare.approvalEventType(requestId),
+  payload: { decision: "approved", actor: "reviewer@example.com" },
+})

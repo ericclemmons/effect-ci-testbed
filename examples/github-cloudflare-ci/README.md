@@ -86,7 +86,7 @@ The implementation composes three reusable libraries:
   events to the GitHub reporter.
 
 The example itself contains only GitHub App registration instructions, its
-portable actions/workflow, a small Worker entrypoint, and Wrangler bindings.
+portable actions/workflow, a small Worker entrypoint, and `cloudflare.config.ts`.
 
 ## Set up the single-tenant service
 
@@ -105,7 +105,7 @@ credential:
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_APP_ID
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_PRIVATE_KEY
 pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler secret put GITHUB_WEBHOOK_SECRET
-pnpm --filter effect-ci-github-cloudflare-fixture deploy
+pnpm --dir examples/github-cloudflare-ci deploy
 ```
 
 `GITHUB_PRIVATE_KEY` accepts the PEM directly or with newlines encoded as `\\n`.
@@ -148,10 +148,13 @@ the Worker is deployed, its GitHub App is installed, and a real commit completes
 - A duplicate webhook delivery does not start duplicate CI.
 - A failure concludes both the action check and Workflow as failed.
 
-PR comments, annotations, cancellation, approval, caching, artifacts, deployment, and
-multi-tenant installation management are follow-up slices. Once this bridge works, the
-next examples add package-manager caching, Vite+-style cache metadata, snapshot fan-out,
-and deployment without changing how GitHub triggers or observes a run.
+The same service also exposes Access-protected `/runs` and `/runs/:id/events`
+endpoints. They power `cf-ci run --remote` without changing the GitHub webhook path.
+Durable release approval and Discord notification are kept in the focused
+[`cloudflare-hitl-release`](../cloudflare-hitl-release/README.md) example.
+
+PR comments, annotations, cancellation, artifacts, and multi-tenant installation
+management remain follow-up slices.
 
 ## Relevant platform behavior
 

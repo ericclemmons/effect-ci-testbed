@@ -586,6 +586,13 @@ jobs:
           pnpm --filter effect-ci-github-cloudflare-fixture exec wrangler deploy \
             --dry-run \
             --containers-rollout=none
+          pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec wrangler deploy \
+            --dry-run \
+            --containers-rollout=none
+      - name: Verify Cloudflare HITL locally
+        env:
+          EFFECT_CI_APPROVAL: approved
+        run: pnpm cf-ci --workflow examples/cloudflare-hitl-release/.cloudflare/ci/workflow.ts
       - name: Verify signed dispatch and duplicate delivery
         run: node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
       - name: Verify webhook authentication locally
