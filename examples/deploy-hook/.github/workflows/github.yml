@@ -1,0 +1,21 @@
+name: GitHub Actions
+
+on:
+  deployment:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm install
+      - run: npx cf build --mode production
+      - run: npx cf deploy --prebuilt --mode production --dry-run

@@ -374,18 +374,21 @@ export class CommandError extends Error {
   readonly command: string
   readonly cwd: string
   readonly exitCode: number
+  readonly details: string | undefined
 
   constructor(
     stepId: string,
     command: string,
     cwd: string,
     exitCode: number,
+    details?: string,
   ) {
-    super(`Command failed (${exitCode}): ${command}`)
+    super(`Command failed (${exitCode}): ${command}${details ? `\n${details}` : ""}`)
     this.stepId = stepId
     this.command = command
     this.cwd = cwd
     this.exitCode = exitCode
+    this.details = details
   }
 }
 
@@ -1037,6 +1040,8 @@ export const Toolchain = { Node, Mise } as const
 export interface SourceService {
   /** Acquire the repository and immutable revision selected by the initiating event. */
   readonly checkout: () => Effect.Effect<Workspace, unknown>
+  /** Provider-neutral provenance for logs, evidence, and cache identity. */
+  readonly reference?: SourceReference
 }
 
 export class Source extends ServiceMap.Service<Source, SourceService>()(
@@ -1045,6 +1050,7 @@ export class Source extends ServiceMap.Service<Source, SourceService>()(
 
 const localSource: SourceService = {
   checkout: () => Effect.succeed(Workspace.local(process.cwd())),
+  reference: { kind: "local", path: process.cwd() },
 }
 
 export interface CommandExecutionRequest {
@@ -1145,6 +1151,9 @@ export interface WorkspaceCachePolicy {
 }
 
 export type WorkflowEventName =
+  | "deploy_hook"
+  | "deployment"
+  | "deployment_status"
   | "merge_group"
   | "observability_issue"
   | "pull_request"
@@ -1152,14 +1161,39 @@ export type WorkflowEventName =
   | "release"
   | "workflow_dispatch"
 
+export type SourceReference =
+  | {
+      readonly kind: "artifact"
+      readonly digest: string
+      readonly name: string
+    }
+  | {
+      readonly kind: "durable_object"
+      readonly id: string
+      readonly revision: string
+    }
+  | {
+      readonly kind: "git"
+      readonly repository: string
+      readonly revision: string
+    }
+  | {
+      readonly kind: "local"
+      readonly path: string
+      readonly revision?: string
+    }
+  | {
+      readonly kind: "r2"
+      readonly bucket: string
+      readonly digest: string
+      readonly key: string
+    }
+
 export interface WorkflowEventShape {
   readonly type: WorkflowEventName
   readonly payload?: unknown
   /** Source selected by the event adapter. Non-source events may omit it. */
-  readonly source?: {
-    readonly repository: string
-    readonly revision: string
-  }
+  readonly source?: SourceReference
   /** A normalized source ref such as `refs/heads/main` or `refs/tags/v1.0.0`. */
   readonly ref?: string
   /** The immutable source revision, normally a commit SHA. */

@@ -1,0 +1,17 @@
+name: Effect CI on GitHub
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/zero-config/.cloudflare/ci/ci.ts
+    secrets: inherit

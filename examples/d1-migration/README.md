@@ -38,6 +38,12 @@ the fixture's local database ID, removes
 `--local` from the migration, and removes `--dry-run` from deployment. Those execution
 choices belong to the runner layer; the action ordering does not change.
 
+The repository CI verifies the complete portable plan, including its rollback edge,
+and performs the real Worker build. Local execution is also verified directly. The
+current beta `cf d1 --local` subprocess does not terminate on GitHub-hosted Ubuntu,
+even though the same quiet command applies the migration and exits locally, so the
+matrix keeps both GitHub execution columns at `🔜` rather than claiming false parity.
+
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).

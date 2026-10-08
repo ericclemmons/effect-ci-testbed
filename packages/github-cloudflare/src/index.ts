@@ -87,6 +87,7 @@ export const workflowEntrypoint = <A>(
           ...(event.payload.ref ? { ref: event.payload.ref } : {}),
           revision: event.payload.revision,
           source: {
+            kind: "git",
             repository: event.payload.repository,
             revision: event.payload.revision,
           },

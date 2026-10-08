@@ -17,7 +17,7 @@ export interface GitNotesCheckCacheOptions {
 
 export const checkFingerprint = (request: CheckCacheRequest): string => JSON.stringify({
   command: request.command,
-  repository: request.event.source?.repository,
+  source: request.event.source,
   revision: request.event.revision,
   scope: request.policy.scope,
   stepId: request.stepId,

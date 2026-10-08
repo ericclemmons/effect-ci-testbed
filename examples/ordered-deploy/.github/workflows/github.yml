@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - run: npm install
       - run: cd apps/backend && npx cf build --mode production
       - run: cd apps/frontend && npx cf build --mode production
       - run: cd apps/backend && npx cf deploy --prebuilt --mode production --dry-run

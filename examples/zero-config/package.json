@@ -1,0 +1,12 @@
+{
+  "name": "effect-ci-zero-config-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "node --check app/index.js",
+    "lint": "node --check app/index.js",
+    "test": "node --test app/index.js",
+    "build": "node --check app/index.js"
+  }
+}

@@ -51,25 +51,34 @@ interface WorkspaceContainerStub {
     revision?: ContainerSnapshotValue,
     cachePaths?: ReadonlyArray<string>,
     cacheRoot?: string,
+    options?: WorkspaceContainerOptions,
   ) => Promise<ContainerExecutionResult>
   readonly exists: (
     path: string,
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    options?: WorkspaceContainerOptions,
   ) => Promise<boolean>
   readonly readFile: (
     path: string,
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    options?: WorkspaceContainerOptions,
   ) => Promise<string | undefined>
-  readonly restore: (snapshot: ContainerSnapshotValue) => Promise<void>
+  readonly restore: (
+    snapshot: ContainerSnapshotValue,
+    options?: WorkspaceContainerOptions,
+  ) => Promise<void>
 }
 
 export interface WorkspaceContainerOptions {
+  readonly entrypoint?: ReadonlyArray<string>
   readonly image?: string
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
+  /** Command that must succeed before a newly started or restored container is usable. */
+  readonly readyCommand?: string
 }
 
 interface WorkspaceContainerEnvironment {}
@@ -118,8 +127,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     if (activeCheckpoint) {
       container.start({
         containerSnapshot: activeCheckpoint,
+        entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
+      await this.waitUntilReady(options)
       this.workingCheckpointId = activeCheckpoint.id
       this.dirty = false
 
@@ -132,22 +143,34 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     container.start({
       image: configuredImage ?? imageName,
       instance: options.instance ?? "lite",
-      entrypoint: ["sleep", "infinity"],
+      entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
+    await this.waitUntilReady(options)
+  }
+
+  private async waitUntilReady(options: WorkspaceContainerOptions): Promise<void> {
+    if (!options.readyCommand) return
+
+    const ready = await this.run(["sh", "-lc", options.readyCommand])
+
+    if (ready.exitCode !== 0) {
+      throw new Error(ready.stderr || ready.stdout || "Container readiness check failed")
+    }
   }
 
   private async materialize(
     stepId: string,
     revision?: ContainerSnapshotValue,
+    options: WorkspaceContainerOptions = {},
   ): Promise<void> {
     if (this.activeStepId === stepId) {
-      await this.ensureRunning()
+      await this.ensureRunning(options)
       return
     }
 
     if (!revision) {
-      await this.ensureRunning()
+      await this.ensureRunning(options)
       this.activeStepId = stepId
       return
     }
@@ -166,8 +189,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
       container.start({
         containerSnapshot: revision,
+        entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
+      await this.waitUntilReady(options)
       this.workingCheckpointId = revision.id
       this.dirty = false
     }
@@ -285,8 +310,9 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     revision?: ContainerSnapshotValue,
     cachePaths: ReadonlyArray<string> = [],
     cacheRoot = cwd,
+    options: WorkspaceContainerOptions = {},
   ): Promise<ContainerExecutionResult> {
-    await this.materialize(stepId, revision)
+    await this.materialize(stepId, revision, options)
     this.dirty = true
 
     const paths = cachePaths.map((path) => {
@@ -331,12 +357,13 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    options: WorkspaceContainerOptions = {},
   ): Promise<string | undefined> {
     if (path.startsWith("/") || path.split("/").includes("..")) {
       throw new Error(`Workspace path must be relative: ${path}`)
     }
 
-    await this.materialize(stepId, revision)
+    await this.materialize(stepId, revision, options)
 
     try {
       const response = await this.files.readFile(path, { cwd })
@@ -353,12 +380,13 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     cwd: string,
     stepId: string,
     revision?: ContainerSnapshotValue,
+    options: WorkspaceContainerOptions = {},
   ): Promise<boolean> {
     if (path.startsWith("/") || path.split("/").includes("..")) {
       throw new Error(`Workspace path must be relative: ${path}`)
     }
 
-    await this.materialize(stepId, revision)
+    await this.materialize(stepId, revision, options)
 
     try {
       await this.files.stat(path, { cwd })
@@ -395,7 +423,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     }
   }
 
-  async restore(snapshot: ContainerSnapshotValue): Promise<void> {
+  async restore(
+    snapshot: ContainerSnapshotValue,
+    options: WorkspaceContainerOptions = {},
+  ): Promise<void> {
     const container = this.container()
 
     await this.ctx.storage.put("activeCheckpoint", snapshot)
@@ -406,8 +437,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     container.start({
       containerSnapshot: snapshot,
+      entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
+    await this.waitUntilReady(options)
     this.activeStepId = undefined
     this.dirty = false
     this.workingCheckpointId = snapshot.id
@@ -484,7 +517,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
             if (snapshot) {
               await options.step.do("workspace-cache:materialize", () =>
-                primary.restore(snapshot))
+                primary.restore(snapshot, options.container))
             }
           }
 
@@ -510,6 +543,11 @@ export const makeRunner = (options: RunnerOptions): Runner => {
         },
         catch: (error) => error,
       }),
+      reference: {
+        kind: "git",
+        repository: options.repository,
+        revision: options.revision,
+      },
     },
     executor: {
       handlesStepOptions: true,
@@ -539,6 +577,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               revision?.value as ContainerSnapshotValue | undefined,
               options.cache?.paths,
               targetDirectory,
+              options.container,
             ),
           )
 
@@ -551,6 +590,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               command,
               workspace.cwd,
               result.exitCode,
+              result.stderr || result.stdout,
             )
           }
 
@@ -582,6 +622,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               workspace.cwd,
               stepId,
               revision?.value as ContainerSnapshotValue | undefined,
+              options.container,
             ))
         },
         catch: (error) => error,
@@ -606,6 +647,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               workspace.cwd,
               stepId,
               revision?.value as ContainerSnapshotValue | undefined,
+              options.container,
             ))
         },
         catch: (error) => error,
@@ -665,7 +707,10 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           const container = containerFor(stepId, checkpoint.workspace)
           await options.step.do(`${stepId}:restore`, () =>
-            container.restore(checkpoint.handle.value as ContainerSnapshotValue))
+            container.restore(
+              checkpoint.handle.value as ContainerSnapshotValue,
+              options.container,
+            ))
 
           return checkpoint.workspace
         },
@@ -719,6 +764,7 @@ export const workflowEntrypoint = <
         payload: event.payload,
         revision: event.payload.revision,
         source: {
+          kind: "git",
           repository: event.payload.repository,
           revision: event.payload.revision,
         },
