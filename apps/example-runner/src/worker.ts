@@ -31,7 +31,6 @@ export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameter
   return CI.fromPackageJson(manifest).workflow
 }, {
   root: "examples/zero-config",
-  container: { image: "workspace", instance: "standard-1" },
   reuseWorkspace: false,
 })
 
