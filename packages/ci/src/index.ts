@@ -2465,3 +2465,41 @@ export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}
 
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>
   Effect.runPromise(run(workflowDefinition, options))
+
+/** Infer the same conventional task graph from a local or immutable source manifest. */
+export const fromPackageJson = (manifest: {
+  readonly name?: string
+  readonly scripts?: Readonly<Record<string, string>>
+}) => {
+  const names = ["format", "lint", "check", "typecheck", "test", "build"]
+    .filter((name) => manifest.scripts?.[name])
+  if (names.length === 0) {
+    throw new Error("Zero-config CI found no format, lint, check, typecheck, test, or build scripts")
+  }
+
+  const checkout = action("checkout", function* () {
+    const source = yield* Source
+    return () => source.checkout()
+  })
+  const install = action("install", () => function* () {
+    const workspace = yield* checkout()
+    const packageManager = yield* PackageManager.JavaScript(workspace)
+    return yield* packageManager.install()
+  })
+  const actions = Object.fromEntries(names.map((name) => [name,
+    action(name, () => function* () {
+      const workspace = yield* install()
+      const packageManager = yield* PackageManager.JavaScript(workspace)
+      return yield* packageManager.run(name)
+    }),
+  ]))
+
+  return {
+    actions,
+    workflow: workflow(manifest.name ?? "ci", function* () {
+      let workspace: Workspace | undefined
+      for (const name of names) workspace = yield* actions[name]!()
+      return workspace
+    }),
+  }
+}

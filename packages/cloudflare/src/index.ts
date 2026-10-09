@@ -742,11 +742,12 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   }
 }
 
+/** Static workflows or event-time discovery; factories must checkpoint external reads. */
 export const workflowEntrypoint = <
   A,
   Environment extends WorkflowEnvironment = WorkflowEnvironment,
 >(
-  workflow: CI.Workflow<A>,
+  workflow: CI.Workflow<A> | ((parameters: WorkflowParameters, step: WorkflowStep) => Promise<CI.Workflow<A>>),
   options: WorkflowEntrypointOptions<Environment> = {},
 ) => class EffectCIWorkflow extends WorkflowEntrypoint<
   Environment,
@@ -788,7 +789,10 @@ export const workflowEntrypoint = <
       workspaceId: event.instanceId,
     })
 
-    const result = await CI.runPromise(workflow, {
+    const definition = typeof workflow === "function"
+      ? await workflow(event.payload, step)
+      : workflow
+    const result = await CI.runPromise(definition, {
       ci: true,
       env: "cloudflare",
       event: {

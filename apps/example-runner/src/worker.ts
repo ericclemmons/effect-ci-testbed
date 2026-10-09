@@ -1,4 +1,6 @@
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
+import * as CI from "@effect-ci-testbed/ci"
+import { readSourceManifest } from "./source-manifest.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -22,6 +24,15 @@ import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 export { DynamicFormatterWorkflow } from "./dynamic-formatter.ts"
+
+export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameters, step) => {
+  const manifest = await step.do("source:package-json", () =>
+    readSourceManifest(parameters, "examples/zero-config"))
+  return CI.fromPackageJson(manifest).workflow
+}, {
+  root: "examples/zero-config",
+  reuseWorkspace: false,
+})
 
 export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
   root: "examples/cache-policy",

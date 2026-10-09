@@ -19,6 +19,7 @@ export default defineConfig({
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
+      ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       NodePnpmWorkflow: exports.workflow({ name: "effect-ci-example-node-pnpm" }),
       OptionalChecksWorkflow: exports.workflow({ name: "effect-ci-example-optional-checks" }),
       WorkspaceWorkflow: exports.workflow({ name: "effect-ci-example-workspace" }),
