@@ -202,3 +202,25 @@ test("the consumer rollback runs once outside the exhausted native body and pres
   assert.equal(rollbacks, 1)
   assert.equal(active.size, 0)
 })
+
+test("native policy bodies unwind completed actions in reverse order after a later failure", async () => {
+  const { step, attempts } = native()
+  const firstRollback = CI.action<void>("rollback first", () => () => Effect.void, { timeout: 1000 })
+  const first = CI.action<void>("first", () => () => Effect.void, { timeout: 1000, rollback: firstRollback })
+  const secondRollback = CI.action<void>("rollback second", () => () => Effect.void, { timeout: 1000 })
+  const second = CI.action<void>("second", function* () {
+    yield* first()
+    return () => Effect.void
+  }, { timeout: 1000, rollback: secondRollback })
+  const health = CI.action<void>("health", function* () {
+    yield* second()
+    return () => Effect.fail(new Error("health regression"))
+  }, { retries: { limit: 1, delay: 0 } })
+  await assert.rejects(CI.runPromise(CI.workflow("reverse", () => health()), {
+    output: "silent", actionExecutor: makeActionExecutor(step, new Set()),
+  }), /health regression/)
+  assert.deepEqual(attempts.map(({ name }) => name), [
+    'action:"first"', 'action:"second"', 'action:"health"', 'action:"health"',
+    'action:"rollback second"', 'action:"rollback first"',
+  ])
+})

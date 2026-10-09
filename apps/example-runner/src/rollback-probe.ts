@@ -15,6 +15,8 @@ export class RollbackExhaustionWorkflow extends WorkflowEntrypoint<Cloudflare.Wo
       binding, step, workspaceId: event.instanceId,
       repository: event.payload.repository, revision: event.payload.revision,
       root: "examples/rollback-compensation", reuseWorkspace: false,
+      // Failure policy is the subject here, not apt/bootstrap availability.
+      container: { image: "workspace" },
     })
     const result = await CI.runPromise(workflow, {
       ci: true, env: "cloudflare", output: "silent",

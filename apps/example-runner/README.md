@@ -23,6 +23,10 @@ cf workflows instances get npm-1 \
   --workflow-name effect-ci-example-node-npm --simple true
 ```
 
+Use object-valued `params` and `instance_id` in `--body`. In the current CLI,
+`--params` sends a string rather than parsing JSON, and an `id` body field does not
+select the instance ID. Verify the returned ID instead of assuming it was honored.
+
 | Example | Native Workflow |
 | --- | --- |
 | [npm](../../examples/node-npm) | `effect-ci-example-node-npm` |
@@ -46,6 +50,7 @@ cf workflows instances get npm-1 \
 | [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
+| [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
