@@ -36,6 +36,12 @@ pnpm exec cf-ci run lint
 pnpm exec cf-ci
 ```
 
-Adding an explicit default workflow later replaces inference completely. Cloudflare
-hosting will require the source manifest to be available during workflow creation, so
-that environment remains roadmap work.
+Adding an explicit default workflow later replaces CLI inference completely.
+
+The [hosted example runner](../../apps/example-runner) uses the same SDK inference,
+but reads `package.json` from the requested immutable GitHub revision in a native
+Workflow step. It then runs checkout, installation, and the inferred tasks in the
+Cloudflare workspace layer. No task definitions are copied into the host, and the
+consumer's `ci.ts` remains empty. This proof supports public GitHub source; arbitrary
+private repository discovery and executing a source-defined workflow module are
+separate concerns.

@@ -535,39 +535,7 @@ const inferJavaScriptProgram = (root: string): Program => {
     )
   }
 
-  const checkout = CI.action("checkout", function* () {
-    const source = yield* CI.Source
-
-    return () => source.checkout()
-  })
-  const install = CI.action("install", () => function* () {
-    const workspace = yield* checkout()
-    const packageManager = yield* CI.PackageManager.JavaScript(workspace)
-
-    return yield* packageManager.install()
-  })
-  const actions = Object.fromEntries(names.map((name) => [
-    name,
-    CI.action(name, () => function* () {
-      const workspace = yield* install()
-      const packageManager = yield* CI.PackageManager.JavaScript(workspace)
-
-      return yield* packageManager.run(name)
-    }),
-  ])) as Readonly<Record<string, ActionTarget>>
-
-  return {
-    actions,
-    workflow: CI.workflow(manifest.name ?? "ci", function* () {
-      let workspace: unknown
-
-      for (const name of names) {
-        workspace = yield* actions[name]!()
-      }
-
-      return workspace
-    }),
-  }
+  return CI.fromPackageJson(manifest)
 }
 
 const printJson = (value: unknown): void => {

@@ -26,6 +26,7 @@ cf workflows instances get npm-1 \
 | Example | Native Workflow |
 | --- | --- |
 | [npm](../../examples/node-npm) | `effect-ci-example-node-npm` |
+| [Zero-config tasks](../../examples/zero-config) | `effect-ci-example-zero-config` |
 | [pnpm](../../examples/node-pnpm) | `effect-ci-example-node-pnpm` |
 | [Optional checks](../../examples/optional-checks) | `effect-ci-example-optional-checks` |
 | [Durable workspace](../../examples/cloudflare-runner) | `effect-ci-example-workspace` |
@@ -124,6 +125,21 @@ tools after restoring durable snapshots. These runs prove reuse within a Workflo
 not a cross-instance Mise cache hit.
 
 ## Native command-policy regressions
+
+`coverage-zero-config-20261009-3` completed with all six logical actions
+(`checkout`, `install`, `format`, `lint`, `test`, `build`) and 43 successful native
+steps at source `baa325b060bed2d528640aaaf05c07b382e19bfa`. Native Workflow version
+`4742ce3c-ad73-4df0-9fde-568e83ef8b1a` first read that revision's manifest, then used
+the same `CI.fromPackageJson` inference as the local CLI. The consumer `ci.ts` stayed
+empty. The host uses its named Node/Git image on `standard-1`, with live workspace
+reuse disabled; checkout and each action's workspace commit succeeded, and every
+command returned exit zero. No deployment or release occurred.
+
+The superseded `coverage-zero-config-20261009-1` retains the Workers-specific
+`redirect: "error"` failure. A regression now requires manual redirects and rejects
+non-success responses without following them. Instance `coverage-zero-config-20261009-2`
+used the managed image and remained in checkout during verification; the named-image
+proof does not claim to resolve that separate bootstrap delay. Histories are preserved.
 
 `coverage-source-checks-20261009-1` completed at source
 `5d76f06b847d30f2cbbc74928741c514cfb5ee4e`: checkout, its checkpoint, and the source
