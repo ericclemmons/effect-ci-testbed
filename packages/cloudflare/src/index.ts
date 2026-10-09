@@ -7,7 +7,7 @@ import {
 } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
-import { executeCommandStep } from "./command-step.ts"
+import { makeCommandStepExecutor } from "./command-step.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -505,6 +505,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
+  const executeCommand = makeCommandStepExecutor(options.step)
   const primary = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
   const containerFor = (
     stepId: string,
@@ -578,8 +579,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const result = await executeCommandStep(
-            options.step,
+          const result = await executeCommand(
             { command, stepId, workspace, options: stepOptions },
             () => container.execute(
               command,

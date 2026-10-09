@@ -29,6 +29,7 @@ export default defineConfig({
       CustomRunnerImageWorkflow: exports.workflow({ name: "effect-ci-example-custom-runner-image" }),
       CommandRetryProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-retry" }),
       CommandFailureProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-failure" }),
+      CommandSequenceProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-sequence" }),
     },
   },
   containers: [workspace],
