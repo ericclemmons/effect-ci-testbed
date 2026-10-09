@@ -72,6 +72,24 @@ Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
 
+## Pre-commit evidence
+
+Local checks must run against the current working tree, including edits that have
+not been committed. The current Git-note adapter is commit-only: dirty workspaces
+run checks normally, but neither reuse nor publish evidence for their old `HEAD`.
+
+The next pre-commit contract must sign an input-content fingerprint (including
+tracked, staged, unstaged, and relevant untracked files), action definition, toolchain,
+and conditions. After committing, evidence can be attached only if the committed
+tree matches what was tested. Changes during or after validation invalidate it.
+Ignored inputs also need an explicit dependency policy; a clean Git status alone
+does not prove that dependencies or toolchains match.
+
+Agent output should report the evidence handle and exact follow-up command to
+attach it to the resulting commit as a note or trailer. It must never recommend
+claiming that old `HEAD` passed when different dirty content was tested. This
+content-bound pre-commit handoff remains planned, not implemented by this example.
+
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). The executable test

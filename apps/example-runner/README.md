@@ -36,6 +36,12 @@ cf workflows instances get npm-1 \
 | [Vite+ task cache](../../examples/vite-plus-cache) | `effect-ci-example-vite-plus-cache` |
 | [Turborepo task cache](../../examples/turborepo-cache) | `effect-ci-example-turborepo-cache` |
 | [Custom runner image](../../examples/custom-runner-image) | `effect-ci-example-custom-runner-image` |
+| [Isolated snapshot fanout](../../examples/snapshot-fanout) | `effect-ci-example-snapshot-fanout` |
+| [Project Node version](../../examples/node-version) | `effect-ci-example-node-version` |
+| [Mise runtimes](../../examples/mise-toolchain) | `effect-ci-example-mise-toolchain` |
+| [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
+| [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
+| [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -72,6 +78,9 @@ Workflow version and native history. These are real account runs, not local simu
 | Turborepo task cache | `coverage-turborepo-hit-20261008-1` | fresh instance reports 1 cached task, matching hash `f37d6ec47086f918`, 85 ms task run; 11 native steps; same source revision |
 | Clean-source cache regression | `coverage-npm-cache-offline-20261008-3` | offline install and dependency verification pass after removing stale untracked files; 23 native steps; same source revision |
 | Custom runner image | `coverage-custom-image-20261008-1` | checkout checkpoint restored into the project Dockerfile image; baked-in `Python 3.13.5` verified; 3 native steps; source revision `bc50897f2d6ff8a388bcc6a0af22886f89bfc2c4` |
+| Isolated snapshot fanout | `coverage-snapshot-fanout-20261008-1` | prepare runs once; left/right start together and independently overwrite the same filename; 8 native steps with live reuse disabled; source revision `55be3e8c7bff809aa9a8a910f888bc86613922e0` |
+| Project Node version | `coverage-node-version-20261009-1` | installs Node 22.20.0 and verifies the exact version after restoring its checkpoint; 8 native steps; source revision `931bb78e21dddb1ef3ac5db80969dea1e8cddeec` |
+| Mise runtimes | `coverage-mise-toolchain-20261009-1` | installs Node 22.20.0 and Python 3.13.7 from mise.toml; both version checks pass after checkpoint restoration; 11 native steps; same source revision |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
@@ -98,7 +107,42 @@ The custom-image adapter builds the example's Dockerfile as a named image with
 select Cloudflare's managed Trixie image. Its hosted proof disables live workspace
 reuse so the downstream check must materialize the preceding checkpoint.
 
+The Node-version and Mise adapters use the host's `Dockerfile.mise`. It copies the
+official Mise 2026.9.11 static binary from a digest-pinned image alongside the
+Sandbox 1.0 shim; project runtimes are installed by the unchanged consumer actions,
+not baked into the image. Both proofs disable live reuse and verify the installed
+tools after restoring durable snapshots. These runs prove reuse within a Workflow,
+not a cross-instance Mise cache hit.
+
 ## Native command-policy regressions
+
+`coverage-source-checks-20261009-1` completed at source
+`5d76f06b847d30f2cbbc74928741c514cfb5ee4e`: checkout, its checkpoint, and the source
+file read are the only three native steps. The `format source` check succeeds with
+zero container commands and no output checkpoint; Prettier executes in the Workflow
+Worker. Adapter tests separately reject unformatted input and fail if either case
+attempts to execute a container command. This is not a WorkerLoader/untrusted-module
+proof, nor does it cover native retries for arbitrary Effect bodies.
+
+The deployment-hook proofs use source
+`74fb17499db6fe75b12376b5c409b60db3eaa143`. Both
+`coverage-deploy-hook-deploy_hook-20261009-2` and
+`coverage-deploy-hook-deployment-20261009-2` completed checkout, frozen `npm ci`,
+real `cf build`, and credential-free `cf deploy --prebuilt --mode production --dry-run`
+with live workspace reuse disabled (14 native steps each). No Worker was released.
+`coverage-deploy-hook-pull_request-20261009-1` completed with the event condition
+retained, deploy skipped, and zero native/container steps at source
+`7da78080cbb5ad183e2ace73bf95d38d1a00d19d`. This verifies event routing,
+not a public HTTP webhook receiver. The installed tooling pins Miniflare's transitive
+`sharp` to patched 0.35.5; its isolated npm audit reports zero vulnerabilities.
+
+`coverage-exported-actions-20261009-2` completed against source
+`28b10e978463ca6db7dfa9cffdc95b1e7d82158e`: checkout and its checkpoint,
+`node --check app/index.js` in the restored example workspace, and the check's final
+checkpoint all succeeded (four native steps). Local CLI validation separately
+confirmed that only `check` is listed and runnable; private `checkout` fails with
+`CI_UNKNOWN_TARGET`. The hosted proof runs the default workflow, not a remote CLI
+action-discovery endpoint.
 
 These host-only probes never deploy resources or use secrets. They exercise the
 adapter boundary separately from consumer examples:
@@ -126,6 +170,16 @@ invalidation still needs work). Snapshot resource-limit failures also occurred i
 the superseded optional-check runs. After the live container stopped, retrying only
 the snapshot could not recover its uncommitted files. Removing needless check
 snapshots fixes this example, not the general checkpoint-failure recovery problem.
-Another required regression is multiple commands inside one action: native command
-checkpoint names currently use only the action ID. Subsequent commands need distinct,
-deterministic operation identities or they can reuse the first command's result.
+
+Multiple commands in one action now have independent native checkpoints, named from
+the logical action ID and command position. Positions include commands reused by the
+check-cache layer, so evidence reuse cannot accidentally renumber later operations.
+The commands still share the action's working filesystem and publish one final revision.
+Deterministic replay restores each result independently, including repeated commands.
+
+`coverage-command-sequence-20261008-1` verified this in the deployed Workflow at source
+`7900483beba7180aa09fee4970a054e3bb9b5f4d`: two distinct native command checkpoints,
+the second reporting `sequence-verified` after reading the first command's file, followed
+by one action workspace commit. The run completed with five native steps. Existing
+instances retain their pinned Workflow version; checkpoint naming changes apply to new
+instances rather than migrating old histories.

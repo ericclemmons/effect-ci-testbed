@@ -1062,6 +1062,8 @@ const localSource: SourceService = {
 
 export interface CommandExecutionRequest {
   readonly command: string
+  /** Position in the action, including commands reused by a check-cache layer. */
+  readonly commandIndex?: number
   readonly onOutput: (stream: "stdout" | "stderr", text: string) => void
   readonly options: WorkflowStepConfig
   readonly stepId: string
@@ -1956,6 +1958,7 @@ const makeRuntime = (
         if (!node) return Effect.die(new Error(`Missing plan node for ${stepId}`))
 
         node.commands.push({ command, cwd: workspace.cwd })
+        const commandIndex = node.commands.length
 
         if (mode === "plan") {
           return Effect.succeed(workspace)
@@ -1998,6 +2001,7 @@ const makeRuntime = (
             const definitionOptions = definitions.get(stepId)?.options
             return commandExecutor.execute({
               command,
+              commandIndex,
               onOutput: (stream, text) => {
                 if (output !== "inherit") return
                 if (stream === "stdout") process.stdout.write(text)

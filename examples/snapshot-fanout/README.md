@@ -35,17 +35,21 @@ if they shared a filesystem.
 shape with a prepared artifact and two matrix jobs. Effect CI does not need an artifact
 manifest because the workspace revision is the dependency value.
 
-Run the Cloudflare-shaped path locally with Docker and Wrangler:
+Run this unchanged workflow in a real Cloudflare account with the
+[hosted example app](../../apps/example-runner):
 
 ```sh
-pnpm dev
-
-pnpm exec wrangler workflows trigger effect-ci-snapshot-fanout \
-  '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}' \
-  --local
+pnpm --filter @effect-ci-testbed/example-runner exec cf deploy
+cf workflows instances create effect-ci-example-snapshot-fanout \
+  --body '{"instance_id":"fanout-1","params":{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"COMMIT_SHA"}}'
 ```
 
 The ordinary in-process local runner deliberately does not promise filesystem
-isolation. This example uses the Cloudflare local runtime because isolated Containers
+isolation. This example uses the Cloudflare runtime because isolated Containers
 are the behavior under test. A future local snapshot runner can provide the same
 capability without changing these actions.
+
+Hosted verification: `coverage-snapshot-fanout-20261008-1` completed against
+`55be3e8c7bff809aa9a8a910f888bc86613922e0`. Native history shows one prepared
+checkpoint and both branch commands starting at the same instant. Both wrote the
+same filename and passed their own assertions with live workspace reuse disabled.

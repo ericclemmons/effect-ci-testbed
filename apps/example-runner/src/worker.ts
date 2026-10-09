@@ -11,9 +11,27 @@ import packageManagerCache from "../../../examples/package-manager-cache/.cloudf
 import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
-import { commandRetryProbe, commandFailureProbe } from "./command-policy-probe.ts"
+import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
+import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
+import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
+import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
+import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
+import sourceChecks from "../../../examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts"
+import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts"
+import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
+
+export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
+  root: "examples/cache-policy",
+  container: { image: "workspace" },
+  reuseWorkspace: false,
+  cache: {
+    key: "custom-build-cache",
+    keyFiles: ["examples/cache-policy/app/src/input.txt"],
+    paths: ["examples/cache-policy/app/.cache/build"],
+  },
+})
 
 // This test host has no HTTP control plane, credentials, or approval endpoint.
 // Only authenticated Cloudflare API callers can create or inspect instances.
@@ -103,4 +121,42 @@ export const CommandRetryProbeWorkflow = Cloudflare.workflowEntrypoint(commandRe
 })
 export const CommandFailureProbeWorkflow = Cloudflare.workflowEntrypoint(commandFailureProbe, {
   container: { image: "workspace", instance: "standard-1" },
+})
+
+export const CommandSequenceProbeWorkflow = Cloudflare.workflowEntrypoint(commandSequenceProbe, {
+  container: { image: "workspace", instance: "standard-1" },
+})
+
+export const SnapshotFanoutWorkflow = Cloudflare.workflowEntrypoint(snapshotFanout, {
+  root: "examples/snapshot-fanout",
+  container: { image: "workspace", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const NodeVersionWorkflow = Cloudflare.workflowEntrypoint(nodeVersion, {
+  root: "examples/node-version",
+  container: { image: "mise", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const MiseToolchainWorkflow = Cloudflare.workflowEntrypoint(miseToolchain, {
+  root: "examples/mise-toolchain",
+  container: { image: "mise", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const ExportedActionsWorkflow = Cloudflare.workflowEntrypoint(exportedActions, {
+  root: "examples/exported-actions",
+  reuseWorkspace: false,
+})
+
+export const DeployHookWorkflow = Cloudflare.workflowEntrypoint(deployHook, {
+  root: "examples/deploy-hook",
+  container: { instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const SourceChecksWorkflow = Cloudflare.workflowEntrypoint(sourceChecks, {
+  root: "examples/dynamic-worker-checks",
+  reuseWorkspace: false,
 })

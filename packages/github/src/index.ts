@@ -1,3 +1,5 @@
+import { updateVisibleCheck } from "./check-update.ts"
+
 export type CheckConclusion =
   | "action_required"
   | "cancelled"
@@ -30,6 +32,7 @@ export interface UpdateCheckOptions {
   readonly token: string
   readonly repository: string
   readonly checkId: number
+  readonly detailsUrl?: string
   readonly name?: string
   readonly title: string
   readonly summary: string
@@ -86,13 +89,14 @@ export const createCheck = async (
 export const updateCheck = async (
   options: UpdateCheckOptions,
 ): Promise<CheckRun> => {
-  const response = await fetch(
+  const response = await updateVisibleCheck(() => fetch(
     `https://api.github.com/repos/${options.repository}/check-runs/${options.checkId}`,
     {
       method: "PATCH",
       headers: headers(options.token),
       body: JSON.stringify({
         ...(options.name ? { name: options.name } : {}),
+        ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
         status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
         ...(options.conclusion ? { conclusion: options.conclusion } : {}),
         output: {
@@ -102,10 +106,10 @@ export const updateCheck = async (
         },
       }),
     },
-  )
+  ))
 
   if (!response.ok) {
-    throw await responseError("update check", response)
+    throw await responseError(`update check ${options.checkId}`, response)
   }
 
   const check = await response.json() as { id: number; html_url: string }

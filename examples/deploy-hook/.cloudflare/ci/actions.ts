@@ -6,8 +6,15 @@ export const checkout = CI.action("checkout", function* () {
   return () => source.checkout()
 })
 
-export const build = CI.action("build", () => function* () {
+export const install = CI.action("install", () => function* () {
   const workspace = yield* checkout()
+  const npm = yield* CI.PackageManager.JavaScript(workspace)
+
+  return yield* npm.install()
+})
+
+export const build = CI.action("build", () => function* () {
+  const workspace = yield* install()
 
   return yield* workspace.exec("npx cf build --mode production")
 })

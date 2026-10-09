@@ -28,8 +28,9 @@ Cloudflare.workflowEntrypoint(workflow, {
 
 The GitHub adapter expresses the same policy as inputs to its reusable workflow and
 translates it to `actions/cache`. The Cloudflare adapter owns the corresponding
-snapshot-backed implementation; that hosted path remains roadmap work until it can
-restore only the declared paths without replacing the current workspace revision.
+snapshot-backed implementation. It fingerprints the declared key files from the
+requested source before restoring a cache, then keeps only the declared cache paths
+while checking out that source. Repository, runtime, and paths also scope the key.
 Passing `cache: false` disables cache behavior for a runner. Local execution naturally
 reuses the directory already in the working tree.
 
@@ -47,7 +48,7 @@ Compare:
 - [Effect CI on GitHub](./.github/workflows/effect-on-github.yml), where the reusable
   runner receives the policy
 - [the portable workflow](./.cloudflare/ci/workflow.ts)
-- [the Cloudflare runner layer](./src/worker.ts)
+- [the deployed Cloudflare runner layer](../../apps/example-runner/src/worker.ts)
 
 Run it twice locally to see a miss followed by a hit:
 
@@ -59,3 +60,14 @@ pnpm cf-ci --workflow examples/cache-policy/.cloudflare/ci/workflow.ts
 Cache retention remains runner policy. GitHub configures it at repository or
 organization level rather than per `actions/cache` entry, so Effect CI does not expose
 a misleading per-workflow retention option.
+
+## Hosted evidence
+
+Native `effect-ci-example-cache-policy` instances on October 9, 2026:
+
+- `coverage-cache-inputs-cold-20261009-2`: cache miss at source `b7c510ed661c1c221072849ba1b1dd93308e702a`.
+- `coverage-cache-inputs-warm-20261009-1`: a separate instance restored the same input identity and reported a cache hit.
+- `coverage-cache-inputs-changed-20261009-1`: source `e8a0af66921525c4ca6b8957e98d881c75dcdf89` changed the input; identity changed, restoration missed, and output matched the new source.
+
+All three completed with real snapshot restoration and command execution. The earlier
+`cold-20261009-1` attempt used an unfetchable abbreviated Git ref and is not proof.

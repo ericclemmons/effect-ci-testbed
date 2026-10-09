@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import * as CI from "@effect-ci-testbed/ci"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
-import { executeCommandStep } from "../../../packages/cloudflare/src/command-step.ts"
+import { executeCommandStep, makeCommandStepExecutor } from "../../../packages/cloudflare/src/command-step.ts"
 
 const request = {
   command: "build",
@@ -10,6 +10,47 @@ const request = {
   workspace: CI.Workspace.remote("test", "/workspace"),
   options: { retries: { limit: 2, delay: 0, backoff: "constant" as const }, timeout: 1000 },
 }
+
+test("multiple commands in one action have distinct replay-stable checkpoints", async () => {
+  const cache = new Map<string, CI.CommandExecutionResult>()
+  let calls = 0
+  const step = {
+    async do(name: string, _options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+      if (!cache.has(name)) cache.set(name, await callback())
+      return cache.get(name)!
+    },
+  } as unknown as Pick<WorkflowStep, "do">
+  const run = async () => {
+    const execute = makeCommandStepExecutor(step)
+    const results = []
+    for (const command of ["first", "second", "first"]) {
+      results.push(await execute({ ...request, command }, async () => {
+        calls++
+        return { exitCode: 0, stdout: command, stderr: "" }
+      }))
+    }
+    return results.map((result) => result.stdout)
+  }
+  assert.deepEqual(await run(), ["first", "second", "first"])
+  assert.equal(calls, 3)
+  assert.equal(cache.size, 3)
+  assert.deepEqual(await run(), ["first", "second", "first"])
+  assert.equal(calls, 3, "replay restores each command without executing it again")
+})
+
+test("check-cache reuse does not renumber later native commands", async () => {
+  const names: string[] = []
+  const step = {
+    async do(name: string, _options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+      names.push(name)
+      return callback()
+    },
+  } as unknown as Pick<WorkflowStep, "do">
+  const execute = makeCommandStepExecutor(step)
+  // The first two commands were verified by the check-cache layer.
+  await execute({ ...request, commandIndex: 3 }, async () => ({ exitCode: 0, stdout: "", stderr: "" }))
+  assert.deepEqual(names, ['command:["build",3]'])
+})
 
 test("command failure reaches the native retry boundary, not its cached result", async () => {
   let attempts = 0
