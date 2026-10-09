@@ -567,7 +567,9 @@ const printJson = (value: unknown): void => {
 }
 
 const projectRoot = (workflowPath: string): string =>
-  resolve(dirname(workflowPath), "../..")
+  basename(dirname(workflowPath)) === "ci" && basename(dirname(dirname(workflowPath))) === ".cloudflare"
+    ? resolve(dirname(workflowPath), "../..")
+    : dirname(workflowPath)
 
 const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
