@@ -64,8 +64,11 @@ GitHub approach beside the portable Effect approach.
 [`apps/effect-ci`](./apps/effect-ci/README.md) contains the self-hosted Cloudflare
 service and step-by-step setup: `cf` deployment, GitHub App integration, Cloudflare
 Access protection, remote runs, and live Slack checklists with inline release approval.
-Native hosted builds and Slack approval have been exercised; real GitHub webhook/check
-delivery and CLI authentication through Access remain separate validation steps.
+Native hosted builds, real GitHub webhook/check delivery with logs, and Slack approval
+have been exercised. CLI authentication through Access remains a separate validation step.
+
+[`apps/example-runner`](./apps/example-runner) hosts unchanged consumer workflows
+for real Cloudflare coverage checks, separately from the GitHub/Slack service.
 
 Workflows and exported actions serve different entrypoints:
 
@@ -92,25 +95,25 @@ means that execution model is genuinely irrelevant to the use-case.
 
 | Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | 🔜 |
+| [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | ✅ |
 | [Infer lint, format, check, test, and build from an empty `ci.ts`](./examples/zero-config) | ✅ | ✅ | ✅ | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | 🔜 |
 | [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
 | Materialize R2, Durable Object, or artifact sources | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | 🔜 | ✅ | ✅ | 🔜 |
 | [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | 🔜 |
-| [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | 🔜 |
+| [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
 | [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
 | [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
-| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | 🔜 |
+| [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
-| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | 🔜 |
+| [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
 | [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
 | [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | 🔜 |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
 | [Trigger a remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |

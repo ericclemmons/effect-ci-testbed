@@ -124,6 +124,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     if (activeCheckpoint) {
       container.start({
         containerSnapshot: activeCheckpoint,
+        instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
@@ -186,6 +187,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
       container.start({
         containerSnapshot: revision,
+        instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
@@ -469,6 +471,8 @@ export interface Runner {
 export interface WorkflowParameters {
   readonly repository: string
   readonly revision: string
+  /** Normalized triggering event; source identity always comes from repository/revision. */
+  readonly event?: Pick<CI.WorkflowEventShape, "type" | "ref" | "payload">
 }
 
 export interface WorkflowEnvironment {
@@ -768,8 +772,9 @@ export const workflowEntrypoint = <
       ci: true,
       env: "cloudflare",
       event: {
-        type: "workflow_dispatch",
-        payload: event.payload,
+        type: event.payload.event?.type ?? "workflow_dispatch",
+        payload: event.payload.event?.payload ?? event.payload,
+        ...(event.payload.event?.ref ? { ref: event.payload.event.ref } : {}),
         revision: event.payload.revision,
         source: {
           kind: "git",

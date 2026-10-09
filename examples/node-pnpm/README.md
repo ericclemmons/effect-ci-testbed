@@ -61,3 +61,10 @@ If this directory becomes its own repository, `.github/workflows/github.yml` is 
 complete conventional GitHub Actions setup. The Effect caller currently relies on
 the testbed's reusable workflow and workspace package; publishing that integration
 is a later packaging step.
+
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) executes this unchanged
+workflow on Cloudflare. `coverage-node-pnpm-20261008-6` completed all six actions,
+including frozen installation and parallel checks, with 47 native Workflow steps.
+Runner setup installs the pinned pnpm binary; the action stays portable.

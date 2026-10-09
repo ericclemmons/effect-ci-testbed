@@ -61,3 +61,10 @@ Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
 assertions live in
 [`tests/conditional-deploy.test.ts`](./.cloudflare/ci/tests/conditional-deploy.test.ts),
 not in the workflow entry point.
+
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) verifies both branches:
+`coverage-conditional-push-20261008-1` executes the echo-only deployment for a main
+push; `coverage-conditional-pull_request-20261008-1` skips deployment without
+starting checkout. Its returned plan retains the inspectable condition.
