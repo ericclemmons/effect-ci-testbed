@@ -3,6 +3,9 @@ import * as CI from "@effect-ci-testbed/ci"
 import { readSourceManifest } from "./source-manifest.ts"
 import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts"
 import { timeoutProbe, exhaustionProbe, nonRetryableProbe } from "./effect-policy-probe.ts"
+import rollbackCompensation from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
+import { reverseRollbackProbe } from "./rollback-probe.ts"
+export { RollbackExhaustionWorkflow } from "./rollback-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -30,6 +33,10 @@ export const ExecutionPolicyWorkflow = Cloudflare.workflowEntrypoint(executionPo
 export const EffectTimeoutProbeWorkflow = Cloudflare.workflowEntrypoint(timeoutProbe)
 export const EffectExhaustionProbeWorkflow = Cloudflare.workflowEntrypoint(exhaustionProbe)
 export const EffectTerminalProbeWorkflow = Cloudflare.workflowEntrypoint(nonRetryableProbe)
+export const RollbackCompensationWorkflow = Cloudflare.workflowEntrypoint(rollbackCompensation, {
+  root: "examples/rollback-compensation", reuseWorkspace: false,
+})
+export const ReverseRollbackWorkflow = Cloudflare.workflowEntrypoint(reverseRollbackProbe)
 
 export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameters, step) => {
   const manifest = await step.do("source:package-json", () =>

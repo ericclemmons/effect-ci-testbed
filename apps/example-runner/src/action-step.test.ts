@@ -4,6 +4,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts"
+import rollbackWorkflow from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
 
 const native = () => {
   const cache = new Map<string, unknown>()
@@ -174,4 +175,30 @@ test("native boundary preserves the original error for provider non-retryable cl
     output: "silent", actionExecutor: makeActionExecutor(step, new Set()),
   }))
   assert.equal(received, original)
+})
+
+test("the consumer rollback runs once outside the exhausted native body and preserves failure", async () => {
+  const { step, attempts } = native()
+  const active = new Set<string>()
+  let rollbacks = 0
+  await assert.rejects(CI.runPromise(rollbackWorkflow, {
+    output: "silent", actionExecutor: makeActionExecutor(step, active),
+    source: { checkout: () => Effect.succeed(CI.Workspace.remote("fixture", "/workspace")) },
+    executor: {
+      handlesStepOptions: true,
+      execute: ({ command, stepId, workspace }) => Effect.suspend(() => {
+        if (command === "echo deploy") {
+          assert.ok(active.has("deploy with retries"))
+          return Effect.fail(new CI.CommandError(stepId, command, workspace.cwd, 7, "expected failure"))
+        }
+        assert.equal(active.size, 0)
+        assert.equal(command, "echo rollback")
+        rollbacks++
+        return Effect.succeed({ exitCode: 0, stdout: "rollback", stderr: "" })
+      }),
+    },
+  }), /expected failure/)
+  assert.deepEqual(attempts.map((entry) => entry.success), [false, false, false])
+  assert.equal(rollbacks, 1)
+  assert.equal(active.size, 0)
 })
