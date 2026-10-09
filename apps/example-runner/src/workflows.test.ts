@@ -3,6 +3,7 @@ import test from "node:test"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { resolve } from "node:path"
+import { readFileSync } from "node:fs"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -82,6 +83,21 @@ for (const event of ["deploy_hook", "deployment", "pull_request"] as const) {
     }
   })
 }
+
+test("deployment hook lockfile installs registry dependencies on a fresh runner", () => {
+  const lock = JSON.parse(readFileSync(new URL(
+    "../../../examples/deploy-hook/package-lock.json", import.meta.url,
+  ), "utf8")) as {
+    packages: Record<string, { link?: boolean; resolved?: string }>
+  }
+  assert.ok(lock.packages["node_modules/cf"])
+  assert.ok(lock.packages["node_modules/@cloudflare/vite-plugin"])
+  for (const [path, dependency] of Object.entries(lock.packages)) {
+    assert.ok(path === "" || path.startsWith("node_modules/"), path)
+    assert.notEqual(dependency.link, true, path)
+    if (dependency.resolved) assert.match(dependency.resolved, /^https:\/\/registry\.npmjs\.org\//)
+  }
+})
 
 test("different workflows can run concurrently with the same action name", async () => {
   const left = CI.action<void>("shared", () => function* () {}, { timeout: 100 })
