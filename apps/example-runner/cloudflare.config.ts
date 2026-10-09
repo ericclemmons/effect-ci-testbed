@@ -37,6 +37,7 @@ export default defineConfig({
       ExportedActionsWorkflow: exports.workflow({ name: "effect-ci-example-exported-actions" }),
       DeployHookWorkflow: exports.workflow({ name: "effect-ci-example-deploy-hook" }),
       SourceChecksWorkflow: exports.workflow({ name: "effect-ci-example-source-checks" }),
+      CachePolicyWorkflow: exports.workflow({ name: "effect-ci-example-cache-policy" }),
     },
   },
   containers: [workspace],
