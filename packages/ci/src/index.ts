@@ -61,6 +61,7 @@ export type ActionConstruction<Args extends ReadonlyArray<unknown>, A> =
 export type ActionTarget = () => Effect.Effect<unknown, unknown, any>
 
 interface StepDefinition<A = unknown> {
+  readonly identity?: object
   readonly id: string
   readonly body: Effect.Effect<A, unknown, Runtime | CurrentStep>
   readonly options: InternalStepOptions
@@ -1266,10 +1267,11 @@ const actionDefinitions = new WeakMap<object, StepDefinition>()
 
 const registerDefinition = (runtime: RuntimeShape, definition: StepDefinition): void => {
   const existing = runtime.definitions.get(definition.id)
-  if (existing && existing !== definition) {
+  if (existing && existing !== definition &&
+      (!definition.identity || existing.identity !== definition.identity)) {
     throw new Error(`Duplicate CI action id: ${definition.id}`)
   }
-  runtime.definitions.set(definition.id, definition)
+  if (!existing) runtime.definitions.set(definition.id, definition)
 }
 
 const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
@@ -1435,32 +1437,30 @@ export const action = <
   construction: ActionConstruction<Args, NoInfer<A>>,
   options: ActionOptions = {},
 ): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
-  let definition: StepDefinition | undefined
+  const identity = {}
 
   const factory = (...args: Args): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
-    if (!definition) {
-      validateStepOptions(id, options)
-      const rollback = options.rollback
-        ? (() => {
-            const rollbackEffect = options.rollback!()
-            const rollbackId = actionFactoryIds.get(options.rollback!)
-            if (!rollbackId) {
-              throw new Error(`Rollback for ${id} must be a CI action`)
-            }
-            return { id: rollbackId, effect: rollbackEffect }
-          })()
-        : undefined
-      const { rollback: _rollback, ...stepOptions } = options
-      definition = {
-        id,
-        body: bodyToEffect(construction).pipe(
-          Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
-        ),
-        options: stepOptions,
-        ...(rollback ? { rollback } : {}),
-      }
+    validateStepOptions(id, options)
+    const rollback = options.rollback
+      ? (() => {
+          const rollbackEffect = options.rollback!()
+          const rollbackId = actionFactoryIds.get(options.rollback!)
+          if (!rollbackId) {
+            throw new Error(`Rollback for ${id} must be a CI action`)
+          }
+          return { id: rollbackId, effect: rollbackEffect }
+        })()
+      : undefined
+    const { rollback: _rollback, ...stepOptions } = options
+    const definition: StepDefinition = {
+      identity,
+      id,
+      body: bodyToEffect(construction).pipe(
+        Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
+      ),
+      options: stepOptions,
+      ...(rollback ? { rollback } : {}),
     }
-
     return runStep(definition)
   }
 

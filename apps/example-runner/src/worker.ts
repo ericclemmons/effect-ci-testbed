@@ -5,6 +5,9 @@ import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
 import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/workflow.ts"
 import workspace from "../../../examples/cloudflare-runner/.cloudflare/ci/workflow.ts"
 import conditionalDeploy from "../../../examples/conditional-deploy/.cloudflare/ci/workflow.ts"
+import pythonToolchain from "../../../examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts"
+import systemPackage from "../../../examples/system-package/.cloudflare/ci/workflow.ts"
+import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
@@ -36,4 +39,25 @@ export const WorkspaceWorkflow = Cloudflare.workflowEntrypoint(workspace, {
 })
 export const ConditionalDeployWorkflow = Cloudflare.workflowEntrypoint(conditionalDeploy, {
   root: "examples/conditional-deploy",
+})
+
+export const PythonToolchainWorkflow = Cloudflare.workflowEntrypoint(pythonToolchain, {
+  root: "examples/cloudflare-toolchain",
+  container: { instance: "standard-1" },
+})
+
+export const SystemPackageWorkflow = Cloudflare.workflowEntrypoint(systemPackage, {
+  root: "examples/system-package",
+  container: { instance: "standard-1" },
+})
+
+export const PackageManagerCacheWorkflow = Cloudflare.workflowEntrypoint(packageManagerCache, {
+  root: "examples/package-manager-cache",
+  container: { instance: "standard-1" },
+  reuseWorkspace: false,
+  cache: {
+    key: "ericclemmons-effect-ci-testbed-package-manager-cache-npm-v1",
+    keyFiles: ["examples/package-manager-cache/app/package-lock.json"],
+    paths: ["examples/package-manager-cache/app/.effect-ci/cache/npm"],
+  },
 })
