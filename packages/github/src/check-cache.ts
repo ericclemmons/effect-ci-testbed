@@ -51,12 +51,21 @@ const readEvidence = (
   }
 }
 
+const matchesCleanRevision = (cwd: string, revision: string): boolean => {
+  try {
+    return git(cwd, ["rev-parse", "HEAD"]) === revision &&
+      git(cwd, ["status", "--porcelain", "--untracked-files=all"]) === ""
+  } catch {
+    return false
+  }
+}
+
 export const gitNotesCheckCache = (
   options: GitNotesCheckCacheOptions,
 ): CheckCache => ({
   lookup: (request) => Effect.sync(() => {
     const revision = request.event.revision
-    if (!revision) return false
+    if (!revision || !matchesCleanRevision(request.workspace.cwd, revision)) return false
 
     const fingerprint = checkFingerprint(request)
     return readEvidence(options, revision).some((evidence) =>
@@ -70,7 +79,7 @@ export const gitNotesCheckCache = (
   }),
   record: (request) => Effect.sync(() => {
     const revision = request.event.revision
-    if (!revision || !options.privateKey) return
+    if (!revision || !options.privateKey || !matchesCleanRevision(request.workspace.cwd, revision)) return
 
     const fingerprint = checkFingerprint(request)
     const existing = readEvidence(options, revision)

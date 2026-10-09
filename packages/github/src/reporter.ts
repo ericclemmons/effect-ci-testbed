@@ -78,7 +78,7 @@ const mermaidLabel = (value: string): string => value
   .replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;")
 
-const planDiagram = (value: WorkflowPlan): string => {
+const planDiagram = (value: WorkflowPlan, currentStep?: string): string => {
   const identifiers = new Map(
     value.nodes.map((node, index) => [node.id, `step${index}`] as const),
   )
@@ -106,6 +106,12 @@ const planDiagram = (value: WorkflowPlan): string => {
       const to = identifiers.get(node.id)
       if (from && to) lines.push(`  ${from} -. rollback .-> ${to}`)
     }
+  }
+
+  const current = currentStep && identifiers.get(currentStep)
+  if (current) {
+    lines.push("  classDef current fill:#0969da,color:#fff,stroke:#0550ae,stroke-width:3px")
+    lines.push(`  class ${current} current`)
   }
 
   return lines.join("\n")
@@ -309,7 +315,12 @@ export class Reporter {
     optional = false,
   ) {
     const output = checkOutput(this.workflowId, stepId, status, optional)
-    const text = this.outputText(stepId)
+    const text = [
+      this.plan
+        ? `### Execution graph\n\n\`\`\`mermaid\n${planDiagram(this.plan, stepId)}\n\`\`\``
+        : undefined,
+      this.outputText(stepId),
+    ].filter(Boolean).join("\n\n") || undefined
     const existing = this.checks.get(stepId)
 
     if (!existing) {
@@ -339,6 +350,7 @@ export class Reporter {
       token: this.options.token,
       repository: this.options.repository,
       checkId: existing.id,
+      ...(this.options.detailsUrl ? { detailsUrl: this.options.detailsUrl } : {}),
       name,
       title: output.title,
       summary: output.summary,

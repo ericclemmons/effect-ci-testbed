@@ -32,6 +32,7 @@ export interface UpdateCheckOptions {
   readonly token: string
   readonly repository: string
   readonly checkId: number
+  readonly detailsUrl?: string
   readonly name?: string
   readonly title: string
   readonly summary: string
@@ -95,6 +96,7 @@ export const updateCheck = async (
       headers: headers(options.token),
       body: JSON.stringify({
         ...(options.name ? { name: options.name } : {}),
+        ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
         status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
         ...(options.conclusion ? { conclusion: options.conclusion } : {}),
         output: {
