@@ -113,11 +113,12 @@ test("timeout interrupts the Effect fiber and never commits a late result", asyn
   assert.equal(configs.get('action:"slow"')?.timeout, 5)
 })
 
-test("a failed final checkpoint retries the body instead of caching incomplete success", async () => {
+test("a failed final checkpoint recomputes lost files instead of caching incomplete success", async () => {
   const { step, attempts } = native()
   const active = new Set<string>()
   let executions = 0
   let commits = 0
+  let liveOutput: string | undefined
   const prepare = CI.action("prepare", () => () => Effect.succeed(CI.Workspace.remote("fixture", "/workspace")))
   const build = CI.action("build", function* () {
     const workspace = yield* prepare()
@@ -128,14 +129,20 @@ test("a failed final checkpoint retries the body instead of caching incomplete s
     actionExecutor: makeActionExecutor(step, active),
     executor: { handlesStepOptions: true, execute: () => Effect.sync(() => {
       executions++
+      liveOutput = `built-${executions}`
       return { exitCode: 0, stdout: "built", stderr: "" }
     }) },
     workspacePersistence: {
       commit: ({ stepId, workspace }) => Effect.suspend(() => {
         if (stepId !== "build") return Effect.succeed(workspace)
         assert.ok(active.has("build"))
-        if (++commits === 1) return Effect.fail(new Error("snapshot unavailable"))
-        return Effect.succeed(workspace.withRevision({ provider: "fixture", value: { id: "snapshot" } }))
+        if (++commits === 1) {
+          assert.equal(liveOutput, "built-1")
+          liveOutput = undefined
+          return Effect.fail(new Error("snapshot unavailable after filesystem loss"))
+        }
+        assert.equal(liveOutput, "built-2", "the body must rebuild before committing")
+        return Effect.succeed(workspace.withRevision({ provider: "fixture", value: { id: "snapshot", output: liveOutput } }))
       }),
       checkpoint: () => Effect.die("not used"),
       restore: () => Effect.die("not used"),
@@ -149,6 +156,7 @@ test("a failed final checkpoint retries the body instead of caching incomplete s
   assert.deepEqual(attempts.map((entry) => entry.success), [false, true])
   assert.equal(result.plan.nodes.find((node) => node.id === "build")?.commands.length, 1)
   assert.ok(result.value.revision)
+  assert.deepEqual(result.value.revision.value, { id: "snapshot", output: "built-2" })
   assert.equal(active.size, 0)
 })
 
