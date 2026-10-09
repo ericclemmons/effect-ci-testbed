@@ -13,16 +13,16 @@ export const install = CI.action("install", () => function* () {
   return yield* npm.install()
 })
 
-export const lint = CI.action("lint", () => function* () {
+export const lint = CI.check("lint", () => function* () {
   const workspace = yield* install()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return yield* npm.run("lint")
+  yield* npm.run("lint")
 })
 
-export const format = CI.action("format", () => function* () {
+export const format = CI.check("format", () => function* () {
   const workspace = yield* install()
   const npm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return yield* npm.run("format")
+  yield* npm.run("format")
 })

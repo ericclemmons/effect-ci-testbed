@@ -97,3 +97,35 @@ The custom-image adapter builds the example's Dockerfile as a named image with
 `cf deploy`; Docker must be running for this build. Other workflows continue to
 select Cloudflare's managed Trixie image. Its hosted proof disables live workspace
 reuse so the downstream check must materialize the preceding checkpoint.
+
+## Native command-policy regressions
+
+These host-only probes never deploy resources or use secrets. They exercise the
+adapter boundary separately from consumer examples:
+
+| Instance | Result |
+| --- | --- |
+| `coverage-command-retry-20261008-1` | native command step fails twice, succeeds on attempt 3, then commits its workspace; source `deb4817d083b0ffda2a515d5fd8ca915bb8ce404` |
+| `coverage-command-failure-20261008-2` | exactly one failed native attempt without an explicit retry policy; final Workflow error preserves exit 7 and stderr; source `bdaabeef68a3fd410abd0a542c5c91efa11ed837` |
+| `coverage-optional-native-failure-20261008-4` | format's native step fails once but the consumer plan records a warning; lint passes and the Workflow completes; source `6aae009a4ed56a6aee746c16e2257c2bd1366d84` |
+
+Command failures must throw inside `step.do`, not after a failed exit has been
+recorded as a successful cached result. The adapter explicitly defaults command
+retries to zero, matching local execution. Workflow error serialization loses custom
+class identity, so the adapter restores its own command error code and diagnostics.
+
+The optional example uses `CI.check`: a read-only assertion does not return a new
+workspace or trigger a needless snapshot. Its runner uses `standard-1` consistently.
+Superseded test instances remain in the native history; no instances were restarted.
+Pure Effect action-body policies remain a separate unverified Cloudflare gap, so the
+execution-policy matrix row stays `🔜`.
+
+Follow-up edges exposed by these runs: the native cache adapter does not yet
+fingerprint `keyFiles` (Vite+/Turbo validate their own task inputs, but custom cache
+invalidation still needs work). Snapshot resource-limit failures also occurred in
+the superseded optional-check runs. After the live container stopped, retrying only
+the snapshot could not recover its uncommitted files. Removing needless check
+snapshots fixes this example, not the general checkpoint-failure recovery problem.
+Another required regression is multiple commands inside one action: native command
+checkpoint names currently use only the action ID. Subsequent commands need distinct,
+deterministic operation identities or they can reuse the first command's result.

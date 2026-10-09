@@ -35,6 +35,9 @@ The overall run succeeds because the required lint check passed. Removing `CI.op
 or making lint fail makes the Effect workflow fail, matching the conventional GitHub
 workflow's policy.
 
+Both validations use `CI.check`, returning no workspace. They assert against the
+installed revision without publishing redundant snapshots of unchanged files.
+
 Run it locally:
 
 ```sh
@@ -46,3 +49,7 @@ pnpm cf-ci --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
 The same required/optional policy passed in a native Cloudflare Workflow: lint
 completed, format warned, and the workflow succeeded. See the
 [hosted runner and recorded run](../../apps/example-runner#verified-runs).
+
+The native command-failure regression also passed in
+`coverage-optional-native-failure-20261008-4`: the format step has one failed native
+attempt, lint passes, and the Workflow completes with format marked as a warning.

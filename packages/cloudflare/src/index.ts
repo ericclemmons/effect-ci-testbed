@@ -4,10 +4,10 @@ import {
   WorkflowEntrypoint,
   type WorkflowEvent,
   type WorkflowStep,
-  type WorkflowStepConfig as CloudflareWorkflowStepConfig,
 } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
+import { executeCommandStep } from "./command-step.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -578,13 +578,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const nativeStepOptions = {
-            ...(stepOptions.retries ? { retries: stepOptions.retries } : {}),
-            ...(stepOptions.timeout === undefined ? {} : { timeout: stepOptions.timeout }),
-          } as CloudflareWorkflowStepConfig
-          const result = await options.step.do(
-            stepId,
-            nativeStepOptions,
+          const result = await executeCommandStep(
+            options.step,
+            { command, stepId, workspace, options: stepOptions },
             () => container.execute(
               command,
               workspace.cwd,
@@ -598,16 +594,6 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           if (result.stdout) onOutput("stdout", result.stdout)
           if (result.stderr) onOutput("stderr", result.stderr)
-
-          if (result.exitCode !== 0) {
-            throw new CI.CommandError(
-              stepId,
-              command,
-              workspace.cwd,
-              result.exitCode,
-              result.stderr || result.stdout,
-            )
-          }
 
           return result
         },

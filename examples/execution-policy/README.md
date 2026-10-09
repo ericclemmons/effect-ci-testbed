@@ -11,8 +11,14 @@ flowchart LR
 
 Step policy belongs to the runner layer. Local and ordinary GitHub execution use
 Effect's interruption-safe retry and timeout operators around the action body.
-Cloudflare execution passes the same options to native `step.do`, so the Workflow
-runtime owns its retry history and cancellation.
+Cloudflare command execution passes the same options to native `step.do`, so the
+Workflow runtime owns its command retry history. Failed exits throw inside that
+boundary; otherwise Workflows would cache the failure as a successful result.
+
+Cloudflare parity for arbitrary pure Effect action bodies is still pending. This
+example's `flaky` body is deliberately pure Effect, so its Cloudflare matrix cell
+remains `🔜`; the verified native command probes are documented in the
+[host app](../../apps/example-runner#native-command-policy-regressions).
 
 The conventional GitHub Actions comparison uses a shell retry loop because Actions has
 a timeout setting but no equivalent native per-step retry policy.

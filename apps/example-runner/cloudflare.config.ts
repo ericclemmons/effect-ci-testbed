@@ -27,6 +27,8 @@ export default defineConfig({
       VitePlusCacheWorkflow: exports.workflow({ name: "effect-ci-example-vite-plus-cache" }),
       TurborepoCacheWorkflow: exports.workflow({ name: "effect-ci-example-turborepo-cache" }),
       CustomRunnerImageWorkflow: exports.workflow({ name: "effect-ci-example-custom-runner-image" }),
+      CommandRetryProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-retry" }),
+      CommandFailureProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-failure" }),
     },
   },
   containers: [workspace],
