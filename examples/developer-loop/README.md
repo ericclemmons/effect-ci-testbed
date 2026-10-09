@@ -1,10 +1,28 @@
 # Check an edit before pushing, then reuse unchanged work
 
-For copyable commands, expected output, and spoken narration, use the
-[step-by-step talking script](./TALKING-SCRIPT.md).
-
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?
+
+```mermaid
+flowchart LR
+  checkout --> install
+  install --> lint
+  install --> check
+  lint --> check
+  check --> typecheck
+  install --> typecheck
+  install --> test
+  typecheck --> test
+  install --> build
+  test --> build
+```
+
+---
+
+For copyable commands, expected output, and spoken narration, use the
+[step-by-step talking script](./TALKING-SCRIPT.md). The diagram is the inferred
+suite's execution order, not a declaration of Vite task prerequisites. Direct
+`cf-ci run build` runs build's setup and package lifecycle hooks, not the whole suite.
 
 The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) opts into task inference.
 There is no custom Effect workflow, input glob, or output manifest. Vite configuration
