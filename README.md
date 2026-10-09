@@ -124,7 +124,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | ✅ |
 | [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | ✅ |
 | [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | ✅ |
-| [Customize cache keys, paths, invalidation, or disable caching](./examples/cache-policy) | ✅ | ✅ | ✅ | 🔜 |
+| [Customize cache keys, paths, invalidation, or disable caching](./examples/cache-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Fan one prepared snapshot out to isolated parallel checks](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | ✅ |
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
