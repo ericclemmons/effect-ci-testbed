@@ -16,6 +16,7 @@ import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare
 import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
+import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -30,6 +31,7 @@ for (const [name, workflow, expected] of [
   ["snapshot fanout", snapshotFanout, ["checkout", "prepare", "left", "right"]],
   ["Node version", nodeVersion, ["checkout", "install node", "verify node"]],
   ["Mise toolchain", miseToolchain, ["checkout", "install toolchain", "verify node", "verify python"]],
+  ["exported actions", exportedActions, ["checkout", "check"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
     const result = await CI.runPromise<unknown>(workflow, {

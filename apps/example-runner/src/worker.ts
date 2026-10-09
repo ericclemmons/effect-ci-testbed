@@ -14,6 +14,7 @@ import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare
 import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
+import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
@@ -127,5 +128,10 @@ export const NodeVersionWorkflow = Cloudflare.workflowEntrypoint(nodeVersion, {
 export const MiseToolchainWorkflow = Cloudflare.workflowEntrypoint(miseToolchain, {
   root: "examples/mise-toolchain",
   container: { image: "mise", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const ExportedActionsWorkflow = Cloudflare.workflowEntrypoint(exportedActions, {
+  root: "examples/exported-actions",
   reuseWorkspace: false,
 })
