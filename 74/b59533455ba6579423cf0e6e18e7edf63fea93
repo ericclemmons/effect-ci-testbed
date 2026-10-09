@@ -1,0 +1,29 @@
+examples/developer-loop/.github/workflows/github.yml
+  s_e215b15b333556::t_551f5800e1e88c 26-27
+examples/developer-loop/README.md
+  s_e215b15b333556::t_78561e81ba0b99 10-14,18-24,28-29,33,36-50,56-60,74,80,88,91,110,120,129-131
+examples/developer-loop/package-lock.json
+  s_e215b15b333556::t_ae819039821f1e 2,8
+examples/developer-loop/src/message.test.js
+  s_e215b15b333556::t_454b3853bb227a 1-7
+examples/developer-loop/tsconfig.json
+  s_e215b15b333556::t_e27bb9d40a70eb 1-13
+packages/ci/src/index.ts
+  s_e215b15b333556::t_287dcaf5f3b091 1495,1499-1507,1510-1512,1575,2373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "74b59533455ba6579423cf0e6e18e7edf63fea93",
+  "prompts": {},
+  "sessions": {
+    "s_e215b15b333556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ea7-e7a9-7fc2-955e-5a7e608a4442",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
