@@ -37,8 +37,8 @@ for (const [name, workflow, expected] of [
 
 test("optional validation checks do not publish unnecessary workspace revisions", async () => {
   const result = await CI.runPromise(optionalChecks, { mode: "plan", output: "silent" })
-  assert.equal(result.outputs.lint, undefined)
-  assert.equal(result.outputs.format, undefined)
+  assert.equal(result.attempt.outputs.lint, undefined)
+  assert.equal(result.attempt.outputs.format, undefined)
 })
 
 test("different workflows can run concurrently with the same action name", async () => {
