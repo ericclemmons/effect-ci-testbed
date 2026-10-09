@@ -603,7 +603,7 @@ jobs:
 
           ready=false
           for attempt in $(seq 1 60); do
-            if curl --silent --fail --output /dev/null http://localhost:8787; then
+            if curl --silent --fail --output /dev/null http://localhost:5173; then
               ready=true
               break
             fi
