@@ -21,9 +21,11 @@ jobs:
         working-directory: app
       - uses: actions/cache@v5
         with:
-          path: app/node_modules/.vite/task-cache
+          path: |
+            node_modules/.vite/task-cache
+            app/node_modules/.vite/task-cache
           key: vite-task-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-${{ github.sha }}
           restore-keys: |
             vite-task-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-
-      - run: npx vp run -t vite-plus-cache-app#build
+      - run: npx vp run --cache build
         working-directory: app

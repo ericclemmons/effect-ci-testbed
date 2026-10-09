@@ -90,12 +90,23 @@ Cloudflare.workflowEntrypoint(workflow, {
   cache: {
     key: "vite-task",
     keyFiles: ["examples/vite-plus-cache/app/package-lock.json"],
-    paths: ["examples/vite-plus-cache/app/node_modules/.vite/task-cache"],
+    paths: [
+      "node_modules/.vite/task-cache",
+      "examples/vite-plus-cache/app/node_modules/.vite/task-cache",
+    ],
   },
 })
 ```
 
-GitHub supplies the equivalent policy to `actions/cache`. Cloudflare persistence is
-still roadmap work: it must merge only Vite+'s cache directory into the current
-workspace and must not replace that workspace with an earlier snapshot. Vite+ owns the
-fingerprints and cache correctness after the runner makes those bytes available.
+GitHub supplies the equivalent policy to `actions/cache`. Vite+ uses the detected
+workspace root: in this monorepo that is the repository-level `node_modules/.vite`,
+not the nested app. The runner preserves both locations for standalone and monorepo
+execution. Checkout removes untracked outputs and dependencies while retaining those
+cache paths. Vite+ owns the fingerprints and cache correctness.
+
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) completed a warm build, then
+`coverage-vite-plus-hit-20261008-2` ran in a separate Workflow instance with a cleaned
+checkout. Vite+ reported `cache hit, replaying` and 201 ms saved across 11 native
+Workflow steps. No explicit task inputs or outputs were added.

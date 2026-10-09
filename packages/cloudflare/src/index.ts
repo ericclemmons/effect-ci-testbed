@@ -7,6 +7,7 @@ import {
   type WorkflowStepConfig as CloudflareWorkflowStepConfig,
 } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
+import { cleanCheckoutCommand } from "./source-checkout.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -38,6 +39,7 @@ interface WorkspaceContainerStub {
     targetDirectory: string,
     options?: WorkspaceContainerOptions,
     token?: string,
+    cachePaths?: ReadonlyArray<string>,
   ) => Promise<void>
   readonly checkpoint: (
     name: string,
@@ -233,6 +235,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     targetDirectory = defaultTargetDirectory,
     options: WorkspaceContainerOptions = {},
     token?: string,
+    cachePaths: ReadonlyArray<string> = [],
   ): Promise<void> {
     await this.ensureRunning(options)
 
@@ -299,6 +302,13 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     if (checkout.exitCode !== 0) {
       throw new Error(checkout.stderr || checkout.stdout || "git checkout failed")
+    }
+
+    // A cache snapshot is transport, not the next run's source workspace. Keep
+    // only the declared cache directories; stale outputs and dependencies go away.
+    const clean = await this.run(cleanCheckoutCommand(targetDirectory, cachePaths))
+    if (clean.exitCode !== 0) {
+      throw new Error(clean.stderr || clean.stdout || "git clean failed")
     }
   }
 
@@ -536,6 +546,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               targetDirectory,
               options.container,
               token,
+              options.cache?.paths,
             )
           })
 

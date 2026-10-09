@@ -21,6 +21,8 @@ export default defineConfig({
       PythonToolchainWorkflow: exports.workflow({ name: "effect-ci-example-python-toolchain" }),
       SystemPackageWorkflow: exports.workflow({ name: "effect-ci-example-system-package" }),
       PackageManagerCacheWorkflow: exports.workflow({ name: "effect-ci-example-package-manager-cache" }),
+      VitePlusCacheWorkflow: exports.workflow({ name: "effect-ci-example-vite-plus-cache" }),
+      TurborepoCacheWorkflow: exports.workflow({ name: "effect-ci-example-turborepo-cache" }),
     },
   },
   containers: [workspace],

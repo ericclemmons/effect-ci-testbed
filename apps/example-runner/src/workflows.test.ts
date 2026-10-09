@@ -8,6 +8,8 @@ import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/wor
 import workspace from "../../../examples/cloudflare-runner/.cloudflare/ci/workflow.ts"
 import pythonToolchain from "../../../examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts"
 import systemPackage from "../../../examples/system-package/.cloudflare/ci/workflow.ts"
+import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
+import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -16,6 +18,8 @@ for (const [name, workflow, expected] of [
   ["workspace", workspace, ["checkout", "install", "build"]],
   ["python toolchain", pythonToolchain, ["checkout", "prepare python toolchain", "build python package"]],
   ["system package", systemPackage, ["checkout", "install imagemagick", "verify imagemagick"]],
+  ["Vite+ cache", vitePlusCache, ["checkout", "install", "build"]],
+  ["Turborepo cache", turborepoCache, ["checkout", "install", "build"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
     const result = await CI.runPromise<unknown>(workflow, {

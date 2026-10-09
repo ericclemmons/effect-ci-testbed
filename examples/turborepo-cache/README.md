@@ -96,7 +96,15 @@ Cloudflare.workflowEntrypoint(workflow, {
 })
 ```
 
-GitHub supplies the equivalent policy to `actions/cache`. Cloudflare persistence is
-still roadmap work: it must merge only `.turbo/cache` into the current workspace and
-must not restore a whole stale workspace snapshot. Turborepo continues to own task
-hashing and output correctness after the runner makes those bytes available.
+GitHub supplies the equivalent policy to `actions/cache`. On Cloudflare, a new checkout
+cleans stale untracked outputs and dependencies while preserving the declared cache
+directory. Turborepo continues to own task hashing and output correctness.
+
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) populated the cache in
+`coverage-turborepo-warm-20261008-2`, then a distinct
+`coverage-turborepo-hit-20261008-1` instance reported one cached task and restored the
+build result in an 85 ms task run. The hash was `f37d6ec47086f918` in both instances.
+This proves runner-backed filesystem cache reuse; Turbo's separate remote-cache API
+was disabled and is not claimed as part of this hosted proof.

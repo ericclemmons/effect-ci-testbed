@@ -33,6 +33,8 @@ cf workflows instances get npm-1 \
 | [Python toolchain](../../examples/cloudflare-toolchain) | `effect-ci-example-python-toolchain` |
 | [System packages](../../examples/system-package) | `effect-ci-example-system-package` |
 | [Package-manager downloads](../../examples/package-manager-cache) | `effect-ci-example-package-manager-cache` |
+| [Vite+ task cache](../../examples/vite-plus-cache) | `effect-ci-example-vite-plus-cache` |
+| [Turborepo task cache](../../examples/turborepo-cache) | `effect-ci-example-turborepo-cache` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -65,6 +67,9 @@ Workflow version and native history. These are real account runs, not local simu
 | System package | `coverage-system-package-20261008-1` | apt installs ImageMagick; downstream action verifies the binary; 6 native steps; same source revision |
 | npm download cache, warm | `coverage-npm-cache-warm-20261008-1` | frozen install populates the cache; dependency verification passes; 22 native steps; same source revision |
 | npm download cache, fresh offline run | `coverage-npm-cache-offline-20261008-2` | distinct instance restores the cache, runs `npm ci --offline`, and verifies the installed dependency; 23 native steps; same source revision |
+| Vite+ task cache | `coverage-vite-plus-hit-20261008-2` | fresh instance reports `cache hit, replaying`, 201 ms saved; 11 native steps; source revision `2fed7a1b3410566cf381acf95eb00d13e48e35d8` |
+| Turborepo task cache | `coverage-turborepo-hit-20261008-1` | fresh instance reports 1 cached task, matching hash `f37d6ec47086f918`, 85 ms task run; 11 native steps; same source revision |
+| Clean-source cache regression | `coverage-npm-cache-offline-20261008-3` | offline install and dependency verification pass after removing stale untracked files; 23 native steps; same source revision |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
@@ -78,3 +83,10 @@ For the download-cache example, pass
 instance, wait for completion, then use a new instance ID with `offline: true`.
 Inspect the install command in the returned plan to confirm `--offline` was used.
 The cache namespace is specific to this repository and example, not shared tenants.
+
+Task-cache proofs use a warm instance followed by a separate instance at the same
+source revision. Checkout removes untracked build outputs and old dependencies,
+preserving only declared cache paths. The next task restores its output from cache.
+Turbo's native remote-cache API is disabled in this hosted proof; the runner transports
+its filesystem cache. Vite+ detects the enclosing monorepo and uses the root
+`node_modules/.vite/task-cache`, so the adapter also preserves that location.
