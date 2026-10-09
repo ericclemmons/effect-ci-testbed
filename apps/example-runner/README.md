@@ -39,6 +39,7 @@ cf workflows instances get npm-1 \
 | [Isolated snapshot fanout](../../examples/snapshot-fanout) | `effect-ci-example-snapshot-fanout` |
 | [Project Node version](../../examples/node-version) | `effect-ci-example-node-version` |
 | [Mise runtimes](../../examples/mise-toolchain) | `effect-ci-example-mise-toolchain` |
+| [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -112,6 +113,14 @@ tools after restoring durable snapshots. These runs prove reuse within a Workflo
 not a cross-instance Mise cache hit.
 
 ## Native command-policy regressions
+
+`coverage-exported-actions-20261009-2` completed against source
+`28b10e978463ca6db7dfa9cffdc95b1e7d82158e`: checkout and its checkpoint,
+`node --check app/index.js` in the restored example workspace, and the check's final
+checkpoint all succeeded (four native steps). Local CLI validation separately
+confirmed that only `check` is listed and runnable; private `checkout` fails with
+`CI_UNKNOWN_TARGET`. The hosted proof runs the default workflow, not a remote CLI
+action-discovery endpoint.
 
 These host-only probes never deploy resources or use secrets. They exercise the
 adapter boundary separately from consumer examples:
