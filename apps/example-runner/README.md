@@ -51,6 +51,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
+| [Portable artifacts](../../examples/portable-artifacts) | `effect-ci-example-portable-artifacts` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -97,6 +98,14 @@ Workflow version and native history. These are real account runs, not local simu
 | Isolated snapshot fanout | `coverage-snapshot-fanout-20261008-1` | prepare runs once; left/right start together and independently overwrite the same filename; 8 native steps with live reuse disabled; source revision `55be3e8c7bff809aa9a8a910f888bc86613922e0` |
 | Project Node version | `coverage-node-version-20261009-1` | installs Node 22.20.0 and verifies the exact version after restoring its checkpoint; 8 native steps; source revision `931bb78e21dddb1ef3ac5db80969dea1e8cddeec` |
 | Mise runtimes | `coverage-mise-toolchain-20261009-1` | installs Node 22.20.0 and Python 3.13.7 from mise.toml; both version checks pass after checkpoint restoration; 11 native steps; same source revision |
+| Portable artifacts | `coverage-portable-artifacts-20261009-1` | publishes `dist/worker.js` to snapshot `34dc7cf5-d259-4fbb-9f0f-6043dd0b19fb`, restores it in a downstream action, verifies the file, and commits that workspace; all 7 native steps and 3 logical actions complete; source `9678a29d9b700d1a2f6d33b9657cc6b38af91efe` |
+
+The artifact proof retains publish/restore directions, artifact name `worker`, and
+owned path `dist/worker.js` in its plan. Worker deployment
+`13e5f98a-9dad-4588-85a4-9d7fd0aa5dee` runs the unchanged consumer workflow, using
+`standard-1` consistently with live workspace reuse disabled. Its native Workflow
+version is `336fe322-94e6-43bc-9eb7-46959709680f`. This proves the snapshot resource
+boundary, not a real build/deployment or cross-account artifact retention.
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.

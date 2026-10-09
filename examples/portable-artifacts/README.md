@@ -22,8 +22,19 @@ local path.
 The first slice checkpoints the whole workspace while preserving the selected paths in
 the plan. Runners can later optimize transport to those paths without changing this API.
 
-Run the canonical workflow locally with
-`./examples/portable-artifacts/.cloudflare/ci/workflow.ts`. Compare
+Run the canonical workflow locally:
+
+```sh
+pnpm cf-ci --workflow examples/portable-artifacts/.cloudflare/ci/workflow.ts
+```
+
+The [host app](../../apps/example-runner/README.md#verified-runs) verifies the same
+workflow with real Cloudflare snapshots: the downstream action restores the published
+revision and checks the artifact file. This is a small artifact fixture, not a real
+Worker build or deployment. It verifies transport within one Workflow; cross-account
+downloads and long-term retention are separate capabilities.
+
+Compare
 [the conventional GitHub workflow](./.github/workflows/github.yml) with
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). Artifact planning and
 execution assertions live in
