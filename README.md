@@ -148,8 +148,9 @@ means that execution model is genuinely irrelevant to the use-case.
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 | Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 
-The Worker-isolate slice is now proven with Prettier: source crosses the workspace
-boundary, while formatting executes outside the Container. The larger Dynamic Worker
+The Dynamic Worker slice is now proven with Prettier: immutable source is fetched
+without a Container, and formatting executes through a network-disabled WorkerLoader
+isolate. The larger Dynamic Worker
 target remains the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—plus untrusted
 project modules loaded with explicit capabilities. The architectural goal is broader
 than linting: formatting, tests, builds, and other SDLC work should use an isolate

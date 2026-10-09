@@ -21,6 +21,7 @@ import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
+export { DynamicFormatterWorkflow } from "./dynamic-formatter.ts"
 
 export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
   root: "examples/cache-policy",

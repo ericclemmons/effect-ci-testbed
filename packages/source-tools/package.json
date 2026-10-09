@@ -1,0 +1,10 @@
+{
+  "name": "@effect-ci-testbed/source-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit" },
+  "dependencies": { "effect": "4.0.0-beta.19", "prettier": "3.6.2" },
+  "devDependencies": { "@types/node": "^26.6.3", "typescript": "^7.0.2" }
+}

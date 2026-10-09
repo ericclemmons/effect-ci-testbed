@@ -1,8 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
-import * as prettier from "prettier/standalone"
-import estree from "prettier/plugins/estree"
-import typescript from "prettier/plugins/typescript"
+import * as Tools from "@effect-ci-testbed/source-tools"
 
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
@@ -19,13 +17,9 @@ export const format = CI.check("format source", () => function* () {
     return yield* Effect.fail(new Error(`Missing ${path}`))
   }
 
-  const formatted = yield* Effect.tryPromise(() => prettier.format(source, {
-    parser: "typescript",
-    plugins: [estree, typescript],
-    semi: false,
-  }))
+  const formatted = yield* Tools.format({ files: { [path]: source }, options: { semi: false } })
 
-  if (formatted !== source) {
+  if (formatted.files[path] !== source) {
     return yield* Effect.fail(new Error(`${path} is not formatted`))
   }
 })

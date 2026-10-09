@@ -11,28 +11,46 @@ flowchart LR
 
 ---
 
-The action reads one source file through `CI.Workspace`, then runs Prettier's browser
-bundle in the host JavaScript runtime:
+The action reads source through `CI.Workspace` and calls a portable source tool:
 
 ```ts
 const source = yield* workspace.readFile("app/src/index.ts")
-const formatted = yield* Effect.tryPromise(() => prettier.format(source, options))
+const formatted = yield* Tools.format({ files: { "app/src/index.ts": source }, options: { semi: false } })
 ```
 
-On Cloudflare the source read crosses the narrow workspace RPC boundary, but Prettier
-runs in the Workflow Worker isolate. It does not consume Container CPU or memory. The
-same action runs under Node.js locally and on a GitHub runner.
+The default service runs Prettier locally or on a GitHub runner. The hosted runner
+provides an Effect service that executes the same operation through WorkerLoader in
+a separate Dynamic Worker. Its outbound network is disabled, it receives no secrets
+or filesystem bindings, and its CPU budget is bounded. This is not execution in the
+parent Workflow Worker.
 
 This proves a source-in/result-out execution tier, not arbitrary project execution.
 Oxlint, Oxfmt, and Vitest can use the same path when they expose Worker-compatible
-JavaScript or Wasm APIs. Loading untrusted project modules belongs in a Cloudflare
-Dynamic Worker with explicit capability bindings and remains separate roadmap work.
+JavaScript or Wasm APIs. Arbitrary project modules, native executables, and Vite+
+toolchain compatibility remain separate work; this example runs a pinned formatter
+against untrusted source data.
 
 The [hosted example runner](../../apps/example-runner) imports this workflow unchanged.
-Instance `coverage-source-checks-20261009-1` completed both actions with live workspace
-reuse disabled. Its three native steps only checkout, checkpoint, and read the source;
-the formatter runs in the Worker, with no container command or new workspace snapshot.
+Instance `coverage-dynamic-formatter-20261009-1` completed both actions at immutable
+source `b7c510ed661c1c221072849ba1b1dd93308e702a`. The native Workflow
+`effect-ci-example-dynamic-formatter` recorded only two steps: GitHub source retrieval
+and formatter RPC, whose result reports `runtime: "dynamic-worker"`. This path has no
+Container checkout, commands, or snapshots. The earlier parent-Worker formatter proof
+is preserved as historical evidence.
 Platform configuration belongs to that app rather than this consumer example.
+
+`coverage-dynamic-formatter-negative-20261009-1` used deliberately unformatted source
+at `b083b10cb636a980498934d8bda6dd1f3dc3b449`: the Dynamic Worker returned formatted
+text and the CI check rejected it as expected. Both cases also passed through the
+local `cf dev` Workflow API (`local-dynamic-formatter-20261009-1` and
+`local-dynamic-formatter-negative-20261009-1`). These are formatter checks, not deployments.
+
+The final RPC-lifetime fix was rechecked on deployment
+`f3913a23-0eaf-4d64-b10f-30ba77c5126f`: instances
+`coverage-dynamic-formatter-result-disposed-20261009-1` and
+`coverage-dynamic-formatter-result-negative-20261009-1` retained those same results.
+The earlier `coverage-dynamic-formatter-disposed-20261009-1` failure is preserved:
+it exposed an incorrect attempt to dispose the entrypoint rather than its RPC result.
 
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
