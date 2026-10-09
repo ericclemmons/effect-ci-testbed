@@ -37,6 +37,8 @@ cf workflows instances get npm-1 \
 | [Turborepo task cache](../../examples/turborepo-cache) | `effect-ci-example-turborepo-cache` |
 | [Custom runner image](../../examples/custom-runner-image) | `effect-ci-example-custom-runner-image` |
 | [Isolated snapshot fanout](../../examples/snapshot-fanout) | `effect-ci-example-snapshot-fanout` |
+| [Project Node version](../../examples/node-version) | `effect-ci-example-node-version` |
+| [Mise runtimes](../../examples/mise-toolchain) | `effect-ci-example-mise-toolchain` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -74,6 +76,8 @@ Workflow version and native history. These are real account runs, not local simu
 | Clean-source cache regression | `coverage-npm-cache-offline-20261008-3` | offline install and dependency verification pass after removing stale untracked files; 23 native steps; same source revision |
 | Custom runner image | `coverage-custom-image-20261008-1` | checkout checkpoint restored into the project Dockerfile image; baked-in `Python 3.13.5` verified; 3 native steps; source revision `bc50897f2d6ff8a388bcc6a0af22886f89bfc2c4` |
 | Isolated snapshot fanout | `coverage-snapshot-fanout-20261008-1` | prepare runs once; left/right start together and independently overwrite the same filename; 8 native steps with live reuse disabled; source revision `55be3e8c7bff809aa9a8a910f888bc86613922e0` |
+| Project Node version | `coverage-node-version-20261009-1` | installs Node 22.20.0 and verifies the exact version after restoring its checkpoint; 8 native steps; source revision `931bb78e21dddb1ef3ac5db80969dea1e8cddeec` |
+| Mise runtimes | `coverage-mise-toolchain-20261009-1` | installs Node 22.20.0 and Python 3.13.7 from mise.toml; both version checks pass after checkpoint restoration; 11 native steps; same source revision |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
@@ -99,6 +103,13 @@ The custom-image adapter builds the example's Dockerfile as a named image with
 `cf deploy`; Docker must be running for this build. Other workflows continue to
 select Cloudflare's managed Trixie image. Its hosted proof disables live workspace
 reuse so the downstream check must materialize the preceding checkpoint.
+
+The Node-version and Mise adapters use the host's `Dockerfile.mise`. It copies the
+official Mise 2026.9.11 static binary from a digest-pinned image alongside the
+Sandbox 1.0 shim; project runtimes are installed by the unchanged consumer actions,
+not baked into the image. Both proofs disable live reuse and verify the installed
+tools after restoring durable snapshots. These runs prove reuse within a Workflow,
+not a cross-instance Mise cache hit.
 
 ## Native command-policy regressions
 
