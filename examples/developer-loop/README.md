@@ -164,3 +164,8 @@ The local plan/execute matrix runs the same example. The conventional
 scripts directly and is included in the native comparison matrix. Its caching
 comes from Vite+ too; the difference is the portable CI entrypoint and result
 contract, not a faster underlying build algorithm.
+
+At source `b5e2a663aeef5e87a993001ea446e000a2447584`, all five developer-loop
+jobs in [the full E2E run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/37958032547)
+passed: conventional GitHub Actions, local plan/execution, and Effect-on-GitHub
+plan/execution. Hosted Cloudflare zero-config execution remains unverified.
