@@ -1,0 +1,19 @@
+examples/developer-loop/README.md
+  s_e215b15b333556::t_3cd43d3de1d536 11-12,15-28,56,64,66,97,100-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "598f6eed09abc0e48f58a4cbb2be1281af1fa40c",
+  "prompts": {},
+  "sessions": {
+    "s_e215b15b333556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ea7-e7a9-7fc2-955e-5a7e608a4442",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
