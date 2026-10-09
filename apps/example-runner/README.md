@@ -214,9 +214,18 @@ no container. Actions without explicit policies keep their granular checkpoints.
 
 The native result adapter also reconstructs top-level `WorkspaceCheckpoint` and
 `WorkspaceArtifact` results, including their workspace revisions and restore
-capabilities. JSON round-trip/replay regressions cover this boundary locally;
-retryable artifact publication has not yet received its own hosted proof. This is
-not a general codec for arbitrary class instances or resources nested in user data.
+capabilities. JSON round-trip/replay regressions cover cached results locally.
+Hosted instance `coverage-artifact-policy-20261009-1` completed six native steps
+using source `8a6721a255e668eb3d0d8d7c897f6edef5f1785e`, Worker deployment
+`8a95b52f-d328-4809-a8f0-5485f230af08`, and Workflow version
+`5092fa27-8472-478c-ae1d-c97300cdc9ee`. Policy-bearing publication returned an
+artifact backed by snapshot `6f14a912-7090-4fda-a726-a1e05ec017a6`; the next native
+action restored it and returned checkpoint `fbd57572-5e3c-48fa-932b-ac0de84a5fcc`.
+The consuming check called `checkpoint.restore()` and printed
+`artifact-policy-verified`. Both result kinds crossed real native serialization
+boundaries without nested step checkpoints. This is not a general codec for
+arbitrary class instances or resources nested in user data, nor an injected
+artifact-publication failure test. The probe performs no deployment.
 
 These live proofs used source `9a4c5e9a9cbf73625076884a0ab99ab458daf3b5` and Worker
 deployment `1127e335-496c-427b-bcb4-4261811eeb3d`:

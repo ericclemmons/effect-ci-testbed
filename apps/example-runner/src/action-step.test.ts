@@ -52,10 +52,14 @@ test("native action results restore artifact and checkpoint capabilities after J
     assert.ok(restored instanceof CI.WorkspaceCheckpoint)
     assert.ok(restored.workspace instanceof CI.Workspace)
     assert.equal(typeof restored.restore, "function")
+    assert.equal(restored.name, checkpoint.name)
+    assert.equal(restored.workspace.id, workspace.id)
+    assert.equal(restored.workspace.cwd, workspace.cwd)
     assert.deepEqual(restored.handle, checkpoint.handle)
     assert.deepEqual(restored.workspace.revision, workspace.revision)
     if (value instanceof CI.WorkspaceArtifact) {
       assert.ok(replay.value instanceof CI.WorkspaceArtifact)
+      assert.equal(replay.value.name, artifact.name)
       assert.deepEqual(replay.value.paths, artifact.paths)
     }
   }
