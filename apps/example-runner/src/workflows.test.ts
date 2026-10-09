@@ -20,6 +20,7 @@ import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workf
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
 import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 import sourceChecks from "../../../examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts"
+import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -36,6 +37,7 @@ for (const [name, workflow, expected] of [
   ["Mise toolchain", miseToolchain, ["checkout", "install toolchain", "verify node", "verify python"]],
   ["exported actions", exportedActions, ["checkout", "check"]],
   ["source-only checks", sourceChecks, ["checkout", "format source"]],
+  ["portable artifacts", portableArtifacts, ["artifact checkout", "publish build", "restore build"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
     const sourceRoot = new Map<string, string>([

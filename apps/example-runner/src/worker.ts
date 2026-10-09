@@ -26,6 +26,7 @@ import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/w
 import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 import sourceChecks from "../../../examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts"
 import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts"
+import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts"
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
@@ -38,6 +39,10 @@ export const RollbackCompensationWorkflow = Cloudflare.workflowEntrypoint(rollba
   root: "examples/rollback-compensation", reuseWorkspace: false,
 })
 export const ReverseRollbackWorkflow = Cloudflare.workflowEntrypoint(reverseRollbackProbe)
+export const PortableArtifactsWorkflow = Cloudflare.workflowEntrypoint(portableArtifacts, {
+  root: "examples/portable-artifacts", reuseWorkspace: false,
+  container: { image: "workspace", instance: "standard-1" },
+})
 
 export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameters, step) => {
   const manifest = await step.do("source:package-json", () =>
