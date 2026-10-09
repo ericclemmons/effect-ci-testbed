@@ -580,7 +580,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           const container = containerFor(stepId, workspace)
           const result = await executeCommand(
-            { command, commandIndex, stepId, workspace, options: stepOptions },
+            { command, ...(commandIndex === undefined ? {} : { commandIndex }), stepId, workspace, options: stepOptions },
             () => container.execute(
               command,
               workspace.cwd,
