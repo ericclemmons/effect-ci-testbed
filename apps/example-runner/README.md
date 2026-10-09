@@ -35,6 +35,7 @@ cf workflows instances get npm-1 \
 | [Package-manager downloads](../../examples/package-manager-cache) | `effect-ci-example-package-manager-cache` |
 | [Vite+ task cache](../../examples/vite-plus-cache) | `effect-ci-example-vite-plus-cache` |
 | [Turborepo task cache](../../examples/turborepo-cache) | `effect-ci-example-turborepo-cache` |
+| [Custom runner image](../../examples/custom-runner-image) | `effect-ci-example-custom-runner-image` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -70,6 +71,7 @@ Workflow version and native history. These are real account runs, not local simu
 | Vite+ task cache | `coverage-vite-plus-hit-20261008-2` | fresh instance reports `cache hit, replaying`, 201 ms saved; 11 native steps; source revision `2fed7a1b3410566cf381acf95eb00d13e48e35d8` |
 | Turborepo task cache | `coverage-turborepo-hit-20261008-1` | fresh instance reports 1 cached task, matching hash `f37d6ec47086f918`, 85 ms task run; 11 native steps; same source revision |
 | Clean-source cache regression | `coverage-npm-cache-offline-20261008-3` | offline install and dependency verification pass after removing stale untracked files; 23 native steps; same source revision |
+| Custom runner image | `coverage-custom-image-20261008-1` | checkout checkpoint restored into the project Dockerfile image; baked-in `Python 3.13.5` verified; 3 native steps; source revision `bc50897f2d6ff8a388bcc6a0af22886f89bfc2c4` |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
@@ -90,3 +92,8 @@ preserving only declared cache paths. The next task restores its output from cac
 Turbo's native remote-cache API is disabled in this hosted proof; the runner transports
 its filesystem cache. Vite+ detects the enclosing monorepo and uses the root
 `node_modules/.vite/task-cache`, so the adapter also preserves that location.
+
+The custom-image adapter builds the example's Dockerfile as a named image with
+`cf deploy`; Docker must be running for this build. Other workflows continue to
+select Cloudflare's managed Trixie image. Its hosted proof disables live workspace
+reuse so the downstream check must materialize the preceding checkpoint.

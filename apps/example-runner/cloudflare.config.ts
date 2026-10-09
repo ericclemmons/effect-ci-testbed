@@ -3,6 +3,9 @@ import { defineConfig, defineContainer, exports } from "cf/config"
 const workspace = defineContainer({
   name: "effect-ci-example-workspace",
   schedulingPolicy: "durable-object",
+  images: {
+    workspace: { dockerfile: "../../examples/custom-runner-image/Dockerfile" },
+  },
 })
 
 export default defineConfig({
@@ -23,6 +26,7 @@ export default defineConfig({
       PackageManagerCacheWorkflow: exports.workflow({ name: "effect-ci-example-package-manager-cache" }),
       VitePlusCacheWorkflow: exports.workflow({ name: "effect-ci-example-vite-plus-cache" }),
       TurborepoCacheWorkflow: exports.workflow({ name: "effect-ci-example-turborepo-cache" }),
+      CustomRunnerImageWorkflow: exports.workflow({ name: "effect-ci-example-custom-runner-image" }),
     },
   },
   containers: [workspace],

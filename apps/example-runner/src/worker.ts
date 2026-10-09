@@ -10,6 +10,7 @@ import systemPackage from "../../../examples/system-package/.cloudflare/ci/workf
 import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts"
 import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
+import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
@@ -87,4 +88,10 @@ export const TurborepoCacheWorkflow = Cloudflare.workflowEntrypoint(turborepoCac
     keyFiles: ["examples/turborepo-cache/app/package-lock.json"],
     paths: ["examples/turborepo-cache/app/.turbo/cache"],
   },
+})
+
+export const CustomRunnerImageWorkflow = Cloudflare.workflowEntrypoint(customRunnerImage, {
+  root: "examples/custom-runner-image",
+  container: { image: "workspace", instance: "standard-1" },
+  reuseWorkspace: false,
 })
