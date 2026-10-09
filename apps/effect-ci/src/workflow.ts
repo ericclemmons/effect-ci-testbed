@@ -1,6 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci"
 
-import { build } from "../../../examples/github-cloudflare-ci/.cloudflare/ci/actions.ts"
+import { build } from "./actions.ts"
 
 const release = CI.action("release", () => function* () {
   const workspace = yield* build()
