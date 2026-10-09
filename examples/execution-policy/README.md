@@ -34,6 +34,11 @@ data—not arbitrary live service objects.
 
 The [host app](../../apps/example-runner#native-action-body-policy)
 records live success, timeout, exhaustion, terminal-error, and command-retry proofs.
+Its [checkpoint recovery proof](../../apps/example-runner#cache-and-checkpoint-correctness)
+also replaces the live container before failing the first commit, then verifies the
+rebuilt second attempt from its saved revision. Retrying the body can repeat commands
+and external effects: use idempotent operations or provider-side deduplication. A
+workspace snapshot does not make an external deployment or database write atomic.
 
 The conventional GitHub Actions comparison uses a shell retry loop because Actions has
 a timeout setting but no equivalent native per-step retry policy.

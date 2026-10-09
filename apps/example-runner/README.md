@@ -217,8 +217,9 @@ deployment `1127e335-496c-427b-bcb4-4261811eeb3d`:
 The timeout adapter also interrupts the Effect fiber to prevent late successful
 completion. Local regression tests cover native replay, original error identity,
 reporting outside the boundary, late-dependency rejection, and retrying a body whose
-final checkpoint fails. That last regression is not a hosted container-loss recovery
-proof; general checkpoint-failure recovery remains unverified below.
+final checkpoint fails. That regression alone is not a hosted recovery proof; the
+controlled real-container proof is recorded below. Recovery without a retryable
+body remains unverified.
 
 ## Native rollback policy
 
@@ -253,6 +254,24 @@ Snapshot resource-limit failures also occurred in
 the superseded optional-check runs. After the live container stopped, retrying only
 the snapshot could not recover its uncommitted files. Removing needless check
 snapshots fixes this example, not the general checkpoint-failure recovery problem.
+
+`coverage-checkpoint-recovery-20261009-1` completed four native steps at source
+`4aabe232beb60e21a8c7a20832eccf7e1e29adc2`, Worker deployment
+`ff5f62e7-712c-45f7-a417-c076558227fc`, and native Workflow version
+`bdacaafb-0bef-4530-9335-bd3f29b96498`. The host-only persistence layer replaced the
+first attempt's live container with its input snapshot, discarding the computed
+files, and then threw `expected-checkpoint-failure-after-container-replacement`.
+The policy-bearing body retried once, rebuilt `attempt-2`, and published snapshot
+`cbf0b0db-d1f1-4cfa-b45e-48717d4c1cae`. A separate check restored that revision and
+returned `recovery-verified`. Its plan retains only the two successful-attempt body
+commands, not duplicate entries from the failed attempt. This proof uses `standard-1`
+consistently for startup and restoration; no release or external write occurred.
+
+This verifies controlled filesystem loss with an explicit retryable body—not arbitrary
+snapshot-provider outages or reconstruction from already-cached granular commands.
+Bodies that mutate external services must still be idempotent or use deduplication;
+recomputation can repeat those side effects. Neither the workspace snapshot nor the
+native checkpoint is a transaction across external systems.
 
 Multiple commands in one action now have independent native checkpoints, named from
 the logical action ID and command position. Positions include commands reused by the

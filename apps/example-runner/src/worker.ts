@@ -6,6 +6,7 @@ import { timeoutProbe, exhaustionProbe, nonRetryableProbe } from "./effect-polic
 import rollbackCompensation from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
 import { reverseRollbackProbe } from "./rollback-probe.ts"
 export { RollbackExhaustionWorkflow } from "./rollback-probe.ts"
+export { CheckpointRecoveryWorkflow } from "./checkpoint-recovery-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
