@@ -124,6 +124,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     if (activeCheckpoint) {
       container.start({
         containerSnapshot: activeCheckpoint,
+        instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
@@ -186,6 +187,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
       container.start({
         containerSnapshot: revision,
+        instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })

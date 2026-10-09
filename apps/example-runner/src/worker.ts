@@ -32,6 +32,7 @@ export const OptionalChecksWorkflow = Cloudflare.workflowEntrypoint(optionalChec
 })
 export const WorkspaceWorkflow = Cloudflare.workflowEntrypoint(workspace, {
   root: "examples/cloudflare-runner",
+  reuseWorkspace: false,
 })
 export const ConditionalDeployWorkflow = Cloudflare.workflowEntrypoint(conditionalDeploy, {
   root: "examples/conditional-deploy",

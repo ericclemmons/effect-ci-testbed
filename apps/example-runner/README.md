@@ -53,11 +53,15 @@ Workflow version and native history. These are real account runs, not local simu
 | Example | Instance | Verified result |
 | --- | --- | --- |
 | npm | `coverage-node-npm-20261008-2` | checkout/install/lint/test/build complete; 34 native steps |
+| pnpm | `coverage-node-pnpm-20261008-6` | frozen install/format/lint/test/build complete; 47 native steps; source revision `caba617c57ddc664020b955b63c275b8e4670256` |
 | Optional checks | `coverage-optional-checks-20261008-2` | required lint passes; optional format warns; workflow succeeds; 25 steps |
-| Durable workspace | `coverage-workspace-20261008-2` | checkout/install/build complete; 6 steps including workspace checkpoints |
+| Durable workspace | `coverage-workspace-20261008-3` | checkout/install/build complete with live reuse disabled; 6 steps including workspace checkpoints; source revision `caba617c57ddc664020b955b63c275b8e4670256` |
 | Main push condition | `coverage-conditional-push-20261008-1` | checkout and echo-only deploy complete; 4 steps |
 | Pull-request condition | `coverage-conditional-pull_request-20261008-1` | deploy skipped, condition retained in plan, no container steps |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
-The pnpm run remains unverified until its selected-project installation passes.
+
+The pnpm runner uses `standard-1` for both initial startup and snapshot restoration.
+Selected standalone projects ignore a parent pnpm workspace; an actual monorepo root
+with its own `pnpm-workspace.yaml` retains normal workspace behavior.
