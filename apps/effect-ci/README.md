@@ -343,7 +343,12 @@ pnpm exec cf-ci run --remote \
 ```
 
 The CLI should create a native Workflow instance, stream action events, and exit with
-the Workflow result. Then push a commit to the repository where the GitHub App is
+the Workflow result. Remote execution uses the service's configured workflow; it
+does not upload or execute an arbitrary local workflow module. The CLI supplies the
+Git repository and pushed commit, not dirty working-tree files. Run locally for
+pre-commit validation; commit and push before using `--remote`.
+
+Then push a commit to the repository where the GitHub App is
 installed. The successful GitHub path is:
 
 1. GitHub App **Advanced → Recent deliveries** shows a successful `check_suite`

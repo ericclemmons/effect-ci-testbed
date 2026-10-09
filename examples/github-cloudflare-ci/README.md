@@ -27,10 +27,14 @@ Run the example locally from the repository root:
 pnpm exec cf-ci run --workflow examples/github-cloudflare-ci/.cloudflare/ci/workflow.ts
 ```
 
-After deploying and configuring the service, use the same workflow remotely:
+After deploying and configuring the service, dispatch its configured workflow remotely:
 
 ```sh
 pnpm exec cf-ci run --remote --workflow examples/github-cloudflare-ci/.cloudflare/ci/workflow.ts
 ```
 
-Hosted coverage remains pending until a real GitHub delivery completes successfully.
+`--remote` submits the pushed commit to the configured service and tails its events.
+It does not upload local edits or the selected TypeScript module. Dirty working trees
+are rejected to prevent remote results being mistaken for validation of local changes.
+Access service credentials and the Worker API token are both required; see the
+[setup guide](../../apps/effect-ci/README.md#5-run-the-first-workflow).
