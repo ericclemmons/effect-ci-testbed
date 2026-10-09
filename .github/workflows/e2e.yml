@@ -19,6 +19,7 @@ jobs:
         example:
           - node-npm
           - zero-config
+          - developer-loop
           - exported-actions
           - node-pnpm
           - optional-checks
@@ -92,6 +93,7 @@ jobs:
         example:
           - node-npm
           - zero-config
+          - developer-loop
           - exported-actions
           - node-pnpm
           - optional-checks
@@ -121,8 +123,8 @@ jobs:
           EFFECT_CI_EVENT: ${{ matrix.example == 'deploy-hook' && 'deploy_hook' || 'pull_request' }}
         run: |
           workflow="examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts"
-          if [ "${{ matrix.example }}" = "zero-config" ]; then
-            workflow="examples/zero-config/.cloudflare/ci/ci.ts"
+          if [ "${{ matrix.example }}" = "zero-config" ] || [ "${{ matrix.example }}" = "developer-loop" ]; then
+            workflow="examples/${{ matrix.example }}/.cloudflare/ci/ci.ts"
           fi
           pnpm cf-ci --workflow "$workflow" ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
@@ -303,6 +305,14 @@ jobs:
           - example: zero-config
             workflow: examples/zero-config/.cloudflare/ci/ci.ts
             runs-on: '["ubuntu-latest"]'
+          - example: developer-loop
+            workflow: examples/developer-loop/.cloudflare/ci/ci.ts
+            runs-on: '["ubuntu-latest"]'
+            cache-key: developer-loop-vite-task
+            cache-key-files: examples/developer-loop/package-lock.json
+            cache-path: |
+              node_modules/.vite/task-cache
+              examples/developer-loop/node_modules/.vite/task-cache
           - example: deploy-hook
             workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'

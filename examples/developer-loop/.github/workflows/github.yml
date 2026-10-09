@@ -1,0 +1,28 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v5
+        with:
+          path: node_modules/.vite/task-cache
+          key: developer-loop-vite-task-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run test
+      - run: npm run build
