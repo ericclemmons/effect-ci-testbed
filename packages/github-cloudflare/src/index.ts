@@ -222,6 +222,7 @@ export const workflowEntrypoint = <A>(
           },
         },
         executor: runner.executor,
+        actionExecutor: runner.actionExecutor,
         onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
           await reporter?.report(runtimeEvent)
           const key = runtimeEvent.type === "step.status"

@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
 import { cacheIdentity } from "./cache-identity.ts"
+import { makeActionExecutor } from "./action-step.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -475,6 +476,7 @@ export interface RunnerOptions {
 }
 
 export interface Runner {
+  readonly actionExecutor: CI.ActionExecutor
   readonly executor: CI.CommandExecutor
   readonly fileSystem: CI.WorkspaceFileSystem
   readonly persistence: CI.WorkspacePersistence
@@ -507,6 +509,9 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
+  const activeBodies = new Set<string>()
+  const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
+    activeBodies.has(stepId) ? operation() : options.step.do(name, operation as () => Promise<any>) as Promise<A>
   const executeCommand = makeCommandStepExecutor(options.step)
   const primary = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
   const containerFor = (
@@ -521,6 +526,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
 
   return {
+    actionExecutor: makeActionExecutor(options.step, activeBodies),
     source: {
       checkout: () => Effect.tryPromise({
         try: async () => {
@@ -600,18 +606,16 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const result = await executeCommand(
-            { command, ...(commandIndex === undefined ? {} : { commandIndex }), stepId, workspace, options: stepOptions },
-            () => container.execute(
-              command,
-              workspace.cwd,
-              stepId,
-              revision?.value as ContainerSnapshotValue | undefined,
-              options.cache?.paths,
-              targetDirectory,
-              options.container,
-            ),
+          const execute = () => container.execute(
+            command, workspace.cwd, stepId,
+            revision?.value as ContainerSnapshotValue | undefined,
+            options.cache?.paths, targetDirectory, options.container,
           )
+          const result = activeBodies.has(stepId) ? await execute() : await executeCommand(
+            { command, ...(commandIndex === undefined ? {} : { commandIndex }), stepId, workspace, options: stepOptions },
+            execute,
+          )
+          if (result.exitCode !== 0) throw new CI.CommandError(stepId, command, workspace.cwd, result.exitCode, result.stderr || result.stdout)
 
           if (result.stdout) onOutput("stdout", result.stdout)
           if (result.stderr) onOutput("stderr", result.stderr)
@@ -638,7 +642,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
           const container = containerFor(stepId, workspace)
 
-          return options.step.do(`${stepId}:exists-${pathId}`, () =>
+          return bodyOperation(stepId, `${stepId}:exists-${pathId}`, () =>
             container.exists(
               path,
               workspace.cwd,
@@ -663,7 +667,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
           const container = containerFor(stepId, workspace)
 
-          return options.step.do(`${stepId}:read-${pathId}`, () =>
+          return bodyOperation(stepId, `${stepId}:read-${pathId}`, () =>
             container.readFile(
               path,
               workspace.cwd,
@@ -683,14 +687,14 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const snapshot = await options.step.do(`${stepId}:commit`, () =>
+          const snapshot = await bodyOperation(stepId, `${stepId}:commit`, () =>
             container.checkpoint(
               `${stepId}-workspace`,
               options.reuseWorkspace === false,
             ))
 
           if (cache) {
-            await options.step.do(`${stepId}:cache`, () =>
+            await bodyOperation(stepId, `${stepId}:cache`, () =>
               cache!.putCachedSnapshot("latest", snapshot))
           }
 
@@ -711,7 +715,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           const container = containerFor(stepId, workspace)
           const checkpointId = name.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
-          const snapshot = await options.step.do(`${stepId}:checkpoint-${checkpointId}`, () =>
+          const snapshot = await bodyOperation(stepId, `${stepId}:checkpoint-${checkpointId}`, () =>
             container.checkpoint(name))
 
           return {
@@ -728,7 +732,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, checkpoint.workspace)
-          await options.step.do(`${stepId}:restore`, () =>
+          await bodyOperation(stepId, `${stepId}:restore`, () =>
             container.restore(
               checkpoint.handle.value as ContainerSnapshotValue,
               options.container,
@@ -807,6 +811,7 @@ export const workflowEntrypoint = <
         },
       },
       executor: runner.executor,
+      actionExecutor: runner.actionExecutor,
       output: "silent",
       ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
       source: runner.source,

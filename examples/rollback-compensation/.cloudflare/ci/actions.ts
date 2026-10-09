@@ -12,10 +12,10 @@ const rollback = CI.action("redeploy previous version", () => function* () {
   return yield* workspace.exec("echo rollback")
 })
 
-export const deploy = CI.action("deploy with retries", () => function* () {
+export const deploy = CI.action("deploy with retries", function* () {
   const workspace = yield* checkout()
 
-  return yield* workspace.exec("echo deploy")
+  return () => workspace.exec("echo deploy")
 }, {
   retries: { limit: 2, delay: 0 },
   rollback,

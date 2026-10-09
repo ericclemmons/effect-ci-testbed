@@ -64,6 +64,7 @@ interface StepDefinition<A = unknown> {
   readonly identity?: object
   readonly id: string
   readonly body: Effect.Effect<A, unknown, Runtime | CurrentStep>
+  readonly prepare?: Effect.Effect<Effect.Effect<A, unknown, any>, unknown, any>
   readonly options: InternalStepOptions
   readonly rollback?: {
     readonly id: string
@@ -369,6 +370,26 @@ class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
 class CurrentStep extends ServiceMap.Service<CurrentStep, string>()(
   "@effect-ci-testbed/CurrentStep",
 ) {}
+
+/** One-based attempt supplied by the local or durable policy interpreter. */
+export class Attempt extends ServiceMap.Service<Attempt, number>()("@effect-ci-testbed/Attempt") {}
+class PolicyBody extends ServiceMap.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
+
+export interface ActionExecutionResult {
+  readonly value: unknown
+  readonly commands: ReadonlyArray<PlannedCommand>
+  readonly events?: ReadonlyArray<RuntimeEvent>
+  readonly metadata?: Pick<PlanNode, "artifacts" | "secrets" | "approval">
+}
+
+/** Runner boundary for a policy-bearing leaf body, after dependencies resolve. */
+export interface ActionExecutor {
+  readonly execute: (request: {
+    readonly stepId: string
+    readonly options: WorkflowStepConfig
+    readonly run: (attempt: number) => Effect.Effect<ActionExecutionResult, unknown, any>
+  }) => Effect.Effect<ActionExecutionResult, unknown, any>
+}
 
 export class CommandError extends Error {
   readonly _tag = "CommandError"
@@ -1319,6 +1340,12 @@ const runStep = <A>(
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
   const id = definition.id
   const effect = Effect.gen(function* () {
+    const boundary = yield* Effect.serviceOption(PolicyBody)
+    if (boundary._tag === "Some" && boundary.value) {
+      return yield* Effect.fail(new WorkflowPlanError(
+        `Resolve dependency ${id} during action construction, before returning the policy-bearing body`,
+      ))
+    }
     const runtime = yield* Runtime
     registerDefinition(runtime, definition)
     const parent = yield* CurrentStep
@@ -1460,6 +1487,9 @@ export const action = <
       body: bodyToEffect(construction).pipe(
         Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
       ),
+      prepare: bodyToEffect(construction).pipe(
+        Effect.map((handler) => bodyToEffect(() => handler(...args))),
+      ),
       options: stepOptions,
       ...(rollback ? { rollback } : {}),
     }
@@ -1544,6 +1574,9 @@ const withStepPolicy = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   options: WorkflowStepConfig,
 ): Effect.Effect<A, any, R> => {
+  let attempt = 0
+  const effectBody = effect
+  effect = Effect.suspend(() => effectBody.pipe(Effect.provideService(Attempt, ++attempt))) as Effect.Effect<A, E, R>
   const timed = options.timeout === undefined
     ? effect
     : effect.pipe(Effect.timeout(options.timeout))
@@ -1586,9 +1619,16 @@ const makeRuntime = (
     readonly previous: WorkflowAttempt
     readonly selection: WorkflowRerunPlan
   },
+  actionExecutor?: ActionExecutor,
 ) =>
   Effect.gen(function* () {
     const definitions = new Map<string, StepDefinition>()
+    const bufferedEvents = new Map<string, Array<RuntimeEvent>>()
+    const emitOutsideBody = emitEvent
+    emitEvent = (event) => {
+      const buffer = "stepId" in event ? bufferedEvents.get(event.stepId) : undefined
+      return buffer ? Effect.sync(() => { buffer.push(event) }) : emitOutsideBody(event)
+    }
     const nodes = new Map<string, RuntimeNode>()
     const afterEdges = new Set<string>()
     const edges = new Set<string>()
@@ -1701,21 +1741,52 @@ const makeRuntime = (
           timestamp: new Date().toISOString(),
         })
 
-        const body = commandExecutor.handlesStepOptions
-          ? definition.body
-          : withStepPolicy(definition.body, definition.options)
+        const prepared = definition.prepare ?? Effect.succeed(definition.body)
+        const commit = (value: unknown) => mode === "execute" && value instanceof Workspace
+          ? workspacePersistence.commit({ stepId: id, workflowId, workspace: value })
+          : Effect.succeed(value)
+        const body = prepared.pipe(Effect.flatMap((leaf) => {
+          if (mode === "execute" && actionExecutor &&
+            (definition.options.retries !== undefined || definition.options.timeout !== undefined)) {
+            node.status = "running"
+            const started = emitEvent({ type: "step.status", workflowId, stepId: id,
+              status: "running", optional: optionalSteps.has(id), timestamp: new Date().toISOString() })
+            return started.pipe(Effect.andThen(actionExecutor.execute({
+              stepId: id,
+              options: definition.options,
+              run: (attempt) => Effect.sync(() => {
+                node.commands.length = 0
+                bufferedEvents.set(id, [])
+              }).pipe(
+                Effect.andThen(leaf),
+                Effect.flatMap(commit),
+                Effect.map((value) => ({ value, commands: [...node.commands], events: [...bufferedEvents.get(id)!],
+                  metadata: { artifacts: [...node.artifacts], secrets: [...node.secrets],
+                    ...(node.approval ? { approval: node.approval } : {}) } })),
+                Effect.provideService(Attempt, attempt),
+                Effect.provideService(PolicyBody, true),
+              ),
+            })), Effect.tap((result) => {
+              bufferedEvents.delete(id)
+              return Effect.forEach(result.events ?? [], emitOutsideBody, { discard: true })
+            }), Effect.ensuring(Effect.sync(() => { bufferedEvents.delete(id) })), Effect.map((result) => {
+              node.commands.splice(0, node.commands.length, ...result.commands)
+              if (result.metadata) {
+                node.artifacts.splice(0, node.artifacts.length, ...result.metadata.artifacts)
+                node.secrets.clear()
+                for (const secret of result.metadata.secrets) node.secrets.add(secret)
+                if (result.metadata.approval) node.approval = result.metadata.approval
+              }
+              return result.value
+            }))
+          }
+          return (commandExecutor.handlesStepOptions ? leaf : withStepPolicy(leaf, definition.options))
+            .pipe(Effect.flatMap(commit))
+        }))
 
         return queued.pipe(
           Effect.andThen(body),
           Effect.provideService(CurrentStep, id),
-          Effect.flatMap((value) =>
-            mode === "execute" && value instanceof Workspace
-              ? workspacePersistence.commit({
-                  stepId: id,
-                  workflowId,
-                  workspace: value,
-                })
-              : Effect.succeed(value)),
           Effect.tap((value) => Effect.sync(() => {
             outputs.set(id, value)
           })),
@@ -2152,6 +2223,7 @@ const makeRuntime = (
   })
 
 export interface RunOptions {
+  readonly actionExecutor?: ActionExecutor
   readonly approval?: ApprovalHandler
   readonly ci?: boolean
   readonly executor?: CommandExecutor
@@ -2379,6 +2451,7 @@ const interpret = <A>(
       options.workspacePersistence,
       options.checkCache,
       previous && selection ? { previous, selection } : undefined,
+      options.actionExecutor,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {
@@ -2402,6 +2475,8 @@ const interpret = <A>(
       )),
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
+      Effect.provideService(PolicyBody, false),
+      Effect.provideService(Attempt, 1),
       Effect.provideService(Source, options.source ?? localSource),
       Effect.provideService(WorkflowEvent, event),
       Effect.provideService(Approval, approval),
