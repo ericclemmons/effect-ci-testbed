@@ -30,10 +30,10 @@ export const migrate = CI.action("migrate database", () => function* () {
   rollback: rollbackMigration,
 })
 
-export const deploy = CI.action("deploy worker", () => function* () {
+export const deploy = CI.action("deploy worker", function* () {
   const workspace = yield* migrate()
 
-  return yield* workspace.exec(
+  return () => workspace.exec(
     "npx cf deploy --prebuilt --mode production --dry-run",
   )
 }, {

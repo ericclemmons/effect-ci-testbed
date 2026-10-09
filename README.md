@@ -104,7 +104,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
-| [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | 🔜 |
+| [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
 | [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | 🔜 |
 | [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |

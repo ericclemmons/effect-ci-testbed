@@ -1,6 +1,8 @@
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as CI from "@effect-ci-testbed/ci"
 import { readSourceManifest } from "./source-manifest.ts"
+import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts"
+import { timeoutProbe, exhaustionProbe, nonRetryableProbe } from "./effect-policy-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -24,6 +26,10 @@ import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 export { DynamicFormatterWorkflow } from "./dynamic-formatter.ts"
+export const ExecutionPolicyWorkflow = Cloudflare.workflowEntrypoint(executionPolicy)
+export const EffectTimeoutProbeWorkflow = Cloudflare.workflowEntrypoint(timeoutProbe)
+export const EffectExhaustionProbeWorkflow = Cloudflare.workflowEntrypoint(exhaustionProbe)
+export const EffectTerminalProbeWorkflow = Cloudflare.workflowEntrypoint(nonRetryableProbe)
 
 export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameters, step) => {
   const manifest = await step.do("source:package-json", () =>

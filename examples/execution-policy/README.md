@@ -11,14 +11,29 @@ flowchart LR
 
 Step policy belongs to the runner layer. Local and ordinary GitHub execution use
 Effect's interruption-safe retry and timeout operators around the action body.
-Cloudflare command execution passes the same options to native `step.do`, so the
-Workflow runtime owns its command retry history. Failed exits throw inside that
-boundary; otherwise Workflows would cache the failure as a successful result.
+Cloudflare runs policy-bearing leaf bodies in native `step.do`, including pure
+Effects, commands, and the resulting workspace checkpoint. Failed exits and failed
+checkpoints throw inside that boundary; Workflows must not cache them as success.
 
-Cloudflare parity for arbitrary pure Effect action bodies is still pending. This
-example's `flaky` body is deliberately pure Effect, so its Cloudflare matrix cell
-remains `🔜`; the verified native command probes are documented in the
-[host app](../../apps/example-runner#native-command-policy-regressions).
+Resolve dependencies during action construction, then return the work to retry:
+
+```ts
+const build = CI.action("build", function* () {
+  const workspace = yield* install()
+  return () => workspace.exec("npm run build")
+}, { retries: { limit: 2, delay: "1 second" } })
+```
+
+The build's policy does not retry installation. Dependencies invoked inside a
+native policy body are rejected; resolve them before returning the body instead.
+`CI.Attempt` supplies the current one-based attempt on either runner, without relying
+on module memory surviving Workflow hibernation. Cloudflare's `NonRetryableError`
+ends native retries immediately. Actions without explicit policies retain individual
+command checkpoints. Native body results support Workspace, void, or serializable
+data—not arbitrary live service objects.
+
+The [host app](../../apps/example-runner#native-action-body-policy)
+records live success, timeout, exhaustion, terminal-error, and command-retry proofs.
 
 The conventional GitHub Actions comparison uses a shell retry loop because Actions has
 a timeout setting but no equivalent native per-step retry policy.

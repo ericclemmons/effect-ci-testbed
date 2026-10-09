@@ -45,6 +45,7 @@ cf workflows instances get npm-1 \
 | [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
 | [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
+| [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -188,8 +189,31 @@ class identity, so the adapter restores its own command error code and diagnosti
 The optional example uses `CI.check`: a read-only assertion does not return a new
 workspace or trigger a needless snapshot. Its runner uses `standard-1` consistently.
 Superseded test instances remain in the native history; no instances were restarted.
-Pure Effect action-body policies remain a separate unverified Cloudflare gap, so the
-execution-policy matrix row stays `🔜`.
+
+## Native action-body policy
+
+Policy-bearing actions now stage dependencies before a native `step.do` body. The
+body's commands and final workspace snapshot run inside that boundary, rather than
+creating nested command checkpoints. Reporting runs outside it; replay retains the
+logical plan, command output, and serializable workspace revision. Pure Effects need
+no container. Actions without explicit policies keep their granular checkpoints.
+
+These live proofs used source `9a4c5e9a9cbf73625076884a0ab99ab458daf3b5` and Worker
+deployment `1127e335-496c-427b-bcb4-4261811eeb3d`:
+
+| Instance | Result |
+| --- | --- |
+| `coverage-effect-policy-20261009-1` | consumer `execution-policy` completes on native attempt 3 after two transient failures; one native step, no container |
+| `coverage-effect-timeout-20261009-1` | expected failure: one attempt, per-attempt 5 ms timeout, no container |
+| `coverage-effect-exhaustion-20261009-1` | expected failure: exactly three failed attempts for retry limit 2, no container |
+| `coverage-effect-terminal-20261009-1` | expected failure: `NonRetryableError` stops after one attempt despite retry limit 10, no container |
+| `coverage-action-command-retry-20261009-1` | command fails twice, succeeds on attempt 3, and publishes snapshot `68d1f246-74bf-481a-9979-280a72bd8916`; three native steps total including checkout and its commit |
+
+The timeout adapter also interrupts the Effect fiber to prevent late successful
+completion. Local regression tests cover native replay, original error identity,
+reporting outside the boundary, late-dependency rejection, and retrying a body whose
+final checkpoint fails. That last regression is not a hosted container-loss recovery
+proof; general checkpoint-failure recovery remains unverified below.
 
 Cache input fingerprinting is now verified: `coverage-cache-inputs-cold-20261009-2`
 missed, `coverage-cache-inputs-warm-20261009-1` hit at source

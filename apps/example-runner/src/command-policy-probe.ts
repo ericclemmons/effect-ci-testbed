@@ -7,9 +7,9 @@ const checkout = CI.action("checkout", function* () {
   return () => source.checkout()
 })
 
-const retry = CI.action("retry command", () => function* () {
+const retry = CI.action("retry command", function* () {
   const workspace = yield* checkout()
-  return yield* workspace.exec(`node -e 'const fs = require("node:fs"); const path = ".retry-attempt"; const attempt = fs.existsSync(path) ? Number(fs.readFileSync(path)) + 1 : 1; fs.writeFileSync(path, String(attempt)); console.log("attempt " + attempt); process.exit(attempt < 3 ? 1 : 0)'`)
+  return () => workspace.exec(`node -e 'const fs = require("node:fs"); const path = ".retry-attempt"; const attempt = fs.existsSync(path) ? Number(fs.readFileSync(path)) + 1 : 1; fs.writeFileSync(path, String(attempt)); console.log("attempt " + attempt); process.exit(attempt < 3 ? 1 : 0)'`)
 }, { retries: { limit: 2, delay: 0, backoff: "constant" } })
 
 const fail = CI.action("fail once", () => function* () {

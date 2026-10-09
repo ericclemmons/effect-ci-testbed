@@ -12,8 +12,9 @@ export const attemptCount = (): number => attempts
 export const flaky = CI.action<void>("flaky", () => function* () {
   attempts++
 
-  if (attempts < 3) {
-    return yield* Effect.fail(new Error(`transient failure ${attempts}`))
+  const attempt = yield* CI.Attempt
+  if (attempt < 3) {
+    return yield* Effect.fail(new Error(`transient failure ${attempt}`))
   }
 }, {
   retries: { limit: 2, delay: 0, backoff: "constant" },
@@ -30,10 +31,10 @@ const checkout = CI.action("timeout checkout", function* () {
   return () => source.checkout()
 })
 
-export const hangingCommand = CI.action("hanging command", () => function* () {
+export const hangingCommand = CI.action("hanging command", function* () {
   const workspace = yield* checkout()
 
-  return yield* workspace.exec("sleep 10")
+  return () => workspace.exec("sleep 10")
 }, {
   timeout: 25,
 })
