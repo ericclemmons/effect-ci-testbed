@@ -8,8 +8,23 @@ For copyable commands, expected output, and spoken narration, use the
 
 The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) opts into task inference.
 There is no custom Effect workflow, Vite task configuration, input glob, or output
-manifest. Ordinary package scripts opt into Vite+'s cache; Effect CI discovers
+manifest. A small Vite build configuration selects the library entrypoint.
+Ordinary package scripts opt into Vite+'s cache; Effect CI discovers
 `lint` and `build`, installs dependencies, and invokes those scripts.
+
+```json
+{
+  "lint": "vp run --cache lint:source",
+  "lint:source": "vp lint app --deny no-undef",
+  "build": "vp run --cache build:source",
+  "build:source": "vp build"
+}
+```
+
+The wrapper scripts enable caching without recursively calling themselves.
+The task bodies are Vite+'s built-in linter and builder, not custom programs.
+`no-undef` is explicitly an error, so a bare `asdf` fails lint even though it is
+valid JavaScript syntax.
 
 This example joins [zero config](../zero-config) and [Vite+ caching](../vite-plus-cache)
 into a developer loop. Vite+ owns cache validity and output restoration. Effect CI
@@ -38,7 +53,7 @@ The product command is `cf-ci`, not yet `cf ci`.
 1. Run `cf-ci run lint --format=text`, then
    `cf-ci run build --format=text`. The first build primes the cache.
 2. Run the build again. Look for Vite+'s `cache hit` output. Do not use replayed
-   `Built dist/message.js` output as proof that the build executed again.
+   build output as proof that the build executed again.
 3. Delete only the generated `dist/message.js` and rerun the build. Vite+ should
    restore the output from cache.
 4. Change a sentence in this README and rerun the build. It does not read this
@@ -46,9 +61,9 @@ The product command is `cf-ci`, not yet `cf ci`.
 5. Change the string in `app/message.js`, without committing or pushing. Rerun
    lint and build. The changed source should invalidate both tasks; inspect
    `dist/message.js` to see the new string. An immediate repeat should hit.
-6. Remove the closing quote in `app/message.js`. Run lint with `--format=json`:
+6. Add a bare `asdf` line to `app/message.js`. Run lint with `--format=json`:
    it must return `ok: false` and a nonzero exit code. Rerun with `--format=text`
-   to see the syntax diagnostic, restore the quote, and rerun.
+   to see the undefined-variable diagnostic, remove that line, and rerun.
 
 Compare total command times with `time`, keeping dependencies and task scope the
 same. Do not promise a speedup: this deliberately tiny build may be faster to
@@ -79,11 +94,12 @@ cf-ci run build --format=json
 ```
 
 JSON mode suppresses command logs so stdout remains a structured CLI result.
-The current local executor does not include compiler diagnostics in a JSON
+The current local executor does not include linter diagnostics in a JSON
 failure; rerun the failed target in text mode to read them. Use text mode to show
 Vite+ cache diagnostics. An `ok: true` result means this
-target succeeded, not that every possible check passed. Here `lint` only checks
-JavaScript syntax, and `build` copies the source into a generated artifact.
+target succeeded, not that every possible check passed. Here `lint` runs Oxlint
+over `app/` with undefined identifiers treated as errors, and `build` bundles the
+source into an ES module at `dist/message.js`.
 
 No trailer is suggested: the existing commit-scoped signer does not bind dirty
 working-tree content. See [verification evidence](../verification-evidence) for

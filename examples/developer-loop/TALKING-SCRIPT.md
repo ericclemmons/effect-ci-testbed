@@ -18,7 +18,8 @@ cp app/message.js "$DEMO_SOURCE"
 ```
 
 Keep `package.json`, `.cloudflare/ci/ci.ts`, and `app/message.js` open in the
-editor. The CI marker is empty. The package scripts supply the task definitions.
+editor. The CI marker is empty. The package scripts supply the task definitions;
+their cached task bodies are `vp lint app --deny no-undef` and `vp build`.
 If you rehearsed in this checkout, its first run may already be cached. Call it
 the first run of this presentation, not a cold run. Use a fresh demo checkout to
 show a cold run; do not clear a shared repository cache during the presentation.
@@ -56,13 +57,13 @@ show a cold run; do not clear a shared repository cache during the presentation.
    cat dist/message.js
    ```
 
-   Look for: successful syntax validation and an artifact containing the source
+   Look for: successful lint validation and an artifact containing the source
    message. Record total elapsed time, including installation and CLI overhead.
 
    Say:
 
    > I haven't committed or pushed. This is checking my working files. This demo's
-   > lint is just a syntax check, and the build copies the source into an artifact.
+   > lint runs Vite+'s linter, and the build bundles the source as an ES module.
    > I'm keeping the task small so you can see what actually happens.
 
 3. **Run it again without changing anything.**
@@ -145,7 +146,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   printf 'export const message = "Checked before pushing\n' > app/message.js
+   printf 'export const message = "Checked before pushing"\nasdf\n' > app/message.js
    if cf-ci run lint --format=json; then
      printf 'Unexpected pass: inspect the result before continuing.\n'
    else
@@ -157,14 +158,15 @@ show a cold run; do not clear a shared repository cache during the presentation.
    cf-ci run build --format=json
    ```
 
-   Look for: `ok: false`, exit code 1, the text-mode syntax diagnostic, then
+   Look for: `ok: false`, exit code 1, the text-mode `no-undef` diagnostic, then
    successful JSON results after the repair. The text-mode lint intentionally
    fails; continue with the repair commands in this interactive terminal.
 
    Say:
 
-   > I removed a quote. The command fails, and the JSON result names the failed
-   > target. There's a current limitation here: JSON doesn't include the compiler
+   > I added `asdf`. That's valid syntax, but it refers to an undefined variable.
+   > The linter catches it, and the JSON result names the failed
+   > target. There's a current limitation here: JSON doesn't include the linter
    > diagnostic, so I rerun in text mode to read it. After the repair, I can check
    > the same working files again.
 

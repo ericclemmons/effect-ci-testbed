@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "lint": "vp run --cache lint:source",
-    "lint:source": "node --check app/message.js",
+    "lint:source": "vp lint app --deny no-undef",
     "build": "vp run --cache build:source",
-    "build:source": "node scripts/build.ts"
+    "build:source": "vp build"
   },
   "devDependencies": {
     "vite-plus": "1.0.0"
