@@ -19,6 +19,7 @@ import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
 import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
+import sourceChecks from "../../../examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -34,16 +35,22 @@ for (const [name, workflow, expected] of [
   ["Node version", nodeVersion, ["checkout", "install node", "verify node"]],
   ["Mise toolchain", miseToolchain, ["checkout", "install toolchain", "verify node", "verify python"]],
   ["exported actions", exportedActions, ["checkout", "check"]],
+  ["source-only checks", sourceChecks, ["checkout", "format source"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
+    const sourceRoot = new Map<string, string>([
+      ["Node version", "node-version"],
+      ["Mise toolchain", "mise-toolchain"],
+      ["source-only checks", "dynamic-worker-checks"],
+    ]).get(name)
     const result = await CI.runPromise<unknown>(workflow, {
       mode: "plan",
       output: "silent",
       event: { type: "workflow_dispatch" },
-      ...(name === "Node version" || name === "Mise toolchain" ? {
+      ...(sourceRoot ? {
         source: {
           checkout: () => Effect.succeed(CI.Workspace.local(resolve(
-            "examples", name === "Node version" ? "node-version" : "mise-toolchain",
+            "examples", sourceRoot,
           ))),
         },
       } : {}),
@@ -59,6 +66,39 @@ test("optional validation checks do not publish unnecessary workspace revisions"
   assert.equal(result.attempt.outputs.lint, undefined)
   assert.equal(result.attempt.outputs.format, undefined)
 })
+
+for (const formatted of [true, false]) {
+  test(`source-only formatter ${formatted ? "passes" : "rejects"} without executing container commands`, async () => {
+    let commands = 0
+    const run = CI.runPromise(sourceChecks, {
+      output: "silent",
+      source: {
+        checkout: () => Effect.succeed(CI.Workspace.remote("fixture", "/project")),
+      },
+      workspaceFileSystem: {
+        readFile: (_, path) => {
+          assert.equal(path, "app/src/index.ts")
+          return Effect.succeed(formatted ? "const value = 1\n" : "const value=1;\n")
+        },
+        exists: () => Effect.succeed(true),
+      },
+      executor: {
+        execute: () => {
+          commands++
+          return Effect.die(new Error("Formatter must not execute in the container"))
+        },
+      },
+    })
+    if (formatted) {
+      const result = await run
+      assert.ok(result.plan.nodes.every((node) => node.status === "complete"))
+      assert.ok(result.plan.nodes.every((node) => node.commands.length === 0))
+    } else {
+      await assert.rejects(run, /is not formatted/)
+    }
+    assert.equal(commands, 0)
+  })
+}
 
 for (const event of ["deploy_hook", "deployment", "pull_request"] as const) {
   test(`deployment hook routes ${event} without hiding its condition`, async () => {
