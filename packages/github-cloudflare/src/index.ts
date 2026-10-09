@@ -128,6 +128,8 @@ export const workflowEntrypoint = <A>(
       binding,
       cache: {
         key: github?.repositoryName ?? event.payload.repository,
+        // Vite+ fingerprints task inputs itself; this is only its transport cache.
+        keyFiles: [],
         paths: ["node_modules/.vite/task-cache"],
       },
       ...(options.container ? { container: options.container } : {}),

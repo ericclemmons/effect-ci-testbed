@@ -8,6 +8,7 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
+import { cacheIdentity } from "./cache-identity.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -459,6 +460,7 @@ export interface RunnerOptions {
   readonly binding: DurableObjectNamespace
   readonly cache?: {
     readonly key: string
+    readonly keyFiles: ReadonlyArray<string>
     readonly paths?: ReadonlyArray<string>
   }
   readonly container?: WorkspaceContainerOptions
@@ -515,20 +517,39 @@ export const makeRunner = (options: RunnerOptions): Runner => {
         `${options.workspaceId}:step=${stepId}`,
       ) as unknown as WorkspaceContainerStub
     : primary
-  const cache = options.cache
-    ? options.binding.getByName(
-        `cache:${options.cache.key}:image=${options.container?.image ?? defaultImage}`,
-      ) as unknown as WorkspaceContainerStub
-    : undefined
+  let cache: WorkspaceContainerStub | undefined
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
 
   return {
     source: {
       checkout: () => Effect.tryPromise({
         try: async () => {
+          if (options.cache) {
+            // Read inputs from this run's source, never from a previous cache snapshot.
+            await options.step.do("workspace-cache:source", async () => {
+              const token = typeof options.token === "function" ? await options.token() : options.token
+              await primary.checkout(options.repository, options.revision, targetDirectory, options.container, token)
+            })
+            const identity = await options.step.do("workspace-cache:identity", async () => {
+              const files: Array<readonly [string, string | undefined]> = []
+              for (const path of options.cache!.keyFiles) {
+                // Validate before handing any path to the filesystem RPC.
+                await cacheIdentity({ repository: options.repository, key: "validate", paths: [], container: null, files: [[path, undefined]] })
+                files.push([path, await primary.readFile(path, targetDirectory, "workspace-cache:source", undefined, options.container)])
+              }
+              return cacheIdentity({
+                repository: options.repository,
+                key: options.cache!.key,
+                paths: options.cache!.paths ?? [],
+                container: { image: defaultImage, ...options.container },
+                files,
+              })
+            })
+            cache = options.binding.getByName(identity) as unknown as WorkspaceContainerStub
+          }
           if (cache) {
             const snapshot = await options.step.do("workspace-cache:restore", () =>
-              cache.getCachedSnapshot("latest"))
+              cache!.getCachedSnapshot("latest"))
 
             if (snapshot) {
               await options.step.do("workspace-cache:materialize", () =>
@@ -670,7 +691,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           if (cache) {
             await options.step.do(`${stepId}:cache`, () =>
-              cache.putCachedSnapshot("latest", snapshot))
+              cache!.putCachedSnapshot("latest", snapshot))
           }
 
           const revision: CI.WorkspaceCheckpointHandle = {
@@ -751,6 +772,7 @@ export const workflowEntrypoint = <
         ? {
             cache: {
               key: cache.key,
+              keyFiles: cache.keyFiles,
               paths: cache.paths,
             },
           }
