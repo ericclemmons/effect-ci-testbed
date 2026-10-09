@@ -36,6 +36,7 @@ export const NodePnpmWorkflow = Cloudflare.workflowEntrypoint(nodePnpm, {
 })
 export const OptionalChecksWorkflow = Cloudflare.workflowEntrypoint(optionalChecks, {
   root: "examples/optional-checks",
+  container: { instance: "standard-1" },
 })
 export const WorkspaceWorkflow = Cloudflare.workflowEntrypoint(workspace, {
   root: "examples/cloudflare-runner",
