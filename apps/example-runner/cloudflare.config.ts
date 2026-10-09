@@ -15,7 +15,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
-    bindings: { LOADER: bindings.workerLoader() },
+    env: { LOADER: bindings.workerLoader() },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
