@@ -40,3 +40,9 @@ Run it locally:
 ```sh
 pnpm cf-ci --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
 ```
+
+## Hosted coverage
+
+The same required/optional policy passed in a native Cloudflare Workflow: lint
+completed, format warned, and the workflow succeeded. See the
+[hosted runner and recorded run](../../apps/example-runner#verified-runs).

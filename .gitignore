@@ -4,6 +4,7 @@ node_modules/
 **/.effect-ci/cache/
 **/.cloudflare/types/
 **/.cloudflare/output/
+**/.cloudflare/state/
 dist/
 .DS_Store
 *.tsbuildinfo

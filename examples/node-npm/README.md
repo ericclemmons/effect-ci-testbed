@@ -71,3 +71,8 @@ If this directory becomes its own repository, `.github/workflows/github.yml` is 
 complete conventional GitHub Actions setup. The Effect caller also needs the reusable
 workflow and CI package published or copied into that repository; packaging those is
 a later step.
+
+## Hosted coverage
+
+The unchanged workflow also passed in a real Cloudflare Workflow. See the
+[hosted runner and recorded run](../../apps/example-runner#verified-runs).

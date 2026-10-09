@@ -269,6 +269,7 @@ interface RuntimeNode {
 }
 
 interface RuntimeShape {
+  readonly definitions: Map<string, StepDefinition>
   readonly ci: boolean
   readonly workflowId: string
   readonly mode: WorkflowPlan["mode"]
@@ -825,6 +826,11 @@ export const JavaScript = (
         : new PackageManagerError(workspace.cwd, String(error)),
     })
 
+    // A selected project must not accidentally install a parent monorepo using
+    // a different lockfile. A workspace root with its own manifest stays recursive.
+    const standalonePnpm = name === "pnpm" && !(yield* workspace.exists("pnpm-workspace.yaml"))
+    const executable = name === "pnpm" && standalonePnpm ? "pnpm --ignore-workspace" : name
+
     const command = (
       operation: "install" | "run" | "exec",
       value?: string,
@@ -840,7 +846,7 @@ export const JavaScript = (
               case "npm":
                 return `npm_config_cache=.effect-ci/cache/npm npm install${offlineFlag}`
               case "pnpm":
-                return `pnpm install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+                return `${executable} install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
               case "yarn":
                 return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install${offlineFlag}`
               case "bun":
@@ -852,7 +858,7 @@ export const JavaScript = (
             case "npm":
               return `npm_config_cache=.effect-ci/cache/npm npm ci${offlineFlag}`
             case "pnpm":
-              return `pnpm install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+              return `${executable} install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
             case "yarn":
               return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install --immutable${offlineFlag}`
             case "bun":
@@ -860,11 +866,11 @@ export const JavaScript = (
           }
         }
         case "run":
-          return `${name} run ${JSON.stringify(value)}`
+          return `${executable} run ${JSON.stringify(value)}`
         case "exec":
           return name === "bun"
             ? `bunx ${value}`
-            : `${name} exec ${value}`
+            : `${executable} exec ${value}`
       }
     }
 
@@ -1256,7 +1262,15 @@ export const matchesCondition = (
   }
 }
 
-const definitions = new Map<string, StepDefinition>()
+const actionDefinitions = new WeakMap<object, StepDefinition>()
+
+const registerDefinition = (runtime: RuntimeShape, definition: StepDefinition): void => {
+  const existing = runtime.definitions.get(definition.id)
+  if (existing && existing !== definition) {
+    throw new Error(`Duplicate CI action id: ${definition.id}`)
+  }
+  runtime.definitions.set(definition.id, definition)
+}
 
 const bodyToEffect = <A>(body: StepBody<A>): Effect.Effect<A, unknown, any> => {
   if (Effect.isEffect(body)) return body as Effect.Effect<A, unknown, any>
@@ -1296,11 +1310,13 @@ const validateStepOptions = (id: string, options: StepOptions): void => {
 }
 
 const runStep = <A>(
-  id: string,
+  definition: StepDefinition,
   dependencies: ReadonlyArray<string> = [],
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
+  const id = definition.id
   const effect = Effect.gen(function* () {
     const runtime = yield* Runtime
+    registerDefinition(runtime, definition)
     const parent = yield* CurrentStep
     yield* runtime.addDependency(parent, id)
     for (const dependency of dependencies) {
@@ -1309,6 +1325,7 @@ const runStep = <A>(
     return (yield* Cache.get(runtime.cache, id)) as A
   })
   actionIds.set(effect as object, id)
+  actionDefinitions.set(effect as object, definition)
   return effect
 }
 
@@ -1335,6 +1352,8 @@ export const optional = <A, E, R>(
     )
   })
   actionIds.set(optionalEffect as object, stepId)
+  const definition = actionDefinitions.get(effect as object)
+  if (definition) actionDefinitions.set(optionalEffect as object, definition)
   optionalEffects.add(optionalEffect as object)
   return optionalEffect
 }
@@ -1353,6 +1372,8 @@ export const when = <A, E, R>(
 
   const conditional = Effect.gen(function* () {
     const runtime = yield* Runtime
+    const definition = actionDefinitions.get(effect as object)
+    if (definition) registerDefinition(runtime, definition)
     const parent = yield* CurrentStep
 
     if (runtime.mode === "plan") {
@@ -1371,6 +1392,8 @@ export const when = <A, E, R>(
   })
 
   actionIds.set(conditional as object, stepId)
+  const definition = actionDefinitions.get(effect as object)
+  if (definition) actionDefinitions.set(conditional as object, definition)
   return conditional
 }
 
@@ -1401,13 +1424,7 @@ export const step = <A>(
   options: StepOptions = {},
 ): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
   validateStepOptions(id, options)
-  if (definitions.has(id)) {
-    throw new Error(`Duplicate CI step id: ${id}`)
-  }
-
-  definitions.set(id, { id, body: bodyToEffect(body), options })
-
-  return runStep(id)
+  return runStep({ id, body: bodyToEffect(body), options })
 }
 
 export const action = <
@@ -1418,15 +1435,11 @@ export const action = <
   construction: ActionConstruction<Args, NoInfer<A>>,
   options: ActionOptions = {},
 ): ((...args: Args) => Effect.Effect<A, unknown, Runtime | CurrentStep>) => {
-  let registered = false
+  let definition: StepDefinition | undefined
 
   const factory = (...args: Args): Effect.Effect<A, unknown, Runtime | CurrentStep> => {
-    if (!registered) {
+    if (!definition) {
       validateStepOptions(id, options)
-      if (definitions.has(id)) {
-        throw new Error(`Duplicate CI action id: ${id}`)
-      }
-      registered = true
       const rollback = options.rollback
         ? (() => {
             const rollbackEffect = options.rollback!()
@@ -1438,17 +1451,17 @@ export const action = <
           })()
         : undefined
       const { rollback: _rollback, ...stepOptions } = options
-      definitions.set(id, {
+      definition = {
         id,
         body: bodyToEffect(construction).pipe(
           Effect.flatMap((handler) => bodyToEffect(() => handler(...args))),
         ),
         options: stepOptions,
         ...(rollback ? { rollback } : {}),
-      })
+      }
     }
 
-    return runStep(id)
+    return runStep(definition)
   }
 
   actionFactories.add(factory)
@@ -1562,6 +1575,7 @@ const makeRuntime = (
   },
 ) =>
   Effect.gen(function* () {
+    const definitions = new Map<string, StepDefinition>()
     const nodes = new Map<string, RuntimeNode>()
     const afterEdges = new Set<string>()
     const edges = new Set<string>()
@@ -1750,6 +1764,7 @@ const makeRuntime = (
     })
 
     runtime = {
+      definitions,
       ci,
       workflowId,
       mode,
@@ -2193,7 +2208,7 @@ const toPlan = (
       ...(node.rollbackFor ? { rollbackFor: node.rollbackFor } : {}),
       ...(node.approval ? { approval: node.approval } : {}),
       optional: runtime.optionalSteps.has(node.id),
-      options: definitions.get(node.id)?.options ?? {},
+      options: runtime.definitions.get(node.id)?.options ?? {},
       secrets: [...node.secrets].sort(),
       status: node.status,
     })),
