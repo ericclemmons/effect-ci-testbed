@@ -17,11 +17,11 @@ The first slice is a single-tenant service deployed in the repository owner's
 Cloudflare account. It is similar in spirit to a hosted CI integration or Workers
 Builds, but it is an independently deployable Effect CI service—not an emulation of either product.
 
-Verified on a deployed account: native checkout/install/build with snapshots,
-one live-updated Slack checklist, and inline approval followed by an echo-only release.
-GitHub webhook/check reporting and `cf-ci --remote` through Access have protocol tests
-but still need their own real hosted end-to-end runs. Setup instructions below cover
-those paths without claiming they have already been verified.
+Verified on a deployed account: a real GitHub App webhook started native
+checkout/install/build with snapshots and returned successful GitHub checks with
+command logs. One live-updated Slack checklist and inline approval followed by an
+echo-only release are also verified. `cf-ci --remote` through Access has protocol
+tests but still needs its own real hosted end-to-end run.
 
 ## Experience
 
