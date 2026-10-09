@@ -41,6 +41,7 @@ cf workflows instances get npm-1 \
 | [Mise runtimes](../../examples/mise-toolchain) | `effect-ci-example-mise-toolchain` |
 | [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
 | [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
+| [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -114,6 +115,14 @@ tools after restoring durable snapshots. These runs prove reuse within a Workflo
 not a cross-instance Mise cache hit.
 
 ## Native command-policy regressions
+
+`coverage-source-checks-20261009-1` completed at source
+`5d76f06b847d30f2cbbc74928741c514cfb5ee4e`: checkout, its checkpoint, and the source
+file read are the only three native steps. The `format source` check succeeds with
+zero container commands and no output checkpoint; Prettier executes in the Workflow
+Worker. Adapter tests separately reject unformatted input and fail if either case
+attempts to execute a container command. This is not a WorkerLoader/untrusted-module
+proof, nor does it cover native retries for arbitrary Effect bodies.
 
 The deployment-hook proofs use source
 `74fb17499db6fe75b12376b5c409b60db3eaa143`. Both

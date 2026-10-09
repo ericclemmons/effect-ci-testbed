@@ -116,7 +116,8 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
 | [Trigger a remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
-| [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |
+| [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
+| Execute untrusted project checks in capability-limited Dynamic Workers | — | 🔜 | — | 🔜 |
 | [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Reuse Turborepo's local or remote task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
