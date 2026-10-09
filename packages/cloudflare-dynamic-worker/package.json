@@ -1,16 +1,14 @@
 {
-  "name": "effect-ci-dynamic-worker-checks-fixture",
+  "name": "@effect-ci-testbed/cloudflare-dynamic-worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "check": "tsc --noEmit"
-  },
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit" },
   "dependencies": {
-    "@effect-ci-testbed/ci": "workspace:*",
+    "@cloudflare/worker-bundler": "0.2.4",
     "@effect-ci-testbed/source-tools": "workspace:*",
-    "effect": "4.0.0-beta.19",
-    "prettier": "3.6.2"
+    "effect": "4.0.0-beta.19"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261001.1",
