@@ -30,6 +30,14 @@ pretend external state can be rewound by restoring a filesystem snapshot.
 If recovery succeeds, the original failure remains the workflow failure. If recovery
 also fails, `CI.RollbackError` preserves both errors.
 
+The [hosted runner](../../apps/example-runner/README.md#native-rollback-policy)
+verifies three paths in real Cloudflare Workflows: success leaves rollback skipped;
+exhausted native retries run rollback once and preserve the original failure; a later
+health failure unwinds completed actions in reverse order. These commands are
+echo-only fixtures, not real Worker releases or database reversals. The separate
+[health-mediated release](../health-mediated-release) remains a planned real-deployment
+integration.
+
 When a later action fails, Effect CI unwinds every completed reversible action in
 reverse completion order. The conventional GitHub Actions comparison needs
 `continue-on-error` and explicit rollback ordering; Effect CI derives that ordering

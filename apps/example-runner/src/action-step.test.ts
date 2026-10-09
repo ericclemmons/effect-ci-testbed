@@ -4,6 +4,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts"
+import rollbackWorkflow from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
 
 const native = () => {
   const cache = new Map<string, unknown>()
@@ -174,4 +175,52 @@ test("native boundary preserves the original error for provider non-retryable cl
     output: "silent", actionExecutor: makeActionExecutor(step, new Set()),
   }))
   assert.equal(received, original)
+})
+
+test("the consumer rollback runs once outside the exhausted native body and preserves failure", async () => {
+  const { step, attempts } = native()
+  const active = new Set<string>()
+  let rollbacks = 0
+  await assert.rejects(CI.runPromise(rollbackWorkflow, {
+    output: "silent", actionExecutor: makeActionExecutor(step, active),
+    source: { checkout: () => Effect.succeed(CI.Workspace.remote("fixture", "/workspace")) },
+    executor: {
+      handlesStepOptions: true,
+      execute: ({ command, stepId, workspace }) => Effect.suspend(() => {
+        if (command === "echo deploy") {
+          assert.ok(active.has("deploy with retries"))
+          return Effect.fail(new CI.CommandError(stepId, command, workspace.cwd, 7, "expected failure"))
+        }
+        assert.equal(active.size, 0)
+        assert.equal(command, "echo rollback")
+        rollbacks++
+        return Effect.succeed({ exitCode: 0, stdout: "rollback", stderr: "" })
+      }),
+    },
+  }), /expected failure/)
+  assert.deepEqual(attempts.map((entry) => entry.success), [false, false, false])
+  assert.equal(rollbacks, 1)
+  assert.equal(active.size, 0)
+})
+
+test("native policy bodies unwind completed actions in reverse order after a later failure", async () => {
+  const { step, attempts } = native()
+  const firstRollback = CI.action<void>("rollback first", () => () => Effect.void, { timeout: 1000 })
+  const first = CI.action<void>("first", () => () => Effect.void, { timeout: 1000, rollback: firstRollback })
+  const secondRollback = CI.action<void>("rollback second", () => () => Effect.void, { timeout: 1000 })
+  const second = CI.action<void>("second", function* () {
+    yield* first()
+    return () => Effect.void
+  }, { timeout: 1000, rollback: secondRollback })
+  const health = CI.action<void>("health", function* () {
+    yield* second()
+    return () => Effect.fail(new Error("health regression"))
+  }, { retries: { limit: 1, delay: 0 } })
+  await assert.rejects(CI.runPromise(CI.workflow("reverse", () => health()), {
+    output: "silent", actionExecutor: makeActionExecutor(step, new Set()),
+  }), /health regression/)
+  assert.deepEqual(attempts.map(({ name }) => name), [
+    'action:"first"', 'action:"second"', 'action:"health"', 'action:"health"',
+    'action:"rollback second"', 'action:"rollback first"',
+  ])
 })

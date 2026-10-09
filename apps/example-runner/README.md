@@ -23,6 +23,10 @@ cf workflows instances get npm-1 \
   --workflow-name effect-ci-example-node-npm --simple true
 ```
 
+Use object-valued `params` and `instance_id` in `--body`. In the current CLI,
+`--params` sends a string rather than parsing JSON, and an `id` body field does not
+select the instance ID. Verify the returned ID instead of assuming it was honored.
+
 | Example | Native Workflow |
 | --- | --- |
 | [npm](../../examples/node-npm) | `effect-ci-example-node-npm` |
@@ -46,6 +50,7 @@ cf workflows instances get npm-1 \
 | [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
+| [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -214,6 +219,27 @@ completion. Local regression tests cover native replay, original error identity,
 reporting outside the boundary, late-dependency rejection, and retrying a body whose
 final checkpoint fails. That last regression is not a hosted container-loss recovery
 proof; general checkpoint-failure recovery remains unverified below.
+
+## Native rollback policy
+
+These proofs used source `de486d4a2367b9b2c88948b7cf234c1c06a8383a` and Worker
+deployment `d381144b-4e70-4776-91ca-09b3ad9fb4fa`. The consumer workflow is unchanged;
+the exhaustion host replaces only `echo deploy` with an exit-7 command.
+
+| Instance | Verified result |
+| --- | --- |
+| `cf_daf5da36df28b3539cdb94423c4d3e8deb959f6a7be16573c50257586ef33da4` | success: checkout and its snapshot, then one successful deploy body with its snapshot; rollback skipped in the final plan |
+| `cf_05fed395817cce251ce9c264bdd472a0e32426982acc9b222953553942e0b6bf` | expected failure: three exit-7 native deploy attempts, then exactly one successful rollback command and its snapshot; final error retains exit 7 and stderr |
+| `coverage-reverse-rollback-20261009-1` | expected failure: two completed reversible actions, two failed health attempts, then rollback second followed by rollback first; final error remains the health regression |
+
+These are adapter-policy proofs, not real deployments. The reverse-order probe uses
+pure Effect bodies and no container. The two malformed `coverage-rollback-*-20261009-1`
+instances were terminated without deleting or restarting their histories. The CLI
+generated opaque IDs for the corrected runs because their body used `id` rather than
+`instance_id`; the returned IDs above are the authoritative evidence references.
+The current failure-only host selects the existing Node/Git image for future probes.
+
+## Cache and checkpoint correctness
 
 Cache input fingerprinting is now verified: `coverage-cache-inputs-cold-20261009-2`
 missed, `coverage-cache-inputs-warm-20261009-1` hit at source
