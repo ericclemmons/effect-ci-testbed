@@ -35,6 +35,7 @@ export default defineConfig({
       NodeVersionWorkflow: exports.workflow({ name: "effect-ci-example-node-version" }),
       MiseToolchainWorkflow: exports.workflow({ name: "effect-ci-example-mise-toolchain" }),
       ExportedActionsWorkflow: exports.workflow({ name: "effect-ci-example-exported-actions" }),
+      DeployHookWorkflow: exports.workflow({ name: "effect-ci-example-deploy-hook" }),
     },
   },
   containers: [workspace],

@@ -5,9 +5,11 @@
 ```mermaid
 flowchart LR
   step_checkout["checkout"]
+  step_install["install"]
   step_build["build"]
   step_deploy["deploy (conditional)"]
-  step_checkout --> step_build
+  step_checkout --> step_install
+  step_install --> step_build
   step_build --> step_deploy
 ```
 
@@ -20,7 +22,7 @@ action; the plan retains that event predicate.
 The fixture uses a real Worker build and a credential-free deployment dry-run:
 
 ```text
-checkout → cf build → cf deploy --prebuilt --dry-run
+checkout → npm ci → cf build → cf deploy --prebuilt --dry-run
 ```
 
 Run the generic hook locally:

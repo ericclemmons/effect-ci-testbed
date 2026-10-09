@@ -17,6 +17,7 @@ import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/wor
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
+import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -57,6 +58,30 @@ test("optional validation checks do not publish unnecessary workspace revisions"
   assert.equal(result.attempt.outputs.lint, undefined)
   assert.equal(result.attempt.outputs.format, undefined)
 })
+
+for (const event of ["deploy_hook", "deployment", "pull_request"] as const) {
+  test(`deployment hook routes ${event} without hiding its condition`, async () => {
+    const result = await CI.runPromise(deployHook, {
+      ci: true,
+      mode: event === "pull_request" ? "execute" : "plan",
+      output: "silent",
+      event: { type: event },
+      source: {
+        checkout: () => Effect.succeed(CI.Workspace.local(resolve("examples/deploy-hook"))),
+      },
+    })
+    const deploy = result.plan.nodes.find((node) => node.id === "deploy")!
+    assert.ok(deploy.condition)
+    if (event === "pull_request") {
+      assert.equal(deploy.status, "skipped")
+      assert.equal(result.plan.nodes.length, 1)
+    } else {
+      assert.deepEqual(result.plan.nodes.map((node) => node.id).sort(), ["build", "checkout", "deploy", "install"])
+      assert.match(result.plan.nodes.find((node) => node.id === "install")!.commands[0]!.command, /npm ci/)
+      assert.equal(deploy.status, "planned")
+    }
+  })
+}
 
 test("different workflows can run concurrently with the same action name", async () => {
   const left = CI.action<void>("shared", () => function* () {}, { timeout: 100 })
