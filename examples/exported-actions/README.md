@@ -34,3 +34,9 @@ pnpm exec cf-ci run checkout # CI_UNKNOWN_TARGET
 The CLI discovers `.cloudflare/ci/workflow.ts` from the current directory. It treats
 only named exports created by `CI.action` as direct targets, so runner configuration
 and ordinary helper functions cannot accidentally become commands.
+
+The [hosted example runner](../../apps/example-runner) executes this same default
+workflow on Cloudflare, with live workspace reuse disabled. Its verified instance
+`coverage-exported-actions-20261009-2` checks the source after restoring checkout's
+durable snapshot. Named exports define the local CLI surface; the host does not
+expose an HTTP action-discovery endpoint.
