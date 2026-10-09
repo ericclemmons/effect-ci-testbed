@@ -1,1 +1,1 @@
-cache me
+cache the current input

@@ -17,9 +17,21 @@ import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workf
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
 import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 import sourceChecks from "../../../examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts"
+import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts"
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
+
+export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
+  root: "examples/cache-policy",
+  container: { image: "workspace" },
+  reuseWorkspace: false,
+  cache: {
+    key: "custom-build-cache",
+    keyFiles: ["examples/cache-policy/app/src/input.txt"],
+    paths: ["examples/cache-policy/app/.cache/build"],
+  },
+})
 
 // This test host has no HTTP control plane, credentials, or approval endpoint.
 // Only authenticated Cloudflare API callers can create or inspect instances.
