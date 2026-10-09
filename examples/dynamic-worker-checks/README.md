@@ -39,6 +39,12 @@ Container checkout, commands, or snapshots. The earlier parent-Worker formatter 
 is preserved as historical evidence.
 Platform configuration belongs to that app rather than this consumer example.
 
+`coverage-dynamic-formatter-negative-20261009-1` used deliberately unformatted source
+at `b083b10cb636a980498934d8bda6dd1f3dc3b449`: the Dynamic Worker returned formatted
+text and the CI check rejected it as expected. Both cases also passed through the
+local `cf dev` Workflow API (`local-dynamic-formatter-20261009-1` and
+`local-dynamic-formatter-negative-20261009-1`). These are formatter checks, not deployments.
+
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).

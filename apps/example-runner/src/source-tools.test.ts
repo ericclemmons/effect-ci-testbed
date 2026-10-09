@@ -14,6 +14,7 @@ test("source tools default to local formatting without mutating input", async ()
 
 test("runner service uses a Dynamic Worker RPC rather than the local formatter", async () => {
   let calls = 0
+  let disposals = 0
   const loader = {
     get: (id: string) => {
       assert.match(id, /prettier-3\.6\.2/)
@@ -21,6 +22,7 @@ test("runner service uses a Dynamic Worker RPC rather than the local formatter",
         getEntrypoint: (name: string) => {
           assert.equal(name, "Formatter")
           return {
+            [Symbol.dispose]: () => { disposals++ },
             format: async (request: Tools.FormatRequest) => {
               calls++
               return { files: request.files, runtime: "dynamic-worker" as const }
@@ -35,6 +37,7 @@ test("runner service uses a Dynamic Worker RPC rather than the local formatter",
     Effect.provideService(Tools.SourceTools, makeSourceTools(loader)),
   ))
   assert.equal(calls, 1)
+  assert.equal(disposals, 1)
   assert.equal(result.runtime, "dynamic-worker")
   assert.deepEqual(result.files, request.files)
 })

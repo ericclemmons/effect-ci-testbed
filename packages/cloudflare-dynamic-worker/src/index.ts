@@ -40,9 +40,9 @@ export const makeSourceTools = (loader: WorkerLoader): Tools.SourceToolsService 
         modules,
       }
     })
-    const formatter = worker.getEntrypoint("Formatter") as unknown as {
+    using formatter = worker.getEntrypoint("Formatter") as unknown as Disposable & {
       format(request: Tools.FormatRequest): Promise<Tools.FormatResult>
     }
-    return formatter.format(request)
+    return await formatter.format(request)
   }),
 })
