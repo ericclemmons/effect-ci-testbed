@@ -11,7 +11,7 @@ import packageManagerCache from "../../../examples/package-manager-cache/.cloudf
 import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
-import { commandRetryProbe, commandFailureProbe } from "./command-policy-probe.ts"
+import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
@@ -102,5 +102,9 @@ export const CommandRetryProbeWorkflow = Cloudflare.workflowEntrypoint(commandRe
   container: { image: "workspace", instance: "standard-1" },
 })
 export const CommandFailureProbeWorkflow = Cloudflare.workflowEntrypoint(commandFailureProbe, {
+  container: { image: "workspace", instance: "standard-1" },
+})
+
+export const CommandSequenceProbeWorkflow = Cloudflare.workflowEntrypoint(commandSequenceProbe, {
   container: { image: "workspace", instance: "standard-1" },
 })

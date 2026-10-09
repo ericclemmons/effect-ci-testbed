@@ -126,6 +126,16 @@ invalidation still needs work). Snapshot resource-limit failures also occurred i
 the superseded optional-check runs. After the live container stopped, retrying only
 the snapshot could not recover its uncommitted files. Removing needless check
 snapshots fixes this example, not the general checkpoint-failure recovery problem.
-Another required regression is multiple commands inside one action: native command
-checkpoint names currently use only the action ID. Subsequent commands need distinct,
-deterministic operation identities or they can reuse the first command's result.
+
+Multiple commands in one action now have independent native checkpoints, named from
+the logical action ID and command position. Positions include commands reused by the
+check-cache layer, so evidence reuse cannot accidentally renumber later operations.
+The commands still share the action's working filesystem and publish one final revision.
+Deterministic replay restores each result independently, including repeated commands.
+
+`coverage-command-sequence-20261008-1` verified this in the deployed Workflow at source
+`7900483beba7180aa09fee4970a054e3bb9b5f4d`: two distinct native command checkpoints,
+the second reporting `sequence-verified` after reading the first command's file, followed
+by one action workspace commit. The run completed with five native steps. Existing
+instances retain their pinned Workflow version; checkpoint naming changes apply to new
+instances rather than migrating old histories.

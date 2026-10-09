@@ -19,3 +19,10 @@ const fail = CI.action("fail once", () => function* () {
 
 export const commandRetryProbe = CI.workflow("command-retry-probe", () => retry())
 export const commandFailureProbe = CI.workflow("command-failure-probe", () => fail())
+
+const sequence = CI.action("command sequence", () => function* () {
+  const workspace = yield* checkout()
+  yield* workspace.exec("printf prepared > .sequence-value")
+  return yield* workspace.exec('test "$(cat .sequence-value)" = prepared && echo sequence-verified')
+})
+export const commandSequenceProbe = CI.workflow("command-sequence-probe", () => sequence())
