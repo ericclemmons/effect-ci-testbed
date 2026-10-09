@@ -40,6 +40,7 @@ cf workflows instances get npm-1 \
 | [Project Node version](../../examples/node-version) | `effect-ci-example-node-version` |
 | [Mise runtimes](../../examples/mise-toolchain) | `effect-ci-example-mise-toolchain` |
 | [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
+| [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -113,6 +114,16 @@ tools after restoring durable snapshots. These runs prove reuse within a Workflo
 not a cross-instance Mise cache hit.
 
 ## Native command-policy regressions
+
+The deployment-hook proofs use source
+`7da78080cbb5ad183e2ace73bf95d38d1a00d19d`. Both
+`coverage-deploy-hook-deploy_hook-20261009-1` and
+`coverage-deploy-hook-deployment-20261009-1` completed checkout, frozen `npm ci`,
+real `cf build`, and credential-free `cf deploy --prebuilt --mode production --dry-run`
+with live workspace reuse disabled (14 native steps each). No Worker was released.
+`coverage-deploy-hook-pull_request-20261009-1` completed with the event condition
+retained, deploy skipped, and zero native/container steps. This verifies event routing,
+not a public HTTP webhook receiver.
 
 `coverage-exported-actions-20261009-2` completed against source
 `28b10e978463ca6db7dfa9cffdc95b1e7d82158e`: checkout and its checkpoint,
