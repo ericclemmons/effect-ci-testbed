@@ -707,13 +707,7 @@ jobs:
             ${{ matrix.workflow }} "$params" --id "$second" --local
           description=$(wait_for_workflow "$second")
 
-          DESCRIPTION="$description" node -e '
-            const value = JSON.parse(process.env.DESCRIPTION)
-            const output = value.steps.find((step) => step.name.startsWith("build-"))?.output?.stdout ?? ""
-            if (!output.includes("cache hit")) {
-              throw new Error(`Expected task cache hit, received: ${output}`)
-            }
-          '
+          DESCRIPTION="$description" node scripts/assert-task-cache-hit.ts
 
   package-manager-cache:
     name: package-manager-cache / offline restore
