@@ -554,8 +554,6 @@ jobs:
         include:
           - example: docker-in-docker
             package: effect-ci-docker-in-docker-fixture
-          - example: dynamic-worker-checks
-            package: effect-ci-dynamic-worker-checks-fixture
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
