@@ -111,7 +111,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
 | [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
-| [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
+| [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | ✅ |
 | [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
 | [Trigger a remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
