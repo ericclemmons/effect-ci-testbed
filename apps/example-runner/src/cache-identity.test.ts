@@ -20,6 +20,9 @@ test("cache identity reuses identical inputs and invalidates changed files", asy
     { repository: "https://github.com/other/project.git" },
     { paths: ["other/.cache"] },
     { container: { image: "node:26" } },
+    { container: { image: "node:24", readyCommand: "install a different runtime" } },
+    { files: [["different-lock.json", "one"]] as const },
+    { key: "other-install-policy" },
   ]) assert.notEqual(await cacheIdentity({ ...input, ...change }), original)
 })
 
