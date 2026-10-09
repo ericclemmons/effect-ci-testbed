@@ -2,6 +2,8 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
+import { hasNotificationChannels, sendNotification } from "./notifications.ts"
+import { RunCard } from "./run-card.ts"
 import {
   WorkflowEntrypoint,
   type WorkflowEvent,
@@ -66,27 +68,14 @@ const approvalHandler = (
   environment: Environment,
   instanceId: string,
   step: WorkflowStep,
+  notify: (requestId: string, url: string) => Promise<void>,
 ): CI.ApprovalHandler => ({
   request: (request) => Effect.tryPromise({
     try: async () => {
       const url = await approvalUrl(environment, instanceId, request.requestId)
 
-      if (environment.DISCORD_WEBHOOK_URL && url) {
-        await step.do(`notify:${request.stepId}`, async () => {
-          const response = await fetch(environment.DISCORD_WEBHOOK_URL!, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              content: `**${request.title}**\n${request.summary}\n${url}`,
-            }),
-          })
-
-          if (!response.ok) {
-            throw new Error(`Discord notification failed (${response.status})`)
-          }
-
-          return { delivered: true }
-        })
+      if (hasNotificationChannels(environment) && url) {
+        await notify(request.requestId, url)
       }
 
       const event = await step.waitForEvent<CI.ApprovalResult>(
@@ -178,9 +167,45 @@ export const workflowEntrypoint = <A>(
       },
     ) : undefined
 
+    let slackMessageTs: string | undefined
+    let discordMessageId: string | undefined
+    let notificationQueue = Promise.resolve()
+    const card = new RunCard({
+      instanceId: event.instanceId,
+      repository: github?.repositoryName ?? event.payload.repository,
+      revision: event.payload.revision,
+      slackApprovalsEnabled: Boolean(this.env.SLACK_SIGNING_SECRET && this.env.SLACK_APP_ID && this.env.SLACK_TEAM_ID && this.env.SLACK_APPROVER_IDS && this.env.SLACK_CHANNEL_ID),
+      ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
+    })
+    const notify = (key: string, update: () => boolean): Promise<void> => {
+      notificationQueue = notificationQueue.then(async () => {
+        if (!update() || !hasNotificationChannels(this.env)) return
+        const presentation = card.render()
+        const result = await step.do(`notification:${key}`, () => sendNotification(
+          this.env,
+          presentation.text,
+          fetch,
+          slackMessageTs,
+          presentation.blocks,
+          discordMessageId,
+        ))
+        slackMessageTs = result.slackMessageTs ?? slackMessageTs
+        discordMessageId = result.discordMessageId ?? discordMessageId
+
+        if (result.failed) console.warn("CI notification delivery failed; execution continues")
+      })
+
+      return notificationQueue
+    }
+
     try {
       const result = await CI.runPromise(workflow, {
-        approval: approvalHandler(this.env, event.instanceId, step),
+        approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
+          notify(`${requestId}:review`, () => {
+            card.setReviewUrl(url)
+
+            return true
+          })),
         ci: true,
         env: "cloudflare",
         event: {
@@ -195,9 +220,18 @@ export const workflowEntrypoint = <A>(
           },
         },
         executor: runner.executor,
-        ...(reporter
-          ? { onEvent: (runtimeEvent: CI.RuntimeEvent) => reporter.report(runtimeEvent) }
-          : {}),
+        onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
+          await reporter?.report(runtimeEvent)
+          const key = runtimeEvent.type === "step.status"
+              ? `${runtimeEvent.stepId}:${runtimeEvent.status}`
+              : runtimeEvent.type === "approval.resolved"
+                ? `${runtimeEvent.requestId}:${runtimeEvent.decision}`
+                : runtimeEvent.type === "approval.requested"
+                  ? `${runtimeEvent.requestId}:waiting`
+                : runtimeEvent.type
+          // Rebuild checklist state on replay and serialize concurrent edits.
+          await notify(key, () => card.update(runtimeEvent))
+        },
         output: "silent",
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,

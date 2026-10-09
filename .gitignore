@@ -3,6 +3,7 @@ node_modules/
 .wrangler/
 **/.effect-ci/cache/
 **/.cloudflare/types/
+**/.cloudflare/output/
 dist/
 .DS_Store
 *.tsbuildinfo

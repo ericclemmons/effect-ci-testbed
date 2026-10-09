@@ -196,8 +196,19 @@ const signedToken = await GitHubCloudflare.approvalToken(
 )
 const review = await application.fetch(new Request(`${approvalPath}?token=${signedToken}`), remoteEnvironment)
 
-assert.equal(review.status, 200)
-assert.match(await review.text(), /Approve release/)
+assert.equal(review.status, 503)
+assert.match(await review.text(), /approval buttons in Slack/)
+const dashboard = "https://dash.cloudflare.com/account/workers/workflows/workflow/instances/{id}"
+const redirect = await application.fetch(new Request(`${approvalPath}?token=${signedToken}`), { ...remoteEnvironment, EFFECT_CI_DETAILS_URL: dashboard })
+assert.equal(redirect.status, 302)
+assert.equal(redirect.headers.get("location"), dashboard.replace("{id}", remoteRun.instanceId))
+const invalidOrigin = await application.fetch(new Request(approvalPath, {
+  method: "POST",
+  headers: { authorization: "Bearer remote-secret", origin: "null", "content-type": "application/x-www-form-urlencoded" },
+  body: "decision=approved",
+}), remoteEnvironment)
+assert.equal(invalidOrigin.status, 403)
+assert.equal(await invalidOrigin.text(), "Invalid origin")
 
 const approval = await application.fetch(new Request(approvalPath, {
   method: "POST",

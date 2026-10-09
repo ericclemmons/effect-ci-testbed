@@ -1,16 +1,17 @@
 {
-  "name": "effect-ci-cloudflare-hitl-release-fixture",
+  "name": "@effect-ci-testbed/app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "deploy": "cf deploy",
+    "check": "tsc --noEmit",
+    "deploy": "node --env-file-if-exists=.deploy.env scripts/deploy.ts",
+    "deploy:access": "node --env-file-if-exists=.deploy.env scripts/deploy.ts --access-only",
     "dev": "cf dev"
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
-    "@effect-ci-testbed/github-cloudflare": "workspace:*",
-    "effect": "4.0.0-beta.19"
+    "@effect-ci-testbed/github-cloudflare": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",

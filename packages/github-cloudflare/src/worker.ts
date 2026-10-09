@@ -1,4 +1,5 @@
 import * as GitHub from "@effect-ci-testbed/github"
+import { slackInteraction, type SlackApprovalEnvironment } from "./slack-interactions.ts"
 
 export interface GitHubWorkflowParameters {
   readonly trigger: "github"
@@ -21,13 +22,16 @@ export interface RemoteWorkflowParameters {
 
 export type WorkflowParameters = GitHubWorkflowParameters | RemoteWorkflowParameters
 
-export interface WorkerEnvironment {
+export interface WorkerEnvironment extends SlackApprovalEnvironment {
   /** Explicit cross-Worker binding; same-Worker requests use `ctx.exports`. */
   readonly EFFECT_CI?: Workflow<WorkflowParameters>
   readonly EFFECT_CI_API_TOKEN?: string
   readonly EFFECT_CI_DETAILS_URL?: string
   readonly EFFECT_CI_PUBLIC_URL?: string
   readonly DISCORD_WEBHOOK_URL?: string
+  readonly SLACK_WEBHOOK_URL?: string
+  readonly SLACK_BOT_TOKEN?: string
+  readonly SLACK_CHANNEL_ID?: string
   readonly GITHUB_APP_ID: string
   readonly GITHUB_PRIVATE_KEY: string
   readonly GITHUB_WEBHOOK_SECRET: string
@@ -249,35 +253,6 @@ const streamEvents = async (
   })
 }
 
-const escapeHtml = (value: string): string => value
-  .replaceAll("&", "&amp;")
-  .replaceAll("<", "&lt;")
-  .replaceAll(">", "&gt;")
-  .replaceAll('"', "&quot;")
-  .replaceAll("'", "&#39;")
-
-const approvalPage = (instanceId: string): Response =>
-  new Response(`<!doctype html>
-<html lang="en">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Effect CI approval</title></head>
-  <body>
-    <main>
-      <h1>Release approval</h1>
-      <p>Workflow <code>${escapeHtml(instanceId)}</code> is waiting for approval.</p>
-      <form method="post">
-        <button name="decision" value="approved">Approve release</button>
-        <button name="decision" value="rejected">Reject</button>
-      </form>
-    </main>
-  </body>
-</html>`, {
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "referrer-policy": "no-referrer",
-      "x-content-type-options": "nosniff",
-    },
-  })
-
 const resolveApproval = async (
   request: Request,
   environment: WorkerEnvironment,
@@ -335,6 +310,20 @@ export const worker = (options: WorkerOptions = {}) => {
       const url = new URL(request.url)
       const workflow = getWorkflow(environment, context)
 
+      if (request.method === "POST" && url.pathname === "/webhooks/slack") {
+        return slackInteraction(request, environment, async (decision) => {
+          const authorization = new URL(`/runs/${encodeURIComponent(decision.instanceId)}/approvals/${encodeURIComponent(decision.requestId)}`, url.origin)
+          authorization.searchParams.set("token", decision.token)
+          if (!await isApprovalAuthorized(new Request(authorization), environment, decision.instanceId, decision.requestId)) return false
+          const instance = await workflow.get(decision.instanceId)
+          const status = await instance.status()
+          if (status.status !== "running" && status.status !== "waiting") return false
+          await instance.sendEvent({ type: approvalEventType(decision.requestId), payload: { decision: decision.decision, actor: decision.actor } })
+
+          return true
+        })
+      }
+
       if (request.method === "GET" && url.pathname === "/") {
         return Response.json({ service: "Effect CI", status: "ready" })
       }
@@ -383,7 +372,11 @@ export const worker = (options: WorkerOptions = {}) => {
           return new Response("Unauthorized", { status: 401 })
         }
 
-        if (request.method === "GET") return approvalPage(instanceId)
+        if (request.method === "GET") {
+          const dashboard = detailsUrl(environment.EFFECT_CI_DETAILS_URL, instanceId)
+
+          return dashboard ? new Response(null, { status: 302, headers: { location: dashboard, "referrer-policy": "no-referrer", "cache-control": "no-store" } }) : new Response("Use the approval buttons in Slack. Workflow dashboard URL is not configured.", { status: 503 })
+        }
         if (request.method === "POST") {
           return resolveApproval(
             request,

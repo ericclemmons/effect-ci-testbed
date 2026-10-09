@@ -5,11 +5,6 @@ const name = "effect-ci-cloudflare-hitl-release"
 const workspace = defineContainer({
   name: "effect-ci-hitl-workspace",
   schedulingPolicy: "durable-object",
-  images: {
-    workspace: {
-      dockerfile: "../../packages/cloudflare/Dockerfile",
-    },
-  },
 })
 
 export default defineConfig({
