@@ -212,6 +212,12 @@ creating nested command checkpoints. Reporting runs outside it; replay retains t
 logical plan, command output, and serializable workspace revision. Pure Effects need
 no container. Actions without explicit policies keep their granular checkpoints.
 
+The native result adapter also reconstructs top-level `WorkspaceCheckpoint` and
+`WorkspaceArtifact` results, including their workspace revisions and restore
+capabilities. JSON round-trip/replay regressions cover this boundary locally;
+retryable artifact publication has not yet received its own hosted proof. This is
+not a general codec for arbitrary class instances or resources nested in user data.
+
 These live proofs used source `9a4c5e9a9cbf73625076884a0ab99ab458daf3b5` and Worker
 deployment `1127e335-496c-427b-bcb4-4261811eeb3d`:
 
