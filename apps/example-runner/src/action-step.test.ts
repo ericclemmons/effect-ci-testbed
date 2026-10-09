@@ -30,6 +30,41 @@ const native = () => {
   return { step, attempts, configs }
 }
 
+test("native action results restore artifact and checkpoint capabilities after JSON replay", async () => {
+  const { step } = native()
+  const executor = makeActionExecutor(step, new Set())
+  const workspace = CI.Workspace.remote("fixture", "/workspace", { provider: "fixture", value: { id: "input" } })
+  const checkpoint = new CI.WorkspaceCheckpoint("build", workspace, { provider: "fixture", value: { id: "output" } })
+  const artifact = new CI.WorkspaceArtifact("worker", ["dist/worker.js"], checkpoint)
+  for (const value of [checkpoint, artifact]) {
+    let calls = 0
+    const request = {
+      stepId: value instanceof CI.WorkspaceArtifact ? "artifact" : "checkpoint",
+      options: { timeout: 1000 },
+      run: () => Effect.sync(() => { calls++; return { value, commands: [] } }),
+    }
+    // These fixture bodies require no services; the generic executor accepts any body environment.
+    const execute = () => executor.execute(request) as Effect.Effect<CI.ActionExecutionResult, unknown>
+    await Effect.runPromise(execute())
+    const replay = await Effect.runPromise(execute())
+    assert.equal(calls, 1)
+    const restored = replay.value instanceof CI.WorkspaceArtifact ? replay.value.checkpoint : replay.value
+    assert.ok(restored instanceof CI.WorkspaceCheckpoint)
+    assert.ok(restored.workspace instanceof CI.Workspace)
+    assert.equal(typeof restored.restore, "function")
+    assert.equal(restored.name, checkpoint.name)
+    assert.equal(restored.workspace.id, workspace.id)
+    assert.equal(restored.workspace.cwd, workspace.cwd)
+    assert.deepEqual(restored.handle, checkpoint.handle)
+    assert.deepEqual(restored.workspace.revision, workspace.revision)
+    if (value instanceof CI.WorkspaceArtifact) {
+      assert.ok(replay.value instanceof CI.WorkspaceArtifact)
+      assert.equal(replay.value.name, artifact.name)
+      assert.deepEqual(replay.value.paths, artifact.paths)
+    }
+  }
+})
+
 test("pure Effect bodies retry natively and replay without repeating work", async () => {
   const { step, attempts, configs } = native()
   const active = new Set<string>()
