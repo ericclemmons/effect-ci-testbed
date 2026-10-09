@@ -14,13 +14,20 @@ pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
 cd examples/developer-loop
 DEMO_SOURCE="$(mktemp /tmp/effect-ci-demo-source.XXXXXX)"
-cp app/message.js "$DEMO_SOURCE"
+cp src/message.js "$DEMO_SOURCE"
 ```
 
-Keep `package.json`, `.cloudflare/ci/ci.ts`, and `app/message.js` open in the
-editor. The CI marker is empty. The package scripts supply the task definitions;
-their cached task bodies are plain `vp lint` and `vp build`. The Vite config makes
-`no-undef` an error and excludes generated output and the empty CI marker.
+Keep `package.json`, `vite.config.ts`, `.cloudflare/ci/ci.ts`, and `src/message.js`
+open in the editor. The CI marker is empty. Package scripts expose the targets
+and `pretest`/`prebuild` prerequisites; Vite config supplies cached task bodies
+using Vite+'s built-in tools. `check` is formatting and
+lint. `test` runs type checking before Vitest; `build` runs type checking and
+lint before bundling, without requiring formatting or test execution. Each
+configured task is cached separately, without `--cache` flags in package scripts.
+Type-check flags belong to the configured typecheck task, not global lint options,
+so `check` remains formatting and lint only. The Vite config makes `no-undef` an error
+and excludes generated output and the empty CI marker from linting. JavaScript
+source and tests are type-checked through `allowJs` and `checkJs` in `tsconfig.json`.
 If you rehearsed in this checkout, its first run may already be cached. Call it
 the first run of this presentation, not a cold run. Use a fresh demo checkout to
 show a cold run; do not clear a shared repository cache during the presentation.
@@ -54,6 +61,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
 
    ```sh
    cf-ci run lint --format=text
+   cf-ci run test --format=text
    time cf-ci run build --format=text
    cat dist/message.js
    ```
@@ -64,7 +72,10 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Say:
 
    > I haven't committed or pushed. This is checking my working files. This demo's
-   > lint runs Vite+'s linter, and the build bundles the source as an ES module.
+   > lint runs Vite+'s linter. Tests require type validity; the build requires
+   > types and lint, then bundles the source as an ES module. Formatting and test
+   > execution aren't prerequisites for building. The test allows me to change
+   > the message, but requires it to remain a non-empty string.
    > I'm keeping the task small so you can see what actually happens.
 
 3. **Run it again without changing anything.**
@@ -124,7 +135,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   printf 'export const message = "Checked before pushing"\n' > app/message.js
+   printf 'export const message = "Checked before pushing"\n' > src/message.js
    cf-ci run lint --format=text
    cf-ci run build --format=text
    cat dist/message.js
@@ -147,14 +158,14 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   printf 'export const message = "Checked before pushing"\nasdf\n' > app/message.js
+   printf 'export const message = "Checked before pushing"\nasdf\n' > src/message.js
    if cf-ci run lint --format=json; then
      printf 'Unexpected pass: inspect the result before continuing.\n'
    else
      printf 'Lint exit code: %s\n' "$?"
    fi
    cf-ci run lint --format=text
-   printf 'export const message = "Checked before pushing"\n' > app/message.js
+   printf 'export const message = "Checked before pushing"\n' > src/message.js
    cf-ci run lint --format=json
    cf-ci run build --format=json
    ```
@@ -176,15 +187,15 @@ show a cold run; do not clear a shared repository cache during the presentation.
 Open the agent in `examples/developer-loop` with `cf-ci` on its PATH. Give it
 this prompt; choose a different message if you already used this one in rehearsal:
 
-> Change the exported message in `app/message.js` to "Checked by my agent".
+> Change the exported message in `src/message.js` to "Checked by my agent".
 > Use `cf-ci` to discover the available targets and inspect the lint plan. Run
-> lint and build with JSON output. If either fails, read its text-mode diagnostic,
+> lint, test, and build with JSON output. If any fails, read its text-mode diagnostic,
 > fix the source, and rerun. Confirm that `dist/message.js` contains the new
 > message. Run the build once more in text mode to show cache status. Don't
 > commit, push, or add a verification trailer.
 
-Look for: the agent uses `cf-ci list`, `cf-ci plan lint`, `cf-ci run lint`, and
-`cf-ci run build`. Its successful build produces the edited artifact. A cache hit
+Look for: the agent uses `cf-ci list`, `cf-ci plan lint`, `cf-ci run lint`,
+`cf-ci run test`, and `cf-ci run build`. Its successful build produces the edited artifact. A cache hit
 is visible in text mode; JSON success alone does not distinguish tool execution
 from tool-owned cache reuse.
 
@@ -214,7 +225,7 @@ Say:
 After the agent has finished, run in the original terminal session:
 
 ```sh
-cp "$DEMO_SOURCE" app/message.js
+cp "$DEMO_SOURCE" src/message.js
 cf-ci run lint --format=text
 cf-ci run build --format=text
 rm -- "$DEMO_NOTE" "$DEMO_SOURCE"

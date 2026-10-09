@@ -7,31 +7,56 @@ For copyable commands, expected output, and spoken narration, use the
 > repeating a task whose inputs have not changed?
 
 The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) opts into task inference.
-There is no custom Effect workflow, Vite task configuration, input glob, or output
-manifest. A small Vite configuration selects the library entrypoint and lint rules.
-Ordinary package scripts opt into Vite+'s cache; Effect CI discovers
-`lint` and `build`, installs dependencies, and invokes those scripts.
+There is no custom Effect workflow, input glob, or output manifest. Vite configuration
+selects the library entrypoint, lint rules, and cached task bodies.
+Ordinary package scripts expose those tasks and their lifecycle hooks; Effect CI discovers
+`check`, `lint`, `typecheck`, `test`, and `build`, installs dependencies, and
+invokes those scripts.
 
 ```json
 {
-  "lint": "vp run --cache lint:source",
-  "lint:source": "vp lint",
-  "build": "vp run --cache build:source",
-  "build:source": "vp build"
+  "check": "vpr check:source",
+  "lint": "vpr lint:source",
+  "typecheck": "vpr typecheck:source",
+  "pretest": "vpr typecheck",
+  "test": "vpr test:source",
+  "prebuild": "vpr typecheck && vpr lint",
+  "build": "vpr build:source"
 }
 ```
 
-The wrapper scripts enable caching without recursively calling themselves.
+The wrapper scripts call distinct tasks in `vite.config.ts`, with `cache: true`
+on each task. No package script needs a cache flag or recursively calls itself.
 The task bodies are Vite+'s built-in linter and builder, not custom programs.
 `no-undef` is explicitly an error in `vite.config.ts`, so a bare `asdf` fails lint
 even though it is valid JavaScript syntax. Plain `vp lint` discovers the project
-files without a directory argument; naming the source folder `src` is not needed.
+files without a directory argument. This example keeps its source in `src/`.
 The config excludes the generated `dist/` output and empty `.cloudflare/` CI marker.
+
+`check` runs formatting and lint only. `typecheck` uses the TypeScript checker
+through Vite+'s lint driver with lint rules disabled. `tsconfig.json` enables
+`allowJs` and `checkJs` for `src/`, so the JavaScript source and tests get static
+type checking without conversion to TypeScript. `test` requires type checking;
+`build` requires type checking and lint, but not formatting or test execution.
+`pretest` and `prebuild` express these prerequisites as package lifecycle hooks.
+Vite+ caches each configured task independently. A failed prerequisite prevents
+its dependent command from running. Run `cf-ci run build`, `npm run build`, or
+`vpr build` to include the hook; bare `vp build` invokes only the built-in bundler.
+Type-check flags stay in the configured `typecheck:source` task rather than global
+`lint.options`, because enabling them globally would also type-check `check`.
+
+The test checks that the exported message is a non-empty string, not a particular
+sentence, so the human and agent can change the message during the demo.
 
 This example joins [zero config](../zero-config) and [Vite+ caching](../vite-plus-cache)
 into a developer loop. Vite+ owns cache validity and output restoration. Effect CI
 owns discovery, planning, execution, and human/agent result formatting. A cache hit
 is not signed verification evidence.
+
+Local text output preserves tool colors when the terminal supports them, including
+Vite+ cache replay. `NO_COLOR`, `NODE_DISABLE_COLORS`, and explicit `FORCE_COLOR`
+settings are respected. Redirected output does not automatically enable colors,
+and JSON output remains separate from command logs.
 
 ## Set up once
 
@@ -46,13 +71,13 @@ cf-ci plan --format=mermaid
 ```
 
 No `--workflow` flag is needed. Discovery walks up from the current directory;
-it also works inside `app/`. The PATH setup exposes the workspace's CLI once;
+it also works inside `src/`. The PATH setup exposes the workspace's CLI once;
 there is no package-manager prefix on subsequent CI commands.
 The product command is `cf-ci`, not yet `cf ci`.
 
 ## Human demo
 
-1. Run `cf-ci run lint --format=text`, then
+1. Run `cf-ci run lint --format=text`, `cf-ci run test --format=text`, then
    `cf-ci run build --format=text`. The first build primes the cache.
 2. Run the build again. Look for Vite+'s `cache hit` output. Do not use replayed
    build output as proof that the build executed again.
@@ -60,10 +85,10 @@ The product command is `cf-ci`, not yet `cf ci`.
    restore the output from cache.
 4. Change a sentence in this README and rerun the build. It does not read this
    README, so the build should remain a hit.
-5. Change the string in `app/message.js`, without committing or pushing. Rerun
+5. Change the string in `src/message.js`, without committing or pushing. Rerun
    lint and build. The changed source should invalidate both tasks; inspect
    `dist/message.js` to see the new string. An immediate repeat should hit.
-6. Add a bare `asdf` line to `app/message.js`. Run lint with `--format=json`:
+6. Add a bare `asdf` line to `src/message.js`. Run lint with `--format=json`:
    it must return `ok: false` and a nonzero exit code. Rerun with `--format=text`
    to see the undefined-variable diagnostic, remove that line, and rerun.
 
@@ -82,7 +107,7 @@ that filesystem observation cannot capture need a separate tracking policy.
 Give the agent this task:
 
 > Change the exported message to "Checked before pushing". Discover the available
-> CI targets, inspect the lint plan, then run lint and build with JSON output.
+> CI targets, inspect the lint plan, then run lint, test, and build with JSON output.
 > Fix any failure and rerun. Confirm the generated artifact contains the new
 > message. Do not commit or push.
 
@@ -92,6 +117,7 @@ The agent uses the same entrypoint as the human:
 cf-ci list --format=json
 cf-ci plan lint --format=json
 cf-ci run lint --format=json
+cf-ci run test --format=json
 cf-ci run build --format=json
 ```
 
@@ -100,8 +126,9 @@ The current local executor does not include linter diagnostics in a JSON
 failure; rerun the failed target in text mode to read them. Use text mode to show
 Vite+ cache diagnostics. An `ok: true` result means this
 target succeeded, not that every possible check passed. Here `lint` runs Oxlint
-over the project with undefined identifiers treated as errors, and `build` bundles the
-source into an ES module at `dist/message.js`.
+with undefined identifiers treated as errors. `build` first checks types and
+lint, then bundles the source into an ES module at `dist/message.js`. Run
+`cf-ci run check` for formatting/lint and `cf-ci run test` for behavioral tests.
 
 No trailer is suggested: the existing commit-scoped signer does not bind dirty
 working-tree content. See [verification evidence](../verification-evidence) for

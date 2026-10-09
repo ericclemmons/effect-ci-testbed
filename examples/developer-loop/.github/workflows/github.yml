@@ -23,4 +23,6 @@ jobs:
           path: node_modules/.vite/task-cache
           key: developer-loop-vite-task-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm run lint
+      - run: npm run check
+      - run: npm run test
       - run: npm run build

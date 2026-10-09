@@ -1,13 +1,16 @@
 {
-  "name": "effect-ci-developer-loop-fixture",
+  "name": "cf-ci-demo",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "vp run --cache lint:source",
-    "lint:source": "vp lint",
-    "build": "vp run --cache build:source",
-    "build:source": "vp build"
+    "check": "vpr check:source",
+    "lint": "vpr lint:source",
+    "typecheck": "vpr typecheck:source",
+    "pretest": "vpr typecheck",
+    "test": "vpr test:source",
+    "prebuild": "vpr typecheck && vpr lint",
+    "build": "vpr build:source"
   },
   "devDependencies": {
     "vite-plus": "1.0.0"

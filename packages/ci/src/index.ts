@@ -1492,13 +1492,24 @@ export const workflow = <A>(
   effect: bodyToEffect(body),
 })
 
-const makeLocalCommandExecutor = (): CommandExecutor => ({
+const makeLocalCommandExecutor = (output: "inherit" | "silent" = "inherit"): CommandExecutor => ({
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
     const stdout: Array<string> = []
     const stderr: Array<string> = []
+    const colorDepth = output === "inherit"
+      && process.env.FORCE_COLOR === undefined
+      && process.env.NO_COLOR === undefined
+      && process.env.NODE_DISABLE_COLORS === undefined
+      ? Math.max(
+          process.stdout.isTTY ? process.stdout.getColorDepth() : 1,
+          process.stderr.isTTY ? process.stderr.getColorDepth() : 1,
+        )
+      : 1
     const child = spawn(command, {
       cwd: workspace.cwd,
-      env: process.env,
+      env: colorDepth > 1
+        ? { ...process.env, FORCE_COLOR: colorDepth >= 24 ? "3" : colorDepth >= 8 ? "2" : "1" }
+        : process.env,
       shell: true,
       stdio: ["inherit", "pipe", "pipe"],
     })
@@ -1561,7 +1572,7 @@ const makeRuntime = (
   emitEvent: (event: RuntimeEvent) => Effect.Effect<void>,
   event: WorkflowEventShape,
   approvalHandler?: ApprovalHandler,
-  commandExecutor: CommandExecutor = makeLocalCommandExecutor(),
+  commandExecutor: CommandExecutor = makeLocalCommandExecutor(output),
   workspaceFileSystem: WorkspaceFileSystem = localWorkspaceFileSystem,
   workspacePersistence: WorkspacePersistence = {
     commit: ({ workspace }) => Effect.succeed(workspace),
@@ -2359,7 +2370,7 @@ const interpret = <A>(
       emitEvent,
       event,
       options.approval,
-      options.executor ?? makeLocalCommandExecutor(),
+      options.executor ?? makeLocalCommandExecutor(options.output),
       options.workspaceFileSystem,
       options.workspacePersistence,
       options.checkCache,
