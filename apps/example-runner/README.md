@@ -126,3 +126,6 @@ invalidation still needs work). Snapshot resource-limit failures also occurred i
 the superseded optional-check runs. After the live container stopped, retrying only
 the snapshot could not recover its uncommitted files. Removing needless check
 snapshots fixes this example, not the general checkpoint-failure recovery problem.
+Another required regression is multiple commands inside one action: native command
+checkpoint names currently use only the action ID. Subsequent commands need distinct,
+deterministic operation identities or they can reuse the first command's result.
