@@ -6,6 +6,7 @@ import { parseArgs } from "node:util"
 import { detectAgenticEnvironment } from "am-i-vibing"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -108,7 +109,9 @@ const remoteHeaders = (): Headers => {
     headers.set("authorization", `Bearer ${process.env.EFFECT_CI_REMOTE_TOKEN}`)
   }
 
-  if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
+  if (process.env.CF_ACCESS_TOKEN) {
+    headers.set("cf-access-token", process.env.CF_ACCESS_TOKEN)
+  } else if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
     headers.set("cf-access-client-id", process.env.CF_ACCESS_CLIENT_ID)
     headers.set("cf-access-client-secret", process.env.CF_ACCESS_CLIENT_SECRET)
   }
@@ -137,8 +140,12 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
   switch (event.type) {
     case "step_started": return `→ ${event.stepName}`
     case "step_completed": {
-      const output = event.output && typeof event.output === "object"
-        ? event.output as Record<string, unknown>
+      let value = event.output
+      if (typeof value === "string") {
+        try { value = JSON.parse(value) } catch { /* A non-command step may return plain text. */ }
+      }
+      const output = value && typeof value === "object"
+        ? value as Record<string, unknown>
         : undefined
       const stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
       const stderr = typeof output?.stderr === "string" ? output.stderr.trimEnd() : ""
@@ -169,27 +176,11 @@ const streamRemoteEvents = async (
   }
 
   const events: WorkflowInstanceEvent[] = []
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  while (true) {
-    const chunk = await reader.read()
-
-    buffer += decoder.decode(chunk.value, { stream: !chunk.done })
-    const lines = buffer.split("\n")
-    buffer = lines.pop() ?? ""
-
-    for (const line of lines) {
-      if (!line) continue
-
-      const event = JSON.parse(line) as WorkflowInstanceEvent
-      events.push(event)
-
-      if (format === "text") console.log(describeEvent(event))
-    }
-
-    if (chunk.done) break
+  for await (const record of remoteRecords(response.body)) {
+    const event = record as WorkflowInstanceEvent
+    events.push(event)
+    if (format === "text") console.log(describeEvent(event))
+    if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(event.type)) break
   }
 
   return events
@@ -199,7 +190,8 @@ const builtInRemote = async (
   invocation: Invocation,
   root: string,
 ): Promise<unknown> => {
-  const remoteUrl = process.env.EFFECT_CI_REMOTE_URL?.replace(/\/$/, "")
+  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL
+  const remoteUrl = configuredUrl ? remoteOrigin(configuredUrl) : undefined
 
   if (!remoteUrl) {
     throw new CliFailure(
@@ -226,10 +218,18 @@ const builtInRemote = async (
   }
 
   const repository = cloneUrl(git(root, "config", "--get", "remote.origin.url"))
+  if (git(root, "status", "--porcelain", "--untracked-files=normal")) {
+    throw new CliFailure(
+      "CI_REMOTE_DIRTY_WORKTREE",
+      ExitCode.usage,
+      "Remote execution checks the pushed commit, not local edits. Run locally or commit and push the changes first.",
+    )
+  }
   const revision = git(root, "rev-parse", "HEAD")
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
+    redirect: "error",
     headers: remoteHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}) }),
   })
@@ -246,8 +246,9 @@ const builtInRemote = async (
 
   if (invocation.format === "text") console.log(`Remote Workflow ${run.instanceId}`)
 
-  const events = await streamRemoteEvents(await fetch(run.eventsUrl, {
+  const events = await streamRemoteEvents(await fetch(remoteEventUrl(remoteUrl, run.eventsUrl), {
     headers: remoteHeaders(),
+    redirect: "error",
   }), invocation.format)
   const terminal = events.at(-1)
 
@@ -574,7 +575,9 @@ const printJson = (value: unknown): void => {
 }
 
 const projectRoot = (workflowPath: string): string =>
-  resolve(dirname(workflowPath), "../..")
+  basename(dirname(workflowPath)) === "ci" && basename(dirname(dirname(workflowPath))) === ".cloudflare"
+    ? resolve(dirname(workflowPath), "../..")
+    : dirname(workflowPath)
 
 const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
   const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined

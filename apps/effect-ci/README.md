@@ -20,8 +20,11 @@ Builds, but it is an independently deployable Effect CI service—not an emulati
 Verified on a deployed account: a real GitHub App webhook started native
 checkout/install/build with snapshots and returned successful GitHub checks with
 command logs. One live-updated Slack checklist and inline approval followed by an
-echo-only release are also verified. `cf-ci --remote` through Access has protocol
-tests but still needs its own real hosted end-to-end run.
+echo-only release are also verified. `cf-ci --remote` completed through an actual
+`cloudflared` Access user session: instance `d94238ee-afdf-404f-aa63-ec013f8fcba1`
+checked out source `cb851662300487cb033e1f1bd5586351f28c60eb`, installed and built,
+streamed command output, and exited successfully after the terminal event.
+This run used the Worker API token as well as Access; it did not deploy a release.
 
 ## Experience
 
@@ -321,6 +324,17 @@ an Access login. An unsigned webhook must still return `401`.
 
 Save the service token when it is created; Cloudflare shows its secret only once:
 
+For a developer's existing Access identity, no service token is necessary:
+
+```sh
+cloudflared access login "$EFFECT_CI_PUBLIC_URL"
+export CF_ACCESS_TOKEN="$(cloudflared access token --app "$EFFECT_CI_PUBLIC_URL")"
+```
+
+The token expires with your Access session. `cf-ci` sends it as `CF-Access-Token`
+and still requires the Worker API token. For unattended execution, use the scoped
+service-token pair instead (unset `CF_ACCESS_TOKEN` first):
+
 ```sh
 export CF_ACCESS_CLIENT_ID='<access-client-id>'
 export CF_ACCESS_CLIENT_SECRET='<access-client-secret>'
@@ -343,7 +357,12 @@ pnpm exec cf-ci run --remote \
 ```
 
 The CLI should create a native Workflow instance, stream action events, and exit with
-the Workflow result. Then push a commit to the repository where the GitHub App is
+the Workflow result. Remote execution uses the service's configured workflow; it
+does not upload or execute an arbitrary local workflow module. The CLI supplies the
+Git repository and pushed commit, not dirty working-tree files. Run locally for
+pre-commit validation; commit and push before using `--remote`.
+
+Then push a commit to the repository where the GitHub App is
 installed. The successful GitHub path is:
 
 1. GitHub App **Advanced → Recent deliveries** shows a successful `check_suite`
