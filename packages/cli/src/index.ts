@@ -6,7 +6,7 @@ import { parseArgs } from "node:util"
 import { detectAgenticEnvironment } from "am-i-vibing"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
-import { remoteEventUrl, remoteRecords } from "./remote-protocol.ts"
+import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -138,8 +138,12 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
   switch (event.type) {
     case "step_started": return `→ ${event.stepName}`
     case "step_completed": {
-      const output = event.output && typeof event.output === "object"
-        ? event.output as Record<string, unknown>
+      let value = event.output
+      if (typeof value === "string") {
+        try { value = JSON.parse(value) } catch { /* A non-command step may return plain text. */ }
+      }
+      const output = value && typeof value === "object"
+        ? value as Record<string, unknown>
         : undefined
       const stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
       const stderr = typeof output?.stderr === "string" ? output.stderr.trimEnd() : ""
@@ -174,6 +178,7 @@ const streamRemoteEvents = async (
     const event = record as WorkflowInstanceEvent
     events.push(event)
     if (format === "text") console.log(describeEvent(event))
+    if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(event.type)) break
   }
 
   return events
@@ -183,7 +188,8 @@ const builtInRemote = async (
   invocation: Invocation,
   root: string,
 ): Promise<unknown> => {
-  const remoteUrl = process.env.EFFECT_CI_REMOTE_URL?.replace(/\/$/, "")
+  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL
+  const remoteUrl = configuredUrl ? remoteOrigin(configuredUrl) : undefined
 
   if (!remoteUrl) {
     throw new CliFailure(

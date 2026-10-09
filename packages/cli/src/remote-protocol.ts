@@ -1,4 +1,13 @@
 /** Never forward execution or Access credentials to a URL supplied by another origin. */
+export const remoteOrigin = (origin: string): string => {
+  const url = new URL(origin)
+  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+  if (url.username || url.password || (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))) {
+    throw new Error("Remote service must use HTTPS (HTTP is allowed only for local development)")
+  }
+  return url.href.replace(/\/$/, "")
+}
+
 export const remoteEventUrl = (origin: string, eventsUrl: string): string => {
   const base = new URL(origin)
   const events = new URL(eventsUrl, base)
@@ -26,6 +35,7 @@ export async function* remoteRecords(body: ReadableStream<Uint8Array>): AsyncGen
       }
     }
   } finally {
+    await reader.cancel().catch(() => {})
     reader.releaseLock()
   }
 }

@@ -38,8 +38,9 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}/runs/fixture/events`, statusUrl: `${origin}/runs/fixture` }))
       } else {
         response.writeHead(200, { "content-type": "application/x-ndjson" })
-        response.write(JSON.stringify({ type: "step_completed", stepName: "lint", output: { stdout: "lint passed" } }) + "\n")
-        response.end(JSON.stringify({ type: "workflow_completed" }))
+        response.write(JSON.stringify({ type: "step_completed", stepName: "lint", output: JSON.stringify({ stdout: "lint passed" }) }) + "\n")
+        response.write(JSON.stringify({ type: "workflow_completed" }) + "\n")
+        // Native subscriptions may remain open after the terminal event.
       }
     })
     const run = () => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
