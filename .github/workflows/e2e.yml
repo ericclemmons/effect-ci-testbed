@@ -583,7 +583,7 @@ jobs:
       - run: pnpm install
       - name: Verify production Worker bundle
         run: |
-          pnpm --filter effect-ci-github-cloudflare-fixture exec cf deploy --dry-run
+          pnpm --filter @effect-ci-testbed/app exec cf deploy --dry-run
           pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec cf deploy --dry-run
       - name: Verify Cloudflare HITL locally
         env:
@@ -591,11 +591,13 @@ jobs:
         run: pnpm cf-ci --workflow examples/cloudflare-hitl-release/.cloudflare/ci/workflow.ts
       - name: Verify signed dispatch and duplicate delivery
         run: node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
+      - name: Verify Slack approvals and single-message progress
+        run: node --test packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/workflow.test.ts apps/effect-ci/access.config.test.ts
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
 
-          pnpm --filter effect-ci-github-cloudflare-fixture exec cf dev >"$log" 2>&1 &
+          pnpm --filter @effect-ci-testbed/app exec cf dev >"$log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat "$log"' EXIT
 

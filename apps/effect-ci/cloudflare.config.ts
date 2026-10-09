@@ -1,15 +1,13 @@
 import { defineConfig, defineContainer, exports } from "cf/config"
 
+// cf/config does not yet expose Access resources. See access.config.ts and
+// README.md for the accompanying Access application and policy provisioning.
+
 const name = "effect-ci-github-cloudflare"
 
 const workspace = defineContainer({
   name: "effect-ci-workspace",
   schedulingPolicy: "durable-object",
-  images: {
-    workspace: {
-      dockerfile: "../../packages/cloudflare/Dockerfile",
-    },
-  },
 })
 
 export default defineConfig({

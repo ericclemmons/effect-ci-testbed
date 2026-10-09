@@ -1,4 +1,3 @@
-import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import * as CI from "@effect-ci-testbed/ci"
 import {
   DurableObject,
@@ -10,7 +9,7 @@ import {
 import * as Effect from "effect/Effect"
 
 const decoder = new TextDecoder()
-const defaultImage = "workspace"
+const defaultImage = "cloudflare/debian-trixie"
 const defaultTargetDirectory = "/workspace/repository"
 
 export interface ContainerExecutionResult {
@@ -86,7 +85,6 @@ interface WorkspaceContainerEnvironment {}
 export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironment> {
   private activeStepId: string | undefined
   private dirty = false
-  private readonly files: Files
   private workingCheckpointId: string | undefined
 
   constructor(
@@ -100,7 +98,6 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       throw new Error("No Container is configured for this Durable Object")
     }
 
-    this.files = new Files(container)
   }
 
   private container() {
@@ -365,14 +362,17 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     await this.materialize(stepId, revision, options)
 
-    try {
-      const response = await this.files.readFile(path, { cwd })
+    const exists = await this.run(["test", "-e", path], cwd)
 
-      return response.text()
-    } catch (error) {
-      if (SandboxFileError.is(error) && error.code === "ENOENT") return undefined
-      throw error
+    if (exists.exitCode !== 0) return undefined
+
+    const response = await this.run(["cat", "--", path], cwd)
+
+    if (response.exitCode !== 0) {
+      throw new Error(response.stderr || response.stdout || `Could not read ${path}`)
     }
+
+    return response.stdout
   }
 
   async exists(
@@ -388,14 +388,9 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     await this.materialize(stepId, revision, options)
 
-    try {
-      await this.files.stat(path, { cwd })
+    const result = await this.run(["test", "-e", path], cwd)
 
-      return true
-    } catch (error) {
-      if (SandboxFileError.is(error) && error.code === "ENOENT") return false
-      throw error
-    }
+    return result.exitCode === 0
   }
 
   async checkpoint(

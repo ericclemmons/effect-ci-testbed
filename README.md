@@ -59,6 +59,14 @@ thin Effect caller passes that same module to the reusable runner. The
 conventional YAML is intentionally independent so every example shows the native
 GitHub approach beside the portable Effect approach.
 
+## Deployable apps
+
+[`apps/effect-ci`](./apps/effect-ci/README.md) contains the self-hosted Cloudflare
+service and step-by-step setup: `cf` deployment, GitHub App integration, Cloudflare
+Access protection, remote runs, and live Slack checklists with inline release approval.
+Native hosted builds and Slack approval have been exercised; real GitHub webhook/check
+delivery and CLI authentication through Access remain separate validation steps.
+
 Workflows and exported actions serve different entrypoints:
 
 - A workflow routes normalized external events. `CI.when` keeps event/ref predicates
@@ -77,7 +85,7 @@ Workflows and exported actions serve different entrypoints:
 
 The matrix is stack-ranked. Rows marked for conventional GitHub Actions include
 comparison YAML alongside the portable Effect CI version. A checkmark means the
-use-case is exercised end-to-end in that actual environment. `wrangler dev --local` counts as
+use-case is exercised end-to-end in that actual environment. Local `cf dev` counts as
 Effect CI Local, not Cloudflare. Cloudflare remains unchecked until the example is
 deployed to an account and exercised there. `🔜` is committed roadmap work; `—`
 means that execution model is genuinely irrelevant to the use-case.
@@ -102,7 +110,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
 | [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) | — | — | — | 🔜 |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | 🔜 |
 | [Trigger a remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |

@@ -3,10 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "deploy": "cf deploy",
-    "dev": "wrangler dev"
-  },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
     "@effect-ci-testbed/github-cloudflare": "workspace:*",
@@ -15,8 +11,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261001.1",
     "@types/node": "^26.6.3",
-    "cf": "1.0.0-beta.12",
-    "typescript": "^7.0.2",
-    "wrangler": "4.145.0"
+    "typescript": "^7.0.2"
   }
 }
