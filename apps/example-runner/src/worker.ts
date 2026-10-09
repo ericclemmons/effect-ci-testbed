@@ -15,6 +15,7 @@ import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/wor
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
+import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
@@ -133,5 +134,11 @@ export const MiseToolchainWorkflow = Cloudflare.workflowEntrypoint(miseToolchain
 
 export const ExportedActionsWorkflow = Cloudflare.workflowEntrypoint(exportedActions, {
   root: "examples/exported-actions",
+  reuseWorkspace: false,
+})
+
+export const DeployHookWorkflow = Cloudflare.workflowEntrypoint(deployHook, {
+  root: "examples/deploy-hook",
+  container: { instance: "standard-1" },
   reuseWorkspace: false,
 })

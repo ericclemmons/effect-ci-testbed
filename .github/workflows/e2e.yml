@@ -42,6 +42,7 @@ jobs:
           - portable-artifacts
           - secure-secrets
           - rollback-compensation
+          - deploy-hook
     steps:
       - uses: actions/checkout@v7
 
@@ -61,6 +62,7 @@ jobs:
       - name: Run examples/${{ matrix.example }}/.github/workflows/github.yml
         env:
           EXAMPLE: ${{ matrix.example }}
+          ACT_EVENT: ${{ matrix.example == 'deploy-hook' && 'workflow_dispatch' || 'pull_request' }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           example_root="$RUNNER_TEMP/examples/$EXAMPLE"
@@ -74,7 +76,7 @@ jobs:
           git -C "$example_root" commit -m "Stage $EXAMPLE"
 
           cd "$example_root"
-          act pull_request \
+          act "$ACT_EVENT" \
             --bind \
             --concurrent-jobs 1 \
             --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \

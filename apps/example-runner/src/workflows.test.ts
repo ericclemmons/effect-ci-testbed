@@ -3,6 +3,7 @@ import test from "node:test"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { resolve } from "node:path"
+import { readFileSync } from "node:fs"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -17,6 +18,7 @@ import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/wor
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
 import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts"
+import deployHook from "../../../examples/deploy-hook/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -56,6 +58,45 @@ test("optional validation checks do not publish unnecessary workspace revisions"
   const result = await CI.runPromise(optionalChecks, { mode: "plan", output: "silent" })
   assert.equal(result.attempt.outputs.lint, undefined)
   assert.equal(result.attempt.outputs.format, undefined)
+})
+
+for (const event of ["deploy_hook", "deployment", "pull_request"] as const) {
+  test(`deployment hook routes ${event} without hiding its condition`, async () => {
+    const result = await CI.runPromise(deployHook, {
+      ci: true,
+      mode: event === "pull_request" ? "execute" : "plan",
+      output: "silent",
+      event: { type: event },
+      source: {
+        checkout: () => Effect.succeed(CI.Workspace.local(resolve("examples/deploy-hook"))),
+      },
+    })
+    const deploy = result.plan.nodes.find((node) => node.id === "deploy")!
+    assert.ok(deploy.condition)
+    if (event === "pull_request") {
+      assert.equal(deploy.status, "skipped")
+      assert.equal(result.plan.nodes.length, 1)
+    } else {
+      assert.deepEqual(result.plan.nodes.map((node) => node.id).sort(), ["build", "checkout", "deploy", "install"])
+      assert.match(result.plan.nodes.find((node) => node.id === "install")!.commands[0]!.command, /npm ci/)
+      assert.equal(deploy.status, "planned")
+    }
+  })
+}
+
+test("deployment hook lockfile installs registry dependencies on a fresh runner", () => {
+  const lock = JSON.parse(readFileSync(new URL(
+    "../../../examples/deploy-hook/package-lock.json", import.meta.url,
+  ), "utf8")) as {
+    packages: Record<string, { link?: boolean; resolved?: string }>
+  }
+  assert.ok(lock.packages["node_modules/cf"])
+  assert.ok(lock.packages["node_modules/@cloudflare/vite-plugin"])
+  for (const [path, dependency] of Object.entries(lock.packages)) {
+    assert.ok(path === "" || path.startsWith("node_modules/"), path)
+    assert.notEqual(dependency.link, true, path)
+    if (dependency.resolved) assert.match(dependency.resolved, /^https:\/\/registry\.npmjs\.org\//)
+  }
 })
 
 test("different workflows can run concurrently with the same action name", async () => {
