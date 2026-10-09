@@ -29,6 +29,7 @@ export default defineConfig({
       ReverseRollbackWorkflow: exports.workflow({ name: "effect-ci-probe-reverse-rollback" }),
       CheckpointRecoveryWorkflow: exports.workflow({ name: "effect-ci-probe-checkpoint-recovery" }),
       PortableArtifactsWorkflow: exports.workflow({ name: "effect-ci-example-portable-artifacts" }),
+      ArtifactPolicyProbeWorkflow: exports.workflow({ name: "effect-ci-probe-artifact-policy" }),
       NodePnpmWorkflow: exports.workflow({ name: "effect-ci-example-node-pnpm" }),
       OptionalChecksWorkflow: exports.workflow({ name: "effect-ci-example-optional-checks" }),
       WorkspaceWorkflow: exports.workflow({ name: "effect-ci-example-workspace" }),
