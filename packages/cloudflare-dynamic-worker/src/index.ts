@@ -40,9 +40,16 @@ export const makeSourceTools = (loader: WorkerLoader): Tools.SourceToolsService 
         modules,
       }
     })
-    using formatter = worker.getEntrypoint("Formatter") as unknown as Disposable & {
+    const formatter = worker.getEntrypoint("Formatter") as unknown as {
       format(request: Tools.FormatRequest): Promise<Tools.FormatResult>
     }
-    return await formatter.format(request)
+    const result = await formatter.format(request) as Tools.FormatResult & Partial<Disposable>
+    try {
+      // RPC results carry a disposer; the entrypoint binding itself does not.
+      // Copy only source data out before releasing the RPC result's lifetime.
+      return { files: { ...result.files }, runtime: result.runtime }
+    } finally {
+      result[Symbol.dispose]?.()
+    }
   }),
 })

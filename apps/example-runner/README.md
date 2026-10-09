@@ -42,6 +42,15 @@ cf workflows instances get npm-1 \
 | [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
 | [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
 | [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
+| [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
+| [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
+
+For local Dynamic Worker execution, start `pnpm --filter
+@effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
+create an `effect-ci-example-dynamic-formatter` instance with the same repository
+and full commit SHA parameters above. This exercises WorkerLoader locally, rather
+than the default Node formatter. The current CLI's `--local` instance commands do
+not connect to this Vite dev server; use its explorer instead.
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.

@@ -45,6 +45,13 @@ text and the CI check rejected it as expected. Both cases also passed through th
 local `cf dev` Workflow API (`local-dynamic-formatter-20261009-1` and
 `local-dynamic-formatter-negative-20261009-1`). These are formatter checks, not deployments.
 
+The final RPC-lifetime fix was rechecked on deployment
+`f3913a23-0eaf-4d64-b10f-30ba77c5126f`: instances
+`coverage-dynamic-formatter-result-disposed-20261009-1` and
+`coverage-dynamic-formatter-result-negative-20261009-1` retained those same results.
+The earlier `coverage-dynamic-formatter-disposed-20261009-1` failure is preserved:
+it exposed an incorrect attempt to dispose the entrypoint rather than its RPC result.
+
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).

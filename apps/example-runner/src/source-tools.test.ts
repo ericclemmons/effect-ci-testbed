@@ -22,10 +22,13 @@ test("runner service uses a Dynamic Worker RPC rather than the local formatter",
         getEntrypoint: (name: string) => {
           assert.equal(name, "Formatter")
           return {
-            [Symbol.dispose]: () => { disposals++ },
             format: async (request: Tools.FormatRequest) => {
               calls++
-              return { files: request.files, runtime: "dynamic-worker" as const }
+              return {
+                files: request.files,
+                runtime: "dynamic-worker" as const,
+                [Symbol.dispose]: () => { disposals++ },
+              }
             },
           }
         },
