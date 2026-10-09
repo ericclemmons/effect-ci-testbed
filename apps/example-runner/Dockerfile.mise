@@ -1,0 +1,14 @@
+FROM node:24-trixie-slim
+
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends bash ca-certificates curl git \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/jdx/mise:2026.9.11@sha256:2f6212f640d0347c9ccf0e7d49a0cbb90e3caf1d205162f2e2c3350ecb5eb1d5 \
+  /usr/local/bin/mise /usr/local/bin/mise
+COPY --from=docker.io/cloudflare/sandbox:1.0.0 \
+  /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
+
+RUN mkdir -p /workspace
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

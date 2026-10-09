@@ -5,6 +5,7 @@ const workspace = defineContainer({
   schedulingPolicy: "durable-object",
   images: {
     workspace: { dockerfile: "../../examples/custom-runner-image/Dockerfile" },
+    mise: { dockerfile: "./Dockerfile.mise" },
   },
 })
 
@@ -31,6 +32,8 @@ export default defineConfig({
       CommandFailureProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-failure" }),
       CommandSequenceProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-sequence" }),
       SnapshotFanoutWorkflow: exports.workflow({ name: "effect-ci-example-snapshot-fanout" }),
+      NodeVersionWorkflow: exports.workflow({ name: "effect-ci-example-node-version" }),
+      MiseToolchainWorkflow: exports.workflow({ name: "effect-ci-example-mise-toolchain" }),
     },
   },
   containers: [workspace],

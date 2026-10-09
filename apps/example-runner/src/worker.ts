@@ -12,6 +12,8 @@ import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/work
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
 import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
+import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
+import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./command-policy-probe.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
@@ -113,5 +115,17 @@ export const CommandSequenceProbeWorkflow = Cloudflare.workflowEntrypoint(comman
 export const SnapshotFanoutWorkflow = Cloudflare.workflowEntrypoint(snapshotFanout, {
   root: "examples/snapshot-fanout",
   container: { image: "workspace", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const NodeVersionWorkflow = Cloudflare.workflowEntrypoint(nodeVersion, {
+  root: "examples/node-version",
+  container: { image: "mise", instance: "standard-1" },
+  reuseWorkspace: false,
+})
+
+export const MiseToolchainWorkflow = Cloudflare.workflowEntrypoint(miseToolchain, {
+  root: "examples/mise-toolchain",
+  container: { image: "mise", instance: "standard-1" },
   reuseWorkspace: false,
 })
