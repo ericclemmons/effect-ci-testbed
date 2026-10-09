@@ -4,9 +4,9 @@ import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 /** One sequence per action, reset when the Workflow interpreter is replayed. */
 export const makeCommandStepExecutor = (step: Pick<WorkflowStep, "do">) => {
   const sequences = new Map<string, number>()
-  return (request: Pick<CI.CommandExecutionRequest, "command" | "stepId" | "workspace" | "options">,
+  return (request: Pick<CI.CommandExecutionRequest, "command" | "commandIndex" | "stepId" | "workspace" | "options">,
     execute: () => Promise<CI.CommandExecutionResult>) => {
-    const sequence = (sequences.get(request.stepId) ?? 0) + 1
+    const sequence = request.commandIndex ?? (sequences.get(request.stepId) ?? 0) + 1
     sequences.set(request.stepId, sequence)
     // Tuple encoding avoids collisions between user action names and suffixes.
     return executeCommandStep(step, request, execute,

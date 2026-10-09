@@ -567,7 +567,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
     },
     executor: {
       handlesStepOptions: true,
-      execute: ({ command, onOutput, options: stepOptions, stepId, workspace }) => Effect.tryPromise({
+      execute: ({ command, commandIndex, onOutput, options: stepOptions, stepId, workspace }) => Effect.tryPromise({
         try: async () => {
           if (workspace.kind !== "remote" || workspace.id !== options.workspaceId) {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
@@ -580,7 +580,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           const container = containerFor(stepId, workspace)
           const result = await executeCommand(
-            { command, stepId, workspace, options: stepOptions },
+            { command, commandIndex, stepId, workspace, options: stepOptions },
             () => container.execute(
               command,
               workspace.cwd,

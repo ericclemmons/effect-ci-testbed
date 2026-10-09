@@ -38,6 +38,20 @@ test("multiple commands in one action have distinct replay-stable checkpoints", 
   assert.equal(calls, 3, "replay restores each command without executing it again")
 })
 
+test("check-cache reuse does not renumber later native commands", async () => {
+  const names: string[] = []
+  const step = {
+    async do(name: string, _options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+      names.push(name)
+      return callback()
+    },
+  } as unknown as Pick<WorkflowStep, "do">
+  const execute = makeCommandStepExecutor(step)
+  // The first two commands were verified by the check-cache layer.
+  await execute({ ...request, commandIndex: 3 }, async () => ({ exitCode: 0, stdout: "", stderr: "" }))
+  assert.deepEqual(names, ['command:["build",3]'])
+})
+
 test("command failure reaches the native retry boundary, not its cached result", async () => {
   let attempts = 0
   let config: WorkflowStepConfig | undefined
