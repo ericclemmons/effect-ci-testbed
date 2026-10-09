@@ -41,3 +41,9 @@ event types using fresh durable workspaces: frozen installation, a real build,
 and a credential-free deployment dry-run. A pull-request event skips the whole
 deployment branch without starting a container. No production release occurs;
 accepting and authenticating an HTTP webhook is a separate service concern.
+
+The standalone conventional YAML also passed on a real GitHub-hosted runner in
+[job 113866868572](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/37944415004/job/113866868572)
+at revision `927ff9093da7c21edacf88a4a6fe28ac428fb2b3`. The root suite stages this
+example independently and runs its `workflow_dispatch` path with `act`, so neither
+the TypeScript config nor the locked dependencies can rely on the monorepo root.
