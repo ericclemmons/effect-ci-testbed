@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as CI from "@effect-ci-testbed/ci"
+import * as Effect from "effect/Effect"
+import { resolve } from "node:path"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
@@ -12,6 +14,8 @@ import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/work
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
 import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
+import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts"
+import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -24,12 +28,21 @@ for (const [name, workflow, expected] of [
   ["Turborepo cache", turborepoCache, ["checkout", "install", "build"]],
   ["custom runner image", customRunnerImage, ["checkout", "verify baked-in python"]],
   ["snapshot fanout", snapshotFanout, ["checkout", "prepare", "left", "right"]],
+  ["Node version", nodeVersion, ["checkout", "install node", "verify node"]],
+  ["Mise toolchain", miseToolchain, ["checkout", "install toolchain", "verify node", "verify python"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
     const result = await CI.runPromise<unknown>(workflow, {
       mode: "plan",
       output: "silent",
       event: { type: "workflow_dispatch" },
+      ...(name === "Node version" || name === "Mise toolchain" ? {
+        source: {
+          checkout: () => Effect.succeed(CI.Workspace.local(resolve(
+            "examples", name === "Node version" ? "node-version" : "mise-toolchain",
+          ))),
+        },
+      } : {}),
     })
 
     assert.deepEqual(result.plan.nodes.map((node) => node.id).sort(), [...expected].sort())
