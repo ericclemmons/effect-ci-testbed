@@ -8,14 +8,14 @@ For copyable commands, expected output, and spoken narration, use the
 
 The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) opts into task inference.
 There is no custom Effect workflow, Vite task configuration, input glob, or output
-manifest. A small Vite build configuration selects the library entrypoint.
+manifest. A small Vite configuration selects the library entrypoint and lint rules.
 Ordinary package scripts opt into Vite+'s cache; Effect CI discovers
 `lint` and `build`, installs dependencies, and invokes those scripts.
 
 ```json
 {
   "lint": "vp run --cache lint:source",
-  "lint:source": "vp lint app --deny no-undef",
+  "lint:source": "vp lint",
   "build": "vp run --cache build:source",
   "build:source": "vp build"
 }
@@ -23,8 +23,10 @@ Ordinary package scripts opt into Vite+'s cache; Effect CI discovers
 
 The wrapper scripts enable caching without recursively calling themselves.
 The task bodies are Vite+'s built-in linter and builder, not custom programs.
-`no-undef` is explicitly an error, so a bare `asdf` fails lint even though it is
-valid JavaScript syntax.
+`no-undef` is explicitly an error in `vite.config.ts`, so a bare `asdf` fails lint
+even though it is valid JavaScript syntax. Plain `vp lint` discovers the project
+files without a directory argument; naming the source folder `src` is not needed.
+The config excludes the generated `dist/` output and empty `.cloudflare/` CI marker.
 
 This example joins [zero config](../zero-config) and [Vite+ caching](../vite-plus-cache)
 into a developer loop. Vite+ owns cache validity and output restoration. Effect CI
@@ -98,7 +100,7 @@ The current local executor does not include linter diagnostics in a JSON
 failure; rerun the failed target in text mode to read them. Use text mode to show
 Vite+ cache diagnostics. An `ok: true` result means this
 target succeeded, not that every possible check passed. Here `lint` runs Oxlint
-over `app/` with undefined identifiers treated as errors, and `build` bundles the
+over the project with undefined identifiers treated as errors, and `build` bundles the
 source into an ES module at `dist/message.js`.
 
 No trailer is suggested: the existing commit-scoped signer does not bind dirty

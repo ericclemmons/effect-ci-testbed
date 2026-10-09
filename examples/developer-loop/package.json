@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "vp run --cache lint:source",
-    "lint:source": "vp lint app --deny no-undef",
+    "lint:source": "vp lint",
     "build": "vp run --cache build:source",
     "build:source": "vp build"
   },

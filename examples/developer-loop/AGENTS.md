@@ -7,8 +7,9 @@ not on PATH. Do not pass `--workflow`: the empty `.cloudflare/ci/ci.ts` is disco
 Use `--format=json` when consuming results programmatically. A nonzero exit code
 is a failure. If JSON only names the failed command, rerun that target with
 `--format=text` to read its diagnostics, then fix the source and rerun. The demo's
-lint uses `vp lint app --deny no-undef`: undefined identifiers such as `asdf`
-are errors. It does not perform formatting or type checking.
+lint uses plain `vp lint`, with `no-undef` set to `error` in `vite.config.ts`:
+undefined identifiers such as `asdf` are errors. It does not perform formatting
+or type checking.
 
 Make source changes in `app/message.js`. Do not edit generated `dist/message.js`.
 Run the build after a successful lint so the artifact reflects the edited source.

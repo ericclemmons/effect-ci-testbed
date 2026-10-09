@@ -19,7 +19,8 @@ cp app/message.js "$DEMO_SOURCE"
 
 Keep `package.json`, `.cloudflare/ci/ci.ts`, and `app/message.js` open in the
 editor. The CI marker is empty. The package scripts supply the task definitions;
-their cached task bodies are `vp lint app --deny no-undef` and `vp build`.
+their cached task bodies are plain `vp lint` and `vp build`. The Vite config makes
+`no-undef` an error and excludes generated output and the empty CI marker.
 If you rehearsed in this checkout, its first run may already be cached. Call it
 the first run of this presentation, not a cold run. Use a fresh demo checkout to
 show a cold run; do not clear a shared repository cache during the presentation.
