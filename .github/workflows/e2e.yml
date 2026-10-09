@@ -367,7 +367,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
             cache-key: vite-task
             cache-key-files: examples/vite-plus-cache/app/package-lock.json
-            cache-path: examples/vite-plus-cache/app/node_modules/.vite/task-cache
+            cache-path: |
+              node_modules/.vite/task-cache
+              examples/vite-plus-cache/app/node_modules/.vite/task-cache
           - example: turborepo-cache
             workflow: examples/turborepo-cache/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'

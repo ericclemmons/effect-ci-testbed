@@ -8,6 +8,8 @@ import conditionalDeploy from "../../../examples/conditional-deploy/.cloudflare/
 import pythonToolchain from "../../../examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts"
 import systemPackage from "../../../examples/system-package/.cloudflare/ci/workflow.ts"
 import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts"
+import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
+import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 
@@ -59,5 +61,30 @@ export const PackageManagerCacheWorkflow = Cloudflare.workflowEntrypoint(package
     key: "ericclemmons-effect-ci-testbed-package-manager-cache-npm-v1",
     keyFiles: ["examples/package-manager-cache/app/package-lock.json"],
     paths: ["examples/package-manager-cache/app/.effect-ci/cache/npm"],
+  },
+})
+
+export const VitePlusCacheWorkflow = Cloudflare.workflowEntrypoint(vitePlusCache, {
+  root: "examples/vite-plus-cache",
+  container: { instance: "standard-1" },
+  reuseWorkspace: false,
+  cache: {
+    key: "ericclemmons-effect-ci-testbed-vite-plus-task-cache-v1",
+    keyFiles: ["examples/vite-plus-cache/app/package-lock.json"],
+    paths: [
+      "node_modules/.vite/task-cache",
+      "examples/vite-plus-cache/app/node_modules/.vite/task-cache",
+    ],
+  },
+})
+
+export const TurborepoCacheWorkflow = Cloudflare.workflowEntrypoint(turborepoCache, {
+  root: "examples/turborepo-cache",
+  container: { instance: "standard-1" },
+  reuseWorkspace: false,
+  cache: {
+    key: "ericclemmons-effect-ci-testbed-turborepo-task-cache-v1",
+    keyFiles: ["examples/turborepo-cache/app/package-lock.json"],
+    paths: ["examples/turborepo-cache/app/.turbo/cache"],
   },
 })

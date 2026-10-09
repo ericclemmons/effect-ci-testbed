@@ -14,6 +14,8 @@ jobs:
     with:
       cache-key: vite-task
       cache-key-files: app/package-lock.json
-      cache-path: app/node_modules/.vite/task-cache
+      cache-path: |
+        node_modules/.vite/task-cache
+        app/node_modules/.vite/task-cache
       workflow: .cloudflare/ci/workflow.ts
     secrets: inherit
