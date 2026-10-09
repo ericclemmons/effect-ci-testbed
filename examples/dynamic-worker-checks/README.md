@@ -28,6 +28,12 @@ Oxlint, Oxfmt, and Vitest can use the same path when they expose Worker-compatib
 JavaScript or Wasm APIs. Loading untrusted project modules belongs in a Cloudflare
 Dynamic Worker with explicit capability bindings and remains separate roadmap work.
 
+The [hosted example runner](../../apps/example-runner) imports this workflow unchanged.
+Instance `coverage-source-checks-20261009-1` completed both actions with live workspace
+reuse disabled. Its three native steps only checkout, checkpoint, and read the source;
+the formatter runs in the Worker, with no container command or new workspace snapshot.
+Platform configuration belongs to that app rather than this consumer example.
+
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).
