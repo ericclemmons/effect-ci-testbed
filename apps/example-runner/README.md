@@ -30,6 +30,9 @@ cf workflows instances get npm-1 \
 | [Optional checks](../../examples/optional-checks) | `effect-ci-example-optional-checks` |
 | [Durable workspace](../../examples/cloudflare-runner) | `effect-ci-example-workspace` |
 | [Conditional deployment](../../examples/conditional-deploy) | `effect-ci-example-conditional-deploy` |
+| [Python toolchain](../../examples/cloudflare-toolchain) | `effect-ci-example-python-toolchain` |
+| [System packages](../../examples/system-package) | `effect-ci-example-system-package` |
+| [Package-manager downloads](../../examples/package-manager-cache) | `effect-ci-example-package-manager-cache` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -58,6 +61,10 @@ Workflow version and native history. These are real account runs, not local simu
 | Durable workspace | `coverage-workspace-20261008-3` | checkout/install/build complete with live reuse disabled; 6 steps including workspace checkpoints; source revision `caba617c57ddc664020b955b63c275b8e4670256` |
 | Main push condition | `coverage-conditional-push-20261008-1` | checkout and echo-only deploy complete; 4 steps |
 | Pull-request condition | `coverage-conditional-pull_request-20261008-1` | deploy skipped, condition retained in plan, no container steps |
+| Python toolchain | `coverage-python-toolchain-20261008-1` | apt installs Python/pip; pinned build tools produce a Python package; 7 native steps; source revision `caba617c57ddc664020b955b63c275b8e4670256` |
+| System package | `coverage-system-package-20261008-1` | apt installs ImageMagick; downstream action verifies the binary; 6 native steps; same source revision |
+| npm download cache, warm | `coverage-npm-cache-warm-20261008-1` | frozen install populates the cache; dependency verification passes; 22 native steps; same source revision |
+| npm download cache, fresh offline run | `coverage-npm-cache-offline-20261008-2` | distinct instance restores the cache, runs `npm ci --offline`, and verifies the installed dependency; 23 native steps; same source revision |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.
@@ -65,3 +72,9 @@ View these in **Workers → Workflows → instance** in the deploying account, o
 The pnpm runner uses `standard-1` for both initial startup and snapshot restoration.
 Selected standalone projects ignore a parent pnpm workspace; an actual monorepo root
 with its own `pnpm-workspace.yaml` retains normal workspace behavior.
+
+For the download-cache example, pass
+`"event":{"type":"workflow_dispatch","payload":{"offline":false}}` to the warm
+instance, wait for completion, then use a new instance ID with `offline: true`.
+Inspect the install command in the returned plan to confirm `--offline` was used.
+The cache namespace is specific to this repository and example, not shared tenants.

@@ -30,16 +30,18 @@ install form (`npm ci`) is the default. Restoring the cache accelerates that com
 it does not return a cached action value or replace the workspace produced by
 `checkout()`.
 
-The GitHub runner persists that tool-owned directory with `actions/cache`. A
-Cloudflare runner will provide the same contract with directory backup or another
-path-scoped store; a whole-workspace snapshot is deliberately not used as a cache
-because restoring it could erase changes made after checkout.
+The GitHub runner persists that tool-owned directory with `actions/cache`. The
+Cloudflare runner uses snapshots as transport, checks out the requested source again,
+and preserves only the configured tool cache paths across command execution. Cached
+workspace state is not returned in place of running installation.
 
 The repository test runs the Effect workflow once to populate that directory, then
 uses it to install into a fresh workspace with npm's network access disabled. The
-Cloudflare adapter is also bundled in CI. Cross-instance persistence on deployed
-Cloudflare infrastructure remains `🔜`; Wrangler's local Workflow emulator currently
-does not reliably complete the second fresh container-backed instance.
+Cloudflare adapter is also bundled in CI. The [hosted example runner](../../apps/example-runner)
+completed `coverage-npm-cache-warm-20261008-1`, then a distinct
+`coverage-npm-cache-offline-20261008-2` instance ran `npm ci --offline` and verified
+the dependency. Both instances retain native checkpoints and command output in the
+Cloudflare dashboard. This hosted proof does not imply local emulator parity.
 
 The two persistence mechanisms remain separate:
 
@@ -56,7 +58,7 @@ The two persistence mechanisms remain separate:
   invokes the reusable GitHub runner with its cache policy.
 - [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) remains cache-agnostic.
 - [`src/worker.ts`](./src/worker.ts) is where a Cloudflare runner receives the
-  corresponding policy; its hosted path remains marked `🔜` in the root matrix.
+  corresponding policy; the hosted runner uses the same policy with a repository-scoped key.
 
 In both Effect variants, `CI.PackageManager.JavaScript(workspace)` chooses the npm
 cache location. The platform adapter only decides how that directory persists.

@@ -13,6 +13,13 @@ flowchart LR
 
 ---
 
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) completed
+`coverage-system-package-20261008-1` in a real Cloudflare account. ImageMagick is
+installed with apt and verified by a downstream action across six native Workflow
+steps; the workflow is unchanged from local and GitHub execution.
+
 The action asks for the workspace-bound Apt capability and installs ImageMagick:
 
 ```ts

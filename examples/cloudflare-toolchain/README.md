@@ -13,6 +13,13 @@ flowchart LR
 
 ---
 
+## Hosted coverage
+
+The [hosted example runner](../../apps/example-runner) completed
+`coverage-python-toolchain-20261008-1` in a real Cloudflare account. It installs
+Python and pip with apt, installs the pinned package-build tools, and builds the
+Python package across seven native Workflow steps. No project Dockerfile is required.
+
 The shared Effect CI Sandbox 1.0 image supplies Node.js, Git, and `sandbox-shim`. An
 ordinary action yields the apt package-manager capability, installs Python at runtime,
 and returns the prepared logical workspace:

@@ -110,7 +110,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
 | [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
-| [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | 🔜 |
+| [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
 | [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | 🔜 |
 | [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
@@ -119,10 +119,10 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | 🔜 |
 | [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse Turborepo's local or remote task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | 🔜 |
-| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | 🔜 |
+| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | 🔜 |
 | [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | 🔜 |
-| [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | 🔜 |
+| [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | ✅ |
 | [Customize cache keys, paths, invalidation, or disable caching](./examples/cache-policy) | ✅ | ✅ | ✅ | 🔜 |
 | [Fan one prepared snapshot out to isolated parallel checks](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | 🔜 |
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |

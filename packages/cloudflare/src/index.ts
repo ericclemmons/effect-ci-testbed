@@ -434,6 +434,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     container.start({
       containerSnapshot: snapshot,
+      instance: options.instance ?? "lite",
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
