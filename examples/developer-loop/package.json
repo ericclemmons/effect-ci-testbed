@@ -1,0 +1,15 @@
+{
+  "name": "effect-ci-developer-loop-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "vp run --cache lint:source",
+    "lint:source": "node --check app/message.js",
+    "build": "vp run --cache build:source",
+    "build:source": "node scripts/build.ts"
+  },
+  "devDependencies": {
+    "vite-plus": "1.0.0"
+  }
+}

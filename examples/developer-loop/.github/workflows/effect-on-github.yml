@@ -1,0 +1,22 @@
+name: Effect CI on GitHub
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/developer-loop/.cloudflare/ci/ci.ts
+      cache-key: developer-loop-vite-task
+      cache-key-files: examples/developer-loop/package-lock.json
+      cache-path: |
+        node_modules/.vite/task-cache
+        examples/developer-loop/node_modules/.vite/task-cache
+    secrets: inherit

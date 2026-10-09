@@ -97,6 +97,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | --- | :---: | :---: | :---: | :---: |
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | ✅ |
 | [Infer lint, format, check, test, and build from an empty `ci.ts`](./examples/zero-config) | ✅ | ✅ | ✅ | 🔜 |
+| [Demo discovery, cached checks, and agent feedback before pushing](./examples/developer-loop) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | 🔜 |
 | [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
 | Materialize R2, Durable Object, or artifact sources | 🔜 | 🔜 | 🔜 | 🔜 |
