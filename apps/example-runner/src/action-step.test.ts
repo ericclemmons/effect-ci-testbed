@@ -112,6 +112,45 @@ test("timeout interrupts the Effect fiber and never commits a late result", asyn
   assert.equal(configs.get('action:"slow"')?.timeout, 5)
 })
 
+test("a failed final checkpoint retries the body instead of caching incomplete success", async () => {
+  const { step, attempts } = native()
+  const active = new Set<string>()
+  let executions = 0
+  let commits = 0
+  const prepare = CI.action("prepare", () => () => Effect.succeed(CI.Workspace.remote("fixture", "/workspace")))
+  const build = CI.action("build", function* () {
+    const workspace = yield* prepare()
+    return () => workspace.exec("build")
+  }, { retries: { limit: 1, delay: 0 } })
+  const options: CI.RunOptions = {
+    output: "silent",
+    actionExecutor: makeActionExecutor(step, active),
+    executor: { handlesStepOptions: true, execute: () => Effect.sync(() => {
+      executions++
+      return { exitCode: 0, stdout: "built", stderr: "" }
+    }) },
+    workspacePersistence: {
+      commit: ({ stepId, workspace }) => Effect.suspend(() => {
+        if (stepId !== "build") return Effect.succeed(workspace)
+        assert.ok(active.has("build"))
+        if (++commits === 1) return Effect.fail(new Error("snapshot unavailable"))
+        return Effect.succeed(workspace.withRevision({ provider: "fixture", value: { id: "snapshot" } }))
+      }),
+      checkpoint: () => Effect.die("not used"),
+      restore: () => Effect.die("not used"),
+    },
+  }
+  const workflow = CI.workflow("checkpoint-policy", () => build())
+  const result = await CI.runPromise(workflow, options)
+  await CI.runPromise(workflow, options)
+  assert.equal(executions, 2)
+  assert.equal(commits, 2)
+  assert.deepEqual(attempts.map((entry) => entry.success), [false, true])
+  assert.equal(result.plan.nodes.find((node) => node.id === "build")?.commands.length, 1)
+  assert.ok(result.value.revision)
+  assert.equal(active.size, 0)
+})
+
 test("late dependencies fail explicitly instead of nesting checkpoints", async () => {
   const { step } = native()
   let dependencies = 0
