@@ -119,3 +119,10 @@ workspace or trigger a needless snapshot. Its runner uses `standard-1` consisten
 Superseded test instances remain in the native history; no instances were restarted.
 Pure Effect action-body policies remain a separate unverified Cloudflare gap, so the
 execution-policy matrix row stays `🔜`.
+
+Follow-up edges exposed by these runs: the native cache adapter does not yet
+fingerprint `keyFiles` (Vite+/Turbo validate their own task inputs, but custom cache
+invalidation still needs work). Snapshot resource-limit failures also occurred in
+the superseded optional-check runs. After the live container stopped, retrying only
+the snapshot could not recover its uncommitted files. Removing needless check
+snapshots fixes this example, not the general checkpoint-failure recovery problem.
