@@ -19,7 +19,7 @@ test("command failure reaches the native retry boundary, not its cached result",
       config = options
       for (let retry = 0; ; retry++) {
         try { return await callback() }
-        catch (error) { if (retry >= options.retries!.limit) throw error }
+        catch (error) { if (retry >= options.retries!.limit) throw new Error(String((error as Error).message)) }
       }
     },
   } as unknown as Pick<WorkflowStep, "do">
@@ -47,4 +47,21 @@ test("no explicit retry policy means one attempt, matching the local runner", as
   }), (error) => error instanceof CI.CommandError && error.exitCode === 7)
   assert.equal(attempts, 1)
   assert.equal(config?.retries?.limit, 0)
+})
+
+test("exhausted retries preserve the final command failure", async () => {
+  let attempts = 0
+  const step = {
+    async do(_name: string, options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+      for (let retry = 0; ; retry++) {
+        try { return await callback() }
+        catch (error) { if (retry >= options.retries!.limit) throw new Error((error as Error).message) }
+      }
+    },
+  } as unknown as Pick<WorkflowStep, "do">
+  await assert.rejects(executeCommandStep(step, request, async () => {
+    attempts++
+    return { exitCode: 7, stderr: `failure ${attempts}`, stdout: "" }
+  }), (error) => error instanceof CI.CommandError && error.exitCode === 7 && error.details === "failure 3")
+  assert.equal(attempts, 3)
 })

@@ -97,5 +97,9 @@ export const CustomRunnerImageWorkflow = Cloudflare.workflowEntrypoint(customRun
   reuseWorkspace: false,
 })
 
-export const CommandRetryProbeWorkflow = Cloudflare.workflowEntrypoint(commandRetryProbe)
-export const CommandFailureProbeWorkflow = Cloudflare.workflowEntrypoint(commandFailureProbe)
+export const CommandRetryProbeWorkflow = Cloudflare.workflowEntrypoint(commandRetryProbe, {
+  container: { image: "workspace", instance: "standard-1" },
+})
+export const CommandFailureProbeWorkflow = Cloudflare.workflowEntrypoint(commandFailureProbe, {
+  container: { image: "workspace", instance: "standard-1" },
+})
