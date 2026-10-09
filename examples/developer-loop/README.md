@@ -1,5 +1,8 @@
 # Check an edit before pushing, then reuse unchanged work
 
+For copyable commands, expected output, and spoken narration, use the
+[step-by-step talking script](./TALKING-SCRIPT.md).
+
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?
 
