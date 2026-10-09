@@ -321,6 +321,17 @@ an Access login. An unsigned webhook must still return `401`.
 
 Save the service token when it is created; Cloudflare shows its secret only once:
 
+For a developer's existing Access identity, no service token is necessary:
+
+```sh
+cloudflared access login "$EFFECT_CI_PUBLIC_URL"
+export CF_ACCESS_TOKEN="$(cloudflared access token --app "$EFFECT_CI_PUBLIC_URL")"
+```
+
+The token expires with your Access session. `cf-ci` sends it as `CF-Access-Token`
+and still requires the Worker API token. For unattended execution, use the scoped
+service-token pair instead (unset `CF_ACCESS_TOKEN` first):
+
 ```sh
 export CF_ACCESS_CLIENT_ID='<access-client-id>'
 export CF_ACCESS_CLIENT_SECRET='<access-client-secret>'

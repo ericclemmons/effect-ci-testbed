@@ -109,7 +109,9 @@ const remoteHeaders = (): Headers => {
     headers.set("authorization", `Bearer ${process.env.EFFECT_CI_REMOTE_TOKEN}`)
   }
 
-  if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
+  if (process.env.CF_ACCESS_TOKEN) {
+    headers.set("cf-access-token", process.env.CF_ACCESS_TOKEN)
+  } else if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
     headers.set("cf-access-client-id", process.env.CF_ACCESS_CLIENT_ID)
     headers.set("cf-access-client-secret", process.env.CF_ACCESS_CLIENT_SECRET)
   }
