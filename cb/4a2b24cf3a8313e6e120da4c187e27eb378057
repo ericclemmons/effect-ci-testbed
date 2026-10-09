@@ -1,0 +1,45 @@
+.github/workflows/e2e.yml
+  s_e215b15b333556::t_068f1e74e3a9dd 22,94,124-125,306-313
+README.md
+  s_e215b15b333556::t_ae80c40d5f36ef 100
+examples/developer-loop/.github/workflows/effect-on-github.yml
+  s_93ba4661ae72f7::t_385e6e889a3959 1-22
+examples/developer-loop/.github/workflows/github.yml
+  s_e215b15b333556::t_7d615dab211eb6 1-26
+examples/developer-loop/AGENTS.md
+  s_e215b15b333556::t_5c2b49d543c6ed 1-16
+examples/developer-loop/README.md
+  s_e215b15b333556::t_1e857e082c7a26 1-100
+examples/developer-loop/app/message.js
+  s_e215b15b333556::t_a7d40c3ac3b9f6 1
+examples/developer-loop/package-lock.json
+  s_e215b15b333556::t_2aedef1c2eb1ca 1-3245
+examples/developer-loop/package.json
+  s_e215b15b333556::t_9393793c37b505 1-15
+pnpm-lock.yaml
+  s_e215b15b333556::t_906b3e7bf0bb1b 395-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cb4a2b24cf3a8313e6e120da4c187e27eb378057",
+  "prompts": {},
+  "sessions": {
+    "s_93ba4661ae72f7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11456-9e55-7c11-beb0-f4696e00ac53",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_e215b15b333556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ea7-e7a9-7fc2-955e-5a7e608a4442",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
