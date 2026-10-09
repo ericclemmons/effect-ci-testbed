@@ -34,17 +34,6 @@ export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
   },
 })
 
-export const CachePolicyWorkflow = Cloudflare.workflowEntrypoint(cachePolicy, {
-  root: "examples/cache-policy",
-  container: { image: "workspace" },
-  reuseWorkspace: false,
-  cache: {
-    key: "custom-build-cache",
-    keyFiles: ["examples/cache-policy/app/src/input.txt"],
-    paths: ["examples/cache-policy/app/.cache/build"],
-  },
-})
-
 // This test host has no HTTP control plane, credentials, or approval endpoint.
 // Only authenticated Cloudflare API callers can create or inspect instances.
 export default {
