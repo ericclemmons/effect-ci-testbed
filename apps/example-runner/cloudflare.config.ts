@@ -1,4 +1,4 @@
-import { defineConfig, defineContainer, exports } from "cf/config"
+import { bindings, defineConfig, defineContainer, exports } from "cf/config"
 
 const workspace = defineContainer({
   name: "effect-ci-example-workspace",
@@ -15,6 +15,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
+    env: { LOADER: bindings.workerLoader() },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
@@ -38,6 +39,7 @@ export default defineConfig({
       DeployHookWorkflow: exports.workflow({ name: "effect-ci-example-deploy-hook" }),
       SourceChecksWorkflow: exports.workflow({ name: "effect-ci-example-source-checks" }),
       CachePolicyWorkflow: exports.workflow({ name: "effect-ci-example-cache-policy" }),
+      DynamicFormatterWorkflow: exports.workflow({ name: "effect-ci-example-dynamic-formatter" }),
     },
   },
   containers: [workspace],

@@ -42,6 +42,15 @@ cf workflows instances get npm-1 \
 | [Exported actions](../../examples/exported-actions) | `effect-ci-example-exported-actions` |
 | [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
 | [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
+| [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
+| [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
+
+For local Dynamic Worker execution, start `pnpm --filter
+@effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
+create an `effect-ci-example-dynamic-formatter` instance with the same repository
+and full commit SHA parameters above. This exercises WorkerLoader locally, rather
+than the default Node formatter. The current CLI's `--local` instance commands do
+not connect to this Vite dev server; use its explorer instead.
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -164,9 +173,15 @@ Superseded test instances remain in the native history; no instances were restar
 Pure Effect action-body policies remain a separate unverified Cloudflare gap, so the
 execution-policy matrix row stays `🔜`.
 
-Follow-up edges exposed by these runs: the native cache adapter does not yet
-fingerprint `keyFiles` (Vite+/Turbo validate their own task inputs, but custom cache
-invalidation still needs work). Snapshot resource-limit failures also occurred in
+Cache input fingerprinting is now verified: `coverage-cache-inputs-cold-20261009-2`
+missed, `coverage-cache-inputs-warm-20261009-1` hit at source
+`b7c510ed661c1c221072849ba1b1dd93308e702a`, and
+`coverage-cache-inputs-changed-20261009-1` missed after changing its declared input
+at source `e8a0af66921525c4ca6b8957e98d881c75dcdf89`. All three verified the output.
+The identity includes key-file contents, repository, owned paths, and container
+configuration; Vite+/Turbo additionally validate their own task inputs.
+
+Snapshot resource-limit failures also occurred in
 the superseded optional-check runs. After the live container stopped, retrying only
 the snapshot could not recover its uncommitted files. Removing needless check
 snapshots fixes this example, not the general checkpoint-failure recovery problem.
