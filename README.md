@@ -115,7 +115,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | ✅ |
 | [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
 | [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
-| [Trigger a remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
+| [Trigger the configured remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
 | Execute untrusted project checks in capability-limited Dynamic Workers | — | 🔜 | — | 🔜 |
@@ -132,7 +132,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
 | [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | 🔜 |
 | [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
-| [Pause and durably resume a release from a protected review page](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
+| [Pause and durably resume a release with authorized inline Slack approval](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Send a Discord approval notification for a waiting release](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Health-mediated release: upload a version, advance 10% → 25% → 75% → 100%, and restore the prior traffic split on failure](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
