@@ -1,0 +1,21 @@
+examples/developer-loop/README.md
+  s_e215b15b333556::t_c645f068ea0c7e 3-5
+examples/developer-loop/TALKING-SCRIPT.md
+  s_e215b15b333556::t_ee38c3ba96b4f7 1-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5f479fd544080ffcd4f8f0148f90003cc39079ec",
+  "prompts": {},
+  "sessions": {
+    "s_e215b15b333556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ea7-e7a9-7fc2-955e-5a7e608a4442",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
