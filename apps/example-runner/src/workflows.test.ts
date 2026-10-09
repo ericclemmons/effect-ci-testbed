@@ -11,6 +11,7 @@ import systemPackage from "../../../examples/system-package/.cloudflare/ci/workf
 import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts"
 import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts"
 import customRunnerImage from "../../../examples/custom-runner-image/.cloudflare/ci/workflow.ts"
+import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts"
 
 for (const [name, workflow, expected] of [
   ["npm", nodeNpm, ["checkout", "install", "lint", "test", "build"]],
@@ -22,6 +23,7 @@ for (const [name, workflow, expected] of [
   ["Vite+ cache", vitePlusCache, ["checkout", "install", "build"]],
   ["Turborepo cache", turborepoCache, ["checkout", "install", "build"]],
   ["custom runner image", customRunnerImage, ["checkout", "verify baked-in python"]],
+  ["snapshot fanout", snapshotFanout, ["checkout", "prepare", "left", "right"]],
 ] as const) {
   test(`${name} uses the unchanged consumer workflow`, async () => {
     const result = await CI.runPromise<unknown>(workflow, {

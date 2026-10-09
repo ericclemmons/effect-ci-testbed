@@ -36,6 +36,7 @@ cf workflows instances get npm-1 \
 | [Vite+ task cache](../../examples/vite-plus-cache) | `effect-ci-example-vite-plus-cache` |
 | [Turborepo task cache](../../examples/turborepo-cache) | `effect-ci-example-turborepo-cache` |
 | [Custom runner image](../../examples/custom-runner-image) | `effect-ci-example-custom-runner-image` |
+| [Isolated snapshot fanout](../../examples/snapshot-fanout) | `effect-ci-example-snapshot-fanout` |
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
@@ -72,6 +73,7 @@ Workflow version and native history. These are real account runs, not local simu
 | Turborepo task cache | `coverage-turborepo-hit-20261008-1` | fresh instance reports 1 cached task, matching hash `f37d6ec47086f918`, 85 ms task run; 11 native steps; same source revision |
 | Clean-source cache regression | `coverage-npm-cache-offline-20261008-3` | offline install and dependency verification pass after removing stale untracked files; 23 native steps; same source revision |
 | Custom runner image | `coverage-custom-image-20261008-1` | checkout checkpoint restored into the project Dockerfile image; baked-in `Python 3.13.5` verified; 3 native steps; source revision `bc50897f2d6ff8a388bcc6a0af22886f89bfc2c4` |
+| Isolated snapshot fanout | `coverage-snapshot-fanout-20261008-1` | prepare runs once; left/right start together and independently overwrite the same filename; 8 native steps with live reuse disabled; source revision `55be3e8c7bff809aa9a8a910f888bc86613922e0` |
 
 View these in **Workers → Workflows → instance** in the deploying account, or use
 `cf workflows instances get INSTANCE --workflow-name WORKFLOW --simple true`.

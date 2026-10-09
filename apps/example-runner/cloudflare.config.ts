@@ -30,6 +30,7 @@ export default defineConfig({
       CommandRetryProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-retry" }),
       CommandFailureProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-failure" }),
       CommandSequenceProbeWorkflow: exports.workflow({ name: "effect-ci-probe-command-sequence" }),
+      SnapshotFanoutWorkflow: exports.workflow({ name: "effect-ci-example-snapshot-fanout" }),
     },
   },
   containers: [workspace],
