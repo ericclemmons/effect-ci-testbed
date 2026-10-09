@@ -52,11 +52,27 @@ const run = (checkCache: CI.CheckCache, checkout = repository) => CI.runPromise(
 })
 
 await run(writer)
-const reused = await run(verifier, join(tmpdir(), "different-ci-checkout"))
+const otherCheckout = join(mkdtempSync(join(tmpdir(), "effect-ci-evidence-clone-")), "checkout")
+git("clone", repository, otherCheckout)
+const reused = await run(verifier, otherCheckout)
 
 assert.equal(executions, 1)
 assert.equal(reused.plan.nodes.find((node) => node.id === "verified lint")?.status, "verified")
 assert.match(git("notes", "--ref=effect-ci", "show", revision), /signature/)
+
+// Old HEAD evidence must not skip validation of unstaged or staged edits.
+const originalNote = git("notes", "--ref=effect-ci", "show", revision)
+writeFileSync(join(repository, "source.ts"), "export const answer = 43\n")
+await run(writer)
+assert.equal(executions, 2)
+assert.equal(git("notes", "--ref=effect-ci", "show", revision), originalNote)
+git("add", "source.ts")
+await run(verifier)
+assert.equal(executions, 3)
+
+writeFileSync(join(otherCheckout, "new-source.ts"), "export const added = true\n")
+await run(verifier, otherCheckout)
+assert.equal(executions, 4, "untracked source must not reuse a HEAD proof")
 
 writeFileSync(join(repository, "source.ts"), "export const answer = 43\n")
 git("add", "source.ts")
@@ -80,4 +96,4 @@ await CI.runPromise(workflow, {
   source: { checkout: () => Effect.succeed(CI.Workspace.local(repository)) },
 })
 
-assert.equal(executions, 2)
+assert.equal(executions, 5)

@@ -133,6 +133,8 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Pause and durably resume a release from a protected review page](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | [Send a Discord approval notification for a waiting release](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Health-mediated release: upload a version, advance 10% → 25% → 75% → 100%, and restore the prior traffic split on failure](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Verify a dirty working tree before committing and attach signed content-bound evidence](./examples/verification-evidence#pre-commit-evidence) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
