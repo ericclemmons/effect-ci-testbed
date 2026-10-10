@@ -9,6 +9,7 @@ export { RollbackExhaustionWorkflow } from "./rollback-probe.ts"
 export { CheckpointRecoveryWorkflow } from "./checkpoint-recovery-probe.ts"
 export { CredentialVault, SecretOutbound, SecretWorkspaceContainer, SecretOutboundWorkflow } from "./secret-outbound.ts"
 export { ArtifactsSourceWorkflow } from "./artifacts-source.ts"
+export { R2SourceWorkflow } from "./r2-source.ts"
 export { AnalyticsProbeWorkflow } from "./analytics-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
