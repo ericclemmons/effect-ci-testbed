@@ -19,6 +19,11 @@ verified; WOBS completeness and notification images remain unverified. See the
 [HMD evidence and remaining matrix](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof).
 No notification token or deployment credential is present in this controller.
 
+`WobsCohortProbeWorkflow` separately verifies twenty native terminal fetch outcomes
+through the Analytics SQL binding. It captures independent `CF-Ray` receipts before
+querying, waits for every expected receipt, and counts neither custom logs nor missing
+records as success. It does not yet drive the release controller or notifications.
+
 From the repository root:
 
 ```sh
@@ -90,6 +95,35 @@ The source always uses the supplied immutable revision, independently of event/r
 
 ## Verified runs
 
+### Closed native WOBS cohort
+
+`cf_71ce7065194ffed474d86f9db4a30c25b04553aac9952bc59be06a5a597ee16a`
+completed on 2026-10-10 UTC, host deployment
+`4926a8ec-5bd4-4e69-a32f-b7ace26406e6`, Workflow version
+`3a8c22b8-4855-490d-81dc-91cf32f8d8bb`. Twenty healthy requests returned twenty
+unique edge receipts. The first query returned zero records and remained uncertain;
+after a native 30-second wait, all twenty terminal `cf-worker-event` rows arrived
+with sampling interval 1, the pinned baseline version and zero failures. Twenty
+additional custom log rows were excluded. There were no missing, conflicting or
+rejected native records. No traffic allocation changed and no Slack message was sent.
+
+An earlier query-string identity probe
+`cf_1a8619686e92846dbaf58babd434e6e0ab95bd414140d3af409a425bc6de49f0`
+correctly stayed incomplete: query values are redacted. The adapter uses independent
+edge receipts instead; it does not disable query/header redaction or expose raw logs.
+The [read-only assertion](ci/tests/live-wobs.test.ts) inspects the recorded run:
+
+```sh
+WOBS_COHORT_INSTANCE=cf_71ce7065194ffed474d86f9db4a30c25b04553aac9952bc59be06a5a597ee16a \
+  node --test apps/example-runner/ci/tests/live-wobs.test.ts
+```
+
+This closes only that controlled workload, not ambient traffic or a global ingest
+watermark. The [binding documentation](https://developers.cloudflare.com/analytics/sql-api/workers-binding/)
+currently says Log Explorer datasets are unsupported; this account's observed query
+success is experimental evidence, not a supported production contract. Full WOBS
+release gates, Workflow/cron terminal cohorts and live notification charts remain open.
+
 ### HMD prerequisites (not a complete release proof)
 
 `coverage-hmd-analytics-20261010-1` verified the Analytics SQL Worker binding with
@@ -117,8 +151,10 @@ The dedicated [HMD demo](../hmd-demo) baseline
 returned 503 and its exact version ID. Deployment
 `bfe54ed8-5cfb-4fb6-b296-15c27ee186b8` still allocated 100% to the baseline, and the
 normal URL remained healthy after candidate upload. No candidate traffic allocation
-or production application was changed. Progressive promotion/rollback and live
-notification charts are still unverified.
+or production application was changed by that prerequisite test. Subsequent
+[hosted HMD runs](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof)
+verified progressive promotion and rollback; live notification images and complete
+WOBS cohorts remain unverified.
 
 `coverage-secret-outbound-20261009-1` completed three native steps with source
 `36ea21ebbaaa2b972d917418fbffb7b59de2eac6`, Worker deployment
