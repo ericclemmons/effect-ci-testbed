@@ -608,8 +608,8 @@ jobs:
         run: node --test packages/github/src/*.test.ts packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/workflow.test.ts apps/effect-ci/access.config.test.ts apps/example-runner/src/*.test.ts
       - name: Verify remote CLI authentication and event streaming
         run: node --test packages/cli/src/*test.ts apps/example-runner/src/*test.ts
-      - name: Verify bounded Artifacts source exports
-        run: node --test packages/cloudflare/src/*.test.ts
+      - name: Verify source exports and HMD health foundations
+        run: node --test packages/cloudflare/src/*.test.ts apps/hmd-demo/src/*.test.ts
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
