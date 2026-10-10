@@ -21,6 +21,15 @@ The [trusted hosted controller](../../apps/example-runner/src/hmd-review-control
 uses real version-attributed HTTP cohorts against the dedicated demo Worker, **not WOBS**.
 Local policy tests are implemented; hosted approval execution is not yet verified.
 
+The negative hosted timeout path is verified: `coverage-hmd-review-timeout-20261010-1`
+promoted the dedicated healthy candidate to 10%, recorded inconclusive HTTP evidence,
+then waited five native minutes without an approval event. `WorkflowTimeoutError`
+triggered exact baseline restoration in deployment
+`35c17724-2bfe-4480-ba5c-d05caad654a0`, independently checked through the deployment API.
+No 25% promotion or approval-resolution checkpoint ran. This proves timeout rollback,
+not a successful human approval, WOBS gate or Slack integration. The run also exposed
+native preview truncation; the compact review request below fixes digest visibility.
+
 “Within margins” means **near a threshold**, not permission to exceed it silently:
 the absolute SLO is 10%, the increase budget is five percentage points, and human
 review is required when an otherwise acceptable confidence bound is within two
@@ -50,9 +59,11 @@ cf workflows instances create effect-ci-example-hmd-review --body '{"params":{}}
 cf workflows instances get INSTANCE_ID --workflow-name effect-ci-example-hmd-review --simple true
 ```
 
-In the dashboard, open the current `health:snapshot-PHASE` checkpoint, review its
-evidence, and send event type `hmd-review-PHASE` with this payload (replace the
-digest and rationale):
+In the dashboard, open the current compact `review:request-PHASE` checkpoint,
+review its risk summary, and send event type `hmd-review-PHASE` with this payload (replace the
+digest and rationale). The complete snapshot is retained by the controller, but
+native step output previews truncate large values such as SVGs; the compact request
+keeps the exact digest and counts visible without relying on those previews:
 
 ```json
 {

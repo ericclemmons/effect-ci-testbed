@@ -30,6 +30,10 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
     do: async (name: string, _options: unknown, callback: () => Promise<unknown>) => {
       const value = await callback()
       if (name.startsWith("health:snapshot")) snapshots.set(name, value as { snapshot: string })
+      if (name.startsWith("review:request")) {
+        assert.ok(Buffer.byteLength(JSON.stringify(value)) < 1024, "review identity must fit native step previews")
+        assert.match((value as { snapshot: string }).snapshot, /^[a-f0-9]{64}$/)
+      }
       return value
     },
     waitForEvent: async (name: string) => {

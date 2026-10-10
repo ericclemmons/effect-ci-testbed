@@ -57,6 +57,13 @@ export async function runHumanReviewedHmd(
         let basis: "health" | "human-risk-acceptance" = "health"
         let approval: { readonly reason: string; readonly acceptedAt: number } | undefined
         if (snapshot.route.status === "review") {
+          // Native step outputs are truncated: keep the approval identity and risk summary small.
+          await step.do(`review:request-${phase}`, once, async () => ({ snapshot: snapshot.snapshot,
+            expiresAt: snapshot.expiresAt, phase, baselineVersion, candidateVersion,
+            reason: snapshot.route.status === "review" ? snapshot.route.reason : "",
+            baselineTrials: snapshot.baseline.trials, candidateTrials: snapshot.candidate.trials,
+            candidateFailures: snapshot.candidate.failures, candidateBounds: snapshot.decision.candidate,
+            increaseBounds: snapshot.decision.increase, margins, evidenceSource: "closed-client-http-cohort" }))
           await step.do(`release:renew-before-review-${phase}`, once, () => broker.renew(owner))
           const response = await step.waitForEvent(`review:phase-${phase}`, { type: `hmd-review-${phase}`, timeout: "5 minutes" })
           // Checkpoint the acceptance time: replay preserves the original deadline evaluation.
