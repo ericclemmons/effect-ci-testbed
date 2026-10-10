@@ -789,6 +789,17 @@ export const runCli = async (
   cwd: string = process.cwd(),
 ): Promise<void> => {
   try {
+    // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
+    // Keep explicit paths and discovered programs on the existing custom-runner path.
+    const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
+    if (!explicit && !findWorkflow(cwd)) {
+      const invocation = parseInvocation(args)
+      if (invocation.location === "remote" && invocation.command === "run") {
+        process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
+          resolve(cwd, ".cloudflare/ci/workflow.ts"))
+        return
+      }
+    }
     const loaded = await loadProgram(args, cwd)
     process.exitCode = await main(loaded.program, loaded.args, loaded.path)
   } catch (error) {

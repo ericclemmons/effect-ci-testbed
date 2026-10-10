@@ -49,8 +49,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "") => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", "--workflow", join(directory, "ci.ts")], {
+    const run = (userToken = "", explicit = true) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
         env: { ...process.env, EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
@@ -67,11 +67,17 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const userSuccess = await run("fixture-user-token")
     assert.equal(userSuccess.code, 0, userSuccess.output)
     assert.match(userSuccess.output, /Workflow completed/)
+    // Removing the only workflow proves root dispatch does not import a local program.
+    execFileSync("git", ["rm", "ci.ts"], { cwd: directory })
+    execFileSync("git", ["commit", "-qm", "hosted-only checkout"], { cwd: directory })
+    const hosted = await run("fixture-user-token", false)
+    assert.equal(hosted.code, 0, hosted.output)
+    assert.match(hosted.output, /Workflow completed/)
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
-    const dirty = await run()
+    const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 2)
+    assert.equal(dispatches, 3)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })
