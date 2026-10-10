@@ -10,6 +10,7 @@ import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
 import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
+import type { SourceFile } from "./artifacts-source.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -233,6 +234,27 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     snapshot: ContainerSnapshotValue,
   ): Promise<void> {
     await this.ctx.storage.put(`cache:${key}`, snapshot)
+  }
+
+  /** Materialize a host-read source export into a fresh, fixed workspace (Python image required). */
+  async materializeSource(files: ReadonlyArray<SourceFile>, options: WorkspaceContainerOptions = {}): Promise<void> {
+    const manifest = JSON.stringify(files)
+    if (files.length > 1000 || new TextEncoder().encode(manifest).length > 96 * 1024) throw new Error("Source manifest limit exceeded")
+    await this.ensureRunning(options)
+    const result = await this.run(["python3", "-c", [
+      "import base64,json,pathlib,shutil,sys",
+      "files=json.loads(sys.argv[1]); root=pathlib.Path('/workspace/repository')",
+      "for f in files:",
+      " p=pathlib.PurePosixPath(f['path'])",
+      " if p.is_absolute() or not p.parts or any(s in ('','.','..') for s in f['path'].split('/')) or '\\\\' in f['path'] or '\\x00' in f['path']: raise ValueError('Invalid source path')",
+      "if root.exists(): shutil.rmtree(root)",
+      "root.mkdir(parents=True)",
+      "for f in files:",
+      " p=root/f['path']; p.parent.mkdir(parents=True,exist_ok=True)",
+      " p.write_bytes(base64.b64decode(f['base64'],validate=True)); p.chmod(0o755 if f['executable'] else 0o644)",
+    ].join("\n"), manifest])
+    if (result.exitCode !== 0) throw new Error("Source materialization failed")
+    this.dirty = true
   }
 
   async checkout(
