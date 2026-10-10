@@ -82,7 +82,7 @@ test("unconfigured approval callbacks never expose broken approval buttons", () 
   card.setReviewUrl("https://example.com/runs/test-run/approvals/review?token=capability")
   const blocks = JSON.stringify(card.render().blocks)
   assert.ok(!blocks.includes("approve_release"))
-  assert.ok(blocks.includes("View Workflow"))
+  assert.ok(blocks.includes("|Details>"))
   assert.ok(!card.render().text.includes("capability"))
 })
 
@@ -91,4 +91,26 @@ test("queued checks use hourglasses instead of blank boxes", () => {
   card.update(event("build", "queued"))
   assert.match(card.render().text, /⏳ build — queued/)
   assert.ok(!JSON.stringify(card.render().blocks).includes("⬜"))
+})
+
+test("source context links repository, short commit and details without redundant run footer", () => {
+  const revision = "b1fe59642e365a502da90244e01d3c6eb45fd5b4"
+  const card = new RunCard({ ...identity, repository: "https://github.com/owner/repo.git", revision,
+    detailsUrl: "https://dash.cloudflare.com/workflow/instance/test-run" })
+  const blocks = JSON.stringify(card.render().blocks)
+  assert.ok(blocks.includes(`<https://github.com/owner/repo|owner/repo>@<https://github.com/owner/repo/commit/${revision}|b1fe596>`))
+  assert.ok(blocks.includes("|Details>"))
+  assert.ok(!blocks.includes("Revision:"))
+  assert.ok(!blocks.includes("View Workflow"))
+  assert.ok(!blocks.includes("Cloudflare Workflow"))
+  assert.ok(!blocks.includes('"actions"'))
+})
+
+test("source context rejects unsafe links and escapes source mention syntax", () => {
+  const card = new RunCard({ ...identity, repository: "<@everyone>", revision: "<@channel>", detailsUrl: "javascript:alert(1)" })
+  const blocks = JSON.stringify(card.render().blocks)
+  assert.ok(blocks.includes("&lt;@everyone&gt;"))
+  assert.ok(blocks.includes("&lt;@channel&gt;"))
+  assert.ok(!blocks.includes("javascript:"))
+  assert.ok(!blocks.includes("|Details>"))
 })
