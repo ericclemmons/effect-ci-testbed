@@ -6,12 +6,14 @@ export interface NativeReceipt { readonly ray: string; readonly version: string 
 export interface ReceiptBatch { readonly receipts: ReadonlyArray<NativeReceipt>; readonly requested: number; readonly unknown: number }
 type Query = (input: { query: string; params: Record<string, string> }) => Promise<{ data: ReadonlyArray<Record<string, unknown>> }>
 const ORIGIN = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+export const MAX_RECEIPTS = 1_000
 
 /** Independent platform receipts, captured before querying. HTTP outcome is not the health sample. */
 export async function collectReceipts(count: number, versions: ReadonlyArray<string>, transport: typeof fetch = fetch): Promise<ReceiptBatch> {
-  if (!Number.isSafeInteger(count) || count < 1 || count > 100) throw new Error("Invalid receipt budget")
+  if (!Number.isSafeInteger(count) || count < 1 || count > MAX_RECEIPTS) throw new Error("Invalid receipt budget")
   const receipts: NativeReceipt[] = []
   let unknown = 0
+  const deadline = Date.now() + 60_000
   for (let index = 0; index < count; index += 5) {
     await Promise.all(Array.from({ length: Math.min(5, count - index) }, async () => {
       try {
@@ -23,14 +25,20 @@ export async function collectReceipts(count: number, versions: ReadonlyArray<str
         receipts.push({ ray, version: body.version })
       } catch { unknown++ }
     }))
+    // Lost receipts cannot be repaired by requesting replacements. Bound a slow
+    // cohort independently of the broker lease, including unattempted identities.
+    if (unknown || Date.now() >= deadline) {
+      unknown = count - receipts.length
+      break
+    }
   }
   return { receipts, requested: count, unknown }
 }
 
 /** Exact native outcomes for a closed, independently recorded mixed-version batch. */
 export async function readReceiptSamples(batch: ReceiptBatch, versions: ReadonlyArray<string>, from: number, to: number, query: Query) {
-  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || batch.receipts.length > 100 ||
-    !Number.isSafeInteger(batch.requested) || batch.requested < 1 || batch.requested > 100 ||
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || batch.receipts.length > MAX_RECEIPTS ||
+    !Number.isSafeInteger(batch.requested) || batch.requested < 1 || batch.requested > MAX_RECEIPTS ||
     !Number.isSafeInteger(batch.unknown) || batch.unknown < 0 || batch.unknown + batch.receipts.length !== batch.requested ||
     new Set(batch.receipts.map((r) => r.ray)).size !== batch.receipts.length ||
     batch.receipts.some((r) => !/^[a-f0-9]{16}$/.test(r.ray) || !versions.includes(r.version)) ||
@@ -38,13 +46,20 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
   if (!batch.receipts.length) return { complete: false, samples: Object.fromEntries(versions.map((version) => [version,
     { version, from, to, completeThrough: from, trials: 0, failures: 0, sampling: "unsampled" as const }])),
     missing: batch.requested, conflicts: 0, invalid: 0, nativeRows: 0 }
-  const result = await query({
-    query: `SELECT timestamp, scriptName, logType, requestId, rayId, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND timestamp >= $from AND timestamp < $to AND rayId IN (${batch.receipts.map((_, index) => `$ray${index}`).join(",")}) LIMIT 500`,
-    params: { script: "effect-ci-hmd-demo", from: new Date(from).toISOString(), to: new Date(to).toISOString(),
-      ...Object.fromEntries(batch.receipts.map((receipt, index) => [`ray${index}`, receipt.ray])) },
-  })
+  const data: Record<string, unknown>[] = []
+  // Keep each SQL IN-list bounded. Reconcile the whole manifest together so one
+  // native event cannot be counted twice across query partitions or versions.
+  for (let offset = 0; offset < batch.receipts.length; offset += 100) {
+    const partition = batch.receipts.slice(offset, offset + 100)
+    const result = await query({
+      query: `SELECT timestamp, scriptName, logType, requestId, rayId, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND timestamp >= $from AND timestamp < $to AND rayId IN (${partition.map((_, index) => `$ray${index}`).join(",")}) LIMIT 500`,
+      params: { script: "effect-ci-hmd-demo", from: new Date(from).toISOString(), to: new Date(to).toISOString(),
+        ...Object.fromEntries(partition.map((receipt, index) => [`ray${index}`, receipt.ray])) },
+    })
+    data.push(...result.data)
+  }
   const expected = new Map(batch.receipts.map((receipt) => [receipt.ray, receipt.version]))
-  const native = result.data.filter((row) => row.logType === "cf-worker-event")
+  const native = data.filter((row) => row.logType === "cf-worker-event")
   const rows = native.map(sqlFetchOutcome)
   let invalid = rows.filter((row) => !row || expected.get(row.id) !== row.version).length
   const eventOwners = new Map<string, string>()
@@ -70,7 +85,9 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
     complete &&= reconciled.sample.completeThrough === to
   }
   for (const version of versions) samples[version] = { ...samples[version]!, completeThrough: complete ? to : from }
-  return { complete, samples, missing, conflicts, invalid, nativeRows: native.length }
+  const timestamps = rows.filter((r) => r !== undefined).map((r) => r.timestamp)
+  return { complete, samples, missing, conflicts, invalid, nativeRows: native.length,
+    nativeTimeRange: timestamps.length ? { from: Math.min(...timestamps), to: Math.max(...timestamps) } : undefined }
 }
 
 export function combineSamples(samples: ReadonlyArray<HealthSample>, version: string, from: number, to: number): HealthSample {
