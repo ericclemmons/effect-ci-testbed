@@ -8,13 +8,16 @@ type Query = (input: { query: string; params: Record<string, string> }) => Promi
 const ORIGIN = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
 export const MAX_RECEIPTS = 5_000
 export const SQL_PARTITION_SIZE = 250
+export const COHORT_DEADLINE_MS = 90_000
+export const RECEIPT_PACING_MS = 75
 
 /** Independent platform receipts, captured before querying. HTTP outcome is not the health sample. */
-export async function collectReceipts(count: number, versions: ReadonlyArray<string>, transport: typeof fetch = fetch): Promise<ReceiptBatch> {
+export async function collectReceipts(count: number, versions: ReadonlyArray<string>, transport: typeof fetch = fetch,
+  pause: (milliseconds: number) => Promise<void> = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))): Promise<ReceiptBatch> {
   if (!Number.isSafeInteger(count) || count < 1 || count > MAX_RECEIPTS) throw new Error("Invalid receipt budget")
   const receipts: NativeReceipt[] = []
   let unknown = 0
-  const deadline = Date.now() + 60_000
+  const deadline = Date.now() + COHORT_DEADLINE_MS
   for (let index = 0; index < count; index += 5) {
     await Promise.all(Array.from({ length: Math.min(5, count - index) }, async () => {
       try {
@@ -32,6 +35,10 @@ export async function collectReceipts(count: number, versions: ReadonlyArray<str
       unknown = count - receipts.length
       break
     }
+    // The earlier burst produced native weight-10 events despite head sampling 1.
+    // Pace the synthetic workload, not the telemetry: sampled/missing outcomes
+    // still fail closed. This does not promise a platform sampling threshold.
+    if (index + 5 < count) await pause(RECEIPT_PACING_MS)
   }
   return { receipts, requested: count, unknown }
 }

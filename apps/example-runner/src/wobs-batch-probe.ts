@@ -2,6 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { collectReceipts, readReceiptSamples } from "./wobs-samples.ts"
 import { NonRetryableError } from "cloudflare:workflows"
 import { canRetryNativeQuery, nativeSqlPolicy } from "./wobs-sql-policy.ts"
+import { nativeDiagnostics } from "./wobs-diagnostics.ts"
 
 const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
 const ONCE = { retries: { limit: 0, delay: "1 second" } } as const
@@ -54,4 +55,18 @@ export class WobsBatchProbeWorkflow extends WorkflowEntrypoint<{ ANALYTICS_SQL: 
 
 export class WobsLargeBatchProbeWorkflow extends WobsBatchProbeWorkflow {
   protected override readonly receiptCount = 5_000
+}
+
+/** Frozen failed-lab window, read-only. Never generates traffic or invokes the broker. */
+export class WobsDiagnosticWorkflow extends WorkflowEntrypoint<{ ANALYTICS_SQL: AnalyticsSQLBinding }> {
+  override async run(_event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
+    return step.do("wobs:rejected-cohort-diagnostics", ONCE, async () => {
+      const result = await this.env.ANALYTICS_SQL.query({
+        query: "SELECT timestamp, scriptName, logType, requestId, rayId, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND logType = 'cf-worker-event' AND timestamp >= $from AND timestamp < $to LIMIT 6000",
+        params: { script: "effect-ci-hmd-demo", from: "2026-10-10T22:14:19.868Z", to: "2026-10-10T22:14:27.874Z" },
+      })
+      if (result.data.length >= 6000) throw new NonRetryableError("Diagnostic row budget reached")
+      return nativeDiagnostics(result.data)
+    })
+  }
 }
