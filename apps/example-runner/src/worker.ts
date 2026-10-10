@@ -8,6 +8,7 @@ import { reverseRollbackProbe } from "./rollback-probe.ts"
 export { RollbackExhaustionWorkflow } from "./rollback-probe.ts"
 export { CheckpointRecoveryWorkflow } from "./checkpoint-recovery-probe.ts"
 export { CredentialVault, SecretOutbound, SecretWorkspaceContainer, SecretOutboundWorkflow } from "./secret-outbound.ts"
+export { ArtifactsSourceWorkflow } from "./artifacts-source.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"
