@@ -101,6 +101,13 @@ checkout checkpoint, and a downstream snapshot-backed read of `source.txt` retur
 `baecaad9-bacb-4aec-a9b3-627c25eb2f80`. The import-issued Git token was revoked
 before this run; only the Worker Artifacts binding supplied repository access.
 
+The final manifest-bounded implementation at host commit `2fa92f6` was independently
+re-proven by `coverage-artifacts-source-20261010-2`: all three native steps complete,
+Worker deployment `00cad204-2cc0-4789-a99c-9fbc1d3cd7d0`, Workflow version
+`73662cd3-edbf-4312-9041-5a38dd9b7088`, snapshot
+`7266ae3f-c4ab-446a-a649-9576998b8f78`. Source commit and downstream contents match
+the first proof. This is a source-provider proof, not an R2 or DO materializer claim.
+
 The first hosted batch used source revision
 `bfb695aa910e550c9bfc0a1412c1b4baefd75f7a`. Each instance retains its pinned
 Workflow version and native history. These are real account runs, not local simulation.
