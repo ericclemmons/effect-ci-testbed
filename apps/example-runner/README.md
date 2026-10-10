@@ -235,7 +235,58 @@ WOBS_LARGE_BATCH_INSTANCE=cf_97719d0328e9f9b97135b338b21bbf70c7e7ca94972a8d78b39
   node --test apps/example-runner/ci/tests/live-wobs-large-batch.test.ts
 ```
 
-### HMD prerequisites (not a complete release proof)
+### Native healthy controller: fail-closed evidence
+
+`WobsHealthyWorkflow` applies the native adapter to all four guarded promotion
+phases. Each phase starts with an inconclusive ten-request cohort, then collects
+bounded independent cohorts and evaluates the pinned baseline/candidate windows.
+The maximum budget is 105,140 requests plus 7,650 SQL calls, including explicit
+retryable service failures, with 10,000 subrequests reserved for checkpoints,
+broker calls and recovery. Lease renewals protect longer collections and reads;
+the broker alarm remains independent of controller cleanup.
+
+The first real attempt,
+`cf_e3e11b3f1e107ce642cd6d96b1c18b7bf4231788d2696bcad16a00ef6ea89e6e`,
+**failed closed** at 10% on October 10, 2026. Its baseline and first two larger
+cohorts closed, but the third cohort remained incomplete across six native reads:
+4,935 stored rows, 71 missing expected outcomes and six rejected native rows.
+The read-only fixed-window diagnostic
+`cf_1d8a63fb13e9d8c44bb88d355dc4f63cce29736160caf1383e29f04ec2ef1217`
+identified 4,929 weight-1 rows and **six weight-10 rows**. Those sampled rows
+cannot substitute for independent unsampled trials. The diagnostic did not
+reconstruct missing receipts, repair the frozen window, or advance a gate.
+
+Rollback restored the old baseline at 100% in deployment
+`177449ea-0692-4b7d-97ff-c595d1c8c432`, independently confirmed through the
+deployment API. There was no 25% promotion or Slack notification. The read-only
+[incomplete-evidence assertion](ci/tests/live-wobs-healthy.test.ts) passed:
+
+```sh
+WOBS_HEALTHY_INCOMPLETE_INSTANCE=cf_e3e11b3f1e107ce642cd6d96b1c18b7bf4231788d2696bcad16a00ef6ea89e6e \
+  node --test apps/example-runner/ci/tests/live-wobs-healthy.test.ts
+```
+
+Synthetic collection now paces groups of five with 75 milliseconds between groups
+and stops at a 90-second collection deadline, without replacing unknown outcomes.
+This is a workload-control experiment, **not** a sampling guarantee or fixed
+platform threshold. Every native outcome and weight must still validate. The
+[observability API contract](https://developers.cloudflare.com/api/resources/workers/subresources/observability/subresources/telemetry/methods/query/)
+distinguishes ingestion sample weights from query `abr_level`; weighted
+aggregates are not exact independent counts, even when query `abr_level` is 1.
+
+The paced baseline prerequisite
+`cf_0bba4149365e4ba8784676124bcdf7613551d0b457487ed5e8d4f91281e260c4`
+closed all 5,000 unique weight-1 outcomes after its initially incomplete 4,738-row
+read and a native ingestion wait. Its read-only assertion passed, on host
+`f50fd003-5d90-4516-8ac0-a3a6c0baabe5`, Workflow version
+`45b65b38-7fed-4881-a5b9-9073f7bec334`. This is evidence for that exact paced
+cohort, not a promise that pacing prevents all future sampling.
+
+Healthy four-phase native promotion, consumer deployment integration and live
+notification images remain unverified. A successful lab will still restore the
+baseline and report `releaseCommitted: false`, not commit a production release.
+
+### Initial binding and version prerequisites
 
 `coverage-hmd-analytics-20261010-1` verified the Analytics SQL Worker binding with
 a real `logs.workersLogs` query (zero matching host rows). Worker deployment

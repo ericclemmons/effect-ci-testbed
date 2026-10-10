@@ -46,6 +46,18 @@ test("transport loses receipts without retrying or reconstructing identities fro
   assert.equal(result.receipts.length, 1)
   assert.equal(result.unknown, 1)
 })
+test("synthetic requests are paced without changing or replacing their independent receipts", async () => {
+  let calls = 0
+  const waits: number[] = []
+  const result = await collectReceipts(10, ["new"], (async () => {
+    const ray = (++calls).toString(16).padStart(16, "0")
+    return Response.json({ version: "new", healthy: true }, { headers: { "cf-ray": `${ray}-IAD` } })
+  }) as typeof fetch, async (milliseconds) => { waits.push(milliseconds) })
+  assert.equal(calls, 10)
+  assert.deepEqual(waits, [75])
+  assert.equal(result.unknown, 0)
+  assert.equal(new Set(result.receipts.map((r) => r.ray)).size, 10)
+})
 test("cumulative samples never repair a missing earlier window", () => {
   const sample = { version: "new", from: 100, to: 200, completeThrough: 200, trials: 10, failures: 10, sampling: "unsampled" as const }
   const result = combineSamples([sample, { ...sample, from: 200, to: 300, completeThrough: 200 }], "new", 100, 300)
