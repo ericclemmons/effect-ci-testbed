@@ -34,6 +34,7 @@ export default defineConfig({
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
       WobsCohortProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-cohort" }),
+      WobsReleaseWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-release" }),
       ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
       HostedHmdWorkflow: exports.workflow({ name: "effect-ci-probe-hosted-hmd" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
