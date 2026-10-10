@@ -131,6 +131,7 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
+| [Authenticate outbound requests with host-only credentials and container placeholders](./examples/secret-outbound) | — | 🔜 | — | ✅ |
 | [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
 | [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
 | [Pause and durably resume a release with authorized inline Slack approval](./examples/cloudflare-hitl-release) | — | — | — | ✅ |

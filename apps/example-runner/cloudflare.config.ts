@@ -9,6 +9,12 @@ const workspace = defineContainer({
   },
 })
 
+const secretWorkspace = defineContainer({
+  name: "effect-ci-secret-workspace",
+  schedulingPolicy: "durable-object",
+  images: { workspace: { dockerfile: "../../examples/custom-runner-image/Dockerfile" } },
+})
+
 export default defineConfig({
   worker: {
     name: "effect-ci-examples",
@@ -18,6 +24,9 @@ export default defineConfig({
     env: { LOADER: bindings.workerLoader() },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
+      SecretWorkspaceContainer: exports.durableObject({ storage: "sqlite", container: secretWorkspace }),
+      CredentialVault: exports.durableObject({ storage: "sqlite" }),
+      SecretOutboundWorkflow: exports.workflow({ name: "effect-ci-example-secret-outbound" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),
@@ -53,5 +62,5 @@ export default defineConfig({
       DynamicFormatterWorkflow: exports.workflow({ name: "effect-ci-example-dynamic-formatter" }),
     },
   },
-  containers: [workspace],
+  containers: [workspace, secretWorkspace],
 })

@@ -3,7 +3,7 @@
 > How do I verify the same consumer workflows in a real Cloudflare account?
 
 This app imports the examples unchanged and gives each its own native Workflow.
-It is separate from the GitHub/Slack service, has no secrets, and serves no HTTP
+It is separate from the GitHub/Slack service, has no production credentials, and serves no HTTP
 control plane. Instance creation and inspection require Cloudflare API credentials.
 
 From the repository root:
@@ -52,6 +52,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 | [Portable artifacts](../../examples/portable-artifacts) | `effect-ci-example-portable-artifacts` |
+| [Host-only outbound credentials](../../examples/secret-outbound) | `effect-ci-example-secret-outbound` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -74,6 +75,18 @@ must run its echo-only deployment for that event and skip it for a pull request.
 The source always uses the supplied immutable revision, independently of event/ref.
 
 ## Verified runs
+
+`coverage-secret-outbound-20261009-1` completed three native steps with source
+`36ea21ebbaaa2b972d917418fbffb7b59de2eac6`, Worker deployment
+`695fb261-0107-4a1f-b717-4dd499604186`, and Workflow version
+`2ca8f16b-932f-4414-90be-96672491dbd5`. Checkout published snapshot
+`6a1116f7-ca02-4eec-9246-6044cd7396e2`; the consuming action restored it in its
+isolated container and printed `host-authentication-verified`. The command contained
+only the public placeholder, not the generated host-vault credential. This proves
+the HTTP virtual-host credential boundary with a test-only verifier, not an actual
+third-party token, TLS interception, or total outbound network confinement. Local
+regressions cover denied destinations/operations, redirect rejection, and suppression
+of reflected credentials and errors.
 
 The first hosted batch used source revision
 `bfb695aa910e550c9bfc0a1412c1b4baefd75f7a`. Each instance retains its pinned
