@@ -25,6 +25,9 @@ Implemented foundations:
 - [Health gate](../../packages/cloudflare/src/health-gate.ts) and tests for uncertainty,
   progression, regression, wrong cohorts, incomplete data, and sampled counts.
 - [Historical confidence-envelope SVG renderer](../../packages/cloudflare/src/health-chart.ts).
+- [Pure release policy](../../packages/cloudflare/src/release-policy.ts), preserving
+  the previous multi-version split, bounding observations per phase, and requiring
+  a health gate after 100% as well as intermediate phases.
 - A host-only Analytics SQL availability probe; no analytics token enters a container.
 
 The chart is an observed-data confidence envelope, not a forecast cone. The initial
@@ -75,6 +78,13 @@ observation-budget exhaustion, and preservation of the prior traffic allocation.
 Local tests can use deterministic health samples, but they do not earn a hosted ✅.
 
 ## Verification and notification work remaining
+
+A bounded [live regression test](../../apps/hmd-demo/ci/tests/live-rollback.test.ts)
+has shifted the dedicated demo to 10% failing candidate, classified a real SLO
+breach from version-attributed HTTP probes, and restored its exact previous
+allocation. This proves the deployment API path, not a complete hosted controller
+or WOBS ingestion/health adapter. Its ownership check is advisory, not an atomic
+lock against external operators. The example remains 🔜.
 
 1. Upload healthy and failing candidate versions without shifting traffic; record
    the entire previous version allocation and protect it with release ownership.
