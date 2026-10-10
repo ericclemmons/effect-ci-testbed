@@ -73,27 +73,32 @@ test("corrupt independent manifests reject before querying and duplicate deliver
 })
 
 test("large cohorts partition SQL without weakening cross-partition native identity checks", async () => {
-  const receipts = Array.from({ length: 1_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "old" }))
+  const receipts = Array.from({ length: 5_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "09593237-23b2-4873-bd04-88c8e8488840" }))
+  const version = receipts[0]!.version
   let calls = 0
-  const query = async (input: { params: Record<string, string> }) => {
+  const query = async (input: { query: string; params: Record<string, string> }) => {
     calls++
     const rays = Object.entries(input.params).filter(([key]) => key.startsWith("ray")).map(([, ray]) => ray)
-    assert.equal(rays.length, 100)
-    return { data: rays.map((ray) => row(ray, "old")) }
+    assert.equal(rays.length, 250)
+    assert.ok(Buffer.byteLength(input.query) < 10 * 1024)
+    assert.ok(input.query.includes("logType = 'cf-worker-event'"))
+    return { data: rays.map((ray) => row(ray, version)) }
   }
-  const large = { requested: 1_000, unknown: 0, receipts }
-  const complete = await readReceiptSamples(large, ["old"], 100, 200, query)
-  assert.equal(calls, 10)
+  const large = { requested: 5_000, unknown: 0, receipts }
+  const complete = await readReceiptSamples(large, [version], 100, 200, query)
+  assert.equal(calls, 20)
   assert.equal(complete.complete, true)
-  assert.equal(complete.samples.old?.trials, 1_000)
+  assert.equal(complete.samples[version]?.trials, 5_000)
   assert.ok(Buffer.byteLength(JSON.stringify(large)) < 512 * 1024)
-  const collision = await readReceiptSamples(large, ["old"], 100, 200, async (input) => {
+  const collision = await readReceiptSamples(large, [version], 100, 200, async (input) => {
     const result = await query(input)
-    return { data: result.data.map((entry) => entry.rayId === receipts[100]!.ray ? { ...entry, requestId: `native-${receipts[0]!.ray}` } : entry) }
+    return { data: result.data.map((entry) => entry.rayId === receipts[250]!.ray ? { ...entry, requestId: `native-${receipts[0]!.ray}` } : entry) }
   })
   assert.equal(collision.complete, false)
-  assert.equal(collision.samples.old?.completeThrough, 100)
-  await assert.rejects(readReceiptSamples({ ...large, requested: 1_001 }, ["old"], 100, 200, query), /Invalid closed receipt cohort/)
+  assert.equal(collision.samples[version]?.completeThrough, 100)
+  await assert.rejects(readReceiptSamples({ requested: 5_001, unknown: 5_001, receipts: [] }, [version], 100, 200, query), /Invalid closed receipt cohort/)
+  for (const count of [500, 501]) await assert.rejects(readReceiptSamples(batch, ["old", "new"], 100, 200,
+    async () => ({ data: Array(count).fill(rows[0]!) })), /row budget reached/)
 })
 
 test("lost receipts stop larger traffic batches without replacing or silently dropping unknown work", async () => {

@@ -170,7 +170,7 @@ Workflow/cron terminal outcomes and live notification images remain unverified.
 ### Bounded larger native cohorts
 
 `WobsBatchProbeWorkflow` verifies 1,000 independent baseline receipts without a
-release broker call or notification. SQL reads use bounded 100-receipt partitions,
+release broker call or notification. SQL reads now use bounded 250-receipt partitions,
 then reconcile the entire manifest together: duplicates across partitions or
 versions cannot create extra independent trials. The receipt manifest remains
 below the checkpoint size budget. Collection stops on an unknown receipt or its
@@ -207,6 +207,33 @@ WOBS_BATCH_INCOMPLETE_INSTANCE=cf_85407e24366d55959201192cc95e5944e478b1fff9fba3
 
 This is a prerequisite for larger healthy-release samples, not proof of healthy
 four-phase WOBS promotion, ambient ingestion or causally independent production traffic.
+
+`WobsLargeBatchProbeWorkflow` then verified a 5,000-receipt checkpoint and
+closed all 5,000 native outcomes in instance
+`cf_97719d0328e9f9b97135b338b21bbf70c7e7ca94972a8d78b39581b3258a2901`,
+Workflow version `fe9426be-2bcd-4a12-9869-1fd445df855d`, host version
+`b128acae-ab5a-4d73-bb13-50dd42ce17aa`. The read-only
+[large-cohort assertion](ci/tests/live-wobs-large-batch.test.ts) passed: zero
+missing, conflicting or invalid outcomes, sampling interval 1, zero failures,
+and no release or notification steps.
+
+An earlier 5,000-receipt run
+`cf_68d9c40b9bb2bf7d05372f63057d5cf541d16526767042eafb23fed4b0a1f791`
+failed on SQL rate limiting after its collection checkpoint succeeded. Its
+history remains intact. Larger SQL partitions reduce query volume without
+weakening global identity reconciliation; native-only filtering excludes custom
+logs before the row limit, and a saturated row limit is rejected rather than
+treated as complete. Bounded exponential backoff is permitted only when the
+binding explicitly reports `retryable: true`, not by matching error text.
+See the [binding error contract](https://developers.cloudflare.com/analytics/sql-api/workers-binding/)
+and [SQL limits](https://developers.cloudflare.com/analytics/sql-api/limits/).
+These observations establish neither a fixed rate-limit quota nor universal
+availability of the experimental native dataset.
+
+```sh
+WOBS_LARGE_BATCH_INSTANCE=cf_97719d0328e9f9b97135b338b21bbf70c7e7ca94972a8d78b39581b3258a2901 \
+  node --test apps/example-runner/ci/tests/live-wobs-large-batch.test.ts
+```
 
 ### HMD prerequisites (not a complete release proof)
 

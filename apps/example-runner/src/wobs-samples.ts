@@ -6,7 +6,8 @@ export interface NativeReceipt { readonly ray: string; readonly version: string 
 export interface ReceiptBatch { readonly receipts: ReadonlyArray<NativeReceipt>; readonly requested: number; readonly unknown: number }
 type Query = (input: { query: string; params: Record<string, string> }) => Promise<{ data: ReadonlyArray<Record<string, unknown>> }>
 const ORIGIN = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
-export const MAX_RECEIPTS = 1_000
+export const MAX_RECEIPTS = 5_000
+export const SQL_PARTITION_SIZE = 250
 
 /** Independent platform receipts, captured before querying. HTTP outcome is not the health sample. */
 export async function collectReceipts(count: number, versions: ReadonlyArray<string>, transport: typeof fetch = fetch): Promise<ReceiptBatch> {
@@ -49,13 +50,16 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
   const data: Record<string, unknown>[] = []
   // Keep each SQL IN-list bounded. Reconcile the whole manifest together so one
   // native event cannot be counted twice across query partitions or versions.
-  for (let offset = 0; offset < batch.receipts.length; offset += 100) {
-    const partition = batch.receipts.slice(offset, offset + 100)
+  for (let offset = 0; offset < batch.receipts.length; offset += SQL_PARTITION_SIZE) {
+    const partition = batch.receipts.slice(offset, offset + SQL_PARTITION_SIZE)
     const result = await query({
-      query: `SELECT timestamp, scriptName, logType, requestId, rayId, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND timestamp >= $from AND timestamp < $to AND rayId IN (${partition.map((_, index) => `$ray${index}`).join(",")}) LIMIT 500`,
+      query: `SELECT timestamp, scriptName, logType, requestId, rayId, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND logType = 'cf-worker-event' AND timestamp >= $from AND timestamp < $to AND rayId IN (${partition.map((_, index) => `$ray${index}`).join(",")}) LIMIT 500`,
       params: { script: "effect-ci-hmd-demo", from: new Date(from).toISOString(), to: new Date(to).toISOString(),
         ...Object.fromEntries(partition.map((receipt, index) => [`ray${index}`, receipt.ray])) },
     })
+    // A saturated LIMIT can conceal another conflicting native event. Never
+    // claim a complete manifest from a potentially truncated result set.
+    if (result.data.length >= 500) throw new Error("Native query row budget reached")
     data.push(...result.data)
   }
   const expected = new Map(batch.receipts.map((receipt) => [receipt.ray, receipt.version]))

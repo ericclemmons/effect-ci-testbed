@@ -22,7 +22,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
-    // Bounded HMD lab: at most 94,700 HTTP probes plus checkpoint/RPC headroom.
+    // Bounded HMD labs: HTTP/native SQL plus checkpoint, broker and recovery headroom.
     limits: { subrequests: HMD_SUBREQUEST_LIMIT },
     env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
     exports: {
@@ -36,6 +36,7 @@ export default defineConfig({
       WobsCohortProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-cohort" }),
       WobsReleaseWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-release" }),
       WobsBatchProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-batch" }),
+      WobsLargeBatchProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-large-batch" }),
       ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
       HostedHmdWorkflow: exports.workflow({ name: "effect-ci-probe-hosted-hmd" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
