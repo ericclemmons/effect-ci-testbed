@@ -8,6 +8,7 @@ const name = "effect-ci-github-cloudflare"
 const workspace = defineContainer({
   name: "effect-ci-workspace",
   schedulingPolicy: "durable-object",
+  images: { workspace: { dockerfile: "./Dockerfile" } },
 })
 
 export default defineConfig({

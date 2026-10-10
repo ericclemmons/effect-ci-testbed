@@ -8,4 +8,5 @@ export default GitHubCloudflare.worker()
 
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {
   root: "examples/github-cloudflare-ci",
+  container: { image: "workspace", instance: "standard-1" },
 })

@@ -166,6 +166,8 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
 const streamRemoteEvents = async (
   response: Response,
   format: OutputFormat,
+  events: WorkflowInstanceEvent[],
+  cursor: { value?: number },
 ): Promise<ReadonlyArray<WorkflowInstanceEvent>> => {
   if (!response.ok || !response.body) {
     throw new CliFailure(
@@ -175,9 +177,12 @@ const streamRemoteEvents = async (
     )
   }
 
-  const events: WorkflowInstanceEvent[] = []
   for await (const record of remoteRecords(response.body)) {
     const event = record as WorkflowInstanceEvent
+    if (typeof event.eventId === "number" && Number.isSafeInteger(event.eventId) && event.eventId >= 0) {
+      if (cursor.value !== undefined && event.eventId <= cursor.value) continue
+      cursor.value = event.eventId
+    }
     events.push(event)
     if (format === "text") console.log(describeEvent(event))
     if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(event.type)) break
@@ -246,10 +251,35 @@ const builtInRemote = async (
 
   if (invocation.format === "text") console.log(`Remote Workflow ${run.instanceId}`)
 
-  const events = await streamRemoteEvents(await fetch(remoteEventUrl(remoteUrl, run.eventsUrl), {
-    headers: remoteHeaders(),
-    redirect: "error",
-  }), invocation.format)
+  const events: WorkflowInstanceEvent[] = []
+  const cursor: { value?: number } = {}
+  let interruptions = 0
+  while (true) {
+    const eventUrl = new URL(remoteEventUrl(remoteUrl, run.eventsUrl))
+    if (cursor.value !== undefined) eventUrl.searchParams.set("cursor", String(cursor.value))
+    const before = events.length
+    try {
+      await streamRemoteEvents(await fetch(eventUrl, {
+        headers: remoteHeaders(), redirect: "error",
+      }), invocation.format, events, cursor)
+      if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(events.at(-1)?.type ?? "")) break
+    } catch (error) {
+      // Authentication/protocol failures are actionable, not transient disconnects.
+      if (error instanceof CliFailure) throw error
+      if (error instanceof SyntaxError) {
+        throw new CliFailure("CI_REMOTE_FAILED", ExitCode.providerUnavailable,
+          "The remote service returned an invalid event record", { instanceId: run.instanceId })
+      }
+    }
+    if (events.length > before) interruptions = 0
+    if (++interruptions > 5) {
+      throw new CliFailure("CI_REMOTE_STREAM_ENDED", ExitCode.providerUnavailable,
+        "Could not resume remote logs. The Workflow may still be running; inspect its details before dispatching again.",
+        { instanceId: run.instanceId, events })
+    }
+    if (invocation.format === "text") console.log("Remote logs disconnected; reconnecting to the same Workflow…")
+    await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * interruptions, 5000)))
+  }
   const terminal = events.at(-1)
 
   if (terminal?.type === "workflow_errored" || terminal?.type === "workflow_terminated") {
