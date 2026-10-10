@@ -372,3 +372,15 @@ the second reporting `sequence-verified` after reading the first command's file,
 by one action workspace commit. The run completed with five native steps. Existing
 instances retain their pinned Workflow version; checkpoint naming changes apply to new
 instances rather than migrating old histories.
+
+## Private R2 source
+
+`coverage-r2-source-20261010-1` completed using Worker deployment
+`f81462ad-8d98-448c-95de-4e22aef1d632` and Workflow version
+`eec420bc-6ddf-4650-8edf-2e090e16ddb2`. The private `SOURCE_BUCKET` binding read a
+97-byte source manifest, verified SHA-256
+`6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd`, materialized
+regular files, and committed snapshot `d309cecf-6d9c-4461-a3a3-8bb8eb7fbbbd`.
+A separate downstream native read restored that checkpoint and returned
+`source from r2`. No R2 or API credentials entered the container. The focused
+[R2 example](../../examples/r2-source) documents the manifest and repeatable commands.
