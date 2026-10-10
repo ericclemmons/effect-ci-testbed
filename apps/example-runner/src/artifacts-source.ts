@@ -3,7 +3,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers"
 import { readArtifactSource } from "../../../packages/cloudflare/src/artifacts-source.ts"
-import workflow from "../../../examples/source-providers/.cloudflare/ci/workflow.ts"
+import workflow from "../../../examples/artifacts-source/.cloudflare/ci/workflow.ts"
 
 export class ArtifactsSourceWorkflow extends WorkflowEntrypoint<{ ARTIFACTS: Artifacts }, Cloudflare.WorkflowParameters> {
   override async run(event: Readonly<WorkflowEvent<Cloudflare.WorkflowParameters>>, step: WorkflowStep) {
@@ -17,7 +17,7 @@ export class ArtifactsSourceWorkflow extends WorkflowEntrypoint<{ ARTIFACTS: Art
         try: async () => {
           await step.do("source:artifacts", async () => {
             using repo = await this.env.ARTIFACTS.get(event.payload.repository)
-            const files = await readArtifactSource(repo, event.payload.revision, "examples/source-providers")
+            const files = await readArtifactSource(repo, event.payload.revision, "examples/artifacts-source")
             const workspace = binding.getByName(event.instanceId) as unknown as Cloudflare.WorkspaceContainer
             await workspace.materializeSource(files, container)
           })

@@ -103,6 +103,7 @@ jobs:
           - node-version
           - system-package
           - cache-policy
+          - artifacts-source
           - dynamic-worker-checks
           - ordered-deploy
           - custom-container-image
@@ -370,6 +371,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: artifacts-source
+            workflow: examples/artifacts-source/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-toolchain
             workflow: examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts

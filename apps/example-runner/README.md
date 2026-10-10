@@ -53,7 +53,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 | [Portable artifacts](../../examples/portable-artifacts) | `effect-ci-example-portable-artifacts` |
 | [Host-only outbound credentials](../../examples/secret-outbound) | `effect-ci-example-secret-outbound` |
-| [Cloudflare Artifacts source](../../examples/source-providers) | `effect-ci-example-artifacts-source` |
+| [Cloudflare Artifacts source](../../examples/artifacts-source) | `effect-ci-example-artifacts-source` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -120,6 +120,19 @@ regressions cover denied destinations/operations, redirect rejection, and suppre
 of reflected credentials and errors.
 
 ### Artifacts-backed source proof
+
+The dedicated `examples/artifacts-source` consumer passed in
+`coverage-artifacts-focused-20261010-1` at source
+`e8faf6e46a9dde90067658d87d128c71796ed8c0`, using repository
+`default/effect-ci-artifacts-focused`. Its import-issued Git token was revoked
+before execution. All three native steps complete: binding materialization,
+snapshot `eaaa23aa-2a11-4743-ab7f-296172b79c82`, and downstream snapshot-backed
+read returning `source from artifacts`. Worker deployment
+`b4a531b2-8e32-4838-a6aa-98237568a9ae`, Workflow version
+`69000ec6-9e0f-4912-a198-cd6663570ecd`.
+
+The earlier shared source-provider proofs below remain historical evidence for
+the exporter; the dedicated consumer is independently verified above.
 
 `coverage-artifacts-source-20261010-1` completed three native steps using repository
 `default/effect-ci-source-example` at commit
