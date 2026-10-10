@@ -202,3 +202,4 @@ export const SourceChecksWorkflow = Cloudflare.workflowEntrypoint(sourceChecks, 
   root: "examples/dynamic-worker-checks",
   reuseWorkspace: false,
 })
+export { HostedHmdWorkflow } from "./hmd-controller.ts"

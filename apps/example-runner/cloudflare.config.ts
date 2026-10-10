@@ -1,4 +1,5 @@
 import { bindings, defineConfig, defineContainer, exports } from "cf/config"
+import { HMD_SUBREQUEST_LIMIT } from "./src/hmd-budget.ts"
 
 const workspace = defineContainer({
   name: "effect-ci-example-workspace",
@@ -21,6 +22,8 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
+    // Bounded HMD lab: at most 94,700 HTTP probes plus checkpoint/RPC headroom.
+    limits: { subrequests: HMD_SUBREQUEST_LIMIT },
     env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
@@ -31,6 +34,7 @@ export default defineConfig({
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
       ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
+      HostedHmdWorkflow: exports.workflow({ name: "effect-ci-probe-hosted-hmd" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),
