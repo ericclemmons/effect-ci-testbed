@@ -45,3 +45,9 @@ node --test apps/example-runner/src/credential-proxy.test.ts
 
 Ordinary local Node execution has no virtual-host interceptor yet; it must not
 silently substitute a real token in the command. Local execution remains planned.
+
+Hosted verification: `coverage-secret-outbound-20261009-1` completed checkout,
+its snapshot commit, and the authenticated command. The command printed
+`host-authentication-verified` after consuming the restored snapshot; native
+outputs contain only the placeholder and verification result. Full provenance is
+recorded in the [host runner README](../../apps/example-runner/README.md).

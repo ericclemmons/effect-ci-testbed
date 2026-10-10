@@ -17,10 +17,11 @@ test("only the host sees a credential and upstream reflection never reaches the 
 })
 
 test("host, path, query, method and placeholder are checked before credential resolution", async () => {
+  const headers = { authorization: "Bearer effect-ci-placeholder" }
   for (const incoming of [
-    new Request("http://attacker.ci/verify"), new Request("http://credential.ci/other"),
-    new Request("http://credential.ci/verify?target=attacker"),
-    new Request("http://credential.ci/verify", { method: "POST" }),
+    new Request("http://attacker.ci/verify", { headers }), new Request("http://credential.ci/other", { headers }),
+    new Request("http://credential.ci/verify?target=attacker", { headers }),
+    new Request("http://credential.ci/verify", { method: "POST", headers }),
     new Request("http://credential.ci/verify"),
   ]) {
     const response = await credentialRequest(incoming, async () => { assert.fail("credential resolved for denied request") }, async () => { assert.fail("upstream called") })
