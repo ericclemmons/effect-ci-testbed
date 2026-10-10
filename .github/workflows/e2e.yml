@@ -224,6 +224,7 @@ jobs:
       matrix:
         example:
           - execution-policy
+          - retry
           - conditional-deploy
           - rollback-compensation
           - secure-secrets
@@ -374,6 +375,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: artifacts-source
             workflow: examples/artifacts-source/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: retry
+            workflow: examples/retry/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: cloudflare-toolchain
             workflow: examples/cloudflare-toolchain/.cloudflare/ci/workflow.ts

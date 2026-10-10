@@ -2,6 +2,7 @@ import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as CI from "@effect-ci-testbed/ci"
 import { readSourceManifest } from "./source-manifest.ts"
 import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts"
+import retry from "../../../examples/retry/.cloudflare/ci/workflow.ts"
 import { timeoutProbe, exhaustionProbe, nonRetryableProbe } from "./effect-policy-probe.ts"
 import rollbackCompensation from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
 import { reverseRollbackProbe } from "./rollback-probe.ts"
@@ -37,6 +38,7 @@ import { commandRetryProbe, commandFailureProbe, commandSequenceProbe } from "./
 export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
 export { DynamicFormatterWorkflow } from "./dynamic-formatter.ts"
 export const ExecutionPolicyWorkflow = Cloudflare.workflowEntrypoint(executionPolicy)
+export const RetryWorkflow = Cloudflare.workflowEntrypoint(retry)
 export const EffectTimeoutProbeWorkflow = Cloudflare.workflowEntrypoint(timeoutProbe)
 export const EffectExhaustionProbeWorkflow = Cloudflare.workflowEntrypoint(exhaustionProbe)
 export const EffectTerminalProbeWorkflow = Cloudflare.workflowEntrypoint(nonRetryableProbe)
