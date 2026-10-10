@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./worker": "./src/worker.ts",
-    "./notifications": "./src/notification-service.ts"
+    "./notifications": "./src/notification-service.ts",
+    "./github-comment": "./src/github-comment.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"
