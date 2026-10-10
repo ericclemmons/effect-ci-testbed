@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./worker": "./src/worker.ts"
+    "./worker": "./src/worker.ts",
+    "./notifications": "./src/notification-service.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

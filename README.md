@@ -100,14 +100,14 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Demo discovery, cached checks, and agent feedback before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
 | [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
-| [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | 🔜 | ✅ |
-| [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | 🔜 | ✅ |
+| [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | ✅ | ✅ |
+| [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | ✅ | ✅ |
 | Materialize Durable Object source revisions | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
-| [Fail once and pass on the native retry](./examples/retry) | — | ✅ | 🔜 | ✅ |
+| [Fail once and pass on the native retry](./examples/retry) | — | ✅ | ✅ | ✅ |
 | [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
 | [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
 | [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
