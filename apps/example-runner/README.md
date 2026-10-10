@@ -167,6 +167,47 @@ WOBS_RELEASE_INSTANCE=cf_6355fef9b88f3ab55f77be4bd458c17c483d7f8853f761a6f0e3275
 The example stays 🔜: healthy four-phase WOBS gates, ambient completeness,
 Workflow/cron terminal outcomes and live notification images remain unverified.
 
+### Bounded larger native cohorts
+
+`WobsBatchProbeWorkflow` verifies 1,000 independent baseline receipts without a
+release broker call or notification. SQL reads use bounded 100-receipt partitions,
+then reconcile the entire manifest together: duplicates across partitions or
+versions cannot create extra independent trials. The receipt manifest remains
+below the checkpoint size budget. Collection stops on an unknown receipt or its
+bounded deadline rather than replacing lost requests.
+
+The first run `cf_82d6e1fb1610e61e91fa7e0a0a3936fa5334321bca490d2d634dcae050192ad6`
+correctly stayed incomplete with 998 native outcomes after six queries. A second
+diagnostic run `cf_85407e24366d55959201192cc95e5944e478b1fff9fba30b50b6ca8a9ec2a54d`
+stayed incomplete with 988. An independently labelled wider-window diagnostic
+found all 1,000 outcomes, including native timestamps up to 14 milliseconds past
+the original close. It did **not** repair the frozen sample or advance any gate.
+This establishes a boundary mismatch, not whether its cause is clock skew or
+post-response terminal completion. HTTP receipt completion is not a native
+terminal-completion barrier.
+
+The final probe uses a real native one-second settling wait **before** freezing
+its window, rather than padding timestamps after querying. Instance
+`cf_246b671f5c04929ed0741629d8edc78b5fae2d96f8fa9bed11d5ea718b9d4b44`
+completed at 2026-10-10 21:41:30 UTC, host deployment
+`92dd7300-e62e-480e-b1ae-75a997e7e1b3`, Workflow version
+`f9ad2715-8bda-4ecb-909c-929f05ab8ef6`. Its first query had no rows; after a
+native 30-second ingestion wait, every expected native outcome arrived, with
+sampling interval 1, zero failures and no missing, conflicting or invalid rows.
+The wait is not a universal completeness guarantee: every exact native receipt
+is still required, and late/out-of-window outcomes remain uncertain.
+
+Read-only positive and negative assertions both pass:
+
+```sh
+WOBS_BATCH_INSTANCE=cf_246b671f5c04929ed0741629d8edc78b5fae2d96f8fa9bed11d5ea718b9d4b44 \
+WOBS_BATCH_INCOMPLETE_INSTANCE=cf_85407e24366d55959201192cc95e5944e478b1fff9fba30b50b6ca8a9ec2a54d \
+  node --test apps/example-runner/ci/tests/live-wobs-batch.test.ts
+```
+
+This is a prerequisite for larger healthy-release samples, not proof of healthy
+four-phase WOBS promotion, ambient ingestion or causally independent production traffic.
+
 ### HMD prerequisites (not a complete release proof)
 
 `coverage-hmd-analytics-20261010-1` verified the Analytics SQL Worker binding with
