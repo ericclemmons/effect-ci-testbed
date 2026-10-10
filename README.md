@@ -101,7 +101,8 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
 | [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
 | [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | 🔜 | 🔜 |
-| Materialize R2 or Durable Object sources | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | 🔜 | ✅ |
+| Materialize Durable Object source revisions | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |

@@ -366,6 +366,9 @@ jobs:
             cache-key: custom-build-cache
             cache-key-files: examples/cache-policy/app/src/input.txt
             cache-path: examples/cache-policy/app/.cache/build
+          - example: r2-source
+            workflow: examples/r2-source/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
