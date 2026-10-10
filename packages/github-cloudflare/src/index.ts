@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
-import { hasNotificationChannels, sendNotification } from "./notifications.ts"
+import { hasNotificationChannels, sendNotification, type NotificationChannels } from "./notifications.ts"
 import { RunCard } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import {
@@ -36,6 +36,8 @@ const credentials = (environment: Environment): GitHub.GitHubAppCredentials => (
 })
 
 export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions<Environment> {
+  /** Host policy chooses outbound channels per run, without removing approval credentials. */
+  readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
   readonly notificationProviders?: (environment: Environment, parameters: WorkflowParameters) => ReadonlyArray<NotificationProvider>
 }
@@ -176,6 +178,7 @@ export const workflowEntrypoint = <A>(
     let slackMessageTs: string | undefined
     let discordMessageId: string | undefined
     let notificationQueue = Promise.resolve()
+    const channels = options.notificationChannels?.(this.env, event.payload) ?? this.env
     const card = new RunCard({
       instanceId: event.instanceId,
       repository: github?.repositoryName ?? event.payload.repository,
@@ -196,10 +199,10 @@ export const workflowEntrypoint = <A>(
         if (deliveries.some((delivery) => delivery.status === "failed")) {
           console.warn("CI notification provider delivery failed; execution continues")
         }
-        if (!hasNotificationChannels(this.env)) return
+        if (!hasNotificationChannels(channels)) return
         const presentation = card.render()
         const result = await step.do(`notification:${key}`, () => sendNotification(
-          this.env,
+          channels,
           presentation.text,
           fetch,
           slackMessageTs,

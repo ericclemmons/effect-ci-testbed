@@ -422,6 +422,12 @@ export const worker = (options: WorkerOptions = {}) => {
         return Response.json({ accepted: false, reason: "ignored action" }, { status: 202 })
       }
 
+      // Signed deliveries can describe another installed App's check suite.
+      // Signature authenticates GitHub, not ownership by this App.
+      if (String(payload.check_suite.app.id) !== environment.GITHUB_APP_ID) {
+        return Response.json({ accepted: false, reason: "foreign check suite" }, { status: 202 })
+      }
+
       const deliveryId = request.headers.get("x-github-delivery")
 
       if (!deliveryId) return new Response("Missing X-GitHub-Delivery", { status: 400 })

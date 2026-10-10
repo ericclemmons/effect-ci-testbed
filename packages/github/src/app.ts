@@ -156,6 +156,7 @@ export const verifyWebhookSignature = async (
 export interface CheckSuiteWebhook {
   readonly action: "requested" | "rerequested"
   readonly check_suite: {
+    readonly app: { readonly id: number }
     readonly head_branch: string | null
     readonly head_sha: string
   }
@@ -173,6 +174,7 @@ export const parseCheckSuiteWebhook = (value: unknown): CheckSuiteWebhook | unde
 
   const payload = value as Record<string, unknown>
   const suite = payload.check_suite as Record<string, unknown> | undefined
+  const app = suite?.app as Record<string, unknown> | undefined
   const installation = payload.installation as Record<string, unknown> | undefined
   const repository = payload.repository as Record<string, unknown> | undefined
 
@@ -180,6 +182,7 @@ export const parseCheckSuiteWebhook = (value: unknown): CheckSuiteWebhook | unde
     (payload.action !== "requested" && payload.action !== "rerequested") ||
     (typeof suite?.head_branch !== "string" && suite?.head_branch !== null) ||
     typeof suite?.head_sha !== "string" ||
+    !Number.isSafeInteger(app?.id) || Number(app?.id) <= 0 ||
     typeof installation?.id !== "number" ||
     typeof repository?.clone_url !== "string" ||
     typeof repository?.full_name !== "string"

@@ -6,7 +6,7 @@ const deliveryId = "delivery-1"
 const secret = "test-secret"
 const payload = {
   action: "requested",
-  check_suite: { head_branch: "feature", head_sha: "abc123" },
+  check_suite: { head_branch: "feature", head_sha: "abc123", app: { id: 123 } },
   installation: { id: 42 },
   repository: {
     clone_url: "https://github.com/example/project.git",
@@ -74,7 +74,7 @@ const workflow = {
 
 const environment = {
   EFFECT_CI: workflow,
-  GITHUB_APP_ID: "app-id",
+  GITHUB_APP_ID: "123",
   GITHUB_PRIVATE_KEY: "unused-by-fake-client",
   GITHUB_WEBHOOK_SECRET: secret,
 } as unknown as GitHubCloudflare.WorkerEnvironment
@@ -123,6 +123,19 @@ assert.deepEqual(await duplicate.json(), {
 assert.equal(checks.length, 1)
 assert.equal(instances.size, 1)
 assert.equal(updates.length, 0)
+
+// A real push can request suites for multiple installed Apps. Only ours may run CI.
+const foreignBody = JSON.stringify({ ...payload, check_suite: { ...payload.check_suite, app: { id: 456 } } })
+const foreign = await application.fetch(new Request("https://ci.example.com/webhooks/github", {
+  method: "POST",
+  headers: {
+    "x-github-event": "check_suite", "x-github-delivery": "foreign-delivery",
+    "x-hub-signature-256": `sha256=${createHmac("sha256", secret).update(foreignBody).digest("hex")}`,
+  }, body: foreignBody,
+}), environment)
+assert.deepEqual(await foreign.json(), { accepted: false, reason: "foreign check suite" })
+assert.equal(checks.length, 1)
+assert.equal(instances.size, 1)
 
 const failingEnvironment = {
   ...environment,

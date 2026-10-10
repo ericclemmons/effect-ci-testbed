@@ -62,11 +62,18 @@ and `rerequested` gives the normal **Re-run** experience. The webhook supplies t
 installation, repository, and head SHA.
 
 The Worker validates `X-Hub-Signature-256` before accepting a delivery. It uses
+the suite's App ID to reject suites belonging to other installed Apps. It uses
 `X-GitHub-Delivery` as the Workflow instance ID, making webhook redelivery idempotent,
 and responds after the exported Workflow accepts the instance. The durable Workflow—not
 the request handler—owns the run.
 
 ## Discord / Slack notifications and HITL
+
+This testbed sends outbound cards only for the dedicated remote `target: "release"`
+notification/HITL example below. Ordinary GitHub-triggered CI and remote builds stay
+quiet, even when Slack credentials are installed. GitHub checks still report those runs.
+The reusable runner's `notificationChannels` host policy selects channels per run;
+approval callback authentication remains configured independently.
 
 Notifications and approval gates are separate. Configure `DISCORD_WEBHOOK_URL` and/or
 `SLACK_WEBHOOK_URL` in the ignored `.secrets.env` file and redeploy with
