@@ -111,8 +111,27 @@ serializes updates and checkpoints each provider independently; replay restores 
 receipt without posting again. A provider failure does not fail CI or suppress another
 destination. Shared snapshots omit command output, event payloads, approval summaries,
 and approval capability tokens. Slack's existing inline approvals remain separate.
-GitHub PR-comment delivery still needs a provider and approved App permission; this
-extension does not grant permission or enable posting automatically.
+The `githubCommentProvider` factory is available from
+`@effect-ci-testbed/github-cloudflare/github-comment`. Supply the verified repository,
+PR number, App bot's numeric user ID, and a host-only installation-token callback.
+It maintains **one comment per run/PR**, updating its checklist rather than posting
+every event. Separate runs retain their own comments so a delayed older run cannot
+overwrite a newer run. One single latest comment across all runs would additionally
+need a shared coordinator; it is not this provider's contract.
+
+The provider checks author identity, PR scope and the run/revision marker before an
+edit, recovers an acknowledged post if its receipt was lost, and fails closed when
+bounded discovery is ambiguous or exceeds 500 comments. API error bodies are never
+forwarded and POST is not automatically retried. Discovery reduces duplicate posts
+on replay, but a concurrent external post or ambiguous API acknowledgement is not
+an exactly-once guarantee. Receipts contain only the comment ID and identity digest.
+
+Posting needs **Pull requests: read and write** in the GitHub App's repository
+permissions, followed by installation approval if prompted. Checks: write and
+Contents: read remain unchanged; Issues: write and Contents: write are unnecessary.
+This provider is tested locally against the API contract; it is **not enabled in the
+deployed app**, and no live PR-comment integration is claimed until permission and
+real delivery are verified. The extension never grants permission automatically.
 
 Root-only `cf-ci run --remote` was also verified through Access in instance
 `651bd288-5b3b-47bb-8b6f-b71b70fbd31c`. A deliberately dropped real event stream in
