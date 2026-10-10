@@ -77,6 +77,36 @@ The source always uses the supplied immutable revision, independently of event/r
 
 ## Verified runs
 
+### HMD prerequisites (not a complete release proof)
+
+`coverage-hmd-analytics-20261010-1` verified the Analytics SQL Worker binding with
+a real `logs.workersLogs` query (zero matching host rows). Worker deployment
+`19ccc182-96ad-4219-8fd2-29caf0974775`, Workflow version
+`702957da-d883-46b4-acc2-bc6a0dc6c91a`.
+
+`coverage-hmd-analytics-20261010-2` then read ten real demo Worker rows, exposing
+`$workers.scriptVersion.id`, `hmd.versionId`, `hmd.outcome`, and `hmd.invocation`;
+the observed sample intervals were 1. Worker deployment
+`7ef6e40a-c16d-4cf1-b471-80acc3bf6d7c`, Workflow version
+`f57c2a24-f662-4227-ae98-05fb71979ec7`. Only attribute names, not raw logs or request
+metadata values, were returned. This establishes binding and schema availability,
+not population completeness, statistical independence, or rollout health.
+
+The final restricted-output probe `coverage-hmd-analytics-20261010-3` also completed:
+Worker deployment `7aafb0c3-e2ea-47ac-ace7-c29551f4c9da`, Workflow version
+`d0695917-f932-4266-a2f2-3b7213dfd056`. It returned only allowlisted attribute names,
+the observed baseline UUID `09593237-23b2-4873-bd04-88c8e8488840`, sampling diagnostics,
+and query statistics. It never returned raw request metadata or log messages.
+
+The dedicated [HMD demo](../hmd-demo) baseline
+`09593237-23b2-4873-bd04-88c8e8488840` returned 20/20 healthy requests. Candidate
+`02de9b2e-95d0-49e6-b787-467e25c5a65c` was uploaded with failure rate 1; its preview
+returned 503 and its exact version ID. Deployment
+`bfe54ed8-5cfb-4fb6-b296-15c27ee186b8` still allocated 100% to the baseline, and the
+normal URL remained healthy after candidate upload. No candidate traffic allocation
+or production application was changed. Progressive promotion/rollback and live
+notification charts are still unverified.
+
 `coverage-secret-outbound-20261009-1` completed three native steps with source
 `36ea21ebbaaa2b972d917418fbffb7b59de2eac6`, Worker deployment
 `695fb261-0107-4a1f-b717-4dd499604186`, and Workflow version
