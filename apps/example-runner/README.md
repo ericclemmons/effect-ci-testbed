@@ -24,6 +24,19 @@ through the Analytics SQL binding. It captures independent `CF-Ray` receipts bef
 querying, waits for every expected receipt, and counts neither custom logs nor missing
 records as success. It does not yet drive the release controller or notifications.
 
+`WobsReleaseWorkflow` is a separate, fixed-target regression lab. It first closes
+100 baseline native outcomes, promotes the deliberately failing demo version to
+10%, and gates rollback only on native SQL outcomes matched to independently
+captured edge receipts. Each bounded cohort waits for delayed ingestion; missing,
+weighted, conflicting or misattributed outcomes stay uncertain. Its first candidate
+cohort cannot meet the minimum sample count, so it exercises a native one-minute
+uncertainty wait before a possible non-retryable SLO breach. The broker restores
+the complete prior allocation and independently recovers if the controller dies.
+There are at most 1,010 HTTP requests, ten observations and six SQL attempts per
+cohort. HTTP status validates receipt collection but is not the health gate.
+This does not prove healthy four-phase WOBS promotion, ambient-traffic completeness,
+Workflow/cron outcomes or notification image delivery; no Slack notification is sent.
+
 From the repository root:
 
 ```sh
@@ -122,7 +135,37 @@ This closes only that controlled workload, not ambient traffic or a global inges
 watermark. The [binding documentation](https://developers.cloudflare.com/analytics/sql-api/workers-binding/)
 currently says Log Explorer datasets are unsupported; this account's observed query
 success is experimental evidence, not a supported production contract. Full WOBS
-release gates, Workflow/cron terminal cohorts and live notification charts remain open.
+four-phase release gates, Workflow/cron terminal cohorts and live notification charts remain open.
+
+### Native WOBS-driven regression rollback
+
+`cf_6355fef9b88f3ab55f77be4bd458c17c483d7f8853f761a6f0e327522eac12b8`
+completed at 2026-10-10 21:22:36 UTC, host deployment
+`cc0e8651-9c4a-4cdd-b080-5d8a8c27bf0c`, Workflow version
+`2e78eeb4-05ed-45ec-a271-ef9a778efff8`. Native SQL closed all 100 healthy baseline
+outcomes, then all four mixed-version cohorts (10, 100, 100, 100 requests).
+Each first query had zero rows; each cohort closed after a native 30-second
+ingestion wait with no missing, conflicting, sampled or invalid native outcomes.
+
+Three uncertain observations each slept a native minute. The final 33/33 failing
+candidate outcomes crossed the 10% absolute SLO: candidate bounds `[55.98%, 100%]`,
+baseline bounds `[0%, 27.38%]`. The conclusive health step executed once despite
+ten configured retries, and broker rollback restored the full baseline allocation
+in deployment `c9275efa-74a5-4961-bfda-98762e297d88`. Four complete immutable SVG
+snapshots remain in the output. No Slack message was sent or production release
+committed. These are controlled closed-cohort bounds under the estimator's
+independent, stationary-trial assumptions, not proof of causal production regression.
+
+The [read-only assertion](ci/tests/live-wobs-release.test.ts) verifies recorded
+native ingestion, uncertainty waits, non-retryable rollback and complete charts:
+
+```sh
+WOBS_RELEASE_INSTANCE=cf_6355fef9b88f3ab55f77be4bd458c17c483d7f8853f761a6f0e327522eac12b8 \
+  node --test apps/example-runner/ci/tests/live-wobs-release.test.ts
+```
+
+The example stays 🔜: healthy four-phase WOBS gates, ambient completeness,
+Workflow/cron terminal outcomes and live notification images remain unverified.
 
 ### HMD prerequisites (not a complete release proof)
 

@@ -82,7 +82,7 @@ observation-budget exhaustion, and preservation of the prior traffic allocation.
 Local tests can use deterministic health samples, but they do not earn a hosted ✅.
 
 The [logical-cohort reconciler](../../packages/cloudflare/src/telemetry-cohort.ts)
-is a locally tested foundation, **not wired into the live controller yet**. It
+now also drives a bounded, hosted native WOBS regression lab. It
 requires a trusted, immutable list of every expected logical execution identity,
 created independently of query results. It deduplicates identical delivery of one
 native event, rejects one event counted under multiple identities, and keeps
@@ -94,8 +94,12 @@ not invent identities or reconstruct the expected list from rows that arrived.
 The [separate hosted WOBS probe](../../apps/example-runner/README.md#closed-native-wobs-cohort)
 now verifies twenty real terminal fetch outcomes against independently captured
 edge receipts, including a zero-row query followed by delayed complete ingestion.
-It preserves query-string redaction. This is a prerequisite, not yet a WOBS-driven
-release controller, ambient-traffic completeness or Workflow/cron outcome coverage.
+It preserves query-string redaction. The [native WOBS regression lab](../../apps/example-runner/README.md#native-wobs-driven-regression-rollback)
+subsequently verified a real 10% promotion, delayed complete ingestion, three
+uncertainty waits and conclusive rollback using native SQL outcomes only. All
+33 candidate outcomes were failures; the non-retryable gate ran once and restored
+the entire previous allocation. It does not prove healthy four-phase WOBS
+promotion, ambient-traffic completeness or Workflow/cron outcome coverage.
 
 ## Verification and notification work remaining
 
@@ -140,7 +144,8 @@ Catchable controller failures restore the baseline and fail the lab, rather than
 being reported as a successful expected regression. Fatal platform termination can
 bypass JavaScript cleanup; the broker now has independently verified
 [controller-death recovery](../../apps/release-manager/README.md#independent-controller-death-recovery).
-Complete WOBS windows and Slack/GitHub image delivery are still remaining work.
+Controlled native WOBS regression cohorts are now verified separately; healthy
+four-phase WOBS promotion, ambient windows and Slack/GitHub images remain open.
 
 ### Hosted healthy four-phase proof
 
