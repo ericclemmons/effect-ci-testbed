@@ -6,6 +6,13 @@ This app imports the examples unchanged and gives each its own native Workflow.
 It is separate from the GitHub/Slack service, has no production credentials, and serves no HTTP
 control plane. Instance creation and inspection require Cloudflare API credentials.
 
+The fixed-target release-broker probe additionally holds a service binding to
+[`apps/release-manager`](../release-manager/README.md), never its deployment token.
+It is trusted host code, not a capability available to imported repository actions
+or containers. `coverage-release-broker-20261010-4` verified real 10% promotion,
+same-phase replay without redeployment, and exact baseline rollback. Full hosted
+health decisions and WOBS confidence graphs remain unverified.
+
 From the repository root:
 
 ```sh

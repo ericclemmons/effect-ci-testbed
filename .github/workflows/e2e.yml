@@ -620,7 +620,7 @@ jobs:
       - name: Verify remote CLI authentication and event streaming
         run: node --test packages/cli/src/*test.ts apps/example-runner/src/*test.ts
       - name: Verify source exports and HMD health foundations
-        run: node --test packages/cloudflare/src/*.test.ts apps/hmd-demo/src/*.test.ts
+        run: node --test packages/cloudflare/src/*.test.ts apps/hmd-demo/src/*.test.ts apps/release-manager/src/*.test.ts
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
