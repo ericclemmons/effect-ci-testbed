@@ -32,8 +32,8 @@ This run used the Worker API token as well as Access; it did not deploy a releas
 2. Push a commit or update a pull request.
 3. GitHub immediately shows queued Effect CI checks.
 4. A new Workflow instance appears in the Cloudflare dashboard.
-5. The Workflow checks out the exact commit in Cloudflare's managed Debian Trixie
-   Container image.
+5. The Workflow checks out the exact commit in the app's Sandbox-shim image,
+   with Git and Node preinstalled by its own [Dockerfile](./Dockerfile).
 6. Each action publishes its status and command output back to GitHub Checks.
 7. The final GitHub result and Cloudflare Workflow result agree.
 
