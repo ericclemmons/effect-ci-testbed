@@ -81,6 +81,17 @@ inconclusive samples followed by enough data, immediate unhealthy rollback,
 observation-budget exhaustion, and preservation of the prior traffic allocation.
 Local tests can use deterministic health samples, but they do not earn a hosted ✅.
 
+The [logical-cohort reconciler](../../packages/cloudflare/src/telemetry-cohort.ts)
+is a locally tested foundation, **not wired into the live controller yet**. It
+requires a trusted, immutable list of every expected logical execution identity,
+created independently of query results. It deduplicates identical delivery of one
+native event, rejects one event counted under multiple identities, and keeps
+missing/conflicting/version-mismatched/out-of-window/weighted rows uncertain.
+Its completion applies only to that exact closed cohort, not ambient traffic or
+a general SQL ingestion watermark. The adapter must authenticate correlation IDs
+and classify native terminal outcomes rather than log lines or DO resets; it must
+not invent identities or reconstruct the expected list from rows that arrived.
+
 ## Verification and notification work remaining
 
 A bounded [live regression test](../../apps/hmd-demo/ci/tests/live-rollback.test.ts)
