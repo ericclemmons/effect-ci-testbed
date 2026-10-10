@@ -91,6 +91,11 @@ Its completion applies only to that exact closed cohort, not ambient traffic or
 a general SQL ingestion watermark. The adapter must authenticate correlation IDs
 and classify native terminal outcomes rather than log lines or DO resets; it must
 not invent identities or reconstruct the expected list from rows that arrived.
+The [separate hosted WOBS probe](../../apps/example-runner/README.md#closed-native-wobs-cohort)
+now verifies twenty real terminal fetch outcomes against independently captured
+edge receipts, including a zero-row query followed by delayed complete ingestion.
+It preserves query-string redaction. This is a prerequisite, not yet a WOBS-driven
+release controller, ambient-traffic completeness or Workflow/cron outcome coverage.
 
 ## Verification and notification work remaining
 

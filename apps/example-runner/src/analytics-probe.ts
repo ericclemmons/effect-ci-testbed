@@ -5,10 +5,15 @@ export class AnalyticsProbeWorkflow extends WorkflowEntrypoint<{ ANALYTICS_SQL: 
   override async run(_event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
     return step.do("analytics:workers-log-availability", { retries: { limit: 0, delay: "1 second" } }, async () => {
       const result = await this.env.ANALYTICS_SQL.query({
-        query: "SELECT timestamp, scriptName, sampleInterval, attributes FROM logs.workersLogs WHERE scriptName = $script AND timestamp >= $start LIMIT 10",
+        query: "SELECT timestamp, scriptName, sampleInterval, attributes, logType, requestId, rayId FROM logs.workersLogs WHERE scriptName = $script AND timestamp >= $start LIMIT 10",
         params: { script: "effect-ci-hmd-demo", start: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
       })
       return { available: true, rows: result.rows, columns: result.data.length ? Object.keys(result.data[0]!) : [],
+        logTypes: [...new Set(result.data.map((row) => row.logType))].filter((value): value is string => typeof value === "string" && /^[a-zA-Z_-]{1,32}$/.test(value)),
+        // Schema only. Never return request URLs, headers, log messages or IDs.
+        nativeAttributeKeys: [...new Set(result.data.flatMap((row) => Object.keys((row.attributes ?? {}) as object)))].filter((key) =>
+          ["$workers.event.request.method", "$workers.event.request.url", "$workers.eventType", "$workers.executionModel",
+            "$workers.scriptVersion.id", "$workers.truncated", "$workers.event.response.status", "$workers.outcome"].includes(key)),
         attributeKeys: [...new Set(result.data.flatMap((row) => Object.keys((row.attributes ?? {}) as object)))].filter((key) =>
           ["$workers.scriptVersion.id", "hmd.versionId", "hmd.outcome", "hmd.invocation"].includes(key)),
         versionIds: [...new Set(result.data.flatMap((row) => {

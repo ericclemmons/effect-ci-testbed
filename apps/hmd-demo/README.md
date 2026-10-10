@@ -59,6 +59,7 @@ Verified 2026-10-10 UTC:
 - Restored deployment: `c2641646-4ee8-4edf-b77b-8d426fd449ff`, 100% healthy baseline.
 
 These direct probes are a controlled test workload, not production traffic or
-WOBS observations. Native SQL version attribution is verified separately; complete
-WOBS cohorts, hosted retry orchestration, healthy promotion through all phases,
-and live Slack/GitHub charts remain to be integrated.
+WOBS observations. Subsequent [hosted controller runs](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof)
+verified native uncertainty waits, non-retryable regression, healthy promotion
+through 10/25/75/100, exact rollback, and independent broker recovery after controller
+termination. Complete WOBS cohorts and live Slack/GitHub charts remain unverified.

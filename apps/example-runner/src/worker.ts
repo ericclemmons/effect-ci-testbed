@@ -12,6 +12,7 @@ export { CredentialVault, SecretOutbound, SecretWorkspaceContainer, SecretOutbou
 export { ArtifactsSourceWorkflow } from "./artifacts-source.ts"
 export { R2SourceWorkflow } from "./r2-source.ts"
 export { AnalyticsProbeWorkflow } from "./analytics-probe.ts"
+export { WobsCohortProbeWorkflow } from "./wobs-probe.ts"
 export { ReleaseBrokerProbeWorkflow } from "./release-broker-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"

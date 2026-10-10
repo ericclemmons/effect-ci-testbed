@@ -33,6 +33,7 @@ export default defineConfig({
       ArtifactsSourceWorkflow: exports.workflow({ name: "effect-ci-example-artifacts-source" }),
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
+      WobsCohortProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-cohort" }),
       ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
       HostedHmdWorkflow: exports.workflow({ name: "effect-ci-probe-hosted-hmd" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
