@@ -10,8 +10,14 @@ The fixed-target release-broker probe additionally holds a service binding to
 [`apps/release-manager`](../release-manager/README.md), never its deployment token.
 It is trusted host code, not a capability available to imported repository actions
 or containers. `coverage-release-broker-20261010-4` verified real 10% promotion,
-same-phase replay without redeployment, and exact baseline rollback. Full hosted
-health decisions and WOBS confidence graphs remain unverified.
+same-phase replay without redeployment, and exact baseline rollback.
+
+`HostedHmdWorkflow` verifies healthy 10/25/75/100 promotion, non-retryable regression
+and exhausted uncertainty through real closed client HTTP cohorts and immutable
+confidence SVGs. WOBS completeness, notification images and automatic recovery from
+fatal platform termination remain unverified. See the
+[HMD evidence and remaining matrix](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof).
+No notification token or deployment credential is present in this controller.
 
 From the repository root:
 

@@ -7,10 +7,14 @@ const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
 
 /** Authenticated Cloudflare Workflow API only. No credential or container in the caller. */
 export class ReleaseBrokerProbeWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "promote" | "rollback" | "reconcile"> }> {
-  override async run(event: Readonly<WorkflowEvent<{ reconcileOwner?: string }>>, step: WorkflowStep) {
+  override async run(event: Readonly<WorkflowEvent<{ reconcileOwner?: string; rollbackOwner?: string }>>, step: WorkflowStep) {
     const owner = event.instanceId
     const broker = this.env.RELEASE_MANAGER
     const noRetry = { retries: { limit: 0, delay: "1 second" } } as const
+    if (event.payload?.rollbackOwner) {
+      // Authenticated operator recovery after a fatal Workflow platform error.
+      return step.do("release:operator-rollback", noRetry, () => broker.rollback(event.payload.rollbackOwner!))
+    }
     if (event.payload?.reconcileOwner) {
       // Explicit operator recovery: only confirms an already-written intent; no POST.
       return step.do("release:reconcile", noRetry, () => broker.reconcile(event.payload.reconcileOwner!))
