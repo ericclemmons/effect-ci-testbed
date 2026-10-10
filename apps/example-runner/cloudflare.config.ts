@@ -41,6 +41,7 @@ export default defineConfig({
       WobsDiagnosticWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-diagnostic" }),
       ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
       HostedHmdWorkflow: exports.workflow({ name: "effect-ci-probe-hosted-hmd" }),
+      HumanReviewedHmdWorkflow: exports.workflow({ name: "effect-ci-example-hmd-review" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),

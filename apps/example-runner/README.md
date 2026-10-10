@@ -19,6 +19,12 @@ verified; WOBS completeness and notification images remain unverified. See the
 [HMD evidence and remaining matrix](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof).
 No notification token or deployment credential is present in this controller.
 
+`HumanReviewedHmdWorkflow` is a separate opt-in lab: inconclusive or near-margin
+HTTP evidence pauses for a snapshot-bound, expiring operator decision. It never
+offers approval for a conclusive regression, and human risk acceptance does not
+rewrite uncertainty as healthy. Hosted execution and Slack delivery are not yet
+verified. See [human-reviewed HMD](../../examples/health-mediated-approval).
+
 `WobsCohortProbeWorkflow` separately verifies twenty native terminal fetch outcomes
 through the Analytics SQL binding. It captures independent `CF-Ray` receipts before
 querying, waits for every expected receipt, and counts neither custom logs nor missing
