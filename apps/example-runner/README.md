@@ -92,6 +92,12 @@ the observed sample intervals were 1. Worker deployment
 metadata values, were returned. This establishes binding and schema availability,
 not population completeness, statistical independence, or rollout health.
 
+The final restricted-output probe `coverage-hmd-analytics-20261010-3` also completed:
+Worker deployment `7aafb0c3-e2ea-47ac-ace7-c29551f4c9da`, Workflow version
+`d0695917-f932-4266-a2f2-3b7213dfd056`. It returned only allowlisted attribute names,
+the observed baseline UUID `09593237-23b2-4873-bd04-88c8e8488840`, sampling diagnostics,
+and query statistics. It never returned raw request metadata or log messages.
+
 The dedicated [HMD demo](../hmd-demo) baseline
 `09593237-23b2-4873-bd04-88c8e8488840` returned 20/20 healthy requests. Candidate
 `02de9b2e-95d0-49e6-b787-467e25c5a65c` was uploaded with failure rate 1; its preview
