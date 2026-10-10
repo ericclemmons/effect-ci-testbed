@@ -13,6 +13,8 @@ export interface ReleaseJournal {
   readonly sequence: number
   readonly status: "active" | "complete" | "rolled-back"
   readonly pending?: Intent
+  readonly expiresAt?: number
+  readonly leaseSeconds?: number
 }
 export interface ReleaseStore { read(): Promise<ReleaseJournal | undefined>; write(value: ReleaseJournal): Promise<void> }
 export interface DeploymentAPI { latest(): Promise<Deployment>; create(versions: ReadonlyArray<VersionAllocation>, message: string): Promise<Deployment> }
@@ -31,8 +33,10 @@ const validDeployment = (value: Deployment) => uuid(value.id) && value.versions.
 export class ReleaseManager {
   private readonly store: ReleaseStore
   private readonly api: DeploymentAPI
-  constructor(store: ReleaseStore, api: DeploymentAPI) { this.store = store; this.api = api }
-  async begin(owner: string, candidate: string): Promise<ReleaseJournal> {
+  private readonly now: () => number
+  constructor(store: ReleaseStore, api: DeploymentAPI, now = Date.now) { this.store = store; this.api = api; this.now = now }
+  async begin(owner: string, candidate: string, leaseSeconds = 900): Promise<ReleaseJournal> {
+    if (!Number.isSafeInteger(leaseSeconds) || leaseSeconds < 30 || leaseSeconds > 1800) throw new Error("Invalid recovery lease")
     if (typeof owner !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(owner) || !uuid(candidate)) throw new Error("Invalid release identity")
     const existing = await this.store.read()
     if (existing?.owner === owner) {
@@ -43,9 +47,27 @@ export class ReleaseManager {
     const deployment = await this.api.latest()
     if (!validDeployment(deployment)) throw new Error("Invalid current deployment")
     const state = beginRelease(candidate, deployment.versions)
-    const journal: ReleaseJournal = { owner, candidate, previous: state.previous, deployment, phase: -1, sequence: 0, status: "active" }
+    const journal: ReleaseJournal = { owner, candidate, previous: state.previous, deployment, phase: -1, sequence: 0, status: "active",
+      leaseSeconds, expiresAt: this.now() + leaseSeconds * 1000 }
     await this.store.write(journal)
     return journal
+  }
+  private assertLive(journal: ReleaseJournal) {
+    if (journal.expiresAt !== undefined && journal.expiresAt <= this.now()) throw new Error("Release controller lease expired")
+  }
+  async renew(owner: string): Promise<ReleaseJournal> {
+    const journal = await this.owned(owner)
+    this.assertLive(journal)
+    if (journal.pending || journal.status !== "active" || !journal.leaseSeconds) throw new Error("Release cannot renew")
+    const renewed = { ...journal, expiresAt: this.now() + journal.leaseSeconds * 1000 }
+    await this.store.write(renewed)
+    return renewed
+  }
+  /** Alarm retries retain the same owner and existing write-intent safety rules. */
+  async recoverExpired(): Promise<ReleaseJournal | undefined> {
+    const journal = await this.store.read()
+    if (!journal || journal.status !== "active" || journal.expiresAt === undefined || journal.expiresAt > this.now()) return undefined
+    return this.rollback(journal.owner)
   }
   private async owned(owner: string): Promise<ReleaseJournal> {
     const journal = await this.store.read()
@@ -85,6 +107,7 @@ export class ReleaseManager {
   async promote(owner: string, percentage: number): Promise<ReleaseJournal> {
     if (![10, 25, 75, 100].includes(percentage)) throw new Error("Invalid release percentage")
     let journal = await this.owned(owner)
+    this.assertLive(journal)
     if (journal.pending) journal = await this.reconcile(owner)
     const phases = [10, 25, 75, 100]
     if (journal.status !== "active") throw new Error("Release is terminal")
@@ -106,6 +129,7 @@ export class ReleaseManager {
   }
   async complete(owner: string): Promise<ReleaseJournal> {
     const journal = await this.owned(owner)
+    this.assertLive(journal)
     if (journal.pending || journal.phase !== 3 || journal.status === "rolled-back") throw new Error("Release is not ready to complete")
     const latest = await this.api.latest()
     if (!validDeployment(latest) || latest.id !== journal.deployment.id || !sameAllocation(latest.versions, journal.deployment.versions)) throw new Error("Deployment ownership drift")

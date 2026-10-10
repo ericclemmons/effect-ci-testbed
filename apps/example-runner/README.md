@@ -14,8 +14,8 @@ same-phase replay without redeployment, and exact baseline rollback.
 
 `HostedHmdWorkflow` verifies healthy 10/25/75/100 promotion, non-retryable regression
 and exhausted uncertainty through real closed client HTTP cohorts and immutable
-confidence SVGs. WOBS completeness, notification images and automatic recovery from
-fatal platform termination remain unverified. See the
+confidence SVGs. Independent broker recovery after controller termination is also
+verified; WOBS completeness and notification images remain unverified. See the
 [HMD evidence and remaining matrix](../../examples/health-mediated-release/README.md#hosted-regression-controller-proof).
 No notification token or deployment credential is present in this controller.
 

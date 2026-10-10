@@ -38,8 +38,16 @@ An unresolved intent requires operator review; the broker cannot reset it remote
 
 Dashboard/external deployment changes are detected before writes, not atomically
 fenced by Cloudflare's deployment API. Use this dedicated target with one operator;
-do not claim safety against racing external deployment tools. Durable ownership
-does not expire automatically because an expired lease could race a delayed write.
+do not claim safety against racing external deployment tools. A controller lease
+defaults to fifteen minutes (trusted callers may select 30–1800 seconds). The
+journal and its Durable Object alarm commit atomically before deployment writes.
+`renew(instanceId)` extends a live lease; an expired owner cannot renew, promote
+or complete. Expiry does **not** release ownership to a new controller: the alarm
+serializes with broker calls and restores the captured allocation first.
+Pending/ambiguous writes still require reconciliation; external drift blocks
+recovery rather than being overwritten. Failed recovery keeps ownership and
+reschedules a one-minute reconciliation attempt, with a redacted operator warning.
+Legacy active journals without a deadline still require operator recovery.
 
 This is the mutation boundary, **not** the HMD controller. Health decisions,
 telemetry completeness, immutable observation history and live confidence charts
@@ -76,3 +84,35 @@ cf workflows instances create effect-ci-probe-release-broker \
 
 The `--params` flag serializes a string; use the object-valued body for recovery.
 This is not yet full 10/25/75/100 health-mediated release or WOBS/chart verification.
+
+## Independent controller-death recovery
+
+On October 10, 2026, fixture
+`cf_dfbea9089fb2f0cec1b67d0fe04106f59a443a4683c689e19b0f347b089eece6`
+promoted the failing candidate to 10% in deployment
+`bf7c693a-7799-46b6-b0e3-092bad70da9c`, then was explicitly **terminated** at
+18:20:13 UTC without Workflow rollback. The broker's persisted thirty-second
+deadline fired independently and restored the original baseline at 100% in
+`d599b570-9a32-485a-ab46-7e514ad757cc` at 18:20:30 UTC. No controller cleanup
+step ran and no operator rollback was dispatched.
+
+Read-only assertions check the terminated run, absent cleanup, prior allocation,
+restoration annotation and timing:
+
+```sh
+HMD_ABANDON_INSTANCE=cf_dfbea9089fb2f0cec1b67d0fe04106f59a443a4683c689e19b0f347b089eece6 \
+HMD_RECOVERY_DEPLOYMENT=d599b570-9a32-485a-ab46-7e514ad757cc \
+node --test apps/example-runner/ci/tests/live-recovery.test.ts
+```
+
+The dedicated authenticated probe accepts `{"params":{"abandon":true}}` only to
+create this short-lease test on the fixed demo. Terminate it during its two-minute
+sleep, without `--rollback`, to exercise the independent alarm. Do not run it
+alongside other releases. This does not simulate every possible outage: recovery
+still depends on broker storage, alarm scheduling and the deployment API being
+available, and unresolved writes or drift require operator review.
+
+The live HMD controller also renews before each observation. Post-change regression
+`cf_6b5d0a21168d1fef60a2a7d7b93f24d4893320ff0eef9f5355af0b3d3e3f4e29`
+completed an uncertain-to-regression transition and normal broker rollback in
+`f157265b-4ae8-40b2-ac95-416fc78705fd`; its read-only HMD assertions pass.

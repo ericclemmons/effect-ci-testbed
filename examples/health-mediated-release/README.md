@@ -122,7 +122,8 @@ cf workflows instances create effect-ci-probe-hosted-hmd \
 Do not run these simultaneously: one durable release owner guards the target.
 Catchable controller failures restore the baseline and fail the lab, rather than
 being reported as a successful expected regression. Fatal platform termination can
-bypass JavaScript cleanup; independent automatic recovery remains unimplemented.
+bypass JavaScript cleanup; the broker now has independently verified
+[controller-death recovery](../../apps/release-manager/README.md#independent-controller-death-recovery).
 Complete WOBS windows and Slack/GitHub image delivery are still remaining work.
 
 ### Hosted healthy four-phase proof
@@ -165,7 +166,7 @@ restored the exact baseline at 100% in deployment
 `28fa2c66-46d0-4271-8d85-1ecc169813d4` through the private broker, not a direct overwrite.
 The bounded lab now declares 150,000 subrequests for at most 94,700 probes plus
 checkpoint/RPC headroom, and stops a sample batch on unknown responses. This is not
-a substitute for a production release lease/watchdog.
+a substitute for the independent broker recovery deadline described above.
 
 For the owning instance only, recovery through the authenticated Workflow API is:
 
