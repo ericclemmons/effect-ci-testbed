@@ -14,7 +14,7 @@ export { R2SourceWorkflow } from "./r2-source.ts"
 export { AnalyticsProbeWorkflow } from "./analytics-probe.ts"
 export { WobsCohortProbeWorkflow } from "./wobs-probe.ts"
 export { WobsReleaseWorkflow } from "./wobs-release.ts"
-export { WobsBatchProbeWorkflow } from "./wobs-batch-probe.ts"
+export { WobsBatchProbeWorkflow, WobsLargeBatchProbeWorkflow } from "./wobs-batch-probe.ts"
 export { ReleaseBrokerProbeWorkflow } from "./release-broker-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
