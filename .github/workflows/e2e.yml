@@ -616,7 +616,7 @@ jobs:
       - name: Verify signed dispatch and duplicate delivery
         run: node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
       - name: Verify Slack approvals and single-message progress
-        run: node --test packages/github/src/*.test.ts packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/workflow.test.ts apps/effect-ci/access.config.test.ts apps/example-runner/src/*.test.ts
+        run: node --test packages/github/src/*.test.ts packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/*.test.ts apps/effect-ci/access.config.test.ts apps/example-runner/src/*.test.ts
       - name: Verify remote CLI authentication and event streaming
         run: node --test packages/cli/src/*test.ts apps/example-runner/src/*test.ts
       - name: Verify source exports and HMD health foundations
