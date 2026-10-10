@@ -15,6 +15,24 @@ const symbols: Record<PlanNode["status"] | "waiting" | "approved" | "rejected", 
   waiting: "⏳", approved: "✅", rejected: "❌",
 }
 const escape = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+const safeUrl = (value: string | undefined): string | undefined => {
+  if (!value) return undefined
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && !url.username && !url.password ? url.href.replaceAll("|", "%7C") : undefined
+  } catch { return undefined }
+}
+const link = (url: string | undefined, label: string): string => url ? `<${escape(url)}|${escape(label)}>` : escape(label)
+
+/** Only recognize canonical GitHub identities; arbitrary sources remain plain, escaped text. */
+const sourceLinks = (identity: RunIdentity): string => {
+  const repository = identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
+  const valid = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)
+  const url = valid ? `https://github.com/${repository}` : undefined
+  const commit = /^[a-f0-9]{7,64}$/i.test(identity.revision)
+  const revision = commit ? identity.revision.slice(0, 7) : identity.revision
+  return `${link(url, repository.slice(0, 200))}@${link(url && commit ? `${url}/commit/${identity.revision}` : undefined, revision.slice(0, 100))}${safeUrl(identity.detailsUrl) ? ` • ${link(safeUrl(identity.detailsUrl), "Details")}` : ""}`
+}
 
 /** Reconstructed from runtime events on replay; never stores output or secrets. */
 export class RunCard {
@@ -100,7 +118,7 @@ export class RunCard {
     })
     const blocks: Array<SlackBlock> = [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },
-      { type: "context", elements: [{ type: "plain_text", text: `${this.identity.repository}\nRevision: ${this.identity.revision}`.slice(0, 2000) }] },
+      { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
       { type: "divider" },
     ]
     // One compact checklist, split into sections to respect Slack's text limit.
@@ -127,10 +145,8 @@ export class RunCard {
         { type: "button", text: { type: "plain_text", text: "Approve" }, style: "primary", action_id: "approve_release", value },
         { type: "button", text: { type: "plain_text", text: "Reject" }, style: "danger", action_id: "reject_release", value },
       ] : []),
-      ...(this.identity.detailsUrl ? [{ type: "button", text: { type: "plain_text", text: "View Workflow" }, url: this.identity.detailsUrl, action_id: "view_workflow" }] : []),
     ]
     if (buttons.length) blocks.push({ type: "actions", elements: buttons })
-    blocks.push({ type: "context", elements: [{ type: "plain_text", text: `Cloudflare Workflow · ${this.identity.instanceId}`.slice(0, 2000) }] })
 
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
 
