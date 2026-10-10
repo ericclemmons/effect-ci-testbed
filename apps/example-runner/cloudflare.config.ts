@@ -21,7 +21,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
-    env: { LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
+    env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
       SecretWorkspaceContainer: exports.durableObject({ storage: "sqlite", container: secretWorkspace }),
@@ -30,6 +30,7 @@ export default defineConfig({
       ArtifactsSourceWorkflow: exports.workflow({ name: "effect-ci-example-artifacts-source" }),
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
+      ReleaseBrokerProbeWorkflow: exports.workflow({ name: "effect-ci-probe-release-broker" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),
