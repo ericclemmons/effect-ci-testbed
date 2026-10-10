@@ -99,7 +99,8 @@ means that execution model is genuinely irrelevant to the use-case.
 | [Infer lint, format, check, test, and build from an empty `ci.ts`](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Demo discovery, cached checks, and agent feedback before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
 | [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
-| [Swap filesystem, Git, and Cloudflare Artifacts source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | ✅ |
+| [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
+| [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | 🔜 | 🔜 |
 | Materialize R2 or Durable Object sources | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |

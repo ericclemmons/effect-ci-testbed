@@ -53,7 +53,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 | [Portable artifacts](../../examples/portable-artifacts) | `effect-ci-example-portable-artifacts` |
 | [Host-only outbound credentials](../../examples/secret-outbound) | `effect-ci-example-secret-outbound` |
-| [Cloudflare Artifacts source](../../examples/source-providers) | `effect-ci-example-artifacts-source` |
+| [Cloudflare Artifacts source](../../examples/artifacts-source) | `effect-ci-example-artifacts-source` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
