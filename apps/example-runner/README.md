@@ -121,6 +121,18 @@ of reflected credentials and errors.
 
 ### Artifacts-backed source proof
 
+### Fail-once retry proof
+
+`coverage-retry-20261010-1` completed one native step, `action:"flaky test"-1`:
+attempt 1 failed with `Simulated transient failure on attempt 1`, then attempt 2
+started exactly 1,000 ms after the first attempt ended and succeeded. Both retries
+and delay are native policy, with no container or checkout. Host deployment
+`718d41a9-0ea5-4a1f-9d37-ec3c48ba1ff0`, Workflow version
+`333a4006-65f5-4454-be44-1a39c99b27fb`. The repository/revision parameters were
+unused; the check body is bundled in that Workflow version.
+
+### Artifacts source history
+
 The dedicated `examples/artifacts-source` consumer passed in
 `coverage-artifacts-focused-20261010-1` at source
 `e8faf6e46a9dde90067658d87d128c71796ed8c0`, using repository

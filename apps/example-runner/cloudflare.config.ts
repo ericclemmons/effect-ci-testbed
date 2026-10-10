@@ -33,6 +33,7 @@ export default defineConfig({
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),
+      RetryWorkflow: exports.workflow({ name: "effect-ci-example-retry" }),
       EffectTimeoutProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-timeout" }),
       EffectExhaustionProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-exhaustion" }),
       EffectTerminalProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-terminal" }),
