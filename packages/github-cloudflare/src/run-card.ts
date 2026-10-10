@@ -1,12 +1,25 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
 
 export type SlackBlock = Readonly<Record<string, unknown>>
-interface RunIdentity {
+export interface RunIdentity {
   readonly instanceId: string
   readonly repository: string
   readonly revision: string
   readonly detailsUrl?: string
   readonly slackApprovalsEnabled?: boolean
+}
+
+/** Provider-neutral status only: no output, event payloads, or approval capabilities. */
+export interface RunSnapshot {
+  readonly identity: Readonly<Pick<RunIdentity, "instanceId" | "repository" | "revision" | "detailsUrl">>
+  readonly workflowId: string
+  readonly phase: "running" | "waiting" | "success" | "failure"
+  readonly checks: ReadonlyArray<{
+    readonly id: string
+    readonly status: keyof typeof symbols
+    readonly optional: boolean
+    readonly dependencies: ReadonlyArray<string>
+  }>
 }
 
 const symbols: Record<PlanNode["status"] | "waiting" | "approved" | "rejected", string> = {
@@ -97,6 +110,19 @@ export class RunCard {
 
   setReviewUrl(url: string): void {
     if (this.review) this.review.url = url
+  }
+
+  snapshot(): RunSnapshot {
+    const { instanceId, repository, revision, detailsUrl } = this.identity
+    return Object.freeze({
+      identity: Object.freeze({ instanceId, repository, revision, ...(detailsUrl ? { detailsUrl } : {}) }),
+      workflowId: this.workflowId,
+      phase: this.phase,
+      checks: Object.freeze(Array.from(this.checks, ([id, check]) => Object.freeze({
+        id, status: check.status, optional: check.optional,
+        dependencies: Object.freeze(Array.from(check.dependencies)),
+      }))),
+    })
   }
 
   render(): { text: string; blocks: ReadonlyArray<SlackBlock> } {

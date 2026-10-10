@@ -4,6 +4,7 @@ import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
 import { hasNotificationChannels, sendNotification } from "./notifications.ts"
 import { RunCard } from "./run-card.ts"
+import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import {
   WorkflowEntrypoint,
   type WorkflowEvent,
@@ -34,7 +35,10 @@ const credentials = (environment: Environment): GitHub.GitHubAppCredentials => (
   privateKey: environment.GITHUB_PRIVATE_KEY,
 })
 
-export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions<Environment> {}
+export interface WorkflowEntrypointOptions extends Cloudflare.WorkflowEntrypointOptions<Environment> {
+  /** Additional host-only destinations; credentials stay in provider closures. */
+  readonly notificationProviders?: (environment: Environment, parameters: WorkflowParameters) => ReadonlyArray<NotificationProvider>
+}
 
 const isApprovalResult = (value: unknown): value is CI.ApprovalResult => {
   if (!value || typeof value !== "object") return false
@@ -179,9 +183,20 @@ export const workflowEntrypoint = <A>(
       slackApprovalsEnabled: Boolean(this.env.SLACK_SIGNING_SECRET && this.env.SLACK_APP_ID && this.env.SLACK_TEAM_ID && this.env.SLACK_APPROVER_IDS && this.env.SLACK_CHANNEL_ID),
       ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
     })
+    const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
+    const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
+      step.do(`notification-provider:${provider}:${key}`, deliver))
     const notify = (key: string, update: () => boolean): Promise<void> => {
       notificationQueue = notificationQueue.then(async () => {
-        if (!update() || !hasNotificationChannels(this.env)) return
+        if (!update()) return
+        const deliveries = await Effect.runPromise(Effect.gen(function*() {
+          const service = yield* Notifications
+          return yield* service.publish(key, card.snapshot())
+        }).pipe(Effect.provide(notifications)))
+        if (deliveries.some((delivery) => delivery.status === "failed")) {
+          console.warn("CI notification provider delivery failed; execution continues")
+        }
+        if (!hasNotificationChannels(this.env)) return
         const presentation = card.render()
         const result = await step.do(`notification:${key}`, () => sendNotification(
           this.env,

@@ -82,8 +82,9 @@ can remain unchanged; this service uses the same installed Slack app identity.
 With a bot token the runner posts one Block Kit status card with a dependency-ordered
 checklist and edits it as actions progress. Completed checks stay visible alongside
 running, queued, skipped, and optional warning checks. Approval adds **Approve** and
-**Reject** buttons to that same card; resolving approval removes them. **View Workflow**
-opens the native Cloudflare dashboard instance (configure `EFFECT_CI_DETAILS_URL`
+**Reject** buttons to that same card; resolving approval removes them. The linked
+`repo@7-character-sha • Details` context replaces the long revision and duplicate
+Workflow footer. **Details** opens the native Cloudflare dashboard instance (configure `EFFECT_CI_DETAILS_URL`
 with an instance URL template containing `{id}`). The final result updates the
 card again. Status icons require only `chat:write`, not reaction permissions.
 The template is `https://dash.cloudflare.com/ACCOUNT_ID/workers/workflows/WORKFLOW_NAME/instance/{id}`.
@@ -97,6 +98,29 @@ remain Worker secrets and never enter the build container. Failed notification
 delivery is best-effort and does not fail CI; its result is checkpointed rather than
 retried indefinitely. External delivery is not exactly-once: a crash after posting
 but before checkpointing can duplicate a message.
+
+Additional destinations can be supplied through `workflowEntrypoint`'s
+`notificationProviders(environment, parameters)` option. Each provider has a stable
+unique slug `id` and an Effect-returning `deliver(runSnapshot, previousReceipt)`.
+Import `Notifications` and `notificationLayer` from
+`@effect-ci-testbed/github-cloudflare/notifications` for standalone composition.
+One service explicitly fans out to providers; merging competing layers for the same
+service does not provide fan-out. Providers own their rendering and API calls, and
+return serializable receipts containing message/comment IDs only. The hosted runner
+serializes updates and checkpoints each provider independently; replay restores its
+receipt without posting again. A provider failure does not fail CI or suppress another
+destination. Shared snapshots omit command output, event payloads, approval summaries,
+and approval capability tokens. Slack's existing inline approvals remain separate.
+GitHub PR-comment delivery still needs a provider and approved App permission; this
+extension does not grant permission or enable posting automatically.
+
+Root-only `cf-ci run --remote` was also verified through Access in instance
+`651bd288-5b3b-47bb-8b6f-b71b70fbd31c`. A deliberately dropped real event stream in
+`2d28409b-7efd-45bd-909a-e82cd9830346` resumed at cursor `1`, completed successfully,
+and dispatched only once. Bounded reconnects resume the same instance, not a new run.
+An exhausted transport retry is not evidence that the Workflow failed; inspect that
+instance before starting another run. Remote runs require a clean, pushed revision;
+local checks still work on dirty files.
 
 Discord: create a channel webhook under **Channel settings → Integrations → Webhooks**.
 Slack: create an incoming webhook for the desired channel in your Slack app.
