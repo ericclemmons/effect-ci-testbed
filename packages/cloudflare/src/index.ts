@@ -203,10 +203,14 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     this.activeStepId = stepId
   }
 
+  /** Host-owned network policy, reapplied before commands after starts/restores. */
+  protected async configureOutbound(): Promise<void> {}
+
   private async run(
     command: ReadonlyArray<string>,
     cwd?: string,
   ): Promise<ContainerExecutionResult> {
+    await this.configureOutbound()
     const process = await this.container().exec(
       [...command],
       cwd ? { cwd } : undefined,

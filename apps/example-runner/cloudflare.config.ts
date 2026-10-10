@@ -18,6 +18,9 @@ export default defineConfig({
     env: { LOADER: bindings.workerLoader() },
     exports: {
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
+      SecretWorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
+      CredentialVault: exports.durableObject({ storage: "sqlite" }),
+      SecretOutboundWorkflow: exports.workflow({ name: "effect-ci-example-secret-outbound" }),
       NodeNpmWorkflow: exports.workflow({ name: "effect-ci-example-node-npm" }),
       ZeroConfigWorkflow: exports.workflow({ name: "effect-ci-example-zero-config" }),
       ExecutionPolicyWorkflow: exports.workflow({ name: "effect-ci-example-execution-policy" }),
