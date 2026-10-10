@@ -14,7 +14,7 @@ const origin = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
 const noRetry = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Trusted dedicated-lab controller. No repo-defined code, token, URL or policy. */
-export class HostedHmdWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "promote" | "rollback"> }> {
+export class HostedHmdWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "promote" | "rollback" | "renew"> }> {
   override async run(event: Readonly<WorkflowEvent<{ scenario: "regression" | "exhaustion" | "healthy" }>>, step: WorkflowStep) {
     const scenario = event.payload?.scenario
     if (!["regression", "exhaustion", "healthy"].includes(scenario)) throw new NonRetryableError("Unknown HMD scenario")
@@ -41,6 +41,7 @@ export class HostedHmdWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pic
         const batches: ProbeBatch[] = []
         let advanced = false
         for (let index = 0; index < observationCount(scenario); index++) {
+          await step.do(`release:renew-${phase}-${index}`, noRetry, () => broker.renew(owner))
           const batchCount = sampleBatchCount(scenario, phase, index)
           for (let batch = 0; batch < batchCount; batch++) {
             batches.push(await step.do(`health:sample-${phase}-${index}-${batch}`, noRetry, () =>

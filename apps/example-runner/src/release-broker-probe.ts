@@ -7,7 +7,7 @@ const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
 
 /** Authenticated Cloudflare Workflow API only. No credential or container in the caller. */
 export class ReleaseBrokerProbeWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "promote" | "rollback" | "reconcile"> }> {
-  override async run(event: Readonly<WorkflowEvent<{ reconcileOwner?: string; rollbackOwner?: string }>>, step: WorkflowStep) {
+  override async run(event: Readonly<WorkflowEvent<{ reconcileOwner?: string; rollbackOwner?: string; abandon?: boolean }>>, step: WorkflowStep) {
     const owner = event.instanceId
     const broker = this.env.RELEASE_MANAGER
     const noRetry = { retries: { limit: 0, delay: "1 second" } } as const
@@ -19,7 +19,7 @@ export class ReleaseBrokerProbeWorkflow extends WorkflowEntrypoint<{ RELEASE_MAN
       // Explicit operator recovery: only confirms an already-written intent; no POST.
       return step.do("release:reconcile", noRetry, () => broker.reconcile(event.payload.reconcileOwner!))
     }
-    const initial = await step.do("release:claim", noRetry, () => broker.begin(owner, candidate))
+    const initial = await step.do("release:claim", noRetry, () => broker.begin(owner, candidate, event.payload?.abandon ? 30 : undefined))
     let promoted
     let restored
     try {
@@ -27,6 +27,12 @@ export class ReleaseBrokerProbeWorkflow extends WorkflowEntrypoint<{ RELEASE_MAN
         throw new Error("Unexpected lab baseline; refusing promotion")
       }
       promoted = await step.do("release:promote-10", noRetry, () => broker.promote(owner, 10))
+      if (event.payload?.abandon) {
+        // Dedicated authenticated fixture: terminate this sleeping controller.
+        // The broker alarm must restore traffic without any Workflow cleanup.
+        await step.sleep("release:abandoned-controller", "2 minutes")
+        throw new Error("Abandoned-controller fixture unexpectedly resumed")
+      }
       const replay = await step.do("release:replay-10", noRetry, () => broker.promote(owner, 10))
       if (promoted.deployment.id !== replay.deployment.id || promoted.sequence !== replay.sequence) {
         throw new Error("Promotion replay created another deployment")
