@@ -44,7 +44,7 @@ test("compiled WASM chart renders inside workerd without network or runtime comp
       assert.ok(png.length > 1000 && png.length < 1_000_000)
       const view = new DataView(png.buffer, png.byteOffset, png.byteLength)
       assert.equal(view.getUint32(16), 760)
-      assert.equal(view.getUint32(20), 460)
+      assert.equal(view.getUint32(20), 300)
     }
   } finally { await runtime.dispose() }
 })

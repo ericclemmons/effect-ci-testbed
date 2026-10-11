@@ -9,7 +9,8 @@ test("health chart renders version cohorts and escapes all user labels", () => {
   assert.ok(svg.includes("&lt;script&gt;"))
   assert.ok(!svg.includes("<script>"))
   assert.ok(svg.includes("Decision: advance"))
-  assert.equal((svg.match(/<circle/g) ?? []).length, 2, "single observations have visible points and whiskers, not degenerate bands")
+  assert.equal((svg.match(/<circle/g) ?? []).length, 2, "separate comparison bars remain visible when both rates match")
+  assert.ok(!svg.includes("Observed history"), "one observation has no misleading time-series axes")
 })
 
 test("missing candidate traffic does not erase the previous version or invent a zero rate", () => {
@@ -29,4 +30,14 @@ test("no data is visibly uncertain, not a zero-error success chart", () => {
   const svg = healthChart([{ elapsedSeconds: 0, decision: { status: "uncertain", reason: "missing" } }], { baseline: "old", candidate: "new", maxErrorRate: 0.1 })
   assert.ok(svg.includes("no confidence estimate yet"))
   assert.throws(() => healthChart([{ elapsedSeconds: NaN, decision: { status: "uncertain", reason: "missing" } }], { baseline: "old", candidate: "new", maxErrorRate: 0.1 }))
+})
+
+test("multiple pinned observations add historical bounds without dropping partial cohorts", () => {
+  const baseline = { low: 0, rate: .01, high: .03 }
+  const svg = healthChart([{ elapsedSeconds: 1, decision: { status: "uncertain", reason: "missing", baseline } },
+    { elapsedSeconds: 2, decision: { status: "uncertain", reason: "wide", baseline, candidate: { low: 0, rate: .01, high: .2 } } }],
+    { baseline: "old", candidate: "new", maxErrorRate: .1 })
+  assert.match(svg, /Observed history/)
+  assert.match(svg, /height="460"/)
+  assert.equal((svg.match(/<polygon/g) ?? []).length, 1, "baseline history includes its first independently valid observation")
 })

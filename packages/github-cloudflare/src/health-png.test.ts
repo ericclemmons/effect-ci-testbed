@@ -19,7 +19,7 @@ test("the actual WASM renderer produces bounded PNGs with owned memory and no ru
     assert.deepEqual([...first.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
     const view = new DataView(first.buffer, first.byteOffset, first.byteLength)
     assert.equal(view.getUint32(16), 760)
-    assert.equal(view.getUint32(20), 460)
+    assert.equal(view.getUint32(20), 300)
     assert.ok(first.length > 1000 && first.length < 1_000_000)
     assert.notDeepEqual(first, second)
     const saved = new Uint8Array(first)
