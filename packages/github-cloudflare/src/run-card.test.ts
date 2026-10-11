@@ -15,7 +15,10 @@ test("reverted presentation omits skipped checks without deleting semantic histo
   card.update({ type: "workflow.completed", workflowId: "release", conclusion: "failure", timestamp: "now" })
   card.setHealth({phase:10,decision:"regression",evidenceSource:"closed-client-http-cohort"},"F1")
   const before = card.snapshot()
-  const reverted = card.render({hideSkipped:true})
+  const reverted = card.render({hideSkipped:true,rollbackStep:"Restore previous version"})
+  assert.match(reverted.text,/^↩️ Rolled back/)
+  assert.match(reverted.text,/↩️ Restore previous version/)
+  assert.ok(!reverted.text.includes("✅ Restore previous version"))
   assert.match(reverted.text,/10% — failed/)
   assert.match(reverted.text,/Restore previous version/)
   assert.match(reverted.text,/regression/)
@@ -25,6 +28,18 @@ test("reverted presentation omits skipped checks without deleting semantic histo
   assert.deepEqual(card.snapshot(),before)
   assert.equal(before.checks.filter(check=>check.status==="skipped").length,2)
   assert.match(card.render().text,/25% — skipped/,"ordinary cards preserve their default presentation")
+})
+
+test("restoration is not release success, and failed recovery never claims rollback", () => {
+  const card = new RunCard(identity)
+  card.update(event("restore", "complete"))
+  card.update({type:"workflow.completed",workflowId:"demo",conclusion:"success",timestamp:"now"})
+  assert.match(card.render({rollbackStep:"restore"}).text,/^↩️ Previous version restored/)
+  assert.ok(!card.render({rollbackStep:"restore"}).text.includes("Passed"))
+  card.update({type:"step.status",workflowId:"demo",stepId:"restore",status:"failed",optional:false,timestamp:"now"})
+  card.update({type:"workflow.completed",workflowId:"demo",conclusion:"failure",timestamp:"now"})
+  assert.match(card.render({rollbackStep:"restore"}).text,/^❌ Failed/)
+  assert.ok(!card.render({rollbackStep:"restore"}).text.includes("Rolled back"))
 })
 
 test("checklist keeps all checks and orders prerequisites before dependents", () => {

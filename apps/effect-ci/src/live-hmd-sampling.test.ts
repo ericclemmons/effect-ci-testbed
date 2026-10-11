@@ -106,7 +106,13 @@ for (const profile of ["healthy", "regression"] as const) {
       const lastImage = checkpoint(run, images.at(-1).name.slice(0, -2))
       assert.ok(message.blocks.some((b: any) => b.type === "image" && b.slack_file?.id === lastImage.fileId))
       assert.ok(!message.blocks.some((b: any) => b.elements?.some((e: any) => e.action_id === "hmd_approve" || e.action_id === "hmd_reject")))
-      assert.match(message.text, profile === "healthy" ? /Passed/ : /Failed/)
+      // Recorded cards may receive a deliberate presentation-only cleanup;
+      // native outcome/rollback assertions above remain the source of truth.
+      assert.match(message.text, profile === "healthy" ? /Passed|↩️ Previous version restored/ : /Failed|↩️ Rolled back/)
+      if (message.text.startsWith("↩️")) {
+        assert.match(message.text,/↩️ Restore previous version/)
+        assert.ok(!message.text.includes("✅ Restore previous version"))
+      }
       assert.equal(JSON.stringify(message.blocks).includes("queued"), false, "terminal cards have no stuck queued stages")
     }
   })

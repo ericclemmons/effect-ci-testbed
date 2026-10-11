@@ -146,7 +146,7 @@ export class RunCard {
     })
   }
 
-  render(options: { hideSkipped?: boolean } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean; rollbackStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -157,11 +157,14 @@ export class RunCard {
     }
     for (const id of this.checks.keys()) visit(id)
 
-    const headline = { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
+    const restored = Boolean(options.rollbackStep && (this.phase === "success" || this.phase === "failure") &&
+      this.checks.get(options.rollbackStep)?.status === "complete")
+    const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
+      { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id) => {
       const check = this.checks.get(id)!
 
-      return `${symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`
+      return `${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`
     })
     const blocks: Array<SlackBlock> = [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },
