@@ -18,6 +18,7 @@ export default defineConfig({
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
     exports: {
+      HealthChartRenderer: exports.worker(),
       WorkspaceContainer: exports.durableObject({
         storage: "sqlite",
         container: workspace,

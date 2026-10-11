@@ -193,6 +193,9 @@ importers:
       '@effect-ci-testbed/github-cloudflare':
         specifier: workspace:*
         version: link:../../packages/github-cloudflare
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -809,6 +812,9 @@ importers:
       '@effect-ci-testbed/github':
         specifier: workspace:*
         version: link:../github
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
       effect:
         specifier: 4.0.0-beta.19
         version: 4.0.0-beta.19
@@ -1810,6 +1816,10 @@ packages:
 
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rollup/rollup-android-arm-eabi@4.64.0':
     resolution: {integrity: sha512-FLLpX941CD/7aBvX3GqLGBM9OvY5PGXTryPJkG5r5/OuBpZpV5k45Uo3RxAvqd35tsyc3hH1bhtz921IKzoIzg==}
@@ -3610,6 +3620,8 @@ snapshots:
       supports-color: 10.2.2
 
   '@poppinss/exception@1.2.3': {}
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rollup/rollup-android-arm-eabi@4.64.0':
     optional: true

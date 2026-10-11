@@ -100,6 +100,15 @@ ambiguous upload failures are not automatically retried. A crash before storing 
 receipt can orphan a private file, so receipt/reconciliation handling is still
 required before wiring this into a replayable Workflow.
 
+The host's private `HealthChartRenderer` RPC entrypoint renders the trusted health
+chart template into a bounded 760×350 PNG using bundled resvg WASM and a licensed
+font. It accepts structured observations, not SVG or image URLs. Rendering requires
+no network, system fonts, runtime WASM compilation, or container execution; both
+WASM allocations are freed after copying the result. Node/WASM and local workerd
+regressions exercise the actual renderer, and `cf build` includes the compiled WASM
+and private font Data module. This does **not** yet verify a deployed HMD notification:
+the durable upload lifecycle and controller-to-existing-card bridge remain pending.
+
 `RunCard.setHealth(observation, fileId)` presents the phase, original decision and
 evidence source alongside the existing checklist and inline approval controls.
 Replacing its private file ID replaces the image in that card; it does not send a

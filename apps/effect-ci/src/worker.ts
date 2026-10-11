@@ -4,6 +4,7 @@ import workflow from "./workflow.ts"
 import { notificationChannels } from "./notification-policy.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
+export { HealthChartRenderer } from "./health-renderer.ts"
 
 export default GitHubCloudflare.worker()
 
