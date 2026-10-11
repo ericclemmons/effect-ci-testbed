@@ -23,7 +23,9 @@ No notification token or deployment credential is present in this controller.
 HTTP evidence pauses for a snapshot-bound, expiring operator decision. It never
 offers approval for a conclusive regression, and human risk acceptance does not
 rewrite uncertainty as healthy. Hosted execution and Slack delivery are not yet
-verified. See [human-reviewed HMD](../../examples/health-mediated-approval).
+verified for actual human review. The separate administrative replay lab verifies
+four native event resumes and complete baseline cleanup without a human-review
+claim. See [human-reviewed HMD](../../examples/health-mediated-approval).
 
 `WobsCohortProbeWorkflow` separately verifies twenty native terminal fetch outcomes
 through the Analytics SQL binding. It captures independent `CF-Ray` receipts before
