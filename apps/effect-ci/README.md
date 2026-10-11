@@ -122,9 +122,12 @@ dispatch endpoint:
 
 ```sh
 cf workflows instances create effect-ci-hmd-review \
-  --instance-id hmd-review-unique-run-name \
-  --params '{"intent":"hmd-review-lab","revision":"REPLACE_WITH_40_HEX_COMMIT_SHA"}'
+  --body '{"instance_id":"hmd-review-unique-run-name","params":{"intent":"hmd-review-lab","revision":"REPLACE_WITH_40_HEX_COMMIT_SHA"}}'
 ```
+
+Use `--body` with an object-valued `params`: the installed CLI's `--params`
+flag currently forwards its JSON text as a string instead of decoding it.
+The Workflow rejects that string before any notification or deployment.
 
 The SHA identifies the reviewed code in the card; this fixed-target lab does
 not build or upload that commit. It uses the dedicated demo's already-uploaded
@@ -152,6 +155,48 @@ message and restore baseline. This is composition evidence, **not live Slack,
 actual human approval, or full healthy WOBS rollout verification**. Delivery
 ambiguity intentionally requires reconciliation; do not redispatch to create
 another card or repeat an unresolved upload.
+
+Private files may not be usable in a message immediately after upload completion.
+For a known-message image update only, an explicit Slack `invalid_blocks`
+validation rejection permits at most three delayed retries of the identical
+frame (500/1000/2000 ms). Initial posts, network/HTTP failures, malformed replies,
+other errors and lost acknowledgements are never retried. Exhaustion retains the
+pending intent and fails closed; this is not an exactly-once API guarantee.
+
+Live negative-path evidence (2026-10-11):
+[`coverage-hmd-slack-timeout-20261011-3`](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-hmd-review/instance/coverage-hmd-slack-timeout-20261011-3)
+performed a real 10% allocation, uploaded private PNG `F0C8E4KAFJ6`, and updated
+[one CI card](https://ryanflorencefanclub.slack.com/archives/C0C81FU4B5J/p1791747551490689)
+at timestamp `1791747551.490689` through native receipt sequences 0/1/2. The graph
+was visually checked in the signed-in Slack client. The native wait expired
+after 301.509 seconds, before any review resolution or 25% promotion. The
+controller restored exactly baseline `09593237-23b2-4873-bd04-88c8e8488840` at
+100% in deployment `7d9eb71c-d4e1-4416-b137-80ec00dcda3d`; the same card became
+Failed with its graph retained and approval controls removed. This verifies
+hosted graph delivery and timeout recovery, **not actual human approval, all
+four live phases, healthy WOBS gating or a committed production release**.
+
+That run used host version `e527306c-4dec-41aa-b6be-f1fe6fb3ac7e` / source
+`855bd240b7921a071ca55cd24fcd9813e0afcea4`. Its terminal checklist still displayed
+10% as waiting; the follow-up marks the failed phase explicitly and is covered
+by the native rejection test, not by this recorded deployment.
+An earlier image-update failure restored baseline before review; its existing
+card was deliberately reconciled by the operator rather than redispatched.
+Neither that failure nor the first string-payload rejection counts as a
+successful timeout test.
+
+Read-only replay of the successful negative-path assertion:
+
+```sh
+HMD_CF_BIN=cf \
+HMD_SLACK_TIMEOUT_INSTANCE=coverage-hmd-slack-timeout-20261011-3 \
+HMD_SLACK_SECRETS_FILE=apps/effect-ci/.secrets.env \
+node --test apps/effect-ci/src/live-hmd-timeout.test.ts
+```
+
+Omit `HMD_SLACK_SECRETS_FILE` for native/deployment assertions only. The test
+never sends an approval or edits a card. Its current-allocation assertion will
+need a new recorded instance after a later lab supersedes this restoration.
 
 The host-side `src/hmd-card.ts` observer connects the administrative HMD controller's
 immutable observations to that renderer/upload contract and the caller's **existing**
