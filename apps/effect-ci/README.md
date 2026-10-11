@@ -148,6 +148,15 @@ creation, not from clicking the button. Clear healthy evidence progresses
 immediately. Inconclusive or near-margin evidence progresses when that deadline
 elapses, or earlier when an authorized operator clicks **Progress**. Deadline
 acceptance is recorded as `deadline-risk-acceptance`, never as healthy evidence.
+While waiting, the hosted flow collects another bounded HTTP cohort every 30s.
+Counts accumulate within the same pinned stage window, the graph updates in the
+same message, and the original deadline never moves. Clear healthy evidence can
+progress before the deadline. A regression observed anywhere in the stage is
+latched for release safety, even if later measurements improve: emergency
+Progress remains available, but the timer cannot advance that stage.
+Each refresh invalidates old buttons before issuing the next snapshot-bound
+capability. A consumed Progress/Reject freezes refresh until delivery resolves;
+sampling cannot replace or automatically bypass that decision.
 Progress verifies
 broker ownership and same-phase allocation before sending the native event.
 Acknowledging the click (or modal) confirms a consumed intent, not event delivery;
@@ -163,6 +172,14 @@ belongs to this opt-in hosted review flow; the strict automatic controller and
 the standalone human-review example retain their existing fail-closed policies.
 These progression-policy changes have local regression coverage; the earlier
 live browser evidence below used the previous approval/timeout policy, not this one.
+
+For the bounded failing-candidate test, add `"profile":"regression"` to the lab
+parameters. The default is `"healthy"`; these two names select only the already
+uploaded dedicated demo versions. Arbitrary Worker names, origins and version IDs
+are not accepted. Do not run concurrently with another release. The failing
+profile holds at 10% for review, never timer-promotes after a detected regression,
+and restores the exact previous allocation if no authorized override is given.
+These HTTP cohorts are not representative production WOBS telemetry.
 
 The card marks accepted phases Approved, independently of the health decision.
 Uncertainty is retained in the comparison, not represented as a failed approval.

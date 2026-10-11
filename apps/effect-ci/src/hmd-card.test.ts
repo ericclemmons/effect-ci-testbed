@@ -115,3 +115,16 @@ test("mixed identity/history is rejected before render, upload or publish", asyn
   await assert.rejects(observe({ type: "observed", observations: [observation(10),
     { ...observation(25), baseline: { ...observation(25).baseline, from: 1 } }] }), /history/)
 })
+
+test("same-stage samples grow the existing private graph without reusing image checkpoints", async () => {
+  const card = new RunCard({ instanceId: "run", repository: "repo", revision: "main" })
+  const keys: string[] = []
+  const step = { do: async (name: string, _options: unknown, body: Function) => { keys.push(name); return body() } } as unknown as WorkflowStep
+  const observe = hmdCardObserver("run", step, card, { render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
+    upload: async () => ({ok:true,fileId:"F1"}), publish: async (_card, key) => { keys.push(key) } })
+  const first = {...observation(10), sample:0}
+  const next = {...first, sample:1, snapshot:"b".repeat(64), candidate:{...first.candidate,to:first.candidate.to+100,trials:20}}
+  await observe({type:"observed",observations:[first,next]})
+  assert.deepEqual(keys,["notification:hmd-image-10-sample-1","notification:hmd-card-10-sample-1"])
+  await assert.rejects(observe({type:"observed",observations:[first,{...next,candidate:{...next.candidate,trials:5}}]}),/history/)
+})

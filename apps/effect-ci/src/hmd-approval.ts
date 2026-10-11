@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers"
 import type { ReleaseManager } from "../../release-manager/src/release-manager.ts"
 
 export interface HmdCapability { readonly owner: string; readonly phase: number; readonly snapshot: string; readonly token: string }
-interface ReviewRecord extends HmdCapability { readonly context: string; readonly expiresAt: number; readonly state: "waiting" | "sending" | "submitted" | "closed";
+interface ReviewRecord extends HmdCapability { readonly context: string; readonly expiresAt: number; readonly sample?: number; readonly state: "waiting" | "refreshing" | "sending" | "submitted" | "closed";
   readonly decision?: "approved" | "rejected"; readonly reason?: string; readonly actor?: string; readonly acceptedAt?: number }
 interface Environment { RELEASE_MANAGER: Pick<ReleaseManager, "renew" | "promote">; SLACK_APP_ID?: string; SLACK_TEAM_ID?: string; SLACK_CHANNEL_ID?: string }
 const phases = [10, 25, 75, 100]
@@ -20,25 +20,36 @@ export class HmdApprovals extends DurableObject<Environment> {
     if (!app || !team || !channel) throw new Error("Review destination is not configured")
     return JSON.stringify([app, team, channel])
   }
-  register(owner: string, phase: number, snapshot: string, expiresAt: number): Promise<HmdCapability> {
+  register(owner: string, phase: number, snapshot: string, expiresAt: number, sample = 0): Promise<HmdCapability> {
     return this.ctx.storage.transaction(async (tx) => {
       if (!/^[A-Za-z0-9_-]{1,128}$/.test(owner) || !phases.includes(phase) || !/^[a-f0-9]{64}$/.test(snapshot) ||
-        !Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 300_000) throw new Error("Invalid HMD review")
+        !Number.isSafeInteger(sample) || sample < 0 || sample > 20 || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 300_000) throw new Error("Invalid HMD review")
       const previous = await tx.get<ReviewRecord>("review")
       const context = this.#context()
       if (previous && previous.context !== context) throw new Error("Review destination changed")
       if (previous?.owner !== undefined && previous.owner !== owner) throw new Error("Review owner mismatch")
       if (previous?.phase === phase) {
-        if (previous.snapshot !== snapshot || previous.expiresAt !== expiresAt || previous.state !== "waiting") throw new Error("Review identity changed")
-        return { owner, phase, snapshot, token: previous.token }
+        if (previous.snapshot === snapshot && previous.expiresAt === expiresAt && previous.state === "waiting" && (previous.sample ?? 0) === sample) return { owner, phase, snapshot, token: previous.token }
+        if (previous.state !== "refreshing" || previous.expiresAt !== expiresAt || sample !== (previous.sample ?? 0) + 1 || previous.snapshot === snapshot) throw new Error("Review identity changed")
       }
       // Only the trusted controller registers reviews. Clear-health phases may
       // advance without review; require monotonic review phases, not adjacency.
-      if (previous && (phase <= previous.phase || previous.state !== "closed")) throw new Error("Review phase is not ready")
+      if (previous && phase !== previous.phase && (phase <= previous.phase || previous.state !== "closed")) throw new Error("Review phase is not ready")
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("")
-      const record: ReviewRecord = { owner, phase, snapshot, token, context, expiresAt, state: "waiting" }
+      const record: ReviewRecord = { owner, phase, snapshot, token, context, expiresAt, sample, state: "waiting" }
       await tx.put("review", record)
       return { owner, phase, snapshot, token }
+    })
+  }
+  async refresh(owner: string, phase: number, snapshot: string): Promise<boolean> {
+    return this.ctx.storage.transaction(async (tx) => {
+      const record = await tx.get<ReviewRecord>("review")
+      if (!record || record.owner !== owner || record.phase !== phase || record.snapshot !== snapshot ||
+        record.context !== this.#context() || Date.now() >= record.expiresAt) throw new Error("Sampling review is not current")
+      if (record.state === "sending" || record.state === "submitted") return false
+      if (record.state !== "waiting") throw new Error("Sampling review is not waiting")
+      await tx.put("review", { ...record, state: "refreshing" })
+      return true
     })
   }
   async inspect(capability: HmdCapability): Promise<boolean> {

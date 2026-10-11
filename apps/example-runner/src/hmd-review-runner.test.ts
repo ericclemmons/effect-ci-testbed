@@ -7,6 +7,19 @@ import { runHumanReviewedHmd, type HmdReviewObserver, type HmdReviewUpdate } fro
 const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
 const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
 
+test("candidate profiles are fixed and validated before release authority", async () => {
+  const selected: string[] = []
+  const broker = { begin: async (_owner: string, version: string) => {
+    selected.push(version)
+    throw new Error("Fixture stops before any deployment")
+  } } as unknown as Parameters<typeof runHumanReviewedHmd>[2]
+  const step = { do: async (_name: string, _options: unknown, callback: Function) => callback() } as unknown as WorkflowStep
+  await assert.rejects(runHumanReviewedHmd("profile-fixture", step, broker, undefined, undefined, undefined, undefined, "arbitrary" as "healthy"), /Invalid fixed-target/)
+  assert.deepEqual(selected, [])
+  await assert.rejects(runHumanReviewedHmd("profile-fixture", step, broker, undefined, undefined, undefined, undefined, "regression"), /Fixture stops/)
+  assert.deepEqual(selected, ["02de9b2e-95d0-49e6-b787-467e25c5a65c"])
+})
+
 async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | "regression" | "unknown" | "observer-failure", observer?: HmdReviewObserver) {
   const snapshots = new Map<string, { snapshot: string }>()
   const promotions: number[] = []
@@ -85,6 +98,78 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
   }
   assert.equal(rollbacks, 1)
   assert.deepEqual(updates.at(-1), { type: "restored", failed: mode !== "approve" })
+}
+
+for (const scenario of ["early-health", "deadline", "sticky-regression", "manual-in-flight", "stale-button", "invalid-attribution", "health-drift"] as const) {
+  test(`continuous sampling: ${scenario}`, async () => {
+    const originalNow = Date.now
+    let now = originalNow()
+    Date.now = () => now
+    let current: any
+    let first: any
+    let waits = 0
+    let refreshes = 0
+    let restored = 0
+    const promotions: number[] = []
+    const updates: HmdReviewUpdate[] = []
+    const cache = new Map<string, unknown>()
+    const journal = { previous: [{ version: baseline, percentage: 100 }], deployment: { id: "restored" } }
+    const broker = { begin: async () => journal, renew: async () => {
+      if (scenario === "health-drift" && refreshes) throw new Error("Ownership lost")
+      return journal
+    }, promote: async (_: string, phase: number) => { promotions.push(phase); return journal },
+      rollback: async () => { restored++; return journal } } as unknown as Parameters<typeof runHumanReviewedHmd>[2]
+    const step = { do: async (name: string, _options: unknown, callback: Function) => {
+      if (!cache.has(name)) cache.set(name, await callback())
+      const value: any = cache.get(name)
+      if (name.startsWith("health:snapshot")) { current = value; first ??= value }
+      return value
+    }, waitForEvent: async (_name: string, options: any) => {
+      assert.equal(typeof options.timeout, "number")
+      waits++
+      if (scenario === "manual-in-flight" && waits === 2) return { payload: { snapshot: first.snapshot, decision: "rejected", reason: "In-flight reject delivered" } }
+      if (scenario === "stale-button" && waits === 2) return { payload: { snapshot: first.snapshot, decision: "approved", reason: "Stale fixture" } }
+      now += options.timeout
+      throw Object.assign(new Error(`Execution timed out after ${options.timeout}ms`), { name: "Error" })
+    } } as unknown as WorkflowStep
+    try {
+      const run = runHumanReviewedHmd("sampling-fixture", step, broker, async (_origin, identity) => {
+        const old = identity.endsWith("baseline")
+        const sampled = identity.includes("sample-")
+        const failing = scenario === "sticky-regression" && identity.endsWith("sample-1")
+        const count = !old && sampled && ["early-health", "health-drift", "sticky-regression"].includes(scenario) && !failing ? 20000 : 100
+        return { requested: count, unknown: scenario === "invalid-attribution" && sampled ? 1 : 0,
+          outcomes: Array.from({ length: count }, () => ({ version: old ? baseline : candidate, healthy: !failing })) }
+      }, undefined, async (update) => { updates.push(update) }, { autoProgressMinutes: scenario === "sticky-regression" ? 3 : 1,
+        allowRegressionOverride: true, samplingIntervalSeconds: 30,
+        onRefresh: async () => { refreshes++; return scenario !== "manual-in-flight" },
+        onDeadline: async observation => { assert.equal(observation.snapshot, current.snapshot) } })
+      if (scenario === "early-health" || scenario === "deadline") {
+        const result = await run
+        assert.ok(result.observations.every(o => o.basis === (scenario === "early-health" ? "health" : "deadline-risk-acceptance")))
+        assert.ok(result.observations.every(o => o.candidate.trials > 100))
+        assert.equal(result.observations.length, 4)
+        assert.deepEqual(promotions, [10, 10, 25, 25, 75, 75, 100, 100])
+      } else {
+        await assert.rejects(run)
+        assert.deepEqual(promotions, [10])
+      }
+      const observed = updates.filter((u): u is Extract<HmdReviewUpdate, {type:"observed"}> => u.type === "observed")
+      const history = observed.at(-1)?.observations ?? []
+      for (const phase of [10, 25, 75, 100]) {
+        const samples = history.filter(o => o.phase === phase)
+        if (samples.length) assert.ok(samples.every(o => o.expiresAt === samples[0]!.expiresAt), "new evidence never extends the stage deadline")
+      }
+      if (scenario === "sticky-regression") {
+        assert.ok(history.some(o => o.decision.status === "regression"))
+        assert.equal(history.at(-1)?.decision.status, "advance", "latest measured health remains truthful")
+        assert.equal(history.at(-1)?.regressionDetected, true, "earlier breach blocks automatic recovery promotion")
+        assert.equal(history.at(-1)?.route.status, "review")
+      }
+      if (scenario === "manual-in-flight") assert.equal(history.length, 1, "never replace the evidence underneath a consumed decision")
+      assert.equal(restored, 1)
+    } finally { Date.now = originalNow }
+  })
 }
 
 test("each phase requires its own explicit approval without rewriting uncertainty", () => lab("approve"))
