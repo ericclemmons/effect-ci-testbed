@@ -100,6 +100,15 @@ ambiguous upload failures are not automatically retried. A crash before storing 
 receipt can orphan a private file, so receipt/reconciliation handling is still
 required before wiring this into a replayable Workflow.
 
+`RunCard.setHealth(observation, fileId)` presents the phase, original decision and
+evidence source alongside the existing checklist and inline approval controls.
+Replacing its private file ID replaces the image in that card; it does not send a
+second notification. Provider-neutral snapshots carry health status but exclude
+Slack file IDs and approval capabilities. This is presentation support only:
+the hosted HMD controller must still supply checkpointed observations and image
+receipts through the existing notification queue. Calling it does not authorize
+promotion, turn uncertain evidence into a healthy decision, or verify live WOBS.
+
 With a bot token the runner posts one Block Kit status card with a dependency-ordered
 checklist and edits it as actions progress. Completed checks stay visible alongside
 running, queued, skipped, and optional warning checks. Approval adds **Approve** and
