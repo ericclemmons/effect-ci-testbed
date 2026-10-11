@@ -11,7 +11,8 @@ const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }))
 /** Native local Workflow+RPC/SQLite/WASM composition, mocked external systems.
  * Automated fixture decisions are NOT human approval or live Slack/Cloudflare deployment proof.
  */
-test("native hosted HMD composition updates one card through four signed fixture reviews", { timeout: 60_000 }, async () => {
+for (const scenario of ["approve", "reject", "claim-failure"] as const) {
+test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_000 }, async () => {
   const output = await build({ stdin: { contents: `
     import {WorkerEntrypoint} from "cloudflare:workers";
     import {hmdSlackInteraction} from "./hmd-slack.ts";
@@ -25,7 +26,7 @@ test("native hosted HMD composition updates one card through four signed fixture
     const promotions=[],frames=[];
     export class Broker extends WorkerEntrypoint {
       journal(){return {previous:[{version:baseline,percentage:100}],deployment:{id:"restored"}}}
-      begin(){return this.journal()}renew(){return this.journal()}
+      begin(){if(${JSON.stringify(scenario)}==="claim-failure")throw new Error("Claim unavailable");return this.journal()}renew(){return this.journal()}
       promote(owner,value){phase=value;promotions.push(value);return this.journal()}
       rollback(){phase=0;restores++;return this.journal()}
     }
@@ -102,9 +103,19 @@ test("native hosted HMD composition updates one card through four signed fixture
   }
   try {
     assert.equal((await runtime.dispatchFetch("https://probe.invalid/start")).status, 200)
+    if (scenario === "claim-failure") {
+      const failed = await wait((s) => s.status.status === "errored")
+      assert.equal(failed.posts, 1)
+      assert.equal(failed.updates, 1)
+      assert.equal(failed.files, 0)
+      assert.equal(failed.restores, 0, "unclaimed authority never rolls back another owner")
+      assert.deepEqual(failed.promotions, [])
+      assert.match(failed.frames.at(-1).text, /Failed/)
+      return
+    }
     for (const phase of [10, 25, 75, 100]) {
       const current = await wait((s) => s.phase === phase && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
-      const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === "hmd_approve")
+      const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (scenario === "reject" ? "hmd_reject" : "hmd_approve"))
       const capability = JSON.parse(action.value)
       assert.equal(capability.phase, phase)
       await callback({ type: "block_actions", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, channel: { id: "C1" }, trigger_id: "test-trigger", actions: [action] })
@@ -113,6 +124,19 @@ test("native hosted HMD composition updates one card through four signed fixture
         callback_id: "hmd_review", private_metadata: opened.modal.private_metadata,
         state: { values: { rationale: { reason: { value: "AUTOMATED LOCAL FIXTURE ONLY; not human risk acceptance" } } } },
       } })
+      if (scenario === "reject") break
+    }
+    if (scenario === "reject") {
+      const failed = await wait((s) => s.status.status === "errored")
+      assert.equal(failed.posts, 1)
+      assert.equal(failed.updates, 2)
+      assert.equal(failed.files, 1)
+      assert.equal(failed.restores, 1)
+      assert.equal(failed.phase, 0)
+      assert.deepEqual(failed.promotions, [10], "rejection cannot advance the canary")
+      assert.match(failed.frames.at(-1).text, /Failed/)
+      assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
+      return
     }
     const done = await wait((s) => s.status.status === "complete")
     assert.equal(done.posts, 1)
@@ -127,3 +151,4 @@ test("native hosted HMD composition updates one card through four signed fixture
     assert.equal(done.status.output.wobsVerified, false)
   } finally { await runtime.dispose() }
 })
+}
