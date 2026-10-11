@@ -1,4 +1,4 @@
-import { defineConfig, defineContainer, exports } from "cf/config"
+import { defineConfig, defineContainer, exports, bindings } from "cf/config"
 
 // cf/config does not yet expose Access resources. See access.config.ts and
 // README.md for the accompanying Access application and policy provisioning.
@@ -21,6 +21,8 @@ export default defineConfig({
       HealthChartRenderer: exports.worker(),
       PrivateSlackImages: exports.durableObject({ storage: "sqlite" }),
       PrivateSlackCards: exports.durableObject({ storage: "sqlite" }),
+      HmdApprovals: exports.durableObject({ storage: "sqlite" }),
+      HmdReviewWorkflow: exports.workflow({ name: "effect-ci-hmd-review" }),
       WorkspaceContainer: exports.durableObject({
         storage: "sqlite",
         container: workspace,
@@ -29,6 +31,7 @@ export default defineConfig({
         name,
       }),
     },
+    env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }) },
   },
   containers: [workspace],
 })
