@@ -31,7 +31,7 @@ test("private upload omits channel sharing and never sends bot credentials to up
   assert.equal(new URLSearchParams(String(requests[0]!.options.body)).get("length"), "33")
   assert.equal(new URLSearchParams(String(requests[0]!.options.body)).get("filename"), "confidence.png")
   assert.equal(new Headers(requests[1]!.options.headers).has("authorization"), false)
-  for (const request of requests) assert.equal(request.options.redirect, "error")
+  for (const request of requests) assert.equal(request.options.redirect, "manual")
   assert.deepEqual(JSON.parse(String(requests[2]!.options.body)), { files: [{ id: "F123", title: "Confidence intervals" }] })
   assert.deepEqual(privateSlackImageBlock("F123"), { type: "image", slack_file: { id: "F123" }, alt_text: "Observed health confidence intervals; not a forecast" })
 })

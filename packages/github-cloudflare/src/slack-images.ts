@@ -7,7 +7,7 @@ export type PrivateSlackImageResult =
 const fileIdPattern = /^F[A-Z0-9]+$/
 
 /** Accept only bounded PNG output from our trusted chart renderer, not arbitrary SVG or URLs. */
-const boundedPng = (bytes: Uint8Array): boolean => {
+export const boundedTrustedPng = (bytes: Uint8Array): boolean => {
   if (bytes.length < 33 || bytes.length > 1_000_000) return false
   const signature = [137, 80, 78, 71, 13, 10, 26, 10]
   if (!signature.every((value, index) => bytes[index] === value)) return false
@@ -29,15 +29,18 @@ export const uploadPrivateSlackImage = async (
   botToken: string,
   png: Uint8Array,
   transport: typeof fetch = fetch,
+  progress?: (stage: "allocated" | "uploading" | "uploaded" | "completing", fileId: string) => Promise<void>,
 ): Promise<PrivateSlackImageResult> => {
-  if (!botToken || !boundedPng(png)) return { ok: false }
+  if (!botToken || !boundedTrustedPng(png)) return { ok: false }
   // Own the buffer before the first await; caller mutation cannot change the upload.
   const bytes = new Uint8Array(png)
   const api = async (method: string, body: unknown): Promise<Record<string, unknown>> => {
     const form = method === "files.getUploadURLExternal"
     const response = await transport(`https://slack.com/api/${method}`, {
       method: "POST",
-      redirect: "error",
+      // workerd rejects RequestInit.redirect="error". Manual mode never follows
+      // redirects; every non-2xx response below fails closed without forwarding auth.
+      redirect: "manual",
       headers: { authorization: `Bearer ${botToken}`, "content-type": form ? "application/x-www-form-urlencoded" : "application/json" },
       signal: AbortSignal.timeout(10_000),
       body: form ? new URLSearchParams(Object.entries(body as Record<string, unknown>).map(([key, value]) => [key, String(value)])).toString() : JSON.stringify(body),
@@ -57,12 +60,16 @@ export const uploadPrivateSlackImage = async (
     const url = new URL(allocation.upload_url)
     if (url.protocol !== "https:" || url.hostname !== "files.slack.com" || url.port ||
       url.username || url.password || !url.pathname.startsWith("/upload/v1/")) return { ok: false }
+    await progress?.("allocated", allocation.file_id)
+    await progress?.("uploading", allocation.file_id)
     const uploaded = await transport(url, {
-      method: "POST", redirect: "error", headers: { "content-type": "image/png" },
+      method: "POST", redirect: "manual", headers: { "content-type": "image/png" },
       body: bytes, signal: AbortSignal.timeout(10_000),
     })
     await uploaded.body?.cancel()
     if (!uploaded.ok) return { ok: false }
+    await progress?.("uploaded", allocation.file_id)
+    await progress?.("completing", allocation.file_id)
     const completed = await api("files.completeUploadExternal", {
       files: [{ id: allocation.file_id, title: "Confidence intervals" }],
     })

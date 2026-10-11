@@ -96,9 +96,21 @@ in the existing card. Never use a public image URL or pass the bot token to a co
 This helper is transport groundwork, **not yet live HMD graph integration**. PNG
 header bounds are not a decoder or an untrusted-image sanitizer: use only output
 from the trusted chart renderer. Persist successful receipts before card updates;
-ambiguous upload failures are not automatically retried. A crash before storing a
-receipt can orphan a private file, so receipt/reconciliation handling is still
-required before wiring this into a replayable Workflow.
+ambiguous upload failures are not automatically retried.
+
+The host-only `PrivateSlackImages` SQLite Durable Object atomically reserves a
+run/snapshot/destination identity before allocation, records each upload stage,
+and persists completion before returning a usable file ID. Completed receipts replay
+without another upload. Changed bytes or credentials fail closed. Incomplete or
+lost-ack attempts never reallocate: the last persisted stage and known file ID remain
+for operator reconciliation, while the existing card can use a text fallback. Tokens
+and upload URLs are not stored in its ledger or exposed to containers. This prevents
+duplicate replay; it does **not** prove exactly-once external delivery, automatically
+recover orphaned files, or guarantee that Slack has finished processing an image.
+Those reconciliation/readiness paths and the live HMD card bridge remain pending.
+The transport uses manual redirects with explicit non-2xx rejection: workerd does
+not accept the Node-supported `redirect: "error"` mode. A real workerd regression
+checks all three upload boundaries without contacting Slack or forwarding credentials.
 
 The host's private `HealthChartRenderer` RPC entrypoint renders the trusted health
 chart template into a bounded 760×350 PNG using bundled resvg WASM and a licensed
