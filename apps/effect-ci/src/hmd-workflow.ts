@@ -83,6 +83,12 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         restored = true
         capability = undefined
         await step.do("review:slack-terminal", once, () => reviews.close(owner))
+        status("claim", "complete")
+        const health = card.snapshot().health
+        if (health) {
+          status("baseline", "complete")
+          if (update.failed) status(`${health.phase}%`, "failed")
+        } else if (update.failed) status("baseline", "failed")
         status("restore baseline", "complete")
         card.update({ type: "workflow.completed", workflowId, conclusion: update.failed ? "failure" : "success", timestamp })
         await publish(card, "notification:hmd-restored")

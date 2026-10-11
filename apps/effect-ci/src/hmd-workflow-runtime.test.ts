@@ -138,6 +138,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       assert.equal(failed.phase, 0)
       assert.deepEqual(failed.promotions, [10], "rejection cannot advance the canary")
       assert.match(failed.frames.at(-1).text, /Failed/)
+      assert.match(failed.frames.at(-1).text, /10% — failed/)
       assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
       return
     }
