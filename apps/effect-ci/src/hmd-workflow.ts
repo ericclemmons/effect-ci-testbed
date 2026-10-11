@@ -42,7 +42,9 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     let restored = false
     let capability: HmdCapability | undefined
     const publish = async (_card: RunCard, checkpoint: string) => {
-      const frame = card.render()
+      // Keep the full semantic history, but reverted releases need only the
+      // executed stages and restoration in their operator-facing checklist.
+      const frame = card.render({ hideSkipped: restored })
       const blocks = [...frame.blocks, { type: "context", elements: [{ type: "plain_text",
         text: "Fixed-target HTTP lab. Progress accepts risk, not proof of health. Final cleanup restores the previous version; no production release." }] },
         ...(capability ? [{ type: "actions", elements: [
