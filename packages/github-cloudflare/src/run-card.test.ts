@@ -7,6 +7,26 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("reverted presentation omits skipped checks without deleting semantic history", () => {
+  const card = new RunCard({ instanceId: "rollback", repository: "owner/repo", revision: "abcdef123" })
+  for (const [stepId, status] of [["10%", "failed"], ["25%", "skipped"], ["75%", "skipped"], ["Restore previous version", "complete"]] as const) {
+    card.update({ type: "step.status", workflowId: "release", stepId, status, optional: false, timestamp: "now" })
+  }
+  card.update({ type: "workflow.completed", workflowId: "release", conclusion: "failure", timestamp: "now" })
+  card.setHealth({phase:10,decision:"regression",evidenceSource:"closed-client-http-cohort"},"F1")
+  const before = card.snapshot()
+  const reverted = card.render({hideSkipped:true})
+  assert.match(reverted.text,/10% — failed/)
+  assert.match(reverted.text,/Restore previous version/)
+  assert.match(reverted.text,/regression/)
+  assert.ok(!JSON.stringify(reverted).includes("skipped"))
+  assert.ok(!JSON.stringify(reverted).includes("25%"))
+  assert.ok(reverted.blocks.some(b=>b.type==="image"))
+  assert.deepEqual(card.snapshot(),before)
+  assert.equal(before.checks.filter(check=>check.status==="skipped").length,2)
+  assert.match(card.render().text,/25% — skipped/,"ordinary cards preserve their default presentation")
+})
+
 test("checklist keeps all checks and orders prerequisites before dependents", () => {
   const card = new RunCard(identity)
   card.update(event("build", "queued"))

@@ -146,7 +146,7 @@ export class RunCard {
     })
   }
 
-  render(): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -158,7 +158,7 @@ export class RunCard {
     for (const id of this.checks.keys()) visit(id)
 
     const headline = { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
-    const lines = ordered.map((id) => {
+    const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id) => {
       const check = this.checks.get(id)!
 
       return `${symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`

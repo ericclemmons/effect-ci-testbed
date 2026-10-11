@@ -178,7 +178,10 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       assert.deepEqual(failed.promotions, scenario === "deadline" ? [10, 10, 25] : [10], "deadline progresses once; rejection stops further progression")
       assert.match(failed.frames.at(-1).text, /Failed/)
       assert.match(failed.frames.at(-1).text, scenario === "deadline" ? /10%\n/ : /10% — failed/)
-      assert.match(failed.frames.at(-1).text, scenario === "deadline" ? /25% — failed/ : /25% — skipped/)
+      if (scenario === "deadline") assert.match(failed.frames.at(-1).text, /25% — failed/)
+      else assert.ok(!failed.frames.at(-1).text.includes("25%"))
+      assert.ok(!JSON.stringify(failed.frames.at(-1)).includes("skipped"), "reverted card omits unexecuted stages")
+      assert.match(failed.frames.at(-1).text, /Restore previous version/)
       assert.ok(!failed.frames.at(-1).text.includes("queued"), "future phases cannot remain queued after rejection")
       assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
       return
