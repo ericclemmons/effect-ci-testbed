@@ -111,6 +111,17 @@ E2E coverage**. Dedicated Workflow dispatch, durable message publication/reconci
 signed snapshot-bound interactive approval and image-processing readiness remain to be
 wired before enabling it. No graph test grants authority to approve a release.
 
+`PrivateSlackCards` is a host-only SQLite Durable Object for one owned message per
+run. It reserves a delivery intent before posting, then uses the acknowledged
+timestamp for all newer card updates. Identical completed replays make no Slack
+request; stale/conflicting sequences, another owner/destination or changed bot
+credentials are denied. A lost acknowledgement or receipt commit leaves a pending
+intent and blocks further delivery rather than creating a duplicate card.
+There is deliberately no automatic reconciliation or claim of exactly-once Slack
+delivery. The existing CI notifier is unchanged; connecting this owner to the HMD
+Workflow and defining operator recovery are still required. Local workerd tests
+exercise the actual SQLite ledger with a simulated Slack transport, not live Slack.
+
 The host-only `PrivateSlackImages` SQLite Durable Object atomically reserves a
 run/snapshot/destination identity before allocation, records each upload stage,
 and persists completion before returning a usable file ID. Completed receipts replay

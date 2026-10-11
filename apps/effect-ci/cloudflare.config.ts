@@ -20,6 +20,7 @@ export default defineConfig({
     exports: {
       HealthChartRenderer: exports.worker(),
       PrivateSlackImages: exports.durableObject({ storage: "sqlite" }),
+      PrivateSlackCards: exports.durableObject({ storage: "sqlite" }),
       WorkspaceContainer: exports.durableObject({
         storage: "sqlite",
         container: workspace,

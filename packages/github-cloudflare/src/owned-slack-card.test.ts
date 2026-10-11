@@ -1,0 +1,103 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { publishOwnedSlackCard, type OwnedCardReceipt, type OwnedCardStore } from "./owned-slack-card.ts"
+
+const env = { SLACK_APP_ID: "APP", SLACK_TEAM_ID: "TEAM", SLACK_CHANNEL_ID: "CHANNEL", SLACK_BOT_TOKEN: "private-test-token" }
+const frame = { text: "phase10", blocks: [{ type: "section", text: { type: "plain_text", text: "uncertain" } }] }
+function fixture(failReceipt = false) {
+  let receipt: OwnedCardReceipt | undefined
+  const calls: Array<{ method: string; body: Record<string, unknown> }> = []
+  const store: OwnedCardStore = {
+    reserve: async (intent) => {
+      if (receipt && (receipt.owner !== intent.owner || receipt.destination !== intent.destination ||
+        receipt.stage !== "complete" || receipt.sequence >= intent.sequence)) return { acquired: false, receipt }
+      const ts = receipt?.ts
+      receipt = { ...intent, ...(ts ? { ts } : {}) }
+      return { acquired: true, ...(ts ? { ts } : {}) }
+    },
+    complete: async (_intent, ts) => {
+      if (failReceipt) throw new Error("Commit failed")
+      receipt = { ...receipt!, stage: "complete", ts }
+    },
+  }
+  const transport: typeof fetch = async (url, init) => {
+    const request = new Request(url, init)
+    assert.equal(request.redirect, "manual")
+    assert.equal(request.headers.get("authorization"), `Bearer ${env.SLACK_BOT_TOKEN}`)
+    const body = await request.json() as Record<string, unknown>
+    calls.push({ method: String(url), body })
+    return Response.json({ ok: true, channel: "CHANNEL", ts: "1791685465.683799" })
+  }
+  return { store, calls, transport, receipt: () => receipt }
+}
+
+test("one initial post then same-ts updates; replay, stale, conflicting and rotated identities never post", async () => {
+  const f = fixture()
+  const send = (sequence: number, content = frame) => publishOwnedSlackCard("run", sequence, content, env, f.store, f.transport)
+  const results = await Promise.all([send(0), send(0)])
+  assert.ok(results.some((result) => result.ok))
+  assert.equal(f.calls.length, 1, "concurrent delivery may see pending or completed receipt but cannot post twice")
+  assert.equal((await send(0)).ok, true)
+  assert.equal((await send(1, { ...frame, text: "phase25" })).ok, true)
+  assert.equal(f.calls.length, 2)
+  assert.ok(f.calls[0]!.method.endsWith("chat.postMessage"))
+  assert.ok(f.calls[1]!.method.endsWith("chat.update"))
+  assert.equal(f.calls[1]!.body.ts, "1791685465.683799")
+  assert.equal((await send(0)).ok, false)
+  assert.equal((await send(1)).ok, false)
+  assert.equal((await publishOwnedSlackCard("other", 2, frame, env, f.store, f.transport)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 2, frame, { ...env, SLACK_BOT_TOKEN: "rotated" }, f.store, f.transport)).ok, false)
+  assert.equal(f.calls.length, 2)
+  assert.equal(JSON.stringify(f.receipt()).includes(env.SLACK_BOT_TOKEN), false)
+})
+
+test("lost first-post acknowledgement or receipt commit blocks replay without another post", async () => {
+  for (const failure of ["ack", "receipt", "redirect", "wrong-channel", "wrong-ts"] as const) {
+    const f = fixture(failure === "receipt")
+    const transport: typeof fetch = async (url, init) => {
+      const response = await f.transport(url, init)
+      if (failure === "ack") throw new Error("Accepted upstream, response lost")
+      if (failure === "redirect") return new Response(null, { status: 307, headers: { location: "https://evil.invalid" } })
+      if (failure === "wrong-channel") return Response.json({ ok: true, channel: "OTHER", ts: "1791685465.683799" })
+      if (failure === "wrong-ts") return Response.json({ ok: true, channel: "CHANNEL", ts: "invalid" })
+      return response
+    }
+    assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, transport)).ok, false)
+    assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, transport)).ok, false)
+    assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, transport)).ok, false)
+    assert.equal(f.calls.length, 1, failure)
+    assert.equal(f.receipt()?.stage, "pending")
+  }
+})
+
+test("input is captured before awaits and oversized/invalid frames have no intent or request", async () => {
+  const f = fixture()
+  const mutable = structuredClone(frame)
+  const sending = publishOwnedSlackCard("run", 0, mutable, env, f.store, f.transport)
+  mutable.text = "changed"
+  mutable.blocks[0]!.text.text = "changed"
+  assert.equal((await sending).ok, true)
+  assert.equal(f.calls[0]!.body.text, "phase10")
+  assert.ok(JSON.stringify(f.calls[0]!.body.blocks).includes("uncertain"))
+  const bad = fixture()
+  assert.equal((await publishOwnedSlackCard("run", -1, frame, env, bad.store, bad.transport)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 0, { ...frame, text: "x".repeat(3001) }, env, bad.store, bad.transport)).ok, false)
+  assert.equal(bad.receipt(), undefined)
+  assert.equal(bad.calls.length, 0)
+})
+
+test("an update must acknowledge the same timestamp; ambiguous update never becomes another post", async () => {
+  const f = fixture()
+  assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport)).ok, true)
+  const wrong: typeof fetch = async (url, init) => {
+    await f.transport(url, init)
+    return Response.json({ ok: true, channel: "CHANNEL", ts: "1791685465.999999" })
+  }
+  assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, wrong)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, wrong)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 2, frame, env, f.store, wrong)).ok, false)
+  assert.equal(f.calls.length, 2)
+  assert.equal(f.receipt()?.ts, "1791685465.683799")
+  assert.equal(f.receipt()?.stage, "pending")
+  assert.ok(f.calls[1]!.method.endsWith("chat.update"))
+})
