@@ -13,7 +13,12 @@ SQL has no version column for this dataset. The manifest must bind each instance
 to its independently recorded **Workflow version ID**. That is not a Worker script
 version ID, and must not be silently substituted into a Worker rollout comparison.
 The caller owns authentication, immutability, query scoping and closure of the
-expected logical cohort. Query time is not an ingestion watermark; coverage of
+expected logical cohort. Expected identities must come from trusted admissions
+recorded before outcomes, not a query selecting only successful/completed jobs.
+Pending executions or a window with no admitted executions cannot produce this
+closed-terminal manifest; the caller must retain insufficient-data uncertainty,
+not drop pending identities or manufacture a zero-error sample.
+Query time is not an ingestion watermark; coverage of
 these known instances is not completeness of ambient production executions.
 Missing daily-cron outcomes remain incomplete rather than zero-error health.
 
