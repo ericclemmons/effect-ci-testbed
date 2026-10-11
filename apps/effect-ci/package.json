@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
-    "@effect-ci-testbed/github-cloudflare": "workspace:*"
+    "@effect-ci-testbed/github-cloudflare": "workspace:*",
+    "@resvg/resvg-wasm": "2.6.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
