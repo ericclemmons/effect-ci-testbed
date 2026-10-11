@@ -98,6 +98,19 @@ header bounds are not a decoder or an untrusted-image sanitizer: use only output
 from the trusted chart renderer. Persist successful receipts before card updates;
 ambiguous upload failures are not automatically retried.
 
+The host-side `src/hmd-card.ts` observer connects the administrative HMD controller's
+immutable observations to that renderer/upload contract and the caller's **existing**
+`RunCard`. It checkpoints each phase's small private file receipt and renders the
+complete historical envelope, retaining the original uncertain decision after risk
+acceptance. An unavailable image clears the previous phase's image and retains the
+current textual evidence. The publisher must own and update the existing message;
+this bridge has no separate post-message API.
+
+This controller-to-card path has local integration coverage, **not deployed HMD/Slack
+E2E coverage**. Dedicated Workflow dispatch, durable message publication/reconciliation,
+signed snapshot-bound interactive approval and image-processing readiness remain to be
+wired before enabling it. No graph test grants authority to approve a release.
+
 The host-only `PrivateSlackImages` SQLite Durable Object atomically reserves a
 run/snapshot/destination identity before allocation, records each upload stage,
 and persists completion before returning a usable file ID. Completed receipts replay

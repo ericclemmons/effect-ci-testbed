@@ -2,16 +2,18 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { WorkflowStep } from "cloudflare:workers"
 import type { ReleaseManager, ReleaseJournal } from "../../release-manager/src/release-manager.ts"
-import { runHumanReviewedHmd } from "./hmd-review-runner.ts"
+import { runHumanReviewedHmd, type HmdReviewObserver, type HmdReviewUpdate } from "./hmd-review-runner.ts"
 
 const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
 const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
 
-async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | "regression" | "unknown") {
+async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | "regression" | "unknown" | "observer-failure", observer?: HmdReviewObserver) {
   const snapshots = new Map<string, { snapshot: string }>()
   const promotions: number[] = []
   let rollbacks = 0
   let reviews = 0
+  let insideCheckpoint = false
+  const updates: HmdReviewUpdate[] = []
   const journal: ReleaseJournal = { owner: "test-owner", candidate,
     previous: [{ version: baseline, percentage: 100 }],
     deployment: { id: "restored", versions: [{ version: baseline, percentage: 100 }] },
@@ -28,7 +30,10 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
   } as Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">
   const step = {
     do: async (name: string, _options: unknown, callback: () => Promise<unknown>) => {
-      const value = await callback()
+      assert.equal(insideCheckpoint, false, "native checkpoints cannot nest")
+      insideCheckpoint = true
+      let value
+      try { value = await callback() } finally { insideCheckpoint = false }
       if (name.startsWith("health:snapshot")) snapshots.set(name, value as { snapshot: string })
       if (name.startsWith("review:request")) {
         assert.ok(Buffer.byteLength(JSON.stringify(value)) < 1024, "review identity must fit native step previews")
@@ -48,7 +53,20 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
     requested: 100, unknown: mode === "unknown" && !identity.endsWith("baseline") ? 100 : 0,
     outcomes: Array.from({ length: 100 }, () => ({ version: identity.endsWith("baseline") ? baseline : candidate,
       healthy: identity.endsWith("baseline") || mode !== "regression" })),
-  }))
+  }), undefined, async (update) => {
+    assert.equal(insideCheckpoint, false, "observer must execute between native checkpoints")
+    assert.ok(Object.isFrozen(update))
+    updates.push(update)
+    if (update.type === "observed") {
+      if (mode === "regression") assert.equal(rollbacks, 1, "regression recovery precedes rendering or notification")
+      assert.ok(Object.isFrozen(update.observations))
+      assert.ok(Object.isFrozen(update.observations[0]!.decision))
+      assert.equal("chart" in update.observations[0]!, false)
+      assert.throws(() => Object.assign(update.observations[0]!.decision, { status: "advance" }))
+      if (mode === "observer-failure") throw new Error("Required delivery failed")
+    }
+    await observer?.(update)
+  })
   if (mode === "approve") {
     const result = await run
     assert.equal(result.releaseCommitted, false)
@@ -58,15 +76,22 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
     assert.equal(new Set(result.observations.map((snapshot) => snapshot.snapshot)).size, 4)
     assert.deepEqual(promotions, [10, 10, 25, 25, 75, 75, 100, 100])
     assert.equal(reviews, 4)
+    assert.deepEqual(updates.filter((u) => u.type === "observed").map((u) => u.observations.length), [1, 2, 3, 4])
+    assert.equal(updates.filter((u) => u.type === "settled").length, 4)
   } else {
     await assert.rejects(run)
     assert.equal(promotions.includes(25), false)
-    assert.equal(reviews, ["regression", "unknown"].includes(mode) ? 0 : 1)
+    assert.equal(reviews, ["regression", "unknown", "observer-failure"].includes(mode) ? 0 : 1)
   }
   assert.equal(rollbacks, 1)
+  assert.deepEqual(updates.at(-1), { type: "restored", failed: mode !== "approve" })
 }
 
 test("each phase requires its own explicit approval without rewriting uncertainty", () => lab("approve"))
-for (const mode of ["reject", "timeout", "stale", "drift", "regression", "unknown"] as const) {
+for (const mode of ["reject", "timeout", "stale", "drift", "regression", "unknown", "observer-failure"] as const) {
   test(`${mode} cannot progress the reviewed canary`, () => lab(mode))
 }
+
+test("terminal presentation failure cannot trigger another rollback", () => lab("approve", async (update) => {
+  if (update.type === "restored") throw new Error("Notification unavailable")
+}))
