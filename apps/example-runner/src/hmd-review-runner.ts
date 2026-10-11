@@ -26,9 +26,17 @@ export interface HmdObservation {
 }
 export type HmdReviewUpdate =
   | { readonly type: "observed"; readonly observations: ReadonlyArray<HmdObservation> }
-  | { readonly type: "settled"; readonly observation: HmdObservation; readonly basis: "health" | "human-risk-acceptance" }
+  | { readonly type: "settled"; readonly observation: HmdObservation; readonly basis: "health" | "human-risk-acceptance" | "deadline-risk-acceptance" }
   | { readonly type: "restored"; readonly failed: boolean }
 export type HmdReviewObserver = (update: HmdReviewUpdate) => Promise<void>
+
+/** Explicit release policy, never applied to the strict automatic controller. */
+export interface HmdProgressPolicy {
+  readonly autoProgressMinutes: number
+  readonly allowRegressionOverride: boolean
+  /** Atomically fence late/manual decisions before accepting the deadline. */
+  readonly onDeadline: (observation: HmdObservation) => Promise<void>
+}
 
 // Copy before freezing: observers cannot mutate the checkpoint result or later release decisions.
 function immutable<T>(value: T): T {
@@ -54,7 +62,11 @@ export async function runHumanReviewedHmd(
     probe = probeBatch,
     terminal: (message: string) => Error = (message) => new Error(message),
     observe?: HmdReviewObserver,
+    progress?: HmdProgressPolicy,
   ) {
+    if (progress && (!Number.isInteger(progress.autoProgressMinutes) || progress.autoProgressMinutes < 1 || progress.autoProgressMinutes > 5)) {
+      throw terminal("Invalid HMD progression deadline (1–5 minutes)")
+    }
     const claimed = await step.do("release:claim", once, () => broker.begin(owner, candidateVersion))
     const observations = []
     const history: HmdObservation[] = []
@@ -79,11 +91,15 @@ export async function runHumanReviewedHmd(
             baselineWindow: { from: baseline.from, to: baseline.to }, minTrials: 20,
             maxErrorRate: margins.maxErrorRate, maxIncrease: margins.maxIncrease, alpha: 0.05, comparisons: 4 }
           const decision = evaluateHealth(baseline, candidate, policy)
-          const route = routeHealthReview(decision, margins)
-          const evidence = { owner, phase, baseline, candidate, policy, margins, decision, route }
+          const strictRoute = routeHealthReview(decision, margins)
+          const route: HealthRoute = strictRoute.status === "rollback" && progress?.allowRegressionOverride
+            ? { status: "review", reason: `Regression detected: ${strictRoute.reason}. Explicit emergency override only; no automatic progression.` }
+            : strictRoute
+          const evidence = { owner, phase, baseline, candidate, policy, margins, decision, route,
+            ...(progress ? { progression: { autoProgressMinutes: progress.autoProgressMinutes, allowRegressionOverride: progress.allowRegressionOverride } } : {}) }
           const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(evidence)))
           return { ...evidence, snapshot: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
-            expiresAt: observedAt + 5 * 60_000,
+            expiresAt: observedAt + (progress?.autoProgressMinutes ?? 5) * 60_000,
             chart: healthChart([{ elapsedSeconds: (observedAt - phaseStartedAt) / 1000, decision }],
               { baseline: baselineVersion, candidate: candidateVersion, maxErrorRate: margins.maxErrorRate }) }
         })
@@ -94,7 +110,7 @@ export async function runHumanReviewedHmd(
         // Sibling checkpoints only: no notification or rendering inside a health step.do.
         // A failed required observer fails closed and restores the owned allocation.
         await observe?.(immutable({ type: "observed", observations: history }))
-        let basis: "health" | "human-risk-acceptance" = "health"
+        let basis: "health" | "human-risk-acceptance" | "deadline-risk-acceptance" = "health"
         let approval: { readonly reason: string; readonly acceptedAt: number } | undefined
         if (snapshot.route.status === "review") {
           // Native step outputs are truncated: keep the approval identity and risk summary small.
@@ -105,10 +121,32 @@ export async function runHumanReviewedHmd(
             candidateFailures: snapshot.candidate.failures, candidateBounds: snapshot.decision.candidate,
             increaseBounds: snapshot.decision.increase, margins, evidenceSource: "closed-client-http-cohort" }))
           await step.do(`release:renew-before-review-${phase}`, once, () => broker.renew(owner))
-          const response = await step.waitForEvent(`review:phase-${phase}`, { type: `hmd-review-${phase}`, timeout: "5 minutes" })
+          let response: { payload: unknown } | undefined
+          try {
+            response = await step.waitForEvent(`review:phase-${phase}`, { type: `hmd-review-${phase}`, timeout: `${progress?.autoProgressMinutes ?? 5} minutes` })
+          } catch (error) {
+            await step.do(`review:wait-error-${phase}`, once, async () => ({ waitError: {
+              name: error instanceof Error ? error.name : typeof error,
+              message: error instanceof Error ? error.message.slice(0, 150) : "Non-error native wait failure",
+            } }))
+            // Only an actual native wait timeout is a release-policy deadline.
+            // Delivery/auth/unknown errors, regression and lost ownership still restore.
+            // Native local RPC drops the custom Error.name but preserves this
+            // exact timeout message. Require the configured duration, elapsed
+            // snapshot deadline and atomic review fence as independent checks.
+            const timedOut = error instanceof Error && (error.name === "WorkflowTimeoutError" ||
+              (error.name === "Error" && error.message === `Execution timed out after ${(progress?.autoProgressMinutes ?? 5) * 60_000}ms`))
+            if (!progress || snapshot.decision.status === "regression" || !timedOut) throw error
+          }
           // Checkpoint the acceptance time: replay preserves the original deadline evaluation.
           const resolution = await step.do(`review:resolve-${phase}`, once, async () => {
             const acceptedAt = Date.now()
+            if (!response) {
+              if (!progress || acceptedAt < snapshot.expiresAt) throw terminal("Progression deadline has not elapsed")
+              await progress.onDeadline(observation)
+              return { status: "advance" as const, basis: "deadline-risk-acceptance" as const,
+                reason: "Configured progression deadline elapsed; original evidence remains inconclusive or within margins", acceptedAt }
+            }
             return { ...resolveHealthReview(snapshot, response.payload, acceptedAt), acceptedAt }
           })
           if (resolution.status === "rollback") throw terminal("Human rejected the release")

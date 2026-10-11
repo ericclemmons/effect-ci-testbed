@@ -46,7 +46,7 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
       } catch { return { ok: false as const } }
     })
     // Failure clears an older phase's graph; text still describes the current pinned observation.
-    card.setHealth({ phase: current.phase, decision: current.decision.status === "regression" ? "rollback" : current.decision.status,
+    card.setHealth({ phase: current.phase, decision: current.decision.status === "regression" && current.route.status === "review" ? "regression" : current.decision.status === "regression" ? "rollback" : current.decision.status,
       evidenceSource: "closed-client-http-cohort" }, image.ok ? image.fileId : undefined)
     await services.publish(card, `notification:hmd-card-${current.phase}`)
   }

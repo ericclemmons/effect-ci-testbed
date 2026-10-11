@@ -113,7 +113,7 @@ existing Access protection and signature-protected `/webhooks/slack` exception.
 The ignored host secrets file must include `SLACK_BOT_TOKEN`,
 `SLACK_SIGNING_SECRET`, `SLACK_APP_ID`, `SLACK_TEAM_ID`, `SLACK_CHANNEL_ID`, and
 `SLACK_APPROVER_IDS`. The bot needs `chat:write` and `files:write`; the existing
-HTTP interaction URL remains `/webhooks/slack`. Approve and Reject are direct
+HTTP interaction URL remains `/webhooks/slack`. Progress and Reject are direct
 buttons by default. Set `HMD_REQUIRE_RATIONALE=true` in the host secrets file
 to require the optional rationale modal (`views.open`, no additional scope).
 
@@ -135,22 +135,34 @@ not build or upload that commit. It uses the dedicated demo's already-uploaded
 healthy candidate and known baseline. Actual allocations are 10/25/75/100,
 with fixed HTTP cohorts, not WOBS-completeness proof. Each observation replaces
 the private graph in **one owned Slack message**, preserving its checklist and
-inline approval buttons. Historical uncertainty is never relabeled healthy.
+inline progression buttons. Historical uncertainty is never relabeled healthy.
 
-Approve or Reject records the decision with one click by default; the actor,
+Progress or Reject records the decision with one click by default; the actor,
 snapshot and acceptance time remain recorded without inventing a human comment.
 When `HMD_REQUIRE_RATIONALE=true`, a required rationale modal is used instead.
 A fresh Slack signature,
 pinned app/team/channel, authorized reviewer, and owner/phase/snapshot-bound
-single-use capability are required. The displayed absolute deadline is five
-minutes from snapshot creation, not from clicking the button. Approval verifies
+single-use capability are required. Set `HMD_AUTO_PROGRESS_MINUTES` to an integer
+from 1–5 (default **2**). The displayed absolute deadline starts at snapshot
+creation, not from clicking the button. Clear healthy evidence progresses
+immediately. Inconclusive or near-margin evidence progresses when that deadline
+elapses, or earlier when an authorized operator clicks **Progress**. Deadline
+acceptance is recorded as `deadline-risk-acceptance`, never as healthy evidence.
+Progress verifies
 broker ownership and same-phase allocation before sending the native event.
 Acknowledging the click (or modal) confirms a consumed intent, not event delivery;
-an ambiguous acknowledgement is not blindly resent. Rejection, expiry, stale
-evidence or lost authority fails closed and restores the exact prior allocation;
+an ambiguous acknowledgement is not blindly resent. A deadline cannot bypass an
+unresolved consumed click: the review record is atomically fenced first. Rejection,
+stale responses, invalid attribution or lost authority restores the exact prior allocation;
 the broker's independent alarm provides recovery if the controller disappears.
 Even successful completion restores baseline: **no production release is
-committed**. Confirmed regressions never offer approval.
+committed**. A confirmed regression offers **Progress** as an explicit emergency
+override, with the regression warning and original evidence preserved. It never
+auto-progresses: without an override it restores at the deadline. This policy
+belongs to this opt-in hosted review flow; the strict automatic controller and
+the standalone human-review example retain their existing fail-closed policies.
+These progression-policy changes have local regression coverage; the earlier
+live browser evidence below used the previous approval/timeout policy, not this one.
 
 The card marks accepted phases Approved, independently of the health decision.
 Uncertainty is retained in the comparison, not represented as a failed approval.

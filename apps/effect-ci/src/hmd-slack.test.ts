@@ -19,7 +19,7 @@ test("default direct buttons record the signed decision without a modal or a fab
   const reviews = { inspect: async () => true, submit: async (...args: unknown[]) => { decisions.push(args); return true } }
   const { HMD_REQUIRE_RATIONALE: _modalSetting, ...direct } = env
   assert.equal((await hmdSlackInteraction(signed(block), direct, reviews, forbidden)).status, 200)
-  assert.deepEqual(decisions, [[capability, "approved", "Approved directly in Slack", "slack:T1:U1"]])
+  assert.deepEqual(decisions, [[capability, "approved", "Progress requested directly in Slack (explicit risk acceptance)", "slack:T1:U1"]])
   assert.equal((await hmdSlackInteraction(signed({ ...block, actions: [{ ...block.actions[0], action_id: "hmd_reject" }] }), direct, reviews, forbidden)).status, 200)
   assert.equal((decisions[1] as unknown[])[1], "rejected")
   const response = await hmdSlackInteraction(signed(block), direct, { inspect: async () => true, submit: async () => false }, forbidden)
