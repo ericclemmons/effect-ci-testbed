@@ -31,7 +31,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       detailsUrl: `https://dash.cloudflare.com/${RELEASE_ACCOUNT}/workers/workflows/effect-ci-hmd-review/instance/${encodeURIComponent(owner)}` })
     const timestamp = event.timestamp.toISOString()
     const workflowId = "Demo release"
-    const status = (stepId: string, state: "queued" | "complete" | "running" | "warning" | "failed") =>
+    const status = (stepId: string, state: "queued" | "complete" | "running" | "warning" | "failed" | "skipped") =>
       card.update({ type: "step.status", workflowId, stepId, status: state, optional: false, timestamp })
     for (const id of ["Prepare release", "Previous version", "10%", "25%", "75%", "100%", "Restore previous version"]) status(id, "queued")
     let sequence = 0
@@ -89,6 +89,9 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
           status("Previous version", "complete")
           if (update.failed) status(`${health.phase}%`, "failed")
         } else if (update.failed) status("Previous version", "failed")
+        if (update.failed) for (const phase of [10, 25, 75, 100]) {
+          if (!health || phase > health.phase) status(`${phase}%`, "skipped")
+        }
         status("Restore previous version", "complete")
         card.update({ type: "workflow.completed", workflowId, conclusion: update.failed ? "failure" : "success", timestamp })
         await publish(card, "notification:hmd-restored")
@@ -104,6 +107,9 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         // Claim/baseline failures precede observation. Do not falsely claim that
         // cleanup succeeded; the broker owns independent recovery.
         status("Prepare release", "failed")
+        status("Previous version", "skipped")
+        for (const phase of [10, 25, 75, 100]) status(`${phase}%`, "skipped")
+        status("Restore previous version", "skipped")
         card.update({ type: "workflow.completed", workflowId, conclusion: "failure", timestamp })
         try { await publish(card, "notification:hmd-early-failure") } catch { /* retain the original failure */ }
       }

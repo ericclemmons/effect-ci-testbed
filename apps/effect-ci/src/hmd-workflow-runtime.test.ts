@@ -114,6 +114,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       assert.equal(failed.restores, 0, "unclaimed authority never rolls back another owner")
       assert.deepEqual(failed.promotions, [])
       assert.match(failed.frames.at(-1).text, /Failed/)
+      assert.ok(!failed.frames.at(-1).text.includes("queued"), "terminated release has no pending steps")
       return
     }
     for (const phase of [10, 25, 75, 100]) {
@@ -136,6 +137,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       assert.deepEqual(failed.promotions, [10], "rejection cannot advance the canary")
       assert.match(failed.frames.at(-1).text, /Failed/)
       assert.match(failed.frames.at(-1).text, /10% — failed/)
+      assert.match(failed.frames.at(-1).text, /25% — skipped/)
+      assert.ok(!failed.frames.at(-1).text.includes("queued"), "future phases cannot remain queued after rejection")
       assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
       return
     }

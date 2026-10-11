@@ -160,6 +160,22 @@ new-version cohort does not erase the previous version and is never presented
 as a zero-error success. The short HTTP demo is not a production WOBS history;
 its small samples may remain inconclusive throughout the entire lab.
 
+Live browser evidence (2026-10-11):
+[`coverage-hmd-direct-reject-20261011-1`](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-hmd-review/instance/coverage-hmd-direct-reject-20261011-1)
+showed the private comparison PNG `F0C8E9M2V9Q` in
+[one card](https://ryanflorencefanclub.slack.com/archives/C0C81FU4B5J/p1791751529076689)
+at `1791751529.076689`: previous 0 errors/100 requests, new 0 errors/17 requests,
+both still inconclusive. An **agent-operated browser rejection**, not human risk
+approval, sent the real signed Slack callback without a modal. Native receipt
+sequences 0/1/2 retained that timestamp. No 25% promotion occurred, and the exact
+100% previous-version allocation was restored at deployment
+`fb93a3f8-bb68-479b-9f4f-2cfac890967b`. Host version
+`b54b6840-b2b7-45f6-85c2-ed31caaa4fb5` used merged source `53d4ab4`.
+That browser test exposed future phases still labelled queued after rejection;
+the follow-up marks unexecuted phases skipped, with native regression coverage.
+The zero-new-traffic comparison was separately visually verified locally and
+retains the valid previous-version interval instead of empty history axes.
+
 Local tests run a real native Workflow, SQLite review/card ledgers and the WASM
 renderer with mocked outbound APIs. Four explicitly automated local rationale
 submissions resume the workflow, produce four private images, update one
