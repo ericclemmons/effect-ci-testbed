@@ -95,6 +95,14 @@ claiming an actor is not authentication. There is no public review endpoint.
 Slack approval delivery is **not wired into this example yet**. That extension
 must reuse the existing signature-verified callback, reviewer allowlist and one
 updated card, retaining the same snapshot/deadline/ownership constraints.
+The controller now exposes copied, deeply frozen structured observation updates
+between native checkpoints, before review waits and after resolution. The host
+`apps/effect-ci/src/hmd-card.ts` adapter uses these updates for cumulative confidence
+graphs in an existing card; local tests exercise all four phases without nesting
+checkpoints. This is not yet a deployed notification callback. A required observer
+failure fails closed and restores the allocation; a reporting failure after restoration
+cannot initiate another rollback. Original decisions remain unchanged by observers
+or human risk acceptance.
 
 All four phases have health checks, including 100%. Successful lab cleanup also
 restores the baseline: `releaseCommitted: false`. This is not a production release,
