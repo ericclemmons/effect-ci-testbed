@@ -11,7 +11,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
 
 export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string }
-interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback"> }
+interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; HMD_REQUIRE_RATIONALE?: string }
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 
 /** Dedicated fixed-target administrative lab, never dispatched by normal GitHub CI. */
@@ -30,10 +30,10 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     const card = new RunCard({ instanceId: owner, repository: "ericclemmons/effect-ci-testbed", revision: event.payload.revision,
       detailsUrl: `https://dash.cloudflare.com/${RELEASE_ACCOUNT}/workers/workflows/effect-ci-hmd-review/instance/${encodeURIComponent(owner)}` })
     const timestamp = event.timestamp.toISOString()
-    const workflowId = "health-mediated-approval lab"
+    const workflowId = "Demo release"
     const status = (stepId: string, state: "queued" | "complete" | "running" | "warning" | "failed") =>
       card.update({ type: "step.status", workflowId, stepId, status: state, optional: false, timestamp })
-    for (const id of ["claim", "baseline", "10%", "25%", "75%", "100%", "restore baseline"]) status(id, "queued")
+    for (const id of ["Prepare release", "Previous version", "10%", "25%", "75%", "100%", "Restore previous version"]) status(id, "queued")
     let sequence = 0
     let observed = false
     let restored = false
@@ -61,7 +61,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       if (update.type === "observed") {
         observed = true
         const current = update.observations.at(-1)!
-        status("claim", "complete"); status("baseline", "complete")
+        status("Prepare release", "complete"); status("Previous version", "complete")
         status(`${current.phase}%`, current.route.status === "rollback" ? "failed" : "running")
         if (current.route.status === "review") {
           capability = await step.do(`review:slack-register-${current.phase}`, once, async () => {
@@ -69,7 +69,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
             return { owner: receipt.owner, phase: receipt.phase, snapshot: receipt.snapshot, token: receipt.token }
           })
           card.update({ type: "approval.requested", workflowId, stepId: `${current.phase}%`, requestId: current.snapshot,
-            approval: { title: `Review ${current.phase}% release risk`, summary: `${current.route.reason}. Rationale required. Deadline: ${new Date(current.expiresAt).toISOString()}.` }, timestamp })
+            approval: { title: `Approve ${current.phase}% and continue?`, summary: `${current.route.reason}. Approval accepts uncertainty, not proof of health.${this.env.HMD_REQUIRE_RATIONALE === "true" ? " Rationale required." : ""} Review expires ${new Date(current.expiresAt).toISOString()}.` }, timestamp })
         }
         await graph(update)
       } else if (update.type === "settled") {
@@ -77,19 +77,19 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         await step.do(`review:slack-close-${update.observation.phase}`, once, () => reviews.close(owner))
         card.update({ type: "approval.resolved", workflowId, stepId: `${update.observation.phase}%`, requestId: update.observation.snapshot,
           decision: "approved", timestamp })
-        status(`${update.observation.phase}%`, update.basis === "human-risk-acceptance" ? "warning" : "complete")
+        if (update.basis !== "human-risk-acceptance") status(`${update.observation.phase}%`, "complete")
         await publish(card, `notification:hmd-settled-${update.observation.phase}`)
       } else {
         restored = true
         capability = undefined
         await step.do("review:slack-terminal", once, () => reviews.close(owner))
-        status("claim", "complete")
+        status("Prepare release", "complete")
         const health = card.snapshot().health
         if (health) {
-          status("baseline", "complete")
+          status("Previous version", "complete")
           if (update.failed) status(`${health.phase}%`, "failed")
-        } else if (update.failed) status("baseline", "failed")
-        status("restore baseline", "complete")
+        } else if (update.failed) status("Previous version", "failed")
+        status("Restore previous version", "complete")
         card.update({ type: "workflow.completed", workflowId, conclusion: update.failed ? "failure" : "success", timestamp })
         await publish(card, "notification:hmd-restored")
       }
@@ -103,7 +103,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       if (!observed && !restored) {
         // Claim/baseline failures precede observation. Do not falsely claim that
         // cleanup succeeded; the broker owns independent recovery.
-        status("claim", "failed")
+        status("Prepare release", "failed")
         card.update({ type: "workflow.completed", workflowId, conclusion: "failure", timestamp })
         try { await publish(card, "notification:hmd-early-failure") } catch { /* retain the original failure */ }
       }

@@ -31,13 +31,13 @@ export function createHealthPngRenderer(module: WebAssembly.Module, font: Uint8A
       fitTo: { mode: "original" },
     })
     try {
-      if (renderer.width !== 760 || renderer.height !== 350 || renderer.imagesToResolve().length) {
+      if (renderer.width !== 760 || renderer.height !== 460 || renderer.imagesToResolve().length) {
         throw new Error("Unexpected chart resource")
       }
       const image = renderer.render()
       try {
         const png = image.asPng()
-        if (image.width !== 760 || image.height !== 350 || png.length > 1_000_000) {
+        if (image.width !== 760 || image.height !== 460 || png.length > 1_000_000) {
           throw new Error("Unexpected chart output")
         }
         // Own bytes independently of WASM memory before freeing both allocations.

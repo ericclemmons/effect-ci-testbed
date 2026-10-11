@@ -18,6 +18,10 @@ test("health gate distinguishes uncertainty, advance and conclusive regression",
 })
 
 test("no candidate traffic, sampled counts, wrong versions and late data never mean healthy", () => {
+  const missing = evaluateHealth(sample(false), sample(true, 0), policy)
+  assert.ok(missing.baseline, "valid previous-version evidence remains visible")
+  assert.equal(missing.candidate, undefined, "zero candidate traffic is not zero-error evidence")
+  assert.equal(evaluateHealth(sample(false), { ...sample(true), sampling: "weighted" }, policy).baseline, undefined)
   for (const candidate of [sample(true, 0), { ...sample(true), sampling: "weighted" as const },
     { ...sample(true), version: "old" }, { ...sample(true), from: 99 }, { ...sample(true), completeThrough: 199 }]) {
     assert.equal(evaluateHealth(sample(false), candidate, policy).status, "uncertain")

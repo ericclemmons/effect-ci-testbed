@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { createHmac } from "node:crypto"
 import test from "node:test"
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts"
-const env = { SLACK_SIGNING_SECRET: "test-secret", SLACK_APP_ID: "A1", SLACK_TEAM_ID: "T1", SLACK_CHANNEL_ID: "C1", SLACK_APPROVER_IDS: "U1", SLACK_BOT_TOKEN: "test-token" }
+const env = { SLACK_SIGNING_SECRET: "test-secret", SLACK_APP_ID: "A1", SLACK_TEAM_ID: "T1", SLACK_CHANNEL_ID: "C1", SLACK_APPROVER_IDS: "U1", SLACK_BOT_TOKEN: "test-token", HMD_REQUIRE_RATIONALE: "true" }
 const capability = { owner: "run", phase: 10, snapshot: "a".repeat(64), token: "b".repeat(64) }
 const block = { type: "block_actions", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, channel: { id: "C1" }, trigger_id: "trigger",
   actions: [{ action_id: "hmd_approve", value: JSON.stringify(capability) }] }
@@ -14,6 +14,18 @@ const signed = (payload: unknown, timestamp = String(Math.floor(Date.now() / 100
   return new Request("https://ci.example/webhooks/slack", { method: "POST", body, headers: { "x-slack-request-timestamp": timestamp, "x-slack-signature": signature } })
 }
 const forbidden = async (): Promise<never> => { assert.fail("No delivery before authorization") }
+test("default direct buttons record the signed decision without a modal or a fabricated human rationale", async () => {
+  const decisions: unknown[] = []
+  const reviews = { inspect: async () => true, submit: async (...args: unknown[]) => { decisions.push(args); return true } }
+  const { HMD_REQUIRE_RATIONALE: _modalSetting, ...direct } = env
+  assert.equal((await hmdSlackInteraction(signed(block), direct, reviews, forbidden)).status, 200)
+  assert.deepEqual(decisions, [[capability, "approved", "Approved directly in Slack", "slack:T1:U1"]])
+  assert.equal((await hmdSlackInteraction(signed({ ...block, actions: [{ ...block.actions[0], action_id: "hmd_reject" }] }), direct, reviews, forbidden)).status, 200)
+  assert.equal((decisions[1] as unknown[])[1], "rejected")
+  const response = await hmdSlackInteraction(signed(block), direct, { inspect: async () => true, submit: async () => false }, forbidden)
+  assert.match(await response.text(), /No decision was resent/)
+  assert.equal((await hmdSlackInteraction(signed({ ...block, user: { id: "U2" } }), direct, { inspect: forbidden, submit: forbidden }, forbidden)).status, 403)
+})
 test("button opens a private rationale modal; only signed matching submission consumes a decision", async () => {
   let modal: Record<string, any> | undefined
   const decisions: unknown[] = []

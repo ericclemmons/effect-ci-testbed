@@ -34,7 +34,8 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
         observation.policy.maxErrorRate !== current.policy.maxErrorRate) throw new Error("Mixed HMD card history")
       previousTime = elapsedSeconds
       previousPhase = observation.phase
-      return { elapsedSeconds, decision: observation.decision }
+      return { elapsedSeconds, decision: observation.decision,
+        baselineSample: observation.baseline, candidateSample: observation.candidate }
     })
     // Persist only the small file receipt, not PNG bytes or credentials in Workflow history.
     const image = await step.do(`notification:hmd-image-${current.phase}`, once, async () => {

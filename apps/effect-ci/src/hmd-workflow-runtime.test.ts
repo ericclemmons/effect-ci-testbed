@@ -123,10 +123,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       assert.equal(capability.phase, phase)
       await callback({ type: "block_actions", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, channel: { id: "C1" }, trigger_id: "test-trigger", actions: [action] })
       const opened = await state()
-      await callback({ type: "view_submission", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, view: {
-        callback_id: "hmd_review", private_metadata: opened.modal.private_metadata,
-        state: { values: { rationale: { reason: { value: "AUTOMATED LOCAL FIXTURE ONLY; not human risk acceptance" } } } },
-      } })
+      assert.equal(opened.modal, null, "default direct decision has no comment modal")
       if (scenario === "reject") break
     }
     if (scenario === "reject") {
@@ -149,6 +146,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     assert.equal(done.files, 4)
     assert.equal(done.restores, 1)
     assert.equal(done.phase, 0)
+    assert.ok(done.frames.at(-1).text.includes("10% — approved"))
+    assert.ok(!done.frames.at(-1).text.includes("warning"), "approval is not a warning state")
     assert.ok(done.frames.slice(1).every((frame: any) => frame.ts === "1791685465.683799"))
     assert.ok(done.frames.filter((frame: any) => frame.blocks.some((b: any) => b.type === "image")).every((frame: any) => frame.text.includes("uncertain")))
     assert.ok(done.frames.at(-1).text.includes("uncertain"))
