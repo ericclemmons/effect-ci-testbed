@@ -34,12 +34,13 @@ export const uploadPrivateSlackImage = async (
   // Own the buffer before the first await; caller mutation cannot change the upload.
   const bytes = new Uint8Array(png)
   const api = async (method: string, body: unknown): Promise<Record<string, unknown>> => {
+    const form = method === "files.getUploadURLExternal"
     const response = await transport(`https://slack.com/api/${method}`, {
       method: "POST",
       redirect: "error",
-      headers: { authorization: `Bearer ${botToken}`, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${botToken}`, "content-type": form ? "application/x-www-form-urlencoded" : "application/json" },
       signal: AbortSignal.timeout(10_000),
-      body: JSON.stringify(body),
+      body: form ? new URLSearchParams(Object.entries(body as Record<string, unknown>).map(([key, value]) => [key, String(value)])).toString() : JSON.stringify(body),
     })
     if (!response.ok) throw new Error("Image API failed")
     const result = await response.json() as Record<string, unknown>
