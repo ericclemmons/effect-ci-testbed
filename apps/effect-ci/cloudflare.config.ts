@@ -19,6 +19,7 @@ export default defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     exports: {
       HealthChartRenderer: exports.worker(),
+      PrivateSlackImages: exports.durableObject({ storage: "sqlite" }),
       WorkspaceContainer: exports.durableObject({
         storage: "sqlite",
         container: workspace,

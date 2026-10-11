@@ -5,6 +5,7 @@ import { notificationChannels } from "./notification-policy.ts"
 
 export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
 export { HealthChartRenderer } from "./health-renderer.ts"
+export { PrivateSlackImages } from "./private-images.ts"
 
 export default GitHubCloudflare.worker()
 
