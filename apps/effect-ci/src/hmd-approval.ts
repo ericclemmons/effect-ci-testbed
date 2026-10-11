@@ -53,6 +53,17 @@ export class HmdApprovals extends DurableObject<Environment> {
       await tx.put("review", { ...record, state: "closed" })
     })
   }
+  /** Deadline cannot race a consumed Reject/Progress whose delivery is unresolved. */
+  async expire(owner: string, phase: number, snapshot: string): Promise<void> {
+    await this.ctx.storage.transaction(async (tx) => {
+      const record = await tx.get<ReviewRecord>("review")
+      if (!record || record.owner !== owner || record.phase !== phase || record.snapshot !== snapshot ||
+        record.context !== this.#context() || record.state !== "waiting" || Date.now() < record.expiresAt) {
+        throw new Error("Deadline review is unresolved or not current")
+      }
+      await tx.put("review", { ...record, state: "closed" })
+    })
+  }
   async submit(capability: HmdCapability, decision: "approved" | "rejected", reason: string, actor: string): Promise<boolean> {
     if (!identity(capability) || !["approved", "rejected"].includes(decision) || typeof reason !== "string" ||
       !reason.trim() || reason.length > 500 || !/^slack:[A-Z0-9]+:[A-Z0-9]+$/.test(actor)) return false

@@ -11,7 +11,7 @@ const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }))
 /** Native local Workflow+RPC/SQLite/WASM composition, mocked external systems.
  * Automated fixture decisions are NOT human approval or live Slack/Cloudflare deployment proof.
  */
-for (const scenario of ["approve", "reject", "claim-failure"] as const) {
+for (const scenario of ["approve", "force-regression", "reject", "claim-failure"] as const) {
 test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_000 }, async () => {
   const output = await build({ stdin: { contents: `
     import {WorkerEntrypoint} from "cloudflare:workers";
@@ -35,7 +35,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       if(req.redirect!=="manual")throw new Error("Unsafe redirect");
       if(target.startsWith("https://effect-ci-hmd-demo")) {
         const isBaseline=new URL(target).searchParams.get("probe").includes("baseline");
-        return Response.json({version:isBaseline?baseline:candidate,healthy:true});
+        const healthy=isBaseline||${JSON.stringify(scenario)}!=="force-regression";
+        return Response.json({version:isBaseline?baseline:candidate,healthy},{status:healthy?200:503});
       }
       if(target.startsWith("https://files.slack.com")) {
         const png=new Uint8Array(await req.arrayBuffer());if(png.length<1000||req.headers.has("authorization"))throw new Error("Invalid private PNG");
@@ -122,6 +123,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (scenario === "reject" ? "hmd_reject" : "hmd_approve"))
       const capability = JSON.parse(action.value)
       assert.equal(capability.phase, phase)
+      if (scenario !== "reject") assert.equal(action.text.text, "Progress")
       await callback({ type: "block_actions", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, channel: { id: "C1" }, trigger_id: "test-trigger", actions: [action] })
       const opened = await state()
       assert.equal(opened.modal, null, "default direct decision has no comment modal")
@@ -144,16 +146,17 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     }
     const done = await wait((s) => s.status.status === "complete")
     assert.equal(done.posts, 1)
-    assert.equal(done.updates, 11)
-    assert.equal(done.validationRejects, 2, "bounded validation retries stay within one native notification checkpoint")
+    assert.equal(done.updates, scenario === "approve" ? 11 : 9)
+    assert.equal(done.validationRejects, scenario === "approve" ? 2 : 0, "bounded validation retries stay within one native notification checkpoint")
     assert.equal(done.files, 4)
     assert.equal(done.restores, 1)
     assert.equal(done.phase, 0)
     assert.ok(done.frames.at(-1).text.includes("10% — approved"))
     assert.ok(!done.frames.at(-1).text.includes("warning"), "approval is not a warning state")
     assert.ok(done.frames.slice(1).every((frame: any) => frame.ts === "1791685465.683799"))
-    assert.ok(done.frames.filter((frame: any) => frame.blocks.some((b: any) => b.type === "image")).every((frame: any) => frame.text.includes("uncertain")))
-    assert.ok(done.frames.at(-1).text.includes("uncertain"))
+    const evidence = scenario === "force-regression" ? "regression" : "uncertain"
+    assert.ok(done.frames.filter((frame: any) => frame.blocks.some((b: any) => b.type === "image")).every((frame: any) => frame.text.includes(evidence)))
+    assert.ok(done.frames.at(-1).text.includes(evidence))
     assert.equal(done.status.output.releaseCommitted, false)
     assert.equal(done.status.output.wobsVerified, false)
   } finally { await runtime.dispose() }

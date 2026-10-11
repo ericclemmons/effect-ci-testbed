@@ -95,3 +95,53 @@ for (const mode of ["reject", "timeout", "stale", "drift", "regression", "unknow
 test("terminal presentation failure cannot trigger another rollback", () => lab("approve", async (update) => {
   if (update.type === "restored") throw new Error("Notification unavailable")
 }))
+
+for (const scenario of ["deadline", "force-regression", "regression-timeout", "unresolved-click", "early-timeout", "transport-error"] as const) {
+  test(`explicit progression policy: ${scenario}`, async () => {
+    const originalNow = Date.now
+    let now = originalNow()
+    Date.now = () => now
+    let latest: any
+    let restored = 0
+    let fenced = 0
+    const promotions: number[] = []
+    const isRegression = scenario.startsWith("regression") || scenario === "force-regression"
+    const journal = { previous: [{ version: baseline, percentage: 100 }], deployment: { id: "restored" } }
+    const broker = { begin: async () => journal, renew: async () => journal,
+      promote: async (_owner: string, phase: number) => { promotions.push(phase); return journal },
+      rollback: async () => { restored++; return journal } } as unknown as Parameters<typeof runHumanReviewedHmd>[2]
+    const step = { do: async (name: string, _options: unknown, callback: Function) => {
+      const result = await callback()
+      if (name.startsWith("health:snapshot")) latest = result
+      return result
+    }, waitForEvent: async (_name: string, options: any) => {
+      assert.equal(options.timeout, "2 minutes")
+      if (scenario === "force-regression") return { payload: { snapshot: latest.snapshot, decision: "approved", reason: "Automated emergency override fixture" } }
+      if (scenario !== "early-timeout") now = latest.expiresAt + 1
+      const error = new Error("fixture timeout")
+      error.name = scenario === "transport-error" ? "TransportError" : "WorkflowTimeoutError"
+      throw error
+    } } as unknown as WorkflowStep
+    try {
+      const run = runHumanReviewedHmd("progress-fixture", step, broker, async (_origin, identity) => ({ requested: 100, unknown: 0,
+        outcomes: Array.from({ length: 100 }, () => ({ version: identity.endsWith("baseline") ? baseline : candidate,
+          healthy: identity.endsWith("baseline") || !isRegression })) }), undefined, undefined,
+        { autoProgressMinutes: 2, allowRegressionOverride: true, onDeadline: async () => {
+          fenced++
+          if (scenario === "unresolved-click") throw new Error("Consumed decision delivery is unresolved")
+        } })
+      if (scenario === "deadline" || scenario === "force-regression") {
+        const result = await run
+        assert.deepEqual(promotions, [10, 10, 25, 25, 75, 75, 100, 100])
+        assert.ok(result.observations.every(o => o.basis === (isRegression ? "human-risk-acceptance" : "deadline-risk-acceptance")))
+        assert.ok(result.observations.every(o => o.decision.status === (isRegression ? "regression" : "uncertain")))
+        assert.equal(fenced, isRegression ? 0 : 4)
+        assert.equal(result.releaseCommitted, false)
+      } else {
+        await assert.rejects(run)
+        assert.deepEqual(promotions, [10], "a regression deadline, unresolved click or non-timeout error cannot progress")
+      }
+      assert.equal(restored, 1)
+    } finally { Date.now = originalNow }
+  })
+}

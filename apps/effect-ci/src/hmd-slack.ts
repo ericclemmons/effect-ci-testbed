@@ -32,7 +32,7 @@ export async function hmdSlackInteraction(request: Request, env: Environment, re
       const decision = action.action_id === "hmd_approve" ? "approved" : "rejected"
       if (env.HMD_REQUIRE_RATIONALE !== "true") {
         const accepted = await reviews.submit(capability, decision,
-          decision === "approved" ? "Approved directly in Slack" : "Rejected directly in Slack", actor)
+          decision === "approved" ? "Progress requested directly in Slack (explicit risk acceptance)" : "Rejected directly in Slack", actor)
         return Response.json({ response_type: "ephemeral", text: accepted
           ? "Decision recorded. The release card will update when the Workflow resumes."
           : "This review expired, was consumed, or lost release ownership. No decision was resent." })

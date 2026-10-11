@@ -3,7 +3,7 @@ import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed
 export type SlackBlock = Readonly<Record<string, unknown>>
 export interface RunHealth {
   readonly phase: 10 | 25 | 75 | 100
-  readonly decision: "uncertain" | "advance" | "rollback"
+  readonly decision: "uncertain" | "advance" | "rollback" | "regression"
   readonly evidenceSource: "closed-client-http-cohort" | "native-wobs"
 }
 export interface RunIdentity {
@@ -124,7 +124,7 @@ export class RunCard {
    */
   setHealth(health: RunHealth, fileId?: string): void {
     if (![10, 25, 75, 100].includes(health.phase) ||
-      !["uncertain", "advance", "rollback"].includes(health.decision) ||
+      !["uncertain", "advance", "rollback", "regression"].includes(health.decision) ||
       !["closed-client-http-cohort", "native-wobs"].includes(health.evidenceSource) ||
       (fileId !== undefined && !/^F[A-Z0-9]+$/.test(fileId))) throw new Error("Invalid health presentation")
     this.health = Object.freeze({ phase: health.phase, decision: health.decision,

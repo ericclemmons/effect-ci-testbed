@@ -11,7 +11,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
 
 export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string }
-interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; HMD_REQUIRE_RATIONALE?: string }
+interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; HMD_REQUIRE_RATIONALE?: string; HMD_AUTO_PROGRESS_MINUTES?: string }
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 
 /** Dedicated fixed-target administrative lab, never dispatched by normal GitHub CI. */
@@ -24,6 +24,8 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       PrivateSlackImages: DurableObjectNamespace<PrivateSlackImages>; PrivateSlackCards: DurableObjectNamespace<PrivateSlackCards>;
       HmdApprovals: DurableObjectNamespace<HmdApprovals> }
     const owner = event.instanceId
+    const autoProgressMinutes = Number(this.env.HMD_AUTO_PROGRESS_MINUTES ?? "2")
+    if (!Number.isInteger(autoProgressMinutes) || autoProgressMinutes < 1 || autoProgressMinutes > 5) throw new NonRetryableError("HMD_AUTO_PROGRESS_MINUTES must be 1–5")
     const images = host.PrivateSlackImages.getByName(owner)
     const cards = host.PrivateSlackCards.getByName(owner)
     const reviews = host.HmdApprovals.getByName(owner)
@@ -43,7 +45,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       const blocks = [...frame.blocks, { type: "context", elements: [{ type: "plain_text",
         text: "Fixed-target HTTP lab. Risk acceptance is not health proof. Final cleanup restores baseline; no production release." }] },
         ...(capability ? [{ type: "actions", elements: [
-          { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Approve" }, style: "primary", value: JSON.stringify(capability) },
+          { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Progress" }, style: "primary", value: JSON.stringify(capability) },
           { type: "button", action_id: "hmd_reject", text: { type: "plain_text", text: "Reject" }, style: "danger", value: JSON.stringify(capability) },
         ] }] : [])]
       const currentSequence = sequence++
@@ -69,7 +71,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
             return { owner: receipt.owner, phase: receipt.phase, snapshot: receipt.snapshot, token: receipt.token }
           })
           card.update({ type: "approval.requested", workflowId, stepId: `${current.phase}%`, requestId: current.snapshot,
-            approval: { title: `Approve ${current.phase}% and continue?`, summary: `${current.route.reason}. Approval accepts uncertainty, not proof of health.${this.env.HMD_REQUIRE_RATIONALE === "true" ? " Rationale required." : ""} Review expires ${new Date(current.expiresAt).toISOString()}.` }, timestamp })
+            approval: { title: `Progress past ${current.phase}%?`, summary: `${current.route.reason}. ${current.decision.status === "regression" ? "Progress overrides this regression; otherwise restore at" : "Auto-progress at"} ${new Date(current.expiresAt).toISOString()}. Progress accepts risk, not proof of health.${this.env.HMD_REQUIRE_RATIONALE === "true" ? " Rationale required." : ""}` }, timestamp })
         }
         await graph(update)
       } else if (update.type === "settled") {
@@ -77,7 +79,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         await step.do(`review:slack-close-${update.observation.phase}`, once, () => reviews.close(owner))
         card.update({ type: "approval.resolved", workflowId, stepId: `${update.observation.phase}%`, requestId: update.observation.snapshot,
           decision: "approved", timestamp })
-        if (update.basis !== "human-risk-acceptance") status(`${update.observation.phase}%`, "complete")
+        if (update.basis === "health") status(`${update.observation.phase}%`, "complete")
         await publish(card, `notification:hmd-settled-${update.observation.phase}`)
       } else {
         restored = true
@@ -101,7 +103,8 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     await publish(card, "notification:hmd-start")
     try {
       return await runHumanReviewedHmd(owner, step, this.env.RELEASE_MANAGER, undefined,
-        (message) => new NonRetryableError(message), observe)
+        (message) => new NonRetryableError(message), observe, { autoProgressMinutes, allowRegressionOverride: true,
+          onDeadline: (observation) => reviews.expire(owner, observation.phase, observation.snapshot) })
     } catch (error) {
       if (!observed && !restored) {
         // Claim/baseline failures precede observation. Do not falsely claim that
