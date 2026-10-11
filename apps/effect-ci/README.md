@@ -156,6 +156,13 @@ actual human approval, or full healthy WOBS rollout verification**. Delivery
 ambiguity intentionally requires reconciliation; do not redispatch to create
 another card or repeat an unresolved upload.
 
+Private files may not be usable in a message immediately after upload completion.
+For a known-message image update only, an explicit Slack `invalid_blocks`
+validation rejection permits at most three delayed retries of the identical
+frame (500/1000/2000 ms). Initial posts, network/HTTP failures, malformed replies,
+other errors and lost acknowledgements are never retried. Exhaustion retains the
+pending intent and fails closed; this is not an exactly-once API guarantee.
+
 The host-side `src/hmd-card.ts` observer connects the administrative HMD controller's
 immutable observations to that renderer/upload contract and the caller's **existing**
 `RunCard`. It checkpoints each phase's small private file receipt and renders the

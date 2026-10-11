@@ -22,7 +22,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     export {PrivateSlackCards} from "./private-cards.ts";
     export {HmdApprovals} from "./hmd-approval.ts";
     const baseline="09593237-23b2-4873-bd04-88c8e8488840",candidate="c94cee12-0bf4-48fb-bb42-9235f7ab7a3c";
-    let phase=0,files=0,posts=0,updates=0,restores=0,modal=null;
+    let phase=0,files=0,posts=0,updates=0,restores=0,modal=null,validationRejects=0;
     const promotions=[],frames=[];
     export class Broker extends WorkerEntrypoint {
       journal(){return {previous:[{version:baseline,percentage:100}],deployment:{id:"restored"}}}
@@ -46,7 +46,10 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       const body=await req.json();
       if(target.endsWith("files.completeUploadExternal")){if(body.channel_id)throw new Error("Public file share");return Response.json({ok:true,files:[{id:body.files[0].id,is_public:false}]})}
       if(target.endsWith("views.open")){modal=body.view;return Response.json({ok:true})}
-      if(target.endsWith("chat.postMessage"))posts++;else if(target.endsWith("chat.update")){updates++;if(body.ts!=="1791685465.683799")throw new Error("Wrong message")}
+      if(target.endsWith("chat.postMessage"))posts++;else if(target.endsWith("chat.update")){
+        updates++;if(body.ts!=="1791685465.683799")throw new Error("Wrong message");
+        if(${JSON.stringify(scenario)}==="approve"&&body.blocks.some(b=>b.type==="image")&&validationRejects<2){validationRejects++;return Response.json({ok:false,error:"invalid_blocks"})}
+      }
       else throw new Error("Unexpected Slack method");
       frames.push(body);return Response.json({ok:true,channel:"C1",ts:"1791685465.683799"});
     };
@@ -59,7 +62,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
           submit:(cap,decision,reason,actor)=>this.ctx.exports.HmdApprovals.getByName(cap.owner).submit(cap,decision,reason,actor)
         });
         const instance=await workflow.get("local-hmd");
-        return Response.json({status:await instance.status(),phase,files,posts,updates,restores,promotions,frames,modal});
+        return Response.json({status:await instance.status(),phase,files,posts,updates,restores,promotions,frames,modal,validationRejects});
       }
     }
   `, resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "native-hmd-probe.ts", loader: "ts" },
@@ -140,7 +143,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     }
     const done = await wait((s) => s.status.status === "complete")
     assert.equal(done.posts, 1)
-    assert.equal(done.updates, 9)
+    assert.equal(done.updates, 11)
+    assert.equal(done.validationRejects, 2, "bounded validation retries stay within one native notification checkpoint")
     assert.equal(done.files, 4)
     assert.equal(done.restores, 1)
     assert.equal(done.phase, 0)

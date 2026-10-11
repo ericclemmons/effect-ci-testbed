@@ -39,8 +39,8 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     // Persist only the small file receipt, not PNG bytes or credentials in Workflow history.
     const image = await step.do(`notification:hmd-image-${current.phase}`, once, async () => {
       try {
-        const png = await services.render(points, { baseline: baseline.version,
-          candidate: current.candidate.version, maxErrorRate: current.policy.maxErrorRate })
+        const png = await services.render(points, { baseline: baseline.version.slice(0, 8),
+          candidate: current.candidate.version.slice(0, 8), maxErrorRate: current.policy.maxErrorRate })
         return await services.upload(runId, current.snapshot, png)
       } catch { return { ok: false as const } }
     })
