@@ -86,6 +86,20 @@ to that channel. No Socket Mode connection, inbound Slack webhook, or Bolt serve
 needed for outbound notifications. The starter in `apps/slack-app` in the main checkout
 can remain unchanged; this service uses the same installed Slack app identity.
 
+Private confidence images additionally require the `files:write` **bot** scope and
+reinstalling the same app into the same workspace. The Worker-side
+`packages/github-cloudflare/src/slack-images.ts` helper uploads bounded, trusted PNG
+renderer output using [Slack's external upload flow](https://docs.slack.dev/reference/methods/files.getUploadURLExternal/).
+It completes without a channel or thread, leaving the file private and avoiding an
+extra file-share message. Its file-ID receipt can become a `slack_file` image block
+in the existing card. Never use a public image URL or pass the bot token to a container.
+This helper is transport groundwork, **not yet live HMD graph integration**. PNG
+header bounds are not a decoder or an untrusted-image sanitizer: use only output
+from the trusted chart renderer. Persist successful receipts before card updates;
+ambiguous upload failures are not automatically retried. A crash before storing a
+receipt can orphan a private file, so receipt/reconciliation handling is still
+required before wiring this into a replayable Workflow.
+
 With a bot token the runner posts one Block Kit status card with a dependency-ordered
 checklist and edits it as actions progress. Completed checks stay visible alongside
 running, queued, skipped, and optional warning checks. Approval adds **Approve** and
