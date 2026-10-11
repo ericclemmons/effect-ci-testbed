@@ -57,6 +57,20 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     export default class Driver extends WorkerEntrypoint {
       async fetch(req){
         const path=new URL(req.url).pathname;const workflow=this.ctx.exports.HmdReviewWorkflow;
+        if(path==="/deadline-fence"){
+          const idle=this.ctx.exports.HmdApprovals.getByName("deadline-idle");
+          const consumed=this.ctx.exports.HmdApprovals.getByName("deadline-consumed");
+          const digest="b".repeat(64),deadline=Date.now()+300;
+          const first=await idle.register("deadline-idle",10,digest,deadline);
+          const second=await consumed.register("deadline-consumed",10,digest,deadline);
+          let earlyRejected=false,consumedRejected=false;
+          try{await idle.expire(first.owner,10,digest)}catch{earlyRejected=true}
+          await consumed.submit(second,"rejected","Automated unresolved rejection fixture","slack:T1:U1");
+          await new Promise(resolve=>setTimeout(resolve,350));
+          await idle.expire(first.owner,10,digest);
+          try{await consumed.expire(second.owner,10,digest)}catch{consumedRejected=true}
+          return Response.json({earlyRejected,consumedRejected,closed:!await idle.inspect(first)});
+        }
         if(path==="/start"){await workflow.create({id:"local-hmd",params:{intent:"hmd-review-lab",revision:"a".repeat(40)}});return Response.json({started:true})}
         if(path==="/callback")return hmdSlackInteraction(req,this.env,{
           inspect:cap=>this.ctx.exports.HmdApprovals.getByName(cap.owner).inspect(cap),
@@ -106,6 +120,10 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
     assert.equal(response.status, 200, await response.clone().text())
   }
   try {
+    if (scenario === "approve") {
+      const fence = await (await runtime.dispatchFetch("https://probe.invalid/deadline-fence")).json()
+      assert.deepEqual(fence, { earlyRejected: true, consumedRejected: true, closed: true }, "native SQLite deadline fences pending decisions without bypassing consumed Reject")
+    }
     assert.equal((await runtime.dispatchFetch("https://probe.invalid/start")).status, 200)
     if (scenario === "claim-failure") {
       const failed = await wait((s) => s.status.status === "errored")

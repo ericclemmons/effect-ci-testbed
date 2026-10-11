@@ -79,7 +79,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         await step.do(`review:slack-close-${update.observation.phase}`, once, () => reviews.close(owner))
         card.update({ type: "approval.resolved", workflowId, stepId: `${update.observation.phase}%`, requestId: update.observation.snapshot,
           decision: "approved", timestamp })
-        if (update.basis === "health") status(`${update.observation.phase}%`, "complete")
+        if (update.basis !== "human-risk-acceptance") status(`${update.observation.phase}%`, "complete")
         await publish(card, `notification:hmd-settled-${update.observation.phase}`)
       } else {
         restored = true
