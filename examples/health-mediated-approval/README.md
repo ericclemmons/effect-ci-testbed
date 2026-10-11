@@ -19,7 +19,8 @@ This is a **separate, opt-in policy** from [strict automatic HMD](../health-medi
 It does not change that example's fail-closed behavior or classify missing data as healthy.
 The [trusted hosted controller](../../apps/example-runner/src/hmd-review-controller.ts)
 uses real version-attributed HTTP cohorts against the dedicated demo Worker, **not WOBS**.
-Local policy tests are implemented; hosted approval execution is not yet verified.
+Local policy tests and native administrative event resume are verified. Actual
+human approval and Slack delivery are not yet verified.
 
 The negative hosted timeout path is verified: `coverage-hmd-review-timeout-20261010-1`
 promoted the dedicated healthy candidate to 10%, recorded inconclusive HTTP evidence,
@@ -29,6 +30,21 @@ triggered exact baseline restoration in deployment
 No 25% promotion or approval-resolution checkpoint ran. This proves timeout rollback,
 not a successful human approval, WOBS gate or Slack integration. The run also exposed
 native preview truncation; the compact review request below fixes digest visibility.
+
+The separate administrative replay run `coverage-hmd-review-events-20261010-1`
+completed all real 10% → 25% → 75% → 100% promotions on the merged controller.
+Four snapshot-bound events resumed four native waits, each uncertainty decision
+stayed unchanged, and all four complete SVGs survive in the final output. Compact
+request previews measured 616–632 bytes; read-only assertions recomputed all four
+SHA-256 digests from the exact evidence and checked phase ownership verification.
+Final lab cleanup restored baseline 100% in deployment
+`7875d9c6-01b2-4f24-866e-0860e49a583a`, independently checked through the deployment API.
+
+These decisions were labelled **AUTOMATED LAB ONLY**. They prove administrative
+transport/checkpoint resume, **not real human review**, conclusive health, WOBS
+ingestion or a production release. Host version was
+`9b946c5b-d796-4962-b272-4e5cd1abee77`, Workflow version
+`8e2e4d90-1742-44cc-8afb-a817acb755df`. No Slack notification was sent.
 
 “Within margins” means **near a threshold**, not permission to exceed it silently:
 the absolute SLO is 10%, the increase budget is five percentage points, and human
@@ -83,3 +99,24 @@ updated card, retaining the same snapshot/deadline/ownership constraints.
 All four phases have health checks, including 100%. Successful lab cleanup also
 restores the baseline: `releaseCommitted: false`. This is not a production release,
 WOBS completeness proof, statistically conclusive success or Slack E2E proof.
+
+## Read-only recorded-run assertions
+
+These tests neither create instances nor send events nor mutate deployments:
+
+```sh
+HMD_REVIEW_RESUME_INSTANCE=coverage-hmd-review-events-20261010-1 \
+HMD_REVIEW_TIMEOUT_INSTANCE=coverage-hmd-review-timeout-20261010-1 \
+node --test apps/example-runner/ci/tests/live-hmd-review.test.ts
+```
+
+Set `HMD_CF_BIN` if `cf` is not on your path. The positive assertion additionally
+checks that its restoration is still the current deployment; another lab run may
+supersede that deployment while keeping the same baseline allocation.
+
+The installed `cf` beta.13 generated `workflows instances events send` command
+currently accepts no request body and rejects `--body`. Do not send an empty
+event as approval. The administrative validation used that installed CLI's local
+authenticated request helper to send JSON; it never exported credentials to a
+Worker. That private helper is a development workaround, not a supported setup API.
+Use the dashboard event form above until the CLI exposes arbitrary event payloads.
