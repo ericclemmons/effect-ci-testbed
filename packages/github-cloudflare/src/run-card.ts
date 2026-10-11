@@ -1,6 +1,11 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
 
 export type SlackBlock = Readonly<Record<string, unknown>>
+export interface RunHealth {
+  readonly phase: 10 | 25 | 75 | 100
+  readonly decision: "uncertain" | "advance" | "rollback"
+  readonly evidenceSource: "closed-client-http-cohort" | "native-wobs"
+}
 export interface RunIdentity {
   readonly instanceId: string
   readonly repository: string
@@ -14,6 +19,7 @@ export interface RunSnapshot {
   readonly identity: Readonly<Pick<RunIdentity, "instanceId" | "repository" | "revision" | "detailsUrl">>
   readonly workflowId: string
   readonly phase: "running" | "waiting" | "success" | "failure"
+  readonly health?: Readonly<RunHealth>
   readonly checks: ReadonlyArray<{
     readonly id: string
     readonly status: keyof typeof symbols
@@ -53,6 +59,7 @@ export class RunCard {
   private phase: "running" | "waiting" | "success" | "failure" = "running"
   private readonly checks = new Map<string, { status: keyof typeof symbols; optional: boolean; dependencies: Set<string> }>()
   private review: { stepId: string; request: ApprovalRequest; url?: string } | undefined
+  private health: Readonly<RunHealth & { fileId?: string }> | undefined
   private readonly identity: RunIdentity
 
   constructor(identity: RunIdentity) {
@@ -112,12 +119,26 @@ export class RunCard {
     if (this.review) this.review.url = url
   }
 
+  /** Presentation only: never authorizes promotion or converts uncertainty to health.
+   * Reconstruct from checkpointed observations and private image receipts on replay.
+   */
+  setHealth(health: RunHealth, fileId?: string): void {
+    if (![10, 25, 75, 100].includes(health.phase) ||
+      !["uncertain", "advance", "rollback"].includes(health.decision) ||
+      !["closed-client-http-cohort", "native-wobs"].includes(health.evidenceSource) ||
+      (fileId !== undefined && !/^F[A-Z0-9]+$/.test(fileId))) throw new Error("Invalid health presentation")
+    this.health = Object.freeze({ phase: health.phase, decision: health.decision,
+      evidenceSource: health.evidenceSource, ...(fileId ? { fileId } : {}) })
+  }
+
   snapshot(): RunSnapshot {
     const { instanceId, repository, revision, detailsUrl } = this.identity
     return Object.freeze({
       identity: Object.freeze({ instanceId, repository, revision, ...(detailsUrl ? { detailsUrl } : {}) }),
       workflowId: this.workflowId,
       phase: this.phase,
+      ...(this.health ? { health: Object.freeze({ phase: this.health.phase,
+        decision: this.health.decision, evidenceSource: this.health.evidenceSource }) } : {}),
       checks: Object.freeze(Array.from(this.checks, ([id, check]) => Object.freeze({
         id, status: check.status, optional: check.optional,
         dependencies: Object.freeze(Array.from(check.dependencies)),
@@ -159,6 +180,11 @@ export class RunCard {
     }
     blocks.push({ type: "section", text: { type: "mrkdwn", text: section || "Preparing checks…", verbatim: true } })
     if (lines.length > 100) blocks.push({ type: "context", elements: [{ type: "plain_text", text: `${lines.length - 100} more checks; see Workflow history.` }] })
+    if (this.health) {
+      const evidence = this.health.evidenceSource === "native-wobs" ? "Native WOBS" : "HTTP cohort (not WOBS)"
+      blocks.push({ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · ${evidence}` } })
+      if (this.health.fileId) blocks.push({ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Observed health confidence intervals; not a forecast" })
+    }
     if (this.review) {
       blocks.push({ type: "section", text: { type: "plain_text", text: `${this.review.request.title}\n${this.review.request.summary}`.slice(0, 3000) } })
     }
@@ -175,7 +201,8 @@ export class RunCard {
     if (buttons.length) blocks.push({ type: "actions", elements: buttons })
 
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
+    const health = this.health ? `\nRelease ${this.health.phase}% · ${this.health.decision} · ${this.health.evidenceSource}` : ""
 
-    return { text: `${headline} · ${this.workflowId}\n${lines.join("\n")}${review}\nRun: ${this.identity.instanceId}`, blocks }
+    return { text: `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
   }
 }
