@@ -5,7 +5,7 @@ interface Reviews {
   inspect(capability: HmdCapability): Promise<boolean>
   submit(capability: HmdCapability, decision: "approved" | "rejected", reason: string, actor: string): Promise<boolean>
 }
-type Environment = SlackApprovalEnvironment & { SLACK_BOT_TOKEN?: string }
+type Environment = SlackApprovalEnvironment & { SLACK_BOT_TOKEN?: string; HMD_REQUIRE_RATIONALE?: string }
 /** Classification is not authentication. Both callback handlers independently verify HMAC. */
 export function isHmdSlackBody(body: string): boolean {
   try {
@@ -30,6 +30,13 @@ export async function hmdSlackInteraction(request: Request, env: Environment, re
       const capability = JSON.parse(action.value) as HmdCapability
       if (!await reviews.inspect(capability)) return Response.json({ response_type: "ephemeral", text: "This phase is no longer awaiting review." })
       const decision = action.action_id === "hmd_approve" ? "approved" : "rejected"
+      if (env.HMD_REQUIRE_RATIONALE !== "true") {
+        const accepted = await reviews.submit(capability, decision,
+          decision === "approved" ? "Approved directly in Slack" : "Rejected directly in Slack", actor)
+        return Response.json({ response_type: "ephemeral", text: accepted
+          ? "Decision recorded. The release card will update when the Workflow resumes."
+          : "This review expired, was consumed, or lost release ownership. No decision was resent." })
+      }
       const response = await transport("https://slack.com/api/views.open", {
         method: "POST", redirect: "manual", signal: AbortSignal.timeout(2000),
         headers: { authorization: `Bearer ${env.SLACK_BOT_TOKEN}`, "content-type": "application/json" },

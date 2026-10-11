@@ -65,7 +65,11 @@ export function evaluateHealth(baseline: HealthSample, candidate: HealthSample, 
   if (baseline.from !== policy.baselineWindow.from || baseline.to !== policy.baselineWindow.to || candidate.from !== policy.phaseStartedAt) return uncertain("window does not match the pinned release cohort")
   if (baseline.completeThrough < baseline.to || candidate.completeThrough < candidate.to) return uncertain("telemetry still arriving")
   if (baseline.sampling !== "unsampled" || candidate.sampling !== "unsampled") return uncertain("weighted counts need a sampling-aware estimator")
-  if (!baseline.trials || !candidate.trials) return uncertain("needs more independent observations")
+  if (!baseline.trials || !candidate.trials) return {
+    ...uncertain("needs more independent observations"),
+    ...(baseline.trials ? { baseline: rateInterval(baseline, policy) } : {}),
+    ...(candidate.trials ? { candidate: rateInterval(candidate, policy) } : {}),
+  }
   const previous = rateInterval(baseline, policy)
   const current = rateInterval(candidate, policy)
   const increase = { low: current.low - previous.high, high: current.high - previous.low }

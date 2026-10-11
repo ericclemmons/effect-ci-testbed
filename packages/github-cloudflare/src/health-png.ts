@@ -18,6 +18,7 @@ export function createHealthPngRenderer(module: WebAssembly.Module, font: Uint8A
     if (typeof options.baseline !== "string" || typeof options.candidate !== "string" ||
       options.baseline.length > 256 || options.candidate.length > 256) throw new Error("Invalid chart labels")
     const svg = healthChart(points, options)
+    const expectedHeight = points.length > 1 ? 460 : 300
     if (new TextEncoder().encode(svg).length > 100_000) throw new Error("Chart is too large")
     if (initializedModule && initializedModule !== module) throw new Error("Chart module already selected")
     if (!initialization) {
@@ -31,13 +32,13 @@ export function createHealthPngRenderer(module: WebAssembly.Module, font: Uint8A
       fitTo: { mode: "original" },
     })
     try {
-      if (renderer.width !== 760 || renderer.height !== 350 || renderer.imagesToResolve().length) {
+      if (renderer.width !== 760 || renderer.height !== expectedHeight || renderer.imagesToResolve().length) {
         throw new Error("Unexpected chart resource")
       }
       const image = renderer.render()
       try {
         const png = image.asPng()
-        if (image.width !== 760 || image.height !== 350 || png.length > 1_000_000) {
+        if (image.width !== 760 || image.height !== expectedHeight || png.length > 1_000_000) {
           throw new Error("Unexpected chart output")
         }
         // Own bytes independently of WASM memory before freeing both allocations.

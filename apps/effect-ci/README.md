@@ -113,8 +113,9 @@ existing Access protection and signature-protected `/webhooks/slack` exception.
 The ignored host secrets file must include `SLACK_BOT_TOKEN`,
 `SLACK_SIGNING_SECRET`, `SLACK_APP_ID`, `SLACK_TEAM_ID`, `SLACK_CHANNEL_ID`, and
 `SLACK_APPROVER_IDS`. The bot needs `chat:write` and `files:write`; the existing
-HTTP interaction URL remains `/webhooks/slack`. The rationale modal uses
-`views.open`, with no additional scope.
+HTTP interaction URL remains `/webhooks/slack`. Approve and Reject are direct
+buttons by default. Set `HMD_REQUIRE_RATIONALE=true` in the host secrets file
+to require the optional rationale modal (`views.open`, no additional scope).
 
 Only start a lab when the authorized reviewer is ready and no other rollout
 owns the broker. Use an authenticated Cloudflare operator session, not a public
@@ -136,17 +137,28 @@ with fixed HTTP cohorts, not WOBS-completeness proof. Each observation replaces
 the private graph in **one owned Slack message**, preserving its checklist and
 inline approval buttons. Historical uncertainty is never relabeled healthy.
 
-Approve or Reject opens a required rationale modal. A fresh Slack signature,
+Approve or Reject records the decision with one click by default; the actor,
+snapshot and acceptance time remain recorded without inventing a human comment.
+When `HMD_REQUIRE_RATIONALE=true`, a required rationale modal is used instead.
+A fresh Slack signature,
 pinned app/team/channel, authorized reviewer, and owner/phase/snapshot-bound
 single-use capability are required. The displayed absolute deadline is five
 minutes from snapshot creation, not from clicking the button. Approval verifies
 broker ownership and same-phase allocation before sending the native event.
-Closing the modal acknowledges a consumed intent, not confirmed event delivery;
+Acknowledging the click (or modal) confirms a consumed intent, not event delivery;
 an ambiguous acknowledgement is not blindly resent. Rejection, expiry, stale
 evidence or lost authority fails closed and restores the exact prior allocation;
 the broker's independent alarm provides recovery if the controller disappears.
 Even successful completion restores baseline: **no production release is
 committed**. Confirmed regressions never offer approval.
+
+The card marks accepted phases Approved, independently of the health decision.
+Uncertainty is retained in the comparison, not represented as a failed approval.
+The graph shows previous/new observed error rates, errors/request counts, pinned
+UTC observation windows, confidence bounds and the error-rate limit. A missing
+new-version cohort does not erase the previous version and is never presented
+as a zero-error success. The short HTTP demo is not a production WOBS history;
+its small samples may remain inconclusive throughout the entire lab.
 
 Local tests run a real native Workflow, SQLite review/card ledgers and the WASM
 renderer with mocked outbound APIs. Four explicitly automated local rationale
