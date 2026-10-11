@@ -72,23 +72,30 @@ Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
 
-## Pre-commit evidence
+## Commit first, then attest
 
-Local checks must run against the current working tree, including edits that have
-not been committed. The current Git-note adapter is commit-only: dirty workspaces
-run checks normally, but neither reuse nor publish evidence for their old `HEAD`.
+Commits are checkpoints, not assertions that checks passed. An authorized agent
+should commit its changes, run checks against that exact commit, and attach signed
+evidence as a Git note after success. Failed checks do not invalidate the usefulness
+of the commit: fix the failure in another commit and verify that new commit.
 
-The next pre-commit contract must sign an input-content fingerprint (including
-tracked, staged, unstaged, and relevant untracked files), action definition, toolchain,
-and conditions. After committing, evidence can be attached only if the committed
-tree matches what was tested. Changes during or after validation invalidate it.
-Ignored inputs also need an explicit dependency policy; a clean Git status alone
-does not prove that dependencies or toolchains match.
+The agent-facing flow is:
 
-Agent output should report the evidence handle and exact follow-up command to
-attach it to the resulting commit as a note or trailer. It must never recommend
-claiming that old `HEAD` passed when different dirty content was tested. This
-content-bound pre-commit handoff remains planned, not implemented by this example.
+1. Commit the intended changes, preserving unrelated user edits.
+2. Check the exact committed revision using the required action, toolchain and policy.
+3. On success, attach its signed verification envelope under `refs/notes/effect-ci`.
+4. Push the commit and notes ref; CI verifies the signature and exact-commit fingerprint.
+
+Use notes for post-check evidence: adding a trailer by amending the checked commit
+changes its hash and requires checking that new commit again. Creating a commit does
+not itself authorize a push, merge or release; those remain separately scoped actions.
+
+Local checks may still run against a dirty working tree for feedback, but that result
+is not reusable attestation. The current adapter neither reuses nor publishes evidence
+for old `HEAD` when local edits were tested. A separate dirty-tree fingerprint and
+pre-commit-to-commit proof handoff are intentionally **not part of the roadmap**.
+Dependency/toolchain and policy fingerprints still matter for commit-bound evidence;
+a clean Git status alone does not prove those inputs match.
 
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
