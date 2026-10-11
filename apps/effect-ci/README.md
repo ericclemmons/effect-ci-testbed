@@ -94,7 +94,7 @@ It completes without a channel or thread, leaving the file private and avoiding 
 extra file-share message. Its file-ID receipt can become a `slack_file` image block
 in the existing card. Never use a public image URL or pass the bot token to a container.
 The dedicated HMD Workflow below connects this transport to its owned CI card;
-live hosted review verification is still pending. PNG
+recorded live timer and review evidence is described below. PNG
 header bounds are not a decoder or an untrusted-image sanitizer: use only output
 from the trusted chart renderer. Persist successful receipts before card updates;
 ambiguous upload failures are not automatically retried.
@@ -117,8 +117,9 @@ HTTP interaction URL remains `/webhooks/slack`. Progress and Reject are direct
 buttons by default. Set `HMD_REQUIRE_RATIONALE=true` in the host secrets file
 to require the optional rationale modal (`views.open`, no additional scope).
 
-Only start a lab when the authorized reviewer is ready and no other rollout
-owns the broker. Use an authenticated Cloudflare operator session, not a public
+Only start a lab when no other rollout owns the broker. Have the authorized
+reviewer ready if testing manual Progress or Reject; the bounded timer lab needs
+no human approval. Use an authenticated Cloudflare operator session, not a public
 dispatch endpoint:
 
 ```sh
@@ -170,8 +171,9 @@ override, with the regression warning and original evidence preserved. It never
 auto-progresses: without an override it restores at the deadline. This policy
 belongs to this opt-in hosted review flow; the strict automatic controller and
 the standalone human-review example retain their existing fail-closed policies.
-These progression-policy changes have local regression coverage; the earlier
-live browser evidence below used the previous approval/timeout policy, not this one.
+The continuous progression policy has local regression coverage and the real
+Cloudflare timer evidence below. The earlier direct-rejection browser evidence
+used the previous approval/timeout policy.
 
 For the bounded failing-candidate test, add `"profile":"regression"` to the lab
 parameters. The default is `"healthy"`; these two names select only the already
@@ -188,6 +190,52 @@ UTC observation windows, confidence bounds and the error-rate limit. A missing
 new-version cohort does not erase the previous version and is never presented
 as a zero-error success. The short HTTP demo is not a production WOBS history;
 its small samples may remain inconclusive throughout the entire lab.
+
+### Live continuous-sampling timer evidence
+
+Merged source `c62f623e700b0d2356ea6a9f138c2a384c0d4978`, host version
+`5491d634-d9ae-4008-bfeb-8c2c5b968896`, ran
+[`coverage-hmd-sampling-deadline-20261011-1`](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-hmd-review/instance/coverage-hmd-sampling-deadline-20261011-1)
+through real 10/25/75/100 allocations. Each stage collected four cumulative
+HTTP observations over its fixed two-minute deadline. Final candidate counts
+were 32/91/300/400, all with zero errors; the previous-version cohort had
+100 requests and zero errors. All four decisions remained **inconclusive** and
+advanced under `deadline-risk-acceptance`, not a human event or healthy proof.
+Sixteen private graph receipts and 22 sequential card frames updated
+[one Slack message](https://ryanflorencefanclub.slack.com/archives/C0C81FU4B5J/p1791755648791619).
+The signed-in browser showed the changing comparison graph and current-stage
+Progress/Reject buttons, then all stages complete with no queued checks or buttons.
+Final cleanup restored the exact previous 100% allocation at deployment
+`f539a11e-2287-4407-90fa-8c36b1bf6201`. No production release was committed,
+no manual risk decision was sent, and this is **not representative WOBS proof**.
+
+The subsequent fixed failing-profile run,
+[`coverage-hmd-sampling-regression-20261011-1`](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-hmd-review/instance/coverage-hmd-sampling-regression-20261011-1),
+accumulated 10/25/34/49 candidate requests, all failures. Once there were 25
+observations, the stage detected a regression and retained the explicit emergency
+Progress control without permitting automatic promotion. No override was sent.
+Its fixed deadline failed once without retrying and restored the exact previous
+100% allocation at deployment `a7e446a6-b5ea-43d3-a76b-68b3fbdf3f8a`.
+Four private images and six frames updated
+[one card](https://ryanflorencefanclub.slack.com/archives/C0C81FU4B5J/p1791756198049539),
+ending with 10% failed, later phases skipped, restoration complete, and no stale
+buttons. The signed-in browser verified the real comparison: previous 0/100
+errors, new 49/49 errors. This is a controlled failure test, not a human emergency
+override test or a causal comparison of production releases.
+
+Read-only recorded-run assertions (never dispatches, approves or uploads):
+
+```sh
+HMD_CF_BIN=/path/to/cf \
+HMD_SAMPLING_HEALTHY_INSTANCE=coverage-hmd-sampling-deadline-20261011-1 \
+HMD_SAMPLING_REGRESSION_INSTANCE=coverage-hmd-sampling-regression-20261011-1 \
+HMD_SLACK_SECRETS_FILE=apps/effect-ci/.secrets.env \
+node --test apps/effect-ci/src/live-hmd-sampling.test.ts
+```
+
+Run from the repository root. The optional secrets-file argument enables a
+local read of the existing Slack card; credentials never enter test output.
+The assertions require the demo to be restored, so do not run during another lab.
 
 Live browser evidence (2026-10-11):
 [`coverage-hmd-direct-reject-20261011-1`](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-hmd-review/instance/coverage-hmd-direct-reject-20261011-1)
