@@ -125,10 +125,18 @@ export async function runHumanReviewedHmd(
           try {
             response = await step.waitForEvent(`review:phase-${phase}`, { type: `hmd-review-${phase}`, timeout: `${progress?.autoProgressMinutes ?? 5} minutes` })
           } catch (error) {
+            await step.do(`review:wait-error-${phase}`, once, async () => ({ waitError: {
+              name: error instanceof Error ? error.name : typeof error,
+              message: error instanceof Error ? error.message.slice(0, 150) : "Non-error native wait failure",
+            } }))
             // Only an actual native wait timeout is a release-policy deadline.
             // Delivery/auth/unknown errors, regression and lost ownership still restore.
-            if (!progress || snapshot.decision.status === "regression" ||
-              !(error instanceof Error) || error.name !== "WorkflowTimeoutError") throw error
+            // Native local RPC drops the custom Error.name but preserves this
+            // exact timeout message. Require the configured duration, elapsed
+            // snapshot deadline and atomic review fence as independent checks.
+            const timedOut = error instanceof Error && (error.name === "WorkflowTimeoutError" ||
+              (error.name === "Error" && error.message === `Execution timed out after ${(progress?.autoProgressMinutes ?? 5) * 60_000}ms`))
+            if (!progress || snapshot.decision.status === "regression" || !timedOut) throw error
           }
           // Checkpoint the acceptance time: replay preserves the original deadline evaluation.
           const resolution = await step.do(`review:resolve-${phase}`, once, async () => {

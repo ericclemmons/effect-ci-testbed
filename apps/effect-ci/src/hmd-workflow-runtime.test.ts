@@ -11,8 +11,8 @@ const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }))
 /** Native local Workflow+RPC/SQLite/WASM composition, mocked external systems.
  * Automated fixture decisions are NOT human approval or live Slack/Cloudflare deployment proof.
  */
-for (const scenario of ["approve", "force-regression", "reject", "claim-failure"] as const) {
-test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_000 }, async () => {
+for (const scenario of ["approve", "force-regression", "deadline", "reject", "claim-failure"] as const) {
+test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_000 }, async () => {
   const output = await build({ stdin: { contents: `
     import {WorkerEntrypoint} from "cloudflare:workers";
     import {hmdSlackInteraction} from "./hmd-slack.ts";
@@ -99,14 +99,16 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       Broker: { type: "worker" }, PrivateSlackImages: { type: "durable-object", storage: "sqlite" },
       PrivateSlackCards: { type: "durable-object", storage: "sqlite" }, HmdApprovals: { type: "durable-object", storage: "sqlite" } },
     env: { RELEASE_MANAGER: { type: "worker", worker: name, exportName: "Broker" }, SLACK_BOT_TOKEN: json("test-token"),
-      SLACK_APP_ID: json("A1"), SLACK_TEAM_ID: json("T1"), SLACK_CHANNEL_ID: json("C1"), SLACK_SIGNING_SECRET: json("test-secret"), SLACK_APPROVER_IDS: json("U1") },
+      SLACK_APP_ID: json("A1"), SLACK_TEAM_ID: json("T1"), SLACK_CHANNEL_ID: json("C1"), SLACK_SIGNING_SECRET: json("test-secret"), SLACK_APPROVER_IDS: json("U1"),
+      HMD_AUTO_PROGRESS_MINUTES: json(scenario === "deadline" ? "1" : "2") },
   } }] })
   const state = async () => (await runtime.dispatchFetch("https://probe.invalid/state")).json()
   const wait = async (predicate: (s: any) => boolean) => {
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < (scenario === "deadline" ? 1500 : 200); i++) {
       const current = await state()
       if (predicate(current)) return current
-      assert.notEqual(current.status.status, "errored", JSON.stringify(current.status))
+      assert.notEqual(current.status.status, "errored", JSON.stringify({ error: current.status.error,
+        waitErrors: current.status.__LOCAL_DEV_STEP_OUTPUTS?.filter((o: any) => o?.waitError) }))
       await new Promise((resolve) => setTimeout(resolve, 50))
     }
     assert.fail("Native fixture did not reach the expected state")
@@ -137,27 +139,31 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 60_
       return
     }
     for (const phase of [10, 25, 75, 100]) {
+      if (scenario === "deadline" && phase === 10) {
+        await wait((s) => s.phase === 25 && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
+        continue
+      }
       const current = await wait((s) => s.phase === phase && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
-      const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (scenario === "reject" ? "hmd_reject" : "hmd_approve"))
+      const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (scenario === "reject" || scenario === "deadline" ? "hmd_reject" : "hmd_approve"))
       const capability = JSON.parse(action.value)
       assert.equal(capability.phase, phase)
-      if (scenario !== "reject") assert.equal(action.text.text, "Progress")
+      if (scenario !== "reject" && scenario !== "deadline") assert.equal(action.text.text, "Progress")
       await callback({ type: "block_actions", api_app_id: "A1", team: { id: "T1" }, user: { id: "U1" }, channel: { id: "C1" }, trigger_id: "test-trigger", actions: [action] })
       const opened = await state()
       assert.equal(opened.modal, null, "default direct decision has no comment modal")
-      if (scenario === "reject") break
+      if (scenario === "reject" || scenario === "deadline") break
     }
-    if (scenario === "reject") {
+    if (scenario === "reject" || scenario === "deadline") {
       const failed = await wait((s) => s.status.status === "errored")
       assert.equal(failed.posts, 1)
-      assert.equal(failed.updates, 2)
-      assert.equal(failed.files, 1)
+      assert.equal(failed.updates, scenario === "deadline" ? 4 : 2)
+      assert.equal(failed.files, scenario === "deadline" ? 2 : 1)
       assert.equal(failed.restores, 1)
       assert.equal(failed.phase, 0)
-      assert.deepEqual(failed.promotions, [10], "rejection cannot advance the canary")
+      assert.deepEqual(failed.promotions, scenario === "deadline" ? [10, 10, 25] : [10], "deadline progresses once; rejection stops further progression")
       assert.match(failed.frames.at(-1).text, /Failed/)
-      assert.match(failed.frames.at(-1).text, /10% — failed/)
-      assert.match(failed.frames.at(-1).text, /25% — skipped/)
+      assert.match(failed.frames.at(-1).text, scenario === "deadline" ? /10%\n/ : /10% — failed/)
+      assert.match(failed.frames.at(-1).text, scenario === "deadline" ? /25% — failed/ : /25% — skipped/)
       assert.ok(!failed.frames.at(-1).text.includes("queued"), "future phases cannot remain queued after rejection")
       assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
       return

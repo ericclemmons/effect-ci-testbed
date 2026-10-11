@@ -43,7 +43,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     const publish = async (_card: RunCard, checkpoint: string) => {
       const frame = card.render()
       const blocks = [...frame.blocks, { type: "context", elements: [{ type: "plain_text",
-        text: "Fixed-target HTTP lab. Risk acceptance is not health proof. Final cleanup restores baseline; no production release." }] },
+        text: "Fixed-target HTTP lab. Progress accepts risk, not proof of health. Final cleanup restores the previous version; no production release." }] },
         ...(capability ? [{ type: "actions", elements: [
           { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Progress" }, style: "primary", value: JSON.stringify(capability) },
           { type: "button", action_id: "hmd_reject", text: { type: "plain_text", text: "Reject" }, style: "danger", value: JSON.stringify(capability) },

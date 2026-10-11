@@ -96,7 +96,7 @@ test("terminal presentation failure cannot trigger another rollback", () => lab(
   if (update.type === "restored") throw new Error("Notification unavailable")
 }))
 
-for (const scenario of ["deadline", "force-regression", "regression-timeout", "unresolved-click", "early-timeout", "transport-error"] as const) {
+for (const scenario of ["deadline", "wrapped-deadline", "wrong-timeout-duration", "force-regression", "regression-timeout", "unresolved-click", "early-timeout", "transport-error"] as const) {
   test(`explicit progression policy: ${scenario}`, async () => {
     const originalNow = Date.now
     let now = originalNow()
@@ -118,8 +118,8 @@ for (const scenario of ["deadline", "force-regression", "regression-timeout", "u
       assert.equal(options.timeout, "2 minutes")
       if (scenario === "force-regression") return { payload: { snapshot: latest.snapshot, decision: "approved", reason: "Automated emergency override fixture" } }
       if (scenario !== "early-timeout") now = latest.expiresAt + 1
-      const error = new Error("fixture timeout")
-      error.name = scenario === "transport-error" ? "TransportError" : "WorkflowTimeoutError"
+      const error = new Error(scenario === "wrapped-deadline" ? "Execution timed out after 120000ms" : scenario === "wrong-timeout-duration" ? "Execution timed out after 1000ms" : "fixture timeout")
+      error.name = scenario === "transport-error" ? "TransportError" : ["wrapped-deadline", "wrong-timeout-duration"].includes(scenario) ? "Error" : "WorkflowTimeoutError"
       throw error
     } } as unknown as WorkflowStep
     try {
@@ -130,7 +130,7 @@ for (const scenario of ["deadline", "force-regression", "regression-timeout", "u
           fenced++
           if (scenario === "unresolved-click") throw new Error("Consumed decision delivery is unresolved")
         } })
-      if (scenario === "deadline" || scenario === "force-regression") {
+      if (scenario === "deadline" || scenario === "wrapped-deadline" || scenario === "force-regression") {
         const result = await run
         assert.deepEqual(promotions, [10, 10, 25, 25, 75, 75, 100, 100])
         assert.ok(result.observations.every(o => o.basis === (isRegression ? "human-risk-acceptance" : "deadline-risk-acceptance")))
