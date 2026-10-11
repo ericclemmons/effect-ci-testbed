@@ -207,3 +207,4 @@ export const SourceChecksWorkflow = Cloudflare.workflowEntrypoint(sourceChecks, 
   reuseWorkspace: false,
 })
 export { HostedHmdWorkflow } from "./hmd-controller.ts"
+export { HumanReviewedHmdWorkflow } from "./hmd-review-controller.ts"
