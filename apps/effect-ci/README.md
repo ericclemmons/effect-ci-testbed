@@ -122,9 +122,12 @@ dispatch endpoint:
 
 ```sh
 cf workflows instances create effect-ci-hmd-review \
-  --instance-id hmd-review-unique-run-name \
-  --params '{"intent":"hmd-review-lab","revision":"REPLACE_WITH_40_HEX_COMMIT_SHA"}'
+  --body '{"instance_id":"hmd-review-unique-run-name","params":{"intent":"hmd-review-lab","revision":"REPLACE_WITH_40_HEX_COMMIT_SHA"}}'
 ```
+
+Use `--body` with an object-valued `params`: the installed CLI's `--params`
+flag currently forwards its JSON text as a string instead of decoding it.
+The Workflow rejects that string before any notification or deployment.
 
 The SHA identifies the reviewed code in the card; this fixed-target lab does
 not build or upload that commit. It uses the dedicated demo's already-uploaded

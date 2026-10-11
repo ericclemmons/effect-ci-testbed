@@ -101,3 +101,64 @@ test("an update must acknowledge the same timestamp; ambiguous update never beco
   assert.equal(f.receipt()?.stage, "pending")
   assert.ok(f.calls[1]!.method.endsWith("chat.update"))
 })
+
+test("private-image validation rejection permits only bounded same-frame update attempts", async () => {
+  const f = fixture()
+  await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport)
+  const image = { ...frame, blocks: [...frame.blocks, { type: "image", slack_file: { id: "F123" }, alt_text: "Confidence" }] }
+  let attempts = 0
+  const waits: number[] = []
+  const transport: typeof fetch = async (url, init) => {
+    const response = await f.transport(url, init)
+    attempts++
+    return attempts < 3 ? Response.json({ ok: false, error: "invalid_blocks" }) : response
+  }
+  assert.equal((await publishOwnedSlackCard("run", 1, image, env, f.store, transport,
+    async (ms) => { waits.push(ms) })).ok, true)
+  assert.deepEqual(waits, [500, 1000])
+  assert.equal(attempts, 3)
+  assert.ok(f.calls.slice(1).every((call) => call.method.endsWith("chat.update") && call.body.ts === f.receipt()!.ts))
+  assert.ok(f.calls.slice(1).every((call) => JSON.stringify(call.body) === JSON.stringify(f.calls[1]!.body)))
+})
+
+test("image rejection exhaustion and ambiguous second attempt never allocate a replacement message", async () => {
+  for (const mode of ["exhausted", "ambiguous"] as const) {
+    const f = fixture()
+    await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport)
+    const image = { ...frame, blocks: [...frame.blocks, { type: "image", slack_file: { id: "F123" }, alt_text: "Confidence" }] }
+    let attempts = 0
+    const transport: typeof fetch = async (url, init) => {
+      await f.transport(url, init)
+      attempts++
+      if (mode === "ambiguous" && attempts === 2) throw new Error("Lost acknowledgement")
+      return Response.json({ ok: false, error: "invalid_blocks" })
+    }
+    assert.equal((await publishOwnedSlackCard("run", 1, image, env, f.store, transport, async () => {})).ok, false)
+    assert.equal(attempts, mode === "exhausted" ? 4 : 2)
+    await publishOwnedSlackCard("run", 1, image, env, f.store, transport, async () => {})
+    assert.equal(attempts, mode === "exhausted" ? 4 : 2, "pending intent blocks replay")
+    assert.equal(f.receipt()!.stage, "pending")
+  }
+})
+
+test("initial posts and non-validation failures are never retried, even with a private image", async () => {
+  for (const mode of ["initial", "plain", "internal_error", "http", "malformed"] as const) {
+    const f = fixture()
+    if (mode !== "initial") await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport)
+    const image = { ...frame, blocks: [...frame.blocks, { type: "image", slack_file: { id: "F123" }, alt_text: "Confidence" }] }
+    let attempts = 0
+    const transport: typeof fetch = async (url, init) => {
+      await f.transport(url, init)
+      attempts++
+      if (mode === "http") return new Response("Unavailable", { status: 503 })
+      if (mode === "malformed") return new Response("not JSON")
+      return Response.json({ ok: false, error: mode === "internal_error" ? "internal_error" : "invalid_blocks",
+        response_metadata: { messages: [env.SLACK_BOT_TOKEN] } })
+    }
+    const result = await publishOwnedSlackCard("run", mode === "initial" ? 0 : 1, mode === "plain" ? frame : image,
+      env, f.store, transport, async () => { assert.fail("unexpected retry") })
+    assert.equal(result.ok, false)
+    assert.equal(attempts, 1)
+    assert.equal(JSON.stringify(result).includes(env.SLACK_BOT_TOKEN), false)
+  }
+})

@@ -33,7 +33,8 @@ const digest = async (value: string) => Array.from(new Uint8Array(await crypto.s
  */
 export async function publishOwnedSlackCard(owner: string, sequence: number, frame: OwnedCardFrame,
   environment: OwnedCardEnvironment, store: OwnedCardStore, transport: typeof fetch = fetch,
-): Promise<{ readonly ok: true; readonly ts: string } | { readonly ok: false }> {
+  wait: (milliseconds: number) => Promise<void> = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+): Promise<{ readonly ok: true; readonly ts: string } | { readonly ok: false; readonly error?: "invalid_blocks" | "slack-rejected" }> {
   const { SLACK_APP_ID: app, SLACK_TEAM_ID: team, SLACK_CHANNEL_ID: channel, SLACK_BOT_TOKEN: token } = environment
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(owner) || !Number.isSafeInteger(sequence) || sequence < 0 ||
     !app || !team || !channel || !token || !frame || typeof frame.text !== "string" ||
@@ -52,13 +53,30 @@ export async function publishOwnedSlackCard(owner: string, sequence: number, fra
         ? { ok: true, ts: receipt.ts } : { ok: false }
     }
     if (reserved.ts && !timestamp.test(reserved.ts)) return { ok: false }
-    const response = await transport(`https://slack.com/api/${reserved.ts ? "chat.update" : "chat.postMessage"}`, {
+    const request = {
       method: "POST", redirect: "manual", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      signal: AbortSignal.timeout(10_000), body: JSON.stringify({ ...JSON.parse(content), channel,
+      body: JSON.stringify({ ...JSON.parse(content), channel,
         ...(reserved.ts ? { ts: reserved.ts } : {}), parse: "none", unfurl_links: false, unfurl_media: false }),
-    })
-    if (!response.ok) { await response.body?.cancel(); return { ok: false } }
-    const result = await response.json() as { ok?: boolean; channel?: string; ts?: string }
+    } as const
+    const imageUpdate = Boolean(reserved.ts && (JSON.parse(content).blocks as SlackBlock[]).some((block) => block.type === "image" && block.slack_file))
+    let result: { ok?: boolean; channel?: string; ts?: string; error?: string } = {}
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await transport(`https://slack.com/api/${reserved.ts ? "chat.update" : "chat.postMessage"}`, {
+        ...request, signal: AbortSignal.timeout(10_000),
+      })
+      if (!response.ok) { await response.body?.cancel(); return { ok: false } }
+      result = await response.json()
+      // A just-completed private file can fail Slack's block validation before it
+      // becomes usable. Only a definite validation rejection of a KNOWN message
+      // permits bounded retries of the identical frame. Lost ack, HTTP errors,
+      // malformed replies, initial posts and all other errors stop immediately.
+      if (result.ok === false && result.error === "invalid_blocks" && imageUpdate && attempt < 3) {
+        await wait(500 * 2 ** attempt)
+        continue
+      }
+      break
+    }
+    if (result.ok === false) return { ok: false, error: result.error === "invalid_blocks" ? "invalid_blocks" : "slack-rejected" }
     if (result.ok !== true || result.channel !== channel || typeof result.ts !== "string" || !timestamp.test(result.ts) ||
       (reserved.ts && result.ts !== reserved.ts)) return { ok: false }
     await store.complete(intent, result.ts)

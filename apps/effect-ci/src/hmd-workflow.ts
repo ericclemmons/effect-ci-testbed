@@ -49,7 +49,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       const currentSequence = sequence++
       await step.do(checkpoint, once, async () => {
         const receipt = await cards.publish(owner, currentSequence, { text: frame.text, blocks })
-        if (!receipt.ok) throw new NonRetryableError("HMD card needs delivery reconciliation")
+        if (!receipt.ok) throw new NonRetryableError(`HMD card needs delivery reconciliation${receipt.error ? ` (${receipt.error})` : ""}`)
         return { ts: receipt.ts, sequence: currentSequence }
       })
     }
