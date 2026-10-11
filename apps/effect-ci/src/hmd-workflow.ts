@@ -35,6 +35,8 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       card.update({ type: "step.status", workflowId, stepId, status: state, optional: false, timestamp })
     for (const id of ["claim", "baseline", "10%", "25%", "75%", "100%", "restore baseline"]) status(id, "queued")
     let sequence = 0
+    let observed = false
+    let restored = false
     let capability: HmdCapability | undefined
     const publish = async (_card: RunCard, checkpoint: string) => {
       const frame = card.render()
@@ -57,6 +59,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     })
     const observe = async (update: HmdReviewUpdate) => {
       if (update.type === "observed") {
+        observed = true
         const current = update.observations.at(-1)!
         status("claim", "complete"); status("baseline", "complete")
         status(`${current.phase}%`, current.route.status === "rollback" ? "failed" : "running")
@@ -66,7 +69,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
             return { owner: receipt.owner, phase: receipt.phase, snapshot: receipt.snapshot, token: receipt.token }
           })
           card.update({ type: "approval.requested", workflowId, stepId: `${current.phase}%`, requestId: current.snapshot,
-            approval: { title: `Review ${current.phase}% release risk`, summary: `${current.route.reason}. A rationale is required; this snapshot expires in five minutes.` }, timestamp })
+            approval: { title: `Review ${current.phase}% release risk`, summary: `${current.route.reason}. Rationale required. Deadline: ${new Date(current.expiresAt).toISOString()}.` }, timestamp })
         }
         await graph(update)
       } else if (update.type === "settled") {
@@ -77,6 +80,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         status(`${update.observation.phase}%`, update.basis === "human-risk-acceptance" ? "warning" : "complete")
         await publish(card, `notification:hmd-settled-${update.observation.phase}`)
       } else {
+        restored = true
         capability = undefined
         await step.do("review:slack-terminal", once, () => reviews.close(owner))
         status("restore baseline", "complete")
@@ -86,7 +90,18 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     }
     // Establish the one owned card before acquiring any deployment authority.
     await publish(card, "notification:hmd-start")
-    return runHumanReviewedHmd(owner, step, this.env.RELEASE_MANAGER, undefined,
-      (message) => new NonRetryableError(message), observe)
+    try {
+      return await runHumanReviewedHmd(owner, step, this.env.RELEASE_MANAGER, undefined,
+        (message) => new NonRetryableError(message), observe)
+    } catch (error) {
+      if (!observed && !restored) {
+        // Claim/baseline failures precede observation. Do not falsely claim that
+        // cleanup succeeded; the broker owns independent recovery.
+        status("claim", "failed")
+        card.update({ type: "workflow.completed", workflowId, conclusion: "failure", timestamp })
+        try { await publish(card, "notification:hmd-early-failure") } catch { /* retain the original failure */ }
+      }
+      throw error
+    }
   }
 }
