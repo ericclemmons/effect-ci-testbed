@@ -93,10 +93,65 @@ renderer output using [Slack's external upload flow](https://docs.slack.dev/refe
 It completes without a channel or thread, leaving the file private and avoiding an
 extra file-share message. Its file-ID receipt can become a `slack_file` image block
 in the existing card. Never use a public image URL or pass the bot token to a container.
-This helper is transport groundwork, **not yet live HMD graph integration**. PNG
+The dedicated HMD Workflow below connects this transport to its owned CI card;
+live hosted review verification is still pending. PNG
 header bounds are not a decoder or an untrusted-image sanitizer: use only output
 from the trusted chart renderer. Persist successful receipts before card updates;
 ambiguous upload failures are not automatically retried.
+
+### Separate health-mediated approval lab
+
+`HmdReviewWorkflow` deploys as `effect-ci-hmd-review`. It is deliberately not
+triggered by ordinary GitHub CI or the generic remote release target. The host
+uses `RELEASE_MANAGER` RPC to the dedicated `effect-ci-release-manager` broker;
+only that broker holds `HMD_DEPLOY_TOKEN`. No deployment credential or Slack
+credential enters a workspace container.
+
+Deploy the broker first using its [setup guide](../release-manager/README.md),
+then deploy this app with `cf deploy --secrets-file .secrets.env`. Keep the
+existing Access protection and signature-protected `/webhooks/slack` exception.
+The ignored host secrets file must include `SLACK_BOT_TOKEN`,
+`SLACK_SIGNING_SECRET`, `SLACK_APP_ID`, `SLACK_TEAM_ID`, `SLACK_CHANNEL_ID`, and
+`SLACK_APPROVER_IDS`. The bot needs `chat:write` and `files:write`; the existing
+HTTP interaction URL remains `/webhooks/slack`. The rationale modal uses
+`views.open`, with no additional scope.
+
+Only start a lab when the authorized reviewer is ready and no other rollout
+owns the broker. Use an authenticated Cloudflare operator session, not a public
+dispatch endpoint:
+
+```sh
+cf workflows instances create effect-ci-hmd-review \
+  --instance-id hmd-review-unique-run-name \
+  --params '{"intent":"hmd-review-lab","revision":"REPLACE_WITH_40_HEX_COMMIT_SHA"}'
+```
+
+The SHA identifies the reviewed code in the card; this fixed-target lab does
+not build or upload that commit. It uses the dedicated demo's already-uploaded
+healthy candidate and known baseline. Actual allocations are 10/25/75/100,
+with fixed HTTP cohorts, not WOBS-completeness proof. Each observation replaces
+the private graph in **one owned Slack message**, preserving its checklist and
+inline approval buttons. Historical uncertainty is never relabeled healthy.
+
+Approve or Reject opens a required rationale modal. A fresh Slack signature,
+pinned app/team/channel, authorized reviewer, and owner/phase/snapshot-bound
+single-use capability are required. The displayed absolute deadline is five
+minutes from snapshot creation, not from clicking the button. Approval verifies
+broker ownership and same-phase allocation before sending the native event.
+Closing the modal acknowledges a consumed intent, not confirmed event delivery;
+an ambiguous acknowledgement is not blindly resent. Rejection, expiry, stale
+evidence or lost authority fails closed and restores the exact prior allocation;
+the broker's independent alarm provides recovery if the controller disappears.
+Even successful completion restores baseline: **no production release is
+committed**. Confirmed regressions never offer approval.
+
+Local tests run a real native Workflow, SQLite review/card ledgers and the WASM
+renderer with mocked outbound APIs. Four explicitly automated local rationale
+submissions resume the workflow, produce four private images, update one
+message and restore baseline. This is composition evidence, **not live Slack,
+actual human approval, or full healthy WOBS rollout verification**. Delivery
+ambiguity intentionally requires reconciliation; do not redispatch to create
+another card or repeat an unresolved upload.
 
 The host-side `src/hmd-card.ts` observer connects the administrative HMD controller's
 immutable observations to that renderer/upload contract and the caller's **existing**
