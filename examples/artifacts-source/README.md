@@ -72,6 +72,28 @@ example host is required.
 The prior shared-host run `coverage-artifacts-focused-20261010-1` remains historical
 provider evidence: three native steps completed after the import-issued token was
 revoked, with downstream output `source from artifacts`. It is not proof of this
-new independently deployed configuration; a new standalone hosted run is required.
+new independently deployed configuration.
+
+The independently deployed Worker `effect-ci-artifacts-source` is now verified by
+`coverage-artifacts-standalone-20261012-1` on deployment
+`543d37eb-c7c8-49cd-9cd5-d11727f7fa0d`, native Workflow version
+`88285523-ea4a-477c-ac9c-8b8f0334fcd9`. It read repository
+`effect-ci-artifacts-focused` at `e8faf6e46a9dde90067658d87d128c71796ed8c0`,
+materialized through its own binding, created snapshot
+`08ce9d69-6204-496d-a3ba-5c515a255ae3`, and returned `source from artifacts` in
+the downstream restored workspace. All three native steps passed once.
+
+`coverage-artifacts-standalone-reject-20261012-1` rejected a GitHub URL as an
+Artifacts repository name before any step: there is no guessed GitHub fallback.
+Anonymous requests to the example Worker return 404. The proof reused the immutable
+fixture already stored in Artifacts; no new import or Git token was created. Its
+previous import-issued token remained revoked. This is standalone deployment proof,
+not yet a live proof of importing a newly copied repository-root fixture.
+
+Read those histories without redispatching:
+
+```sh
+LIVE_STANDALONE_ARTIFACTS=1 CF_BIN=cf node --test examples/artifacts-source/src/live.test.ts
+```
 
 See the [Artifacts binding API](https://developers.cloudflare.com/artifacts/api/workers-binding/).

@@ -613,7 +613,7 @@ jobs:
       - name: Verify recipe coverage, questions, and documentation links
         run: node --test scripts/check-recipe-docs.test.ts
       - name: Verify standalone Artifacts example owns its deployment wiring
-        run: node --test examples/artifacts-source/src/standalone.test.ts
+        run: node --test examples/artifacts-source/src/*.test.ts
       - name: Verify production Worker bundle
         run: |
           pnpm --filter @effect-ci-testbed/app exec cf deploy --dry-run
