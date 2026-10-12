@@ -133,7 +133,7 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run the portable CI workflow on Blacksmith compute](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
-| [Execute untrusted project checks in capability-limited Dynamic Workers](./examples/dynamic-project-checks) | — | 🔜 | — | 🔜 |
+| [Execute untrusted project checks in capability-limited Dynamic Workers](./examples/dynamic-project-checks) | — | 🔜 | — | ✅ |
 
 ### Toolchains and container images
 
@@ -227,9 +227,10 @@ Future recipes for responding to failures and observability events.
 
 The Dynamic Worker slice is now proven with Prettier: immutable source is fetched
 without a Container, and formatting executes through a network-disabled WorkerLoader
-isolate. The larger Dynamic Worker
-target remains the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest—plus untrusted
-project modules loaded with explicit capabilities. The architectural goal is broader
+isolate. A separate hosted recipe now executes untrusted multi-module project ESM
+with host-owned HTTP assertions, empty bindings, denied HTTPS/TCP, fresh globals,
+bounded output and prompt CPU-loop rejection. The larger Dynamic Worker
+target remains the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest. The architectural goal is broader
 than linting: formatting, tests, builds, and other SDLC work should use an isolate
 whenever their declared capabilities permit it, because compute and memory should only
 be reserved for a container when the work actually requires one.

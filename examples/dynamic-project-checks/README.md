@@ -45,10 +45,50 @@ node --test apps/example-runner/src/dynamic-project-runtime.test.ts
 
 These execute actual child modules, HTTPS/TCP denial, parent-binding isolation,
 locally unsupported Node filesystem imports, oversized output and failing behavior. They
-are not evidence of hosted CPU enforcement. Hosted execution and hostile CPU proof
-are pending; the coverage matrix must not mark those verified before real runs.
+are not evidence of hosted CPU enforcement. Plain `cf-ci run` has no implicit Node
+fallback for this service; use the example host (or its local `cf dev` explorer).
+The local matrix cell remains pending a native local Workflow run, not merely the
+workerd test harness.
 
 The hosted runtime may resolve a Node built-in even without requested Node flags;
 import rejection is not a portable security promise. The administrative hosted
 probe instead checks that native host files are inaccessible. This does not promise
 that Worker virtual filesystems are absent or that every Node package works.
+
+## Recorded hosted evidence
+
+`coverage-dynamic-project-20261012-3` completed on immutable source
+`baac78ba496d07baf71e0b8962c935d4aa12abab`: both CI actions completed, all four
+HTTP assertions passed, and no commands, secrets or container snapshots appeared.
+Native history contains only the two bounded source reads and the child check step.
+
+`coverage-dynamic-boundary-20261012-3` completed seven native probes on host
+deployment `f01f54a7-e6f0-45cd-b442-7dfba09153d2` (code `48e0a74dcdc1434a2b2b9548131219061963b855`):
+HTTPS/TCP denied, empty bindings, fresh globals, inaccessible `/proc/self/environ`,
+wrong body and oversized output rejected, and an infinite loop promptly rejected
+under the 50 ms CPU policy. The exact loop module first returned a successful
+preflight response, so import/compile failure cannot count as that proof. Recorded
+wall-clock rejection is not a measurement of CPU milliseconds or a memory quota.
+
+Read-only assertions (do not redispatch these histories):
+
+```sh
+LIVE_DYNAMIC_PROJECT=1 CF_BIN=cf node --test apps/example-runner/src/live-dynamic-project.test.ts
+```
+
+Earlier runs remain intact: `coverage-dynamic-project-20261012-1` rejected a CLI
+string-encoded payload before any steps; `cf_ab1a19fac50511d6851b3588d862a152595c092b692f182243204d7709e00b46`
+was stopped after exposing unsupported `redirect: "error"` in the edge runtime.
+The source fetch now uses `manual` and rejects non-OK responses without following
+redirects. Boundary run `-1` exposed the Node import difference; `-2` completed but
+did not yet have the loop preflight guard. None of these superseded histories was
+silently rewritten or counted as the final guarded proof.
+
+Use the CLI's raw JSON body to preserve an object payload (`--params` in the current
+installation encodes it as a string):
+
+```sh
+cf workflows instances create effect-ci-example-dynamic-project --body '{"instance_id":"YOUR_NEW_RUN_ID","params":{"repository":"https://github.com/YOUR_ORG/YOUR_REPO","revision":"YOUR_FULL_COMMIT_SHA"}}'
+```
+
+Choose a new instance ID and a commit containing this recipe's two project files.

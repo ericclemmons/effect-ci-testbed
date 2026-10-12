@@ -105,6 +105,12 @@ and full commit SHA parameters above. This exercises WorkerLoader locally, rathe
 than the default Node formatter. The current CLI's `--local` instance commands do
 not connect to this Vite dev server; use its explorer instead.
 
+The separate `effect-ci-example-dynamic-project` runs project ESM in fresh
+capability-limited children. See its recipe for immutable source parameters, the
+raw-object CLI payload workaround and recorded positive/adversarial native proofs.
+It does not use Containers, even though this shared host also exports container
+recipes. Child workers receive none of those host bindings.
+
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
 Each run gets a distinct instance ID, so previous evidence is never overwritten.
