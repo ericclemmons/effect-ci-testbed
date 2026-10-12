@@ -373,6 +373,9 @@ jobs:
           - example: durable-object-source
             workflow: examples/durable-object-source/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+          - example: gitlab-source
+            workflow: examples/gitlab-source/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'

@@ -116,9 +116,10 @@ Change where inputs come from without changing actions; publish outputs separate
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
+| [Clone a pinned public GitLab repository with unchanged source actions](./examples/gitlab-source) | — | 🔜 | 🔜 | 🔜 |
 | [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | ✅ | ✅ |
 | [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | ✅ | ✅ |
-| [Materialize immutable Durable Object source revisions](./examples/durable-object-source) | 🔜 | ✅ | 🔜 | ✅ |
+| [Materialize immutable Durable Object source revisions](./examples/durable-object-source) | 🔜 | ✅ | ✅ | ✅ |
 | [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
 
 ### Runners and execution tiers

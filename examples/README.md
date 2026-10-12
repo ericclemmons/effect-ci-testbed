@@ -30,6 +30,8 @@ revision, then attach a signed Git note. Working-file feedback is not attestatio
 These answer where `source.checkout()` gets its inputs. R2 adds digest-pinned private
 storage; Artifacts adds commit-pinned input materialization through a host binding.
 Durable Object source adds immutable revision storage and a host-only RPC reader.
+[GitLab source](./gitlab-source) instead reuses Git checkout against a pinned public
+GitLab URL, without implying private GitLab auth or GitLab pipeline integration.
 [Portable artifacts](./portable-artifacts) answers a different question: how does a
 build output cross to another workload? Input providers and output publication are
 separate recipes even when both use stored bytes.

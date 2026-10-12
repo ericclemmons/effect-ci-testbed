@@ -35,6 +35,7 @@ export default defineConfig({
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
       SourceRevisions: exports.durableObject({ storage: "sqlite" }),
       DurableSourceWorkflow: exports.workflow({ name: "effect-ci-example-durable-source" }),
+      GitLabSourceWorkflow: exports.workflow({ name: "effect-ci-example-gitlab-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
       WobsCohortProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-cohort" }),
       WobsReleaseWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-release" }),
