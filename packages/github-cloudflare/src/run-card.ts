@@ -1,10 +1,12 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
+import { copyHealthMetrics, type HealthMetrics } from "./health-metrics.ts"
 
 export type SlackBlock = Readonly<Record<string, unknown>>
 export interface RunHealth {
   readonly phase: 10 | 25 | 75 | 100
   readonly decision: "uncertain" | "advance" | "rollback" | "regression"
   readonly evidenceSource: "closed-client-http-cohort" | "native-wobs" | "experimental-native-wobs"
+  readonly metrics?: Readonly<HealthMetrics>
 }
 export interface RunIdentity {
   readonly instanceId: string
@@ -128,7 +130,8 @@ export class RunCard {
       !["closed-client-http-cohort", "native-wobs", "experimental-native-wobs"].includes(health.evidenceSource) ||
       (fileId !== undefined && !/^F[A-Z0-9]+$/.test(fileId))) throw new Error("Invalid health presentation")
     this.health = Object.freeze({ phase: health.phase, decision: health.decision,
-      evidenceSource: health.evidenceSource, ...(fileId ? { fileId } : {}) })
+      evidenceSource: health.evidenceSource, ...(health.metrics ? { metrics: copyHealthMetrics(health.metrics) } : {}),
+      ...(fileId ? { fileId } : {}) })
   }
 
   snapshot(): RunSnapshot {
@@ -138,7 +141,8 @@ export class RunCard {
       workflowId: this.workflowId,
       phase: this.phase,
       ...(this.health ? { health: Object.freeze({ phase: this.health.phase,
-        decision: this.health.decision, evidenceSource: this.health.evidenceSource }) } : {}),
+        decision: this.health.decision, evidenceSource: this.health.evidenceSource,
+        ...(this.health.metrics ? { metrics: this.health.metrics } : {}) }) } : {}),
       checks: Object.freeze(Array.from(this.checks, ([id, check]) => Object.freeze({
         id, status: check.status, optional: check.optional,
         dependencies: Object.freeze(Array.from(check.dependencies)),
