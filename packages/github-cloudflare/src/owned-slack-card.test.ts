@@ -81,6 +81,13 @@ test("unchanged live frames advance their receipt without another API update", a
   assert.equal(f.calls.length, 1)
 })
 
+test("a thread acknowledgement cannot identify its parent as the child message", async () => {
+  const f = fixture()
+  assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport, undefined, "1791685465.683799")).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport, undefined, "1791685465.683799")).ok, false)
+  assert.equal(f.calls.length, 1, "ambiguous ack blocks a replacement post")
+})
+
 test("lost first-post acknowledgement or receipt commit blocks replay without another post", async () => {
   for (const failure of ["ack", "receipt", "redirect", "wrong-channel", "wrong-ts"] as const) {
     const f = fixture(failure === "receipt")
@@ -123,9 +130,10 @@ test("an update must acknowledge the same timestamp; ambiguous update never beco
     await f.transport(url, init)
     return Response.json({ ok: true, channel: "CHANNEL", ts: "1791685465.999999" })
   }
-  assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, wrong)).ok, false)
-  assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, wrong)).ok, false)
-  assert.equal((await publishOwnedSlackCard("run", 2, frame, env, f.store, wrong)).ok, false)
+  const changed = { ...frame, text: "phase25" }
+  assert.equal((await publishOwnedSlackCard("run", 1, changed, env, f.store, wrong)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 1, changed, env, f.store, wrong)).ok, false)
+  assert.equal((await publishOwnedSlackCard("run", 2, changed, env, f.store, wrong)).ok, false)
   assert.equal(f.calls.length, 2)
   assert.equal(f.receipt()?.ts, "1791685465.683799")
   assert.equal(f.receipt()?.stage, "pending")
@@ -185,7 +193,7 @@ test("initial posts and non-validation failures are never retried, even with a p
       return Response.json({ ok: false, error: mode === "internal_error" ? "internal_error" : "invalid_blocks",
         response_metadata: { messages: [env.SLACK_BOT_TOKEN] } })
     }
-    const result = await publishOwnedSlackCard("run", mode === "initial" ? 0 : 1, mode === "plain" ? frame : image,
+    const result = await publishOwnedSlackCard("run", mode === "initial" ? 0 : 1, mode === "plain" ? { ...frame, text: "phase25" } : image,
       env, f.store, transport, async () => { assert.fail("unexpected retry") })
     assert.equal(result.ok, false)
     assert.equal(attempts, 1)

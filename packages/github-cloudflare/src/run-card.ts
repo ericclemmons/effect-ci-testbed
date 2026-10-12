@@ -161,7 +161,7 @@ export class RunCard {
     })
   }
 
-  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean; currentStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -177,7 +177,7 @@ export class RunCard {
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     if (options.minimal) {
-      const current = ordered.find(id => this.checks.get(id)!.status === "waiting") ??
+      const current = options.currentStep ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
         ordered.find(id => this.checks.get(id)!.status === "running") ??
         ordered.find(id => this.checks.get(id)!.status === "failed") ??
         ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)

@@ -84,6 +84,7 @@ export async function publishOwnedSlackCard(owner: string, sequence: number, fra
     }
     if (result.ok === false) return { ok: false, error: result.error === "invalid_blocks" ? "invalid_blocks" : "slack-rejected" }
     if (result.ok !== true || result.channel !== channel || typeof result.ts !== "string" || !timestamp.test(result.ts) ||
+      (parentTs && result.ts === parentTs) ||
       (reserved.ts && result.ts !== reserved.ts)) return { ok: false }
     await store.complete(intent, result.ts)
     return { ok: true, ts: result.ts }

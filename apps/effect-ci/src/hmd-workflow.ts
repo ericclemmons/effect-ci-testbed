@@ -52,7 +52,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       // Keep the full semantic history, but reverted releases need only the
       // executed stages and restoration in their operator-facing checklist.
       const renderOptions = { hideSkipped: restored, ...(restored ? { rollbackStep: "Restore previous version" } : {}) }
-      const frame = card.render({ ...renderOptions, minimal: true })
+      const frame = card.render({ ...renderOptions, minimal: true, ...(activePhase ? { currentStep: `${activePhase}%` } : {}) })
       const detail = card.render(renderOptions)
       const blocks = [...frame.blocks,
         ...(capability ? [{ type: "actions", elements: [

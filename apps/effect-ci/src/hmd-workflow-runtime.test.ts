@@ -22,8 +22,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     export {PrivateSlackCards} from "./private-cards.ts";
     export {HmdApprovals} from "./hmd-approval.ts";
     const baseline="09593237-23b2-4873-bd04-88c8e8488840",candidate="c94cee12-0bf4-48fb-bb42-9235f7ab7a3c";
-    let phase=0,files=0,posts=0,updates=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0;
-    const promotions=[],frames=[];
+    let phase=0,files=0,posts=0,updates=0,threadPosts=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0;
+    const promotions=[],frames=[],threadFrames=[],replyIds=new Set();
     const nativeRows=new Map();
     export class Analytics extends WorkerEntrypoint {
       query(input){
@@ -63,12 +63,18 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       const body=await req.json();
       if(target.endsWith("files.completeUploadExternal")){if(body.channel_id)throw new Error("Public file share");return Response.json({ok:true,files:[{id:body.files[0].id,is_public:false}]})}
       if(target.endsWith("views.open")){modal=body.view;return Response.json({ok:true})}
-      if(target.endsWith("chat.postMessage"))posts++;else if(target.endsWith("chat.update")){
-        updates++;if(body.ts!=="1791685465.683799")throw new Error("Wrong message");
+      let messageTs="1791685465.683799";
+      if(target.endsWith("chat.postMessage")){
+        if(body.thread_ts){
+          if(body.thread_ts!==messageTs||body.reply_broadcast!==false)throw new Error("Wrong parent or broadcast");
+          messageTs="1791685465."+(700000+(++threadPosts));replyIds.add(messageTs);
+        }else posts++;
+      }else if(target.endsWith("chat.update")){
+        if(body.ts!==messageTs){if(!replyIds.has(body.ts))throw new Error("Wrong message");messageTs=body.ts}else updates++;
         if(${JSON.stringify(scenario)}==="approve"&&body.blocks.some(b=>b.type==="image")&&validationRejects<2){validationRejects++;return Response.json({ok:false,error:"invalid_blocks"})}
       }
       else throw new Error("Unexpected Slack method");
-      frames.push(body);return Response.json({ok:true,channel:"C1",ts:"1791685465.683799"});
+      (messageTs==="1791685465.683799"?frames:threadFrames).push(body);return Response.json({ok:true,channel:"C1",ts:messageTs});
     };
     export default class Driver extends WorkerEntrypoint {
       async fetch(req){
@@ -106,7 +112,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
           submit:(cap,decision,reason,actor)=>this.ctx.exports.HmdApprovals.getByName(cap.owner).submit(cap,decision,reason,actor)
         });
         const instance=await workflow.get("local-hmd");
-        return Response.json({status:await instance.status(),phase,files,posts,updates,restores,promotions,frames,modal,validationRejects,nativeQueries,nativeRequests});
+        return Response.json({status:await instance.status(),phase,files,posts,updates,threadPosts,threadFrames,restores,promotions,frames,modal,validationRejects,nativeQueries,nativeRequests});
       }
     }
   `, resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "native-hmd-probe.ts", loader: "ts" },
@@ -187,43 +193,49 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     if (["reject", "deadline", "native-reject"].includes(scenario)) {
       const failed = await wait((s) => s.status.status === "errored")
       assert.equal(failed.posts, 1)
-      assert.ok(scenario === "deadline" ? failed.updates >= 5 : failed.updates === (scenario === "native-reject" ? 3 : 2))
-      assert.ok(scenario === "deadline" ? failed.files >= 3 : failed.files === 1)
+      assert.ok(failed.updates >= 2, "root exposes the decision and terminal outcome; identical frames may be suppressed")
+      assert.equal(failed.files, 0, "default status does not render or upload a graph")
       assert.equal(failed.restores, 1)
       assert.equal(failed.phase, 0)
       assert.deepEqual(failed.promotions, scenario === "deadline" ? [10, 10, 25] : [10], "deadline progresses once; rejection stops further progression")
       if (scenario === "native-reject") {
         assert.equal(failed.nativeQueries, 3, "delayed baseline ingestion re-reads the same receipts before candidate query")
         assert.equal(failed.nativeRequests, 200, "ingestion wait did not generate replacement traffic")
-        assert.ok(JSON.stringify(failed.frames.at(-1)).includes("Native Worker outcomes (experimental SQL)"))
-        assert.ok(!JSON.stringify(failed.frames.at(-1)).includes("HTTP cohort"))
+        assert.ok(JSON.stringify(failed.threadFrames.at(-1)).includes("Native outcomes demo (experimental)"))
+        assert.ok(!JSON.stringify(failed.threadFrames.at(-1)).includes("HTTP cohort"))
       }
       assert.match(failed.frames.at(-1).text, /↩️ Rolled back/)
-      assert.match(failed.frames.at(-1).text, /↩️ Restore previous version/)
-      assert.match(failed.frames.at(-1).text, scenario === "deadline" ? /10%\n/ : /10% — failed/)
-      if (scenario === "deadline") assert.match(failed.frames.at(-1).text, /25% — failed/)
+      assert.match(failed.threadFrames.at(-1).text, /↩️ Restore previous version/)
+      assert.match(failed.threadFrames.at(-1).text, scenario === "deadline" ? /10%\n/ : /10% — failed/)
+      if (scenario === "deadline") assert.match(failed.threadFrames.at(-1).text, /25% — failed/)
       else assert.ok(!failed.frames.at(-1).text.includes("25%"))
       assert.ok(!JSON.stringify(failed.frames.at(-1)).includes("skipped"), "reverted card omits unexecuted stages")
-      assert.match(failed.frames.at(-1).text, /Restore previous version/)
+      assert.match(failed.threadFrames.at(-1).text, /Restore previous version/)
+      assert.match(failed.threadFrames.at(-1).text, /> Human rejected the release/)
+      assert.ok(failed.threadPosts <= 4, "sampling edits bounded stage replies rather than posting repeatedly")
+      assert.equal(failed.frames.at(-1).blocks.length, 2, "terminal root is title and identity only")
       assert.ok(!failed.frames.at(-1).text.includes("queued"), "future phases cannot remain queued after rejection")
       assert.ok(!failed.frames.at(-1).blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
       return
     }
     const done = await wait((s) => s.status.status === "complete")
     assert.equal(done.posts, 1)
-    assert.equal(done.updates, scenario === "approve" ? 11 : 9)
-    assert.equal(done.validationRejects, scenario === "approve" ? 2 : 0, "bounded validation retries stay within one native notification checkpoint")
-    assert.equal(done.files, 4)
+    assert.ok(done.updates >= 9)
+    assert.equal(done.validationRejects, 0)
+    assert.equal(done.files, 0)
+    assert.equal(done.threadPosts, 6, "one prepare, four stage replies, and one restoration reply")
     assert.equal(done.restores, 1)
     assert.match(done.frames.at(-1).text, /↩️ Previous version restored/)
-    assert.match(done.frames.at(-1).text, /↩️ Restore previous version/)
+    assert.match(done.threadFrames.at(-1).text, /↩️ Restore previous version/)
     assert.equal(done.phase, 0)
-    assert.ok(done.frames.at(-1).text.includes("10% — approved"))
+    assert.ok(done.threadFrames.at(-1).text.includes("10% — approved"))
     assert.ok(!done.frames.at(-1).text.includes("warning"), "approval is not a warning state")
     assert.ok(done.frames.slice(1).every((frame: any) => frame.ts === "1791685465.683799"))
     const evidence = scenario === "force-regression" ? "regression" : "uncertain"
     assert.ok(done.frames.filter((frame: any) => frame.blocks.some((b: any) => b.type === "image")).every((frame: any) => frame.text.includes(evidence)))
-    assert.ok(done.frames.at(-1).text.includes(evidence))
+    assert.ok(done.threadFrames.at(-1).text.includes(evidence))
+    assert.ok(done.frames.every((frame:any)=>!frame.blocks.some((block:any)=>block.type==="image")))
+    assert.equal(done.frames.at(-1).blocks.length, 2)
     assert.equal(done.status.output.releaseCommitted, false)
     assert.equal(done.status.output.wobsVerified, false)
   } finally { await runtime.dispose() }

@@ -10,17 +10,18 @@ const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }))
 test("actual SQLite card owner posts once, updates one ts, and stops after lost acknowledgement", { timeout: 30_000 }, async () => {
   const output = await build({ stdin: { contents: `
     export {PrivateSlackCards} from "./private-cards.ts";
-    const calls=[];
+    const calls=[];let threadPosts=0;
     globalThis.fetch=async(url,init)=>{
       const req=new Request(url,init);if(req.redirect!=="manual")throw new Error("Unsafe redirects");
-      const body=await req.json();calls.push({method:String(url),ts:body.ts,text:body.text});
+      const body=await req.json();calls.push({method:String(url),ts:body.ts,text:body.text,threadTs:body.thread_ts,broadcast:body.reply_broadcast});
       if(body.text==="lost")throw new Error("Accepted upstream but response lost");
-      return Response.json({ok:true,channel:"CHANNEL",ts:"1791685465.683799"});
+      return Response.json({ok:true,channel:"CHANNEL",ts:body.ts||(body.thread_ts?"1791685465."+(700000+(++threadPosts)):"1791685465.683799")});
     };
     export default {async fetch(req,env){
-      const {owner,sequence,text}=await req.json();const stub=env.CARDS.getByName(owner);
+      const {owner,sequence,text,thread}=await req.json();const stub=env.CARDS.getByName(owner);
       const frame={text,blocks:[{type:"section",text:{type:"plain_text",text}}]};
-      const results=await Promise.all([stub.publish(owner,sequence,frame),stub.publish(owner,sequence,frame)]);
+      const send=()=>thread?stub.publishThread(owner,thread,sequence,frame):stub.publish(owner,sequence,frame);
+      const results=await Promise.all([send(),send()]);
       return Response.json({results,calls});
     }};
   `, resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "card-probe.ts", loader: "ts" },
@@ -34,8 +35,8 @@ test("actual SQLite card owner posts once, updates one ts, and stops after lost 
       SLACK_BOT_TOKEN: { type: "json", value: "test-only-token" }, SLACK_APP_ID: { type: "json", value: "APP" },
       SLACK_TEAM_ID: { type: "json", value: "TEAM" }, SLACK_CHANNEL_ID: { type: "json", value: "CHANNEL" } },
   } }] })
-  const send = async (owner: string, sequence: number, text: string) => (await runtime.dispatchFetch("https://probe.invalid",
-    { method: "POST", body: JSON.stringify({ owner, sequence, text }) })).json()
+  const send = async (owner: string, sequence: number, text: string, thread?: string) => (await runtime.dispatchFetch("https://probe.invalid",
+    { method: "POST", body: JSON.stringify({ owner, sequence, text, thread }) })).json()
   try {
     assert.equal((await send("run", 0, "start")).calls.length, 1)
     const replay = await send("run", 0, "start")
@@ -53,5 +54,21 @@ test("actual SQLite card owner posts once, updates one ts, and stops after lost 
     const blocked = await send("first-lost", 1, "later")
     assert.equal(blocked.calls.length, 4)
     assert.ok(blocked.results.every((result: { ok: boolean }) => !result.ok))
+    const missingParent = await send("orphan", 0, "details", "10")
+    assert.equal(missingParent.calls.length, 4)
+    assert.ok(missingParent.results.every((result: {ok:boolean}) => !result.ok))
+    await send("thread-run", 0, "root")
+    const reply = await send("thread-run", 1, "stage10", "10")
+    assert.equal(reply.calls.length, 6)
+    assert.equal(reply.calls.at(-1).threadTs, "1791685465.683799")
+    assert.equal(reply.calls.at(-1).broadcast, false)
+    assert.equal((await send("thread-run", 1, "stage10", "10")).calls.length, 6)
+    assert.equal((await send("thread-run", 2, "stage10", "10")).calls.length, 6, "identical frames reuse native SQLite receipts")
+    const changed = await send("thread-run", 3, "new samples", "10")
+    assert.equal(changed.calls.length, 7)
+    assert.equal(changed.calls.at(-1).ts, "1791685465.700001")
+    assert.equal(changed.calls.at(-1).threadTs, undefined)
+    assert.equal((await send("thread-run", 4, "lost", "10")).calls.length, 8)
+    assert.equal((await send("thread-run", 5, "later", "10")).calls.length, 8)
   } finally { await runtime.dispose() }
 })
