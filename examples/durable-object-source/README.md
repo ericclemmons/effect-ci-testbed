@@ -2,6 +2,13 @@
 
 > How do I run CI against an immutable Durable Object source revision without handing the storage binding to the container?
 
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_verify_Durable_Object_source["verify Durable Object source"]
+  step_checkout --> step_verify_Durable_Object_source
+```
+
 The same `CI.Source` actions used by the [source-provider](../source-providers)
 recipe receive a workspace, not a storage client. The host reads a SHA-256-pinned
 regular-file manifest over RPC, verifies the exact bytes, materializes them into
@@ -45,5 +52,10 @@ cf workflows instances create effect-ci-example-durable-source --body '{"instanc
 The reference is `{ kind: "durable_object", id, revision }`; parameters retain
 the portable `repository`/`revision` shape. The demo manifest's SHA256 pins the
 exact canonical bytes produced by [the host](../../apps/example-runner/src/durable-source.ts).
-Hosted coverage stays unverified until a real DO read, materialization and separate
-checkpoint-restoring check complete. No notification is sent by this recipe.
+Hosted run `coverage-do-source-20261012-1`, Workflow version
+`836817de-4c45-44fc-9975-3368e9998fea`, host deployment
+`9ec15a33-51b4-402a-a221-cf4597a60a6e`, completed the real DO seed/read,
+materialization and checkpoint `94e936dc-b227-4717-817c-a7b21668a24e`. The separate
+downstream native read restored `source from durable object`. Local SQLite/RPC
+tests and the local filesystem recipe also passed. GitHub columns remain
+unverified until their actual jobs pass. No notification is sent by this recipe.
