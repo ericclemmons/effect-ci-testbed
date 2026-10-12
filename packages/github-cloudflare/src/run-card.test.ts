@@ -68,7 +68,7 @@ test("numbered steps retain a nested quoted host-safe failure and restoration is
   const frame = card.render({ rollbackStep: "Restore previous version" })
   assert.match(frame.text, /1\. ✅ 10%\n2\. ❌ 75% — failed\n   > Release API request failed \(transport\)/)
   assert.match(frame.text, /3\. ↩️ Restore previous version/)
-  assert.ok(JSON.stringify(frame.blocks).includes("\\n> Release API request failed"))
+  assert.ok(JSON.stringify(frame.blocks).includes("\\n   > Release API request failed"))
   assert.equal(card.snapshot().checks.find(check => check.id === "75%")?.failureReason,
     "Release API request failed (transport): could not connect to Cloudflare.")
   card.update(event("75%", "running"))

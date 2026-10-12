@@ -189,7 +189,7 @@ export class RunCard {
     // One compact checklist, split into sections to respect Slack's text limit.
     let section = ""
     for (const line of lines.slice(0, 100)) {
-      const safe = escape(line).replaceAll("\n   &gt; ", "\n> ").slice(0, 1100)
+      const safe = escape(line).replaceAll("\n   &gt; ", "\n   > ").slice(0, 1100)
       if (section.length + safe.length > 2800) {
         blocks.push({ type: "section", text: { type: "mrkdwn", text: section, verbatim: true } })
         section = ""
