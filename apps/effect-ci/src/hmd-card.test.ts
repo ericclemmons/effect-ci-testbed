@@ -47,7 +47,7 @@ test("host health observer updates the owned card with cumulative history, no se
   assert.equal(uploads, 4)
   assert.equal(frames[0]!.blocks.filter((b) => b.type === "image").length, 1)
   assert.equal(frames[1]!.blocks.filter((b) => b.type === "image").length, 0, "failed image cannot leave an old phase graph")
-  assert.ok(frames.every((frame) => JSON.stringify(frame).includes("HTTP cohort (not WOBS)")))
+  assert.ok(frames.every((frame) => frame.text.includes("closed-client-http-cohort")))
   assert.ok(frames.every((frame) => JSON.stringify(frame).includes("uncertain")))
   assert.ok(frames.every((frame) => JSON.stringify(frame).includes("release — running")))
   await observe({ type: "observed", observations: history })
@@ -108,6 +108,35 @@ test("native controller feeds each pinned observation to the same card before ap
   assert.equal(restored, 1)
   assert.equal(result.releaseCommitted, false)
   assert.ok(result.observations.every((o) => o.basis === "human-risk-acceptance" && o.decision.status === "uncertain"))
+})
+
+test("promotion failure identifies the attempted stage rather than the last observed healthy allocation", async () => {
+  const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
+  const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+  const journal = { previous: [{ version: baseline, percentage: 100 }], deployment: { id: "restored" } }
+  const updates: any[] = []
+  let current: HmdObservation
+  let restored = 0
+  const step = { do: async (_name: string, _policy: unknown, body: Function) => body(),
+    waitForEvent: async () => ({ payload: { snapshot: current.snapshot, decision: "approved", reason: "Local test only" } }),
+  } as unknown as WorkflowStep
+  const broker = { begin: async () => journal, renew: async () => journal,
+    promote: async (_owner: string, phase: number) => {
+      if (phase === 75) throw new Error("Release API request failed (transport)")
+      return journal
+    }, rollback: async () => { restored++; return journal },
+  } as unknown as Parameters<typeof runHumanReviewedHmd>[2]
+  await assert.rejects(runHumanReviewedHmd("run", step, broker, async (_origin, identity) => ({
+    requested: 100, unknown: 0, outcomes: Array.from({ length: 100 }, () => ({
+      version: identity.endsWith("baseline") ? baseline : candidate, healthy: true })),
+  }), undefined, async update => {
+    updates.push(update)
+    if (update.type === "observed") current = update.observations.at(-1)!
+  }), /prior allocation restored/)
+  assert.equal(restored, 1)
+  assert.equal(current!.phase, 25)
+  assert.deepEqual(updates.at(-1), { type: "restored", failed: true, failure: {
+    stepId: "75%", reason: "Release API request failed (transport): could not connect to Cloudflare." } })
 })
 
 test("mixed identity/history is rejected before render, upload or publish", async () => {

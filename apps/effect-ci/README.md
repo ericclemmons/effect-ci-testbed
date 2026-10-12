@@ -94,6 +94,12 @@ It completes without a channel or thread, leaving the file private and avoiding 
 extra file-share message. Its file-ID receipt can become a `slack_file` image block
 in the existing card. Never use a public image URL or pass the bot token to a container.
 The dedicated HMD Workflow below connects this transport to its owned CI card;
+its Slack image uses a compact previous/new sparkline comparison on one shared
+scale. Detailed windows, counts, bounds and policy remain in native history and
+the provider-neutral observation. Missing evidence stays visibly unavailable.
+Checklist steps are numbered; a failed operation quotes its host-safe reason under
+the attempted stage (including a promotion that failed before new health data).
+Raw exception bodies and credentials never enter that quote.
 recorded live timer and review evidence is described below. PNG
 header bounds are not a decoder or an untrusted-image sanitizer: use only output
 from the trusted chart renderer. Persist successful receipts before card updates;

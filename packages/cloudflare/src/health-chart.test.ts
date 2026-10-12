@@ -53,3 +53,25 @@ test("multiple pinned observations add historical bounds without dropping partia
   assert.match(svg, /height="460"/)
   assert.equal((svg.match(/<polygon/g) ?? []).length, 1, "baseline history includes its first independently valid observation")
 })
+
+test("compact comparison has aligned sparklines, meaningful shared scale and explicit missing evidence", () => {
+  const svg = healthChart([{ elapsedSeconds: 1, decision: { status: "uncertain", reason: "missing",
+    baseline: { rate: .02, low: 0, high: .3 } } }],
+    { baseline: "previous", candidate: "new", maxErrorRate: .1, compact: true })
+  assert.match(svg, /height="200"/)
+  assert.match(svg, /Previous · previous/)
+  assert.match(svg, /2.00%/)
+  assert.match(svg, /Awaiting data/)
+  assert.match(svg, /0–30.00%/)
+  assert.equal((svg.match(/<circle/g) ?? []).length, 1)
+  assert.doesNotMatch(svg, /Confidence bounds|Observed windows|UTC|Error-rate limit:/)
+})
+
+test("compact history does not connect confidence bands across missing observations", () => {
+  const interval = { rate: .02, low: 0, high: .3 }
+  const svg = healthChart([1, 2, 3].map(elapsedSeconds => ({ elapsedSeconds,
+    decision: { status: "uncertain" as const, reason: "missing", ...(elapsedSeconds !== 2 ? { candidate: interval } : {}) } })),
+    { baseline: "old", candidate: "new", maxErrorRate: .1, compact: true })
+  assert.equal((svg.match(/<circle/g) ?? []).length, 2)
+  assert.doesNotMatch(svg, /<polygon|<polyline/)
+})

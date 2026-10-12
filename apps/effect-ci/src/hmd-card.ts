@@ -5,7 +5,7 @@ import type { PrivateSlackImageResult } from "../../../packages/github-cloudflar
 import type { RunCard } from "../../../packages/github-cloudflare/src/run-card.ts"
 
 interface HostHealthServices {
-  render(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number }): Promise<Uint8Array>
+  render(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number; compact?: boolean }): Promise<Uint8Array>
   upload(runId: string, snapshot: string, png: Uint8Array): Promise<PrivateSlackImageResult>
   /** Update the caller's existing owned card/receipt; never allocate a separate HMD message. */
   publish(card: RunCard, checkpoint: string): Promise<void>
@@ -61,7 +61,7 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     const image = await step.do(`notification:hmd-image-${suffix}`, once, async () => {
       try {
         const png = await services.render(points, { baseline: baseline.version.slice(0, 8),
-          candidate: current.candidate.version.slice(0, 8), maxErrorRate: current.policy.maxErrorRate })
+          candidate: current.candidate.version.slice(0, 8), maxErrorRate: current.policy.maxErrorRate, compact: true })
         return await services.upload(runId, current.snapshot, png)
       } catch { return { ok: false as const } }
     })

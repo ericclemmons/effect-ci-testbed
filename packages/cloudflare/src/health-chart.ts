@@ -9,7 +9,7 @@ export interface HealthPoint {
 const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
 
 /** Historical confidence envelope, not a forecast cone. No scripts, external assets or raw logs. */
-export function healthChart(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number }): string {
+export function healthChart(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number; compact?: boolean }): string {
   if (!points.length || points.length > 100 || !Number.isFinite(options.maxErrorRate) || options.maxErrorRate < 0 || options.maxErrorRate > 1) throw new Error("Invalid chart input")
   let previous = -1
   for (const p of points) {
@@ -24,6 +24,7 @@ export function healthChart(points: ReadonlyArray<HealthPoint>, options: { basel
         ![sample.from, sample.to].every(Number.isFinite) || sample.to <= sample.from)) throw new Error("Invalid chart sample")
     }
   }
+  if (options.compact) return compactChart(points, options)
   const maxX = Math.max(1, points.at(-1)!.elapsedSeconds)
   const maxY = Math.max(0.01, options.maxErrorRate, ...points.flatMap((p) => [p.decision.baseline?.high ?? 0, p.decision.candidate?.high ?? 0]))
   const x = (p: HealthPoint) => 70 + 620 * p.elapsedSeconds / maxX
@@ -56,4 +57,34 @@ export function healthChart(points: ReadonlyArray<HealthPoint>, options: { basel
   const height = history ? 460 : 300
   const plot = history ? `<text x="30" y="230">Observed history · error-rate bounds</text><path d="M70 250V370H690" fill="none" stroke="#94a3b8"/><text x="10" y="255">${percent(maxY)}</text><text x="30" y="375">0%</text><text x="70" y="394">0s</text><text x="650" y="394">${maxX.toFixed(0)}s</text><path d="M70 ${y(options.maxErrorRate).toFixed(2)}H690" stroke="#b91c1c" stroke-dasharray="5 4"/>${band("baseline", "#2563eb")}${band("candidate", "#c2410c")}` : ""
   return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${height}" viewBox="0 0 760 ${height}" role="img" aria-labelledby="title desc"><title id="title">Previous versus new version · error rate</title><desc id="desc">${escape(annotation)}. Previous window versus candidate window; intervals show simultaneous anytime-valid bounds, not a forecast. Missing observations are not zero errors.</desc><rect width="760" height="${height}" fill="#fafbfd"/><g font-family="sans-serif" font-size="13" fill="#172033"><text x="30" y="28" font-size="19">Error rate · Previous vs new version</text><text x="30" y="52">${escape(annotation)}</text>${summary("baseline", "Previous", options.baseline, "#2563eb", 84)}${summary("candidate", "New", options.candidate, "#c2410c", 166)}${plot}<text x="30" y="${height - 36}">Error-rate limit: ${percent(options.maxErrorRate)} · Bounds are not proof of health.</text><text x="30" y="${height - 15}">Observed windows only; not a forecast or proof of independent production traffic.</text></g></svg>`
+}
+
+/** Two aligned sparklines share a scale; gaps are unknown, never interpolated health. */
+function compactChart(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number }): string {
+  const latest = points.at(-1)!
+  const maxX = Math.max(1, latest.elapsedSeconds)
+  const maxY = Math.max(.01, options.maxErrorRate, ...points.flatMap(p => [p.decision.baseline?.high ?? 0, p.decision.candidate?.high ?? 0]))
+  const y = (n: number) => 158 - 90 * n / maxY
+  const percent = (n: number) => `${(n * 100).toFixed(2)}%`
+  const panel = (cohort: "baseline" | "candidate", left: number, label: string, version: string, color: string) => {
+    const interval = latest.decision[cohort]
+    const sample = cohort === "baseline" ? latest.baselineSample : latest.candidateSample
+    const x = (p: HealthPoint) => left + 300 * p.elapsedSeconds / maxX
+    const groups: HealthPoint[][] = []
+    let group: HealthPoint[] = []
+    for (const point of points) {
+      if (point.decision[cohort]) group.push(point)
+      else if (group.length) { groups.push(group); group = [] }
+    }
+    if (group.length) groups.push(group)
+    const plot = groups.map(segment => {
+      const upper = segment.map(p => `${x(p)},${y(p.decision[cohort]!.high)}`)
+      const lower = [...segment].reverse().map(p => `${x(p)},${y(p.decision[cohort]!.low)}`)
+      const line = segment.map(p => `${x(p)},${y(p.decision[cohort]!.rate)}`).join(" ")
+      return `${segment.length > 1 ? `<polygon points="${[...upper, ...lower].join(" ")}" fill="${color}" opacity="0.14"/><polyline points="${line}" fill="none" stroke="${color}" stroke-width="2"/>` : ""}${segment.map(p => `<path d="M${x(p)} ${y(p.decision[cohort]!.low)}V${y(p.decision[cohort]!.high)}" stroke="${color}" opacity="0.4"/><circle cx="${x(p)}" cy="${y(p.decision[cohort]!.rate)}" r="3" fill="${color}"/>`).join("")}`
+    }).join("")
+    const value = interval ? percent(interval.rate) : sample?.trials === 0 ? "No data" : "Awaiting data"
+    return `<text x="${left}" y="22" fill="${color}" font-size="15">${label} · ${escape(version.slice(0, 8))}</text><text x="${left}" y="47" font-size="20">${value}</text><path d="M${left} 158H${left + 300}" stroke="#cbd5e1"/><path d="M${left} ${y(options.maxErrorRate)}H${left + 300}" stroke="#b91c1c" stroke-dasharray="4 4"/>${plot}`
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="200" viewBox="0 0 760 200" role="img" aria-labelledby="title desc"><title id="title">Previous versus new error rate</title><desc id="desc">${escape(latest.decision.status)}. Shared scale 0 to ${percent(maxY)}. Shaded historical confidence bounds, not a forecast. Gaps are missing evidence.</desc><rect width="760" height="200" fill="#fafbfd"/><g font-family="sans-serif" font-size="12" fill="#172033">${panel("baseline", 40, "Previous", options.baseline, "#2563eb")}${panel("candidate", 410, "New", options.candidate, "#c2410c")}<text x="40" y="185">Error rate · ${percent(options.maxErrorRate)} limit · ${escape(latest.decision.status)}</text><text x="510" y="185">0–${percent(maxY)} · confidence bands</text></g></svg>`
 }

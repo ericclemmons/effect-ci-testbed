@@ -32,8 +32,8 @@ export const renderGitHubComment = (run: RunSnapshot): string => {
   const revision = url && sha ? `[${sha.slice(0, 7)}](${url}/commit/${sha})` : text(run.identity.revision)
   const details = safeDetails(run.identity.detailsUrl)
   const symbols = { planned: "⏳", queued: "⏳", running: "▶️", complete: "✅", reused: "♻️", verified: "✅", warning: "⚠️", failed: "❌", skipped: "➖", waiting: "⏳", approved: "✅", rejected: "❌" }
-  const checks = run.checks.slice(0, 100).map((check) =>
-    `${symbols[check.status]} ${text(check.id)}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`)
+  const checks = run.checks.slice(0, 100).map((check, index) =>
+    `${index + 1}. ${symbols[check.status]} ${text(check.id)}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${check.failureReason ? `\n   > ${text(check.failureReason)}` : ""}`)
   const health = run.health ? `\n\n#### Release ${run.health.phase}% · ${text(run.health.decision)}\n\n${text(run.health.evidenceSource)}${run.health.metrics ? `\n\n${healthMetricsMarkdown(run.health.metrics)}` : "\n\nMetric evidence unavailable."}` : ""
   return `### ${phase} · ${text(run.workflowId)}\n\n${source}@${revision}${details ? ` • [Details](${details})` : ""}\n\n${checks.join("  \n") || "Preparing checks…"}${run.checks.length > 100 ? "\n\nAdditional checks are available in Details." : ""}${health}`
 }
