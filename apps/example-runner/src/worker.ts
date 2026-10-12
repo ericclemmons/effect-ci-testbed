@@ -12,6 +12,7 @@ export { CredentialVault, SecretOutbound, SecretWorkspaceContainer, SecretOutbou
 export { ArtifactsSourceWorkflow } from "./artifacts-source.ts"
 export { R2SourceWorkflow } from "./r2-source.ts"
 export { SourceRevisions, DurableSourceWorkflow } from "./durable-source.ts"
+export { GitLabSourceWorkflow } from "./gitlab-source.ts"
 export { AnalyticsProbeWorkflow } from "./analytics-probe.ts"
 export { WobsCohortProbeWorkflow } from "./wobs-probe.ts"
 export { WobsReleaseWorkflow } from "./wobs-release.ts"
