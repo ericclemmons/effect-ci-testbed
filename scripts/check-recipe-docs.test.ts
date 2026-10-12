@@ -29,9 +29,23 @@ test("recipe groups have coverage tables with only explicit evidence states", ()
     for (const row of rows) {
       const columns = row.split("|").slice(1, -1).map((cell) => cell.trim())
       assert.equal(columns.length, 5, row)
-      assert.ok(columns.slice(1).every((cell) => ["✅", "🔜", "—"].includes(cell)), row)
+      assert.ok(columns.slice(1, 4).every((cell) => ["✅", "🔜", "—"].includes(cell)), row)
+      assert.ok(["✅", "🔜", "—", "✅ · containerless", "🔜 · containerless"].includes(columns[4]), row)
     }
   }
+})
+
+test("containerless stays a Cloudflare capability with verified and planned scope", () => {
+  assert.match(root, /not another execution environment/)
+  for (const recipe of ["dynamic-worker-checks", "dynamic-project-checks"]) {
+    const row = root.split("\n").find(line => line.includes(`](./examples/${recipe})`))!
+    assert.ok(row.endsWith("✅ · containerless |"), row)
+  }
+  const durableSource = root.split("\n").find(line => line.includes("](.\/examples/durable-object-source)"))!
+  assert.ok(!durableSource.includes("containerless"), "a DO ingredient does not classify its container consumer")
+  const plannedSites = root.split("\n").filter(line => line.startsWith("| ") && line.includes("static") && line.includes("containerless"))
+  assert.equal(plannedSites.length, 2)
+  assert.ok(plannedSites.every(line => line.endsWith("🔜 · containerless |")))
 })
 
 test("each recipe opens with a focused question", () => {

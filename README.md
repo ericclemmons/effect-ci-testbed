@@ -97,6 +97,13 @@ local `cf dev` counts as Local, not Cloudflare. 🔜 means unverified roadmap co
 not necessarily missing code; — means the execution model is irrelevant. Moving a
 recipe into a group does not change its verification status.
 
+`· containerless` is a capability label in the **Effect CI Cloudflare** column,
+not another execution environment. `✅ · containerless` means the entire recorded
+recipe ran without a Container; `🔜 · containerless` is a planned containerless
+path, not verified support. An unlabeled cell is not a claim that a container is
+required. Source ingestion, checks/builds, and deployment must each be classified;
+a DO-backed source ingredient alone does not make the downstream pipeline containerless.
+
 ### Author a workflow
 
 Start with a conventional pipeline, then choose explicit actions or task discovery.
@@ -132,8 +139,8 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run the portable CI workflow on Blacksmith compute](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
-| [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
-| [Execute untrusted project checks in capability-limited Dynamic Workers](./examples/dynamic-project-checks) | — | 🔜 | — | ✅ |
+| [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless |
+| [Execute untrusted project checks in capability-limited Dynamic Workers](./examples/dynamic-project-checks) | — | 🔜 | — | ✅ · containerless |
 
 ### Toolchains and container images
 
@@ -206,6 +213,8 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
+| Deploy commit-pinned static files from GitHub through a DO, without a build | — | 🔜 | — | 🔜 · containerless |
+| Build and deploy a static site using bounded Worker-compatible JS/Wasm | — | 🔜 | — | 🔜 · containerless |
 | [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
@@ -215,6 +224,26 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Define multiple Workers as code with Cloudflare `defineConfig` and prevent settings drift | 🔜 | 🔜 | 🔜 | 🔜 |
 | Pin a compatible Worker version throughout a long external rollout | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
+
+The next containerless recipes should build on each other: first retrieve a bounded,
+immutable GitHub file manifest, persist it in a DO, and upload existing HTML/CSS/JS;
+then add an isolated JS/Wasm build that produces a validated asset manifest. The DO
+owns coordination and durable receipts, not an unrestricted shell or project build.
+Cloudflare supports [direct static-asset uploads](https://developers.cloudflare.com/workers/static-assets/direct-upload/)
+through an upload session, missing-asset buckets, and Worker version deployment.
+That permits a hosted API adapter; it does not prove that the installed `cf` CLI
+runs inside a DO. Its build/deploy process assumes Node tools and filesystem/process
+facilities that [Workers do not fully implement](https://developers.cloudflare.com/workers/runtime-apis/nodejs/).
+Keep `cf` as the operator entrypoint and share Worker-compatible deployment logic
+where available, rather than trying to spawn the CLI in the DO.
+
+For both recipes, deployment credentials stay in a fixed-target trusted broker,
+never in the project isolate. Pin source and output digests, bound asset count/size,
+reject unsafe paths and redirects, reconcile uncertain upload/deploy acknowledgments,
+and verify served content before marking either row complete. A new deployment target
+needs its own scoped authority; the HMD demo broker is not a general site deployer.
+Arbitrary npm lifecycle scripts, native binaries and framework plugins still need
+a container unless their complete build path has a separately proven isolate adapter.
 
 ### Diagnosis and repair
 
