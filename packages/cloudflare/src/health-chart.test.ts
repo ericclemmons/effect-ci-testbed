@@ -32,6 +32,18 @@ test("no data is visibly uncertain, not a zero-error success chart", () => {
   assert.throws(() => healthChart([{ elapsedSeconds: NaN, decision: { status: "uncertain", reason: "missing" } }], { baseline: "old", candidate: "new", maxErrorRate: 0.1 }))
 })
 
+test("partial native candidate counts have no invented confidence estimate", () => {
+  const previous = { version: "old", from: 0, to: 1000, completeThrough: 1000, trials: 100, failures: 2, sampling: "unsampled" as const }
+  const svg = healthChart([{ elapsedSeconds: 2, baselineSample: previous,
+    candidateSample: { ...previous, version: "new", from: 1000, to: 2000, completeThrough: 1000, trials: 30, failures: 3 },
+    decision: { status: "uncertain", reason: "telemetry still arriving", baseline: { rate: .02, low: 0, high: .3 } } }],
+    { baseline: "old", candidate: "new", maxErrorRate: .1 })
+  assert.match(svg, /2 errors \/ 100 requests/)
+  assert.match(svg, /3 errors \/ 30 observed \(partial\)/)
+  assert.match(svg, /Awaiting complete, valid observations/)
+  assert.equal((svg.match(/<circle/g) ?? []).length, 1)
+})
+
 test("multiple pinned observations add historical bounds without dropping partial cohorts", () => {
   const baseline = { low: 0, rate: .01, high: .03 }
   const svg = healthChart([{ elapsedSeconds: 1, decision: { status: "uncertain", reason: "missing", baseline } },

@@ -45,8 +45,9 @@ export function healthChart(points: ReadonlyArray<HealthPoint>, options: { basel
     const sample = cohort === "baseline" ? latest.baselineSample : latest.candidateSample
     const noData = sample?.trials === 0
     const rate = noData ? "No observations yet" : interval ? `${percent(interval.rate)} observed errors` : "No valid confidence estimate yet"
-    const counts = noData ? "0 requests observed" : sample ? `${sample.failures} errors / ${sample.trials} requests` : "Request counts unavailable"
-    const bounds = interval ? `Confidence bounds ${percent(interval.low)}–${percent(interval.high)}` : "Comparison unavailable — no confidence estimate yet"
+    const partial = sample && sample.completeThrough < sample.to
+    const counts = noData ? "0 requests observed" : sample ? `${sample.failures} errors / ${sample.trials} ${partial ? "observed (partial)" : "requests"}` : "Request counts unavailable"
+    const bounds = interval ? `Confidence bounds ${percent(interval.low)}–${percent(interval.high)}` : partial ? "Awaiting complete, valid observations" : "Comparison unavailable — no confidence estimate yet"
     const window = sample ? `${new Date(sample.from).toISOString().slice(11, 23)}–${new Date(sample.to).toISOString().slice(11, 23)} UTC` : "Window unavailable"
     const intervalBar = interval && !noData ? `<path d="M${30 + 310 * interval.low / maxY} ${top + 58}H${30 + 310 * interval.high / maxY}" stroke="${color}" stroke-width="5" opacity="0.45"/><circle cx="${30 + 310 * interval.rate / maxY}" cy="${top + 58}" r="4" fill="${color}"/>` : ""
     return `<text x="30" y="${top}" fill="${color}" font-size="15">${label} · ${escape(version.slice(0, 40))}</text><text x="30" y="${top + 22}" font-size="17">${rate}</text><text x="390" y="${top + 22}">${counts}</text><text x="30" y="${top + 42}">${bounds}</text><text x="390" y="${top + 42}">${window}</text>${intervalBar}`

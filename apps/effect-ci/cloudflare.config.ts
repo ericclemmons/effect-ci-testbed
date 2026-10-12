@@ -31,7 +31,7 @@ export default defineConfig({
         name,
       }),
     },
-    env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }) },
+    env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), ANALYTICS_SQL: bindings.analyticsSQL() },
   },
   containers: [workspace],
 })

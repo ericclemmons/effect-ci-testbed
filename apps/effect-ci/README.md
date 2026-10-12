@@ -131,6 +131,42 @@ Use `--body` with an object-valued `params`: the installed CLI's `--params`
 flag currently forwards its JSON text as a string instead of decoding it.
 The Workflow rejects that string before any notification or deployment.
 
+#### Experimental native Worker outcomes in the same card
+
+The default remains the verified client-HTTP lab. To opt into the native adapter,
+add `"telemetry":"experimental-native-wobs"` to the authenticated Workflow's
+`params`. The app config supplies `ANALYTICS_SQL`; no analytics token enters a
+container or is copied from a personal session.
+
+This path captures 100 edge-generated request receipts before reading SQL. It
+pins the previous version/window and waits at most three 30-second ingestion
+intervals for that exact previous cohort. An incomplete previous cohort restores
+without promoting; it never generates replacement traffic to get a passing sample.
+Each canary sample captures another 100 receipts and re-reads every retained identity
+in the current stage. Only native terminal fetch rows supply errors/successes.
+Missing or weighted rows remain incomplete, not independent zero-error trials;
+foreign attribution or conflicting outcomes abort. Query/schema failures restore
+without falling back to HTTP. Native query retries apply only to explicitly
+`retryable: true` errors. The compact request and immutable snapshot retain the
+evidence source and completeness diagnostics.
+
+Native observations update the same owned message, checklist, private image and
+snapshot-bound Progress/Reject controls. The complete previous confidence estimate
+stays visible while candidate ingestion is incomplete; partial candidate counts
+are labeled partial and do not get fabricated confidence bounds. A promotion is
+shown before sampling, so a failed query does not hide a stage that actually ran.
+Deadline/emergency acceptance remains risk acceptance, not healthy evidence.
+
+**Compatibility boundary:** Cloudflare's current
+[SQL binding documentation](https://developers.cloudflare.com/analytics/sql-api/workers-binding/)
+excludes Log Explorer-backed datasets. `logs.workersLogs` binding queries worked in
+earlier account-specific labs; this adapter is explicitly experimental, not a
+documented production telemetry contract. Local composition tests use mocked SQL
+rows with actual native Workflow/RPC/SQLite/PNG execution. They are not live native
+telemetry or a four-phase WOBS safety proof. Recorded hosted evidence is added only
+after an actual run. `wobsVerified: false` and `releaseCommitted: false` remain
+explicit; no matrix coverage flag is upgraded by this integration alone.
+
 The SHA identifies the reviewed code in the card; this fixed-target lab does
 not build or upload that commit. It uses the dedicated demo's already-uploaded
 healthy candidate and known baseline. Actual allocations are 10/25/75/100,
@@ -318,10 +354,9 @@ acceptance. An unavailable image clears the previous phase's image and retains t
 current textual evidence. The publisher must own and update the existing message;
 this bridge has no separate post-message API.
 
-This controller-to-card path has local integration coverage, **not deployed HMD/Slack
-E2E coverage**. Dedicated Workflow dispatch, durable message publication/reconciliation,
-signed snapshot-bound interactive approval and image-processing readiness remain to be
-wired before enabling it. No graph test grants authority to approve a release.
+This was initially an isolated local bridge. The hosted HTTP sampling runs above
+now verify dispatch, private image updates and one owned message. That proof does
+not establish native WOBS completeness or grant authority to approve a release.
 
 `PrivateSlackCards` is a host-only SQLite Durable Object for one owned message per
 run. It reserves a delivery intent before posting, then uses the acknowledged
@@ -330,8 +365,8 @@ request; stale/conflicting sequences, another owner/destination or changed bot
 credentials are denied. A lost acknowledgement or receipt commit leaves a pending
 intent and blocks further delivery rather than creating a duplicate card.
 There is deliberately no automatic reconciliation or claim of exactly-once Slack
-delivery. The existing CI notifier is unchanged; connecting this owner to the HMD
-Workflow and defining operator recovery are still required. Local workerd tests
+delivery. The existing CI notifier is unchanged; the dedicated HMD Workflow now
+uses this owner. Ambiguous delivery still requires operator recovery. Local workerd tests
 exercise the actual SQLite ledger with a simulated Slack transport, not live Slack.
 
 The host-only `PrivateSlackImages` SQLite Durable Object atomically reserves a
@@ -343,27 +378,27 @@ for operator reconciliation, while the existing card can use a text fallback. To
 and upload URLs are not stored in its ledger or exposed to containers. This prevents
 duplicate replay; it does **not** prove exactly-once external delivery, automatically
 recover orphaned files, or guarantee that Slack has finished processing an image.
-Those reconciliation/readiness paths and the live HMD card bridge remain pending.
+The hosted HTTP bridge is verified above. Bounded processing-readiness retries
+are implemented; ambiguous upload stages still require operator reconciliation.
 The transport uses manual redirects with explicit non-2xx rejection: workerd does
 not accept the Node-supported `redirect: "error"` mode. A real workerd regression
 checks all three upload boundaries without contacting Slack or forwarding credentials.
 
 The host's private `HealthChartRenderer` RPC entrypoint renders the trusted health
-chart template into a bounded 760×350 PNG using bundled resvg WASM and a licensed
+chart template into a bounded 760×300 or 760×460 PNG using bundled resvg WASM and a licensed
 font. It accepts structured observations, not SVG or image URLs. Rendering requires
 no network, system fonts, runtime WASM compilation, or container execution; both
 WASM allocations are freed after copying the result. Node/WASM and local workerd
 regressions exercise the actual renderer, and `cf build` includes the compiled WASM
-and private font Data module. This does **not** yet verify a deployed HMD notification:
-the durable upload lifecycle and controller-to-existing-card bridge remain pending.
+and private font Data module. The hosted HTTP runs above verify deployed private
+images in the existing card; this does not turn HTTP outcomes into WOBS evidence.
 
 `RunCard.setHealth(observation, fileId)` presents the phase, original decision and
 evidence source alongside the existing checklist and inline approval controls.
 Replacing its private file ID replaces the image in that card; it does not send a
 second notification. Provider-neutral snapshots carry health status but exclude
-Slack file IDs and approval capabilities. This is presentation support only:
-the hosted HMD controller must still supply checkpointed observations and image
-receipts through the existing notification queue. Calling it does not authorize
+Slack file IDs and approval capabilities. The dedicated hosted controller supplies
+checkpointed observations and private image receipts. Presentation alone does not authorize
 promotion, turn uncertain evidence into a healthy decision, or verify live WOBS.
 
 With a bot token the runner posts one Block Kit status card with a dependency-ordered

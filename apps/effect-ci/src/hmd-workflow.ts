@@ -9,9 +9,10 @@ import type { PrivateSlackImages } from "./private-images.ts"
 import type { PrivateSlackCards } from "./private-cards.ts"
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
+import { nativeHmdSource } from "../../example-runner/src/hmd-native-source.ts"
 
-export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string; readonly profile?: "healthy" | "regression" }
-interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; HMD_REQUIRE_RATIONALE?: string; HMD_AUTO_PROGRESS_MINUTES?: string }
+export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string; readonly profile?: "healthy" | "regression"; readonly telemetry?: "experimental-native-wobs" }
+interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; ANALYTICS_SQL?: AnalyticsSQLBinding; HMD_REQUIRE_RATIONALE?: string; HMD_AUTO_PROGRESS_MINUTES?: string }
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 
 /** Dedicated fixed-target administrative lab, never dispatched by normal GitHub CI. */
@@ -19,6 +20,8 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
   override async run(event: Readonly<WorkflowEvent<HmdParameters>>, step: WorkflowStep) {
     if (event.payload?.intent !== "hmd-review-lab" || !/^[a-f0-9]{40}$/.test(event.payload.revision) ||
       (event.payload.profile !== undefined && !["healthy", "regression"].includes(event.payload.profile)) ||
+      (event.payload.telemetry !== undefined && event.payload.telemetry !== "experimental-native-wobs") ||
+      (event.payload.telemetry && !this.env.ANALYTICS_SQL) ||
       !this.env.SLACK_BOT_TOKEN || !this.env.SLACK_APP_ID || !this.env.SLACK_TEAM_ID || !this.env.SLACK_CHANNEL_ID ||
       !this.env.SLACK_SIGNING_SECRET || !this.env.SLACK_APPROVER_IDS || !this.env.RELEASE_MANAGER) throw new NonRetryableError("HMD lab is not configured")
     const host = this.ctx.exports as unknown as { HealthChartRenderer: Service<HealthChartRenderer>;
@@ -34,19 +37,22 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       detailsUrl: `https://dash.cloudflare.com/${RELEASE_ACCOUNT}/workers/workflows/effect-ci-hmd-review/instance/${encodeURIComponent(owner)}` })
     const timestamp = event.timestamp.toISOString()
     const workflowId = "Demo release"
+    const native = event.payload.telemetry === "experimental-native-wobs"
+      ? nativeHmdSource((input) => this.env.ANALYTICS_SQL!.query(input)) : undefined
     const status = (stepId: string, state: "queued" | "complete" | "running" | "warning" | "failed" | "skipped") =>
       card.update({ type: "step.status", workflowId, stepId, status: state, optional: false, timestamp })
     for (const id of ["Prepare release", "Previous version", "10%", "25%", "75%", "100%", "Restore previous version"]) status(id, "queued")
     let sequence = 0
     let observed = false
     let restored = false
+    let activePhase: 10 | 25 | 75 | 100 | undefined
     let capability: HmdCapability | undefined
     const publish = async (_card: RunCard, checkpoint: string) => {
       // Keep the full semantic history, but reverted releases need only the
       // executed stages and restoration in their operator-facing checklist.
       const frame = card.render({ hideSkipped: restored, ...(restored ? { rollbackStep: "Restore previous version" } : {}) })
       const blocks = [...frame.blocks, { type: "context", elements: [{ type: "plain_text",
-        text: "Fixed-target HTTP lab. Progress accepts risk, not proof of health. Final cleanup restores the previous version; no production release." }] },
+        text: `${native ? "Fixed-target native Worker outcomes lab (experimental SQL binding); closed synthetic cohorts, not ambient traffic." : "Fixed-target HTTP lab."} Progress accepts risk, not proof of health. Final cleanup restores the previous version; no production release.` }] },
         ...(capability ? [{ type: "actions", elements: [
           { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Progress" }, style: "primary", value: JSON.stringify(capability) },
           { type: "button", action_id: "hmd_reject", text: { type: "plain_text", text: "Reject" }, style: "danger", value: JSON.stringify(capability) },
@@ -63,9 +69,15 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       upload: (run, snapshot, png) => images.upload(run, snapshot, png), publish,
     })
     const observe = async (update: HmdReviewUpdate) => {
-      if (update.type === "observed") {
+      if (update.type === "promoted") {
+        activePhase = update.phase
+        status("Prepare release", "complete"); status("Previous version", "complete")
+        status(`${update.phase}%`, "running")
+        await publish(card, `notification:hmd-promoted-${update.phase}`)
+      } else if (update.type === "observed") {
         observed = true
         const current = update.observations.at(-1)!
+        activePhase = current.phase
         const suffix = `${current.phase}${current.sample ? `-sample-${current.sample}` : ""}`
         status("Prepare release", "complete"); status("Previous version", "complete")
         status(`${current.phase}%`, current.route.status === "rollback" ? "failed" : "running")
@@ -99,9 +111,12 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         if (health) {
           status("Previous version", "complete")
           if (update.failed) status(`${health.phase}%`, "failed")
-        } else if (update.failed) status("Previous version", "failed")
+        } else if (update.failed) {
+          status("Previous version", activePhase ? "complete" : "failed")
+          if (activePhase) status(`${activePhase}%`, "failed")
+        }
         if (update.failed) for (const phase of [10, 25, 75, 100]) {
-          if (!health || phase > health.phase) status(`${phase}%`, "skipped")
+          if (!(activePhase ?? health?.phase) || phase > (activePhase ?? health!.phase)) status(`${phase}%`, "skipped")
         }
         status("Restore previous version", "complete")
         card.update({ type: "workflow.completed", workflowId, conclusion: update.failed ? "failure" : "success", timestamp })
@@ -115,7 +130,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         (message) => new NonRetryableError(message), observe, { autoProgressMinutes, allowRegressionOverride: true,
           samplingIntervalSeconds: 30,
           onRefresh: (observation) => reviews.refresh(owner, observation.phase, observation.snapshot),
-          onDeadline: (observation) => reviews.expire(owner, observation.phase, observation.snapshot) }, event.payload.profile ?? "healthy")
+          onDeadline: (observation) => reviews.expire(owner, observation.phase, observation.snapshot) }, event.payload.profile ?? "healthy", native)
     } catch (error) {
       if (!observed && !restored) {
         // Claim/baseline failures precede observation. Do not falsely claim that
