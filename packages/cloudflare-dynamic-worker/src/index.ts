@@ -2,6 +2,10 @@ import { createWorker } from "@cloudflare/worker-bundler"
 import type * as Tools from "@effect-ci-testbed/source-tools"
 import * as Effect from "effect/Effect"
 
+export { projectPolicy, validateProject, readBoundedText, runProjectChecks, ProjectChecks, makeProjectChecks } from "./project-checks.ts"
+export type { ProjectRequest, ProjectCheck } from "./project-checks.ts"
+
+
 const formatterSource = String.raw`
 import { WorkerEntrypoint } from "cloudflare:workers";
 import prettier from "prettier/standalone";

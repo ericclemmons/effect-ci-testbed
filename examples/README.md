@@ -46,6 +46,9 @@ separate recipes even when both use stored bytes.
 run a bounded, source-only formatter in an isolate rather than a container.
 That verified formatter is not proof that arbitrary untrusted project modules or
 the complete Vite+ toolchain can run there.
+[Untrusted project checks](./dynamic-project-checks) adds a fresh, network-denied
+isolate for project ESM and host-owned HTTP assertions. Its runtime and capability
+proofs are distinct from formatter correctness and native toolchain support.
 
 ## Toolchains and container images
 

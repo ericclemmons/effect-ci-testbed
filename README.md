@@ -133,7 +133,7 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run the portable CI workflow on Blacksmith compute](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
-| Execute untrusted project checks in capability-limited Dynamic Workers | — | 🔜 | — | 🔜 |
+| [Execute untrusted project checks in capability-limited Dynamic Workers](./examples/dynamic-project-checks) | — | 🔜 | — | 🔜 |
 
 ### Toolchains and container images
 

@@ -87,6 +87,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
 | [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
 | [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
+| [Untrusted Dynamic Worker project](../../examples/dynamic-project-checks) | `effect-ci-example-dynamic-project` |
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |

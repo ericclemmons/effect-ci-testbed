@@ -83,6 +83,7 @@ export default defineConfig({
       SourceChecksWorkflow: exports.workflow({ name: "effect-ci-example-source-checks" }),
       CachePolicyWorkflow: exports.workflow({ name: "effect-ci-example-cache-policy" }),
       DynamicFormatterWorkflow: exports.workflow({ name: "effect-ci-example-dynamic-formatter" }),
+      DynamicProjectWorkflow: exports.workflow({ name: "effect-ci-example-dynamic-project" }),
     },
   },
   containers: [workspace, secretWorkspace],

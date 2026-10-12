@@ -373,6 +373,11 @@ class CurrentStep extends ServiceMap.Service<CurrentStep, string>()(
 
 /** One-based attempt supplied by the local or durable policy interpreter. */
 export class Attempt extends ServiceMap.Service<Attempt, number>()("@effect-ci-testbed/Attempt") {}
+
+/** Capability-backed actions must be able to declare dependencies without executing during planning. */
+export const executionMode = Effect.gen(function* () {
+  return (yield* Runtime).mode
+})
 class PolicyBody extends ServiceMap.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
 
 export interface ActionExecutionResult {
