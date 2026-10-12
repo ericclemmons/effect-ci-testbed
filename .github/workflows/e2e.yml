@@ -370,6 +370,9 @@ jobs:
           - example: r2-source
             workflow: examples/r2-source/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+          - example: durable-object-source
+            workflow: examples/durable-object-source/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
           - example: cloudflare-runner
             workflow: examples/cloudflare-runner/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
