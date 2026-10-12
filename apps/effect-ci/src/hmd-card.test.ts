@@ -54,6 +54,10 @@ test("host health observer updates the owned card with cumulative history, no se
   assert.equal(uploads, 4, "native receipt replay does not upload again")
   await observe({ type: "settled", observation: history.at(-1)!, basis: "human-risk-acceptance" })
   assert.equal(card.snapshot().health?.decision, "uncertain")
+  assert.equal(card.snapshot().health?.metrics?.snapshot, history.at(-1)!.snapshot)
+  assert.equal(card.snapshot().health?.metrics?.previous.trials, 100)
+  assert.equal(card.snapshot().health?.metrics?.current.trials, 100)
+  assert.equal(card.snapshot().health?.metrics?.current.interval?.high, .5)
   assert.equal(frames.length, 5)
 })
 
@@ -125,7 +129,7 @@ test("same-stage samples grow the existing private graph without reusing image c
   const observe = hmdCardObserver("run", step, card, { render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
     upload: async () => ({ok:true,fileId:"F1"}), publish: async (_card, key) => { keys.push(key) } })
   const first = {...observation(10), sample:0}
-  const next = {...first, sample:1, snapshot:"b".repeat(64), candidate:{...first.candidate,to:first.candidate.to+100,trials:20}}
+  const next = {...first, sample:1, snapshot:"b".repeat(64), candidate:{...first.candidate,to:first.candidate.to+100,completeThrough:first.candidate.to+100,trials:20}}
   await observe({type:"observed",observations:[first,next]})
   assert.deepEqual(keys,["notification:hmd-image-10-sample-1","notification:hmd-card-10-sample-1"])
   await assert.rejects(observe({type:"observed",observations:[first,{...next,candidate:{...next.candidate,trials:5}}]}),/history/)

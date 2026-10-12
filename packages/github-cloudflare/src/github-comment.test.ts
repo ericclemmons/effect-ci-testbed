@@ -58,6 +58,27 @@ test("lost receipt rediscovers the acknowledged post, and separate runs never ov
   assert.equal(server.calls.filter((call) => call.method === "PATCH").length, 0)
 })
 
+test("health-only semantic changes update the owned comment without exporting a private chart", async () => {
+  const server = api()
+  const provider = githubCommentProvider({ ...options, transport: server.transport })
+  const run = card()
+  const sample = { version: "old", from: 1000, to: 2000, completeThrough: 2000,
+    trials: 100, failures: 0, sampling: "unsampled" as const, interval: { rate: 0, low: 0, high: .2 } }
+  const health = { phase: 10 as const, decision: "uncertain" as const, evidenceSource: "experimental-native-wobs" as const,
+    metrics: { snapshot: "a".repeat(64), previous: sample,
+      current: { ...sample, version: "new", from: 3000, to: 4000, completeThrough: 4000 }, maxErrorRate: .1, maxIncrease: .05 } }
+  run.setHealth(health, "FPRIVATE")
+  const receipt = await Effect.runPromise(provider.deliver(run.snapshot(), undefined))
+  run.setHealth({ ...health, metrics: { ...health.metrics, snapshot: "b".repeat(64),
+    current: { ...health.metrics.current, failures: 8, interval: { rate: .08, low: .02, high: .3 } } } }, "FNEW")
+  await Effect.runPromise(provider.deliver(run.snapshot(), receipt))
+  await Effect.runPromise(provider.deliver(run.snapshot(), receipt))
+  assert.equal(server.comments.length, 1)
+  assert.equal(server.calls.filter(call => call.method === "PATCH").length, 1)
+  assert.match(server.comments[0].body, /Current `new` \| 8\/100 \| 8.00%/)
+  assert.doesNotMatch(server.comments[0].body, /FPRIVATE|FNEW|!\[/)
+})
+
 test("receipt ownership binds bot, PR and run; copied markers do not grant edit authority", async () => {
   for (const mutation of [
     (comment: any) => { comment.user.id = 999 },

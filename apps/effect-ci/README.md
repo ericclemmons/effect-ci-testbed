@@ -495,6 +495,19 @@ every event. Separate runs retain their own comments so a delayed older run cann
 overwrite a newer run. One single latest comment across all runs would additionally
 need a shared coordinator; it is not this provider's contract.
 
+HMD observations also enter the immutable snapshot as semantic `health.metrics`:
+the exact observation digest, previous/current version IDs, pinned windows,
+observed errors/counts, available confidence bounds and release limits. The host
+observer supplies these from the same observation used by Slack's private graph.
+The GitHub comment renderer presents them as a numeric comparison table, not a
+public copy of the Slack image. Incomplete or weighted cohorts have unavailable
+rates/bounds; their counts are not independent health trials. Even complete bounds
+remain historical estimates, not causal comparisons or forecasts. This is a
+presentation extension: it cannot promote, approve or rewrite the gate decision.
+Tests cover immutable copies, private-field exclusion, unavailable evidence and
+one owned comment updated when only metric evidence changes. Hosted HMD-to-GitHub
+delivery remains a separate integration task; this extension does not enable it.
+
 The provider checks author identity, PR scope and the run/revision marker before an
 edit, recovers an acknowledged post if its receipt was lost, and fails closed when
 bounded discovery is ambiguous or exceeds 500 comments. API error bodies are never

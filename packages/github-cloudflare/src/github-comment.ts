@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import type { NotificationProvider, NotificationReceipt, RunSnapshot } from "./notification-service.ts"
+import { healthMetricsMarkdown } from "./health-metrics.ts"
 
 export interface GitHubCommentOptions {
   readonly repository: string
@@ -33,7 +34,8 @@ export const renderGitHubComment = (run: RunSnapshot): string => {
   const symbols = { planned: "⏳", queued: "⏳", running: "▶️", complete: "✅", reused: "♻️", verified: "✅", warning: "⚠️", failed: "❌", skipped: "➖", waiting: "⏳", approved: "✅", rejected: "❌" }
   const checks = run.checks.slice(0, 100).map((check) =>
     `${symbols[check.status]} ${text(check.id)}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`)
-  return `### ${phase} · ${text(run.workflowId)}\n\n${source}@${revision}${details ? ` • [Details](${details})` : ""}\n\n${checks.join("  \n") || "Preparing checks…"}${run.checks.length > 100 ? "\n\nAdditional checks are available in Details." : ""}`
+  const health = run.health ? `\n\n#### Release ${run.health.phase}% · ${text(run.health.decision)}\n\n${text(run.health.evidenceSource)}${run.health.metrics ? `\n\n${healthMetricsMarkdown(run.health.metrics)}` : "\n\nMetric evidence unavailable."}` : ""
+  return `### ${phase} · ${text(run.workflowId)}\n\n${source}@${revision}${details ? ` • [Details](${details})` : ""}\n\n${checks.join("  \n") || "Preparing checks…"}${run.checks.length > 100 ? "\n\nAdditional checks are available in Details." : ""}${health}`
 }
 
 /** One maintained comment per run/PR. Separate runs cannot overwrite each other.
