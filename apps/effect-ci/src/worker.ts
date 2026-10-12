@@ -6,7 +6,7 @@ import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts"
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
 
-export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare"
 export { HealthChartRenderer } from "./health-renderer.ts"
 export { PrivateSlackImages } from "./private-images.ts"
 export { PrivateSlackCards } from "./private-cards.ts"

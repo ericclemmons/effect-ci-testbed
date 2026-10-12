@@ -146,7 +146,9 @@ export const workflowEntrypoint = <A>(
         : { reuseWorkspace: options.reuseWorkspace }),
       revision: event.payload.revision,
       step,
-      ...(token ? { token } : {}),
+      // Source credentials cannot write checks/comments or read another installed
+      // repository. Reporting retains its independent host-only credential path.
+      ...(github ? { token: () => GitHub.createInstallationToken(credentials(this.env), github.installationId, github.repositoryName.split("/")[1]) } : {}),
       workspaceId: event.instanceId,
     })
     let operation = 0
@@ -271,4 +273,4 @@ export const workflowEntrypoint = <A>(
 }
 
 export { Cloudflare }
-export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/cloudflare"

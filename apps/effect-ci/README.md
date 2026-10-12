@@ -830,7 +830,16 @@ idempotent.
 - **Check stays queued:** inspect the Workflow instance and Worker logs in the
   Cloudflare dashboard.
 - **Private clone fails:** confirm **Contents** is read-only and the App installation
-  includes the repository. Installation tokens are minted just in time.
+  includes the repository. Installation tokens are minted just in time, scoped to
+  that repository with **Contents: read**, and retained only in the host Durable
+  Object during checkout. Git receives a token-free `github-checkout.ci` URL;
+  the host proxy forwards only that repository's clone/fetch endpoints over HTTPS.
+  It denies pushes, redirects and other repositories, and revokes access before
+  project checkout/commands and on failure. No token enters VM arguments,
+  environment, Git config, snapshots or durable storage. Worker restarts fail closed.
+  Export `GitCheckoutOutbound` as a Worker entrypoint alongside `WorkspaceContainer`
+  (see this app's `cloudflare.config.ts`); missing wiring fails closed, with no
+  credential-in-command fallback. Reporting uses a separate host-only token.
 - **`cf-ci --remote` redirects to login:** the Access application needs a
   **Service Auth** policy containing the service token—not only a human Allow policy.
 - **`cf-ci --remote` returns 401 after Access:** `EFFECT_CI_REMOTE_TOKEN` does not match
@@ -847,7 +856,7 @@ import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
 
 import workflow from "./workflow.ts"
 
-export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare"
 
 export default GitHubCloudflare.worker()
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {

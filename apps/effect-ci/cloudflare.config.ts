@@ -19,6 +19,7 @@ export default defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      GitCheckoutOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       PrivateSlackImages: exports.durableObject({ storage: "sqlite" }),
       PrivateSlackCards: exports.durableObject({ storage: "sqlite" }),

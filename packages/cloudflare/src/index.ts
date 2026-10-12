@@ -1,6 +1,7 @@
 import * as CI from "@effect-ci-testbed/ci"
 import {
   DurableObject,
+  WorkerEntrypoint,
   WorkflowEntrypoint,
   type WorkflowEvent,
   type WorkflowStep,
@@ -12,6 +13,7 @@ import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
 import { withWobsLogging } from "./wobs-logger.ts"
+import { gitCheckoutHost, githubCheckoutRepository, gitCheckoutRequest } from "./git-checkout-proxy.ts"
 export { wobsLoggerLayer, withWobsLogging } from "./wobs-logger.ts"
 export { SourceRevisions, readDurableSource } from "./durable-source.ts"
 
@@ -90,7 +92,23 @@ export interface WorkspaceContainerOptions {
 
 interface WorkspaceContainerEnvironment {}
 
+/** Host-only routing capability. No token or credentials are passed into the VM. */
+export class GitCheckoutOutbound extends WorkerEntrypoint<unknown, { workspaceId: string; capability: string }> {
+  override fetch(request: Request): Promise<Response> {
+    const namespace = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace<WorkspaceContainer> }).WorkspaceContainer
+    return namespace.get(namespace.idFromString(this.ctx.props.workspaceId)).gitCheckoutFetch(request, this.ctx.props.capability)
+  }
+}
+
 export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironment> {
+  private gitCheckout: { repository: string; token: string; capability: string; expiresAt: number } | undefined
+
+  /** Called by the host outbound Worker, never exported as a public HTTP route. */
+  async gitCheckoutFetch(request: Request, capability: string): Promise<Response> {
+    const checkout = this.gitCheckout
+    if (!checkout || checkout.capability !== capability || Date.now() >= checkout.expiresAt) return new Response("Git checkout inactive", { status: 403 })
+    return gitCheckoutRequest(request, checkout.repository, checkout.token)
+  }
   private activeStepId: string | undefined
   private dirty = false
   private workingCheckpointId: string | undefined
@@ -284,62 +302,84 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const existing = await this.run(["test", "-d", `${targetDirectory}/.git`])
+    if (this.gitCheckout) throw new Error("Git checkout already active")
+    let remote = repository
+    if (token) {
+      const path = githubCheckoutRepository(repository)
+      const outbound = (this.ctx.exports as unknown as {
+        GitCheckoutOutbound: (options: { props: { workspaceId: string; capability: string } }) => Fetcher
+      }).GitCheckoutOutbound
+      if (!outbound) throw new Error("Authenticated checkout requires the host GitCheckoutOutbound export")
+      const capability = crypto.randomUUID()
+      await this.container().interceptOutboundHttp(gitCheckoutHost, outbound({ props: { workspaceId: this.ctx.id.toString(), capability } }))
+      this.gitCheckout = { repository, token, capability, expiresAt: Date.now() + 10 * 60_000 }
+      remote = `http://${gitCheckoutHost}/${path}`
+    }
+    // Disable credential helpers, inherited headers, redirects and repository hooks.
+    // These are non-secret switches: only the host proxy has authentication.
+    const gitPolicy = ["-c", "credential.helper=", "-c", "http.extraHeader=", "-c", "http.followRedirects=false", "-c", "core.hooksPath=/dev/null"]
+    try {
+      const existing = await this.run(["test", "-d", `${targetDirectory}/.git`])
 
-    if (existing.exitCode !== 0) {
-      const authentication = token
-        ? ["-c", `http.extraHeader=Authorization: Basic ${btoa(`x-access-token:${token}`)}`]
-        : []
-      const clone = await this.run([
+      if (existing.exitCode !== 0) {
+        const clone = await this.run([
+          "git",
+          ...gitPolicy,
+          "clone",
+          "--no-checkout",
+          remote,
+          targetDirectory,
+        ])
+
+        if (clone.exitCode !== 0) {
+          throw new Error(token ? "Authenticated git clone failed" : clone.stderr || clone.stdout || "git clone failed")
+        }
+      }
+
+      // Persist the canonical, token-free source identity, not the ephemeral proxy.
+      const origin = await this.run(["git", ...gitPolicy, "-C", targetDirectory, "remote", "set-url", "origin", repository])
+      if (origin.exitCode !== 0) throw new Error("Git source identity update failed")
+      const fetch = await this.run([
         "git",
-        ...authentication,
-        "clone",
-        "--no-checkout",
-        repository,
+        ...gitPolicy,
+        "-C",
         targetDirectory,
+        "fetch",
+        "--depth=1",
+        remote,
+        revision,
       ])
 
-      if (clone.exitCode !== 0) {
-        throw new Error(clone.stderr || clone.stdout || "git clone failed")
+      if (fetch.exitCode !== 0) {
+        throw new Error(token ? "Authenticated git fetch failed" : fetch.stderr || fetch.stdout || "git fetch failed")
       }
-    }
 
-    const authentication = token
-      ? ["-c", `http.extraHeader=Authorization: Basic ${btoa(`x-access-token:${token}`)}`]
-      : []
-    const fetch = await this.run([
-      "git",
-      ...authentication,
-      "-C",
-      targetDirectory,
-      "fetch",
-      "--depth=1",
-      "origin",
-      revision,
-    ])
+      // Revoke before checking out project-controlled files or running any hooks.
+      this.gitCheckout = undefined
+      const checkout = await this.run([
+        "git",
+        ...gitPolicy,
+        "-C",
+        targetDirectory,
+        "checkout",
+        "--force",
+        "FETCH_HEAD",
+      ])
 
-    if (fetch.exitCode !== 0) {
-      throw new Error(fetch.stderr || fetch.stdout || "git fetch failed")
-    }
+      if (checkout.exitCode !== 0) {
+        throw new Error(checkout.stderr || checkout.stdout || "git checkout failed")
+      }
 
-    const checkout = await this.run([
-      "git",
-      "-C",
-      targetDirectory,
-      "checkout",
-      "--force",
-      "FETCH_HEAD",
-    ])
-
-    if (checkout.exitCode !== 0) {
-      throw new Error(checkout.stderr || checkout.stdout || "git checkout failed")
-    }
-
-    // A cache snapshot is transport, not the next run's source workspace. Keep
-    // only the declared cache directories; stale outputs and dependencies go away.
-    const clean = await this.run(cleanCheckoutCommand(targetDirectory, cachePaths))
-    if (clean.exitCode !== 0) {
-      throw new Error(clean.stderr || clean.stdout || "git clean failed")
+      // A cache snapshot is transport, not the next run's source workspace. Keep
+      // only the declared cache directories; stale outputs and dependencies go away.
+      const clean = await this.run(cleanCheckoutCommand(targetDirectory, cachePaths))
+      if (clean.exitCode !== 0) {
+        throw new Error(clean.stderr || clean.stdout || "git clean failed")
+      }
+    } finally {
+      // Failure, timeout/restart, and cache re-checkout all fail closed. State is
+      // deliberately memory-only: snapshots and durable storage contain no token.
+      this.gitCheckout = undefined
     }
   }
 
