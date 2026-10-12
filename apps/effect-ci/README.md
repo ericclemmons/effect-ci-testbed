@@ -187,6 +187,25 @@ private image `F0C8KDZQ4FN`, rollback icon, and removed terminal buttons. This p
 that bounded synthetic native regression path, not ambient production completeness,
 causal comparison, or a full healthy four-phase safety proof.
 
+`coverage-hmd-native-healthy-20261012-1` then exercised all four actual allocations
+10/25/75/100 and the 100% health check. Every stage advanced by configured
+**deadline-risk-acceptance**, not health proof or fabricated human approval.
+Some native cohorts remained missing/weighted; the final complete 200 candidate
+outcomes had zero errors but still inconclusive confidence bounds. The one owned
+Slack message `1791775431.939959` received 26 sequential frames and private chart
+replacements, then removed controls/queued states on cleanup. Deployment
+`d49f157c-1bd6-4794-a137-d70999a87798` restored the exact previous version at100%.
+Read-only native/Slack assertions passed for both recorded runs. The strict healthy
+WOBS gate remains unverified; `wobsVerified: false`, `releaseCommitted: false`.
+
+```sh
+HMD_CF_BIN=/path/to/cf \
+HMD_SAMPLING_HEALTHY_INSTANCE=coverage-hmd-native-healthy-20261012-1 \
+HMD_SAMPLING_REGRESSION_INSTANCE=coverage-hmd-native-regression-20261012-2 \
+HMD_SLACK_SECRETS_FILE=apps/effect-ci/.secrets.env \
+node --test apps/effect-ci/src/live-hmd-sampling.test.ts
+```
+
 The first live native-card run, `coverage-hmd-native-regression-20261012-1`,
 **exposed a sampler bug**, not a successful rollback proof. Native SQL closed
 the previous 100 outcomes after 30s. The canary loop then kept adding 100 fresh
