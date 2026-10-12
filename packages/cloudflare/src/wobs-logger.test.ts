@@ -62,3 +62,21 @@ test("structured causes keep searchable errors while payloads remain bounded", a
   assert.ok(JSON.stringify(records[0]).length < 16000)
   assert.ok(JSON.stringify(records[1]).includes("searchable-terminal-marker"))
 })
+
+test("unavailable secret inventory suppresses payloads once without replacing outcomes or calling getters", async () => {
+  for (const environment of [
+    new Proxy({}, { ownKeys() { throw new Error("inventory unavailable") } }),
+    { get API_TOKEN() { throw new Error("must not invoke secret getter") } },
+  ]) {
+    const records: any[] = []
+    const sink = { debug(record: any) { records.push(record) }, info(record: any) { records.push(record) },
+      warn(record: any) { records.push(record) }, error(record: any) { records.push(record) } }
+    const original = new Error("sensitive-business-error")
+    const exit = await Effect.runPromiseExit(Effect.logInfo("sensitive-user-payload").pipe(
+      Effect.andThen(Effect.fail(original)), Effect.tapCause(cause => Effect.logError(cause)),
+      Effect.provide(wobsLoggerLayer({ workflow: "sensitive-context", instance: "sensitive-context" }, environment, sink))))
+    assert.ok(Exit.isFailure(exit))
+    assert.equal(Cause.squash(exit.cause), original)
+    assert.deepEqual(records, [{ source: "effect-ci", level: "Warn", message: "Effect diagnostics suppressed: secret inventory unavailable" }])
+  }
+})

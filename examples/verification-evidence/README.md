@@ -97,6 +97,13 @@ pre-commit-to-commit proof handoff are intentionally **not part of the roadmap**
 Dependency/toolchain and policy fingerprints still matter for commit-bound evidence;
 a clean Git status alone does not prove those inputs match.
 
+The [gittifacts example](https://gittifacts.decroockjovi.workers.dev/) illustrates
+portable Ed25519 evidence attached to exact commits and a separate intent/review
+policy. Its demo is a design reference, not evidence that this testbed implements
+its review lanes or merge queue. Plain operator notes under
+`refs/notes/effect-ci-verification` record our run history but are **advisory**:
+they are not signed envelopes and never authorize this cache to skip checks.
+
 Run the canonical workflow locally with
 `./examples/verification-evidence/.cloudflare/ci/workflow.ts`, or through
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). The executable test
