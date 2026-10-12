@@ -9,6 +9,13 @@ The paths below are reading paths, not execution dependencies. Each recipe remai
 independently runnable. Start with its opening question, inspect its plan, then use
 its own commands and verification notes.
 
+An example must own its fixtures, configuration, bindings and hosted wrapper when
+it needs them. Import reusable library packages; do not import another example's
+implementation, Dockerfile, or app configuration. Duplicating a small fixture is
+preferable to a hidden dependency. The [Artifacts source](./artifacts-source) now
+follows this rule. Remaining shared-host recipes need the same migration; their
+existing hosted evidence is preserved, not silently relabeled as standalone proof.
+
 ## Author a workflow
 
 [npm pipeline](./node-npm) → [pnpm variant](./node-pnpm) →

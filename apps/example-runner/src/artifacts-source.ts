@@ -5,6 +5,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { readArtifactSource } from "../../../packages/cloudflare/src/artifacts-source.ts"
 import workflow from "../../../examples/artifacts-source/.cloudflare/ci/workflow.ts"
 
+/** Legacy shared-host adapter: new deployments are owned by examples/artifacts-source. Preserve old run history. */
 export class ArtifactsSourceWorkflow extends WorkflowEntrypoint<{ ARTIFACTS: Artifacts }, Cloudflare.WorkflowParameters> {
   override async run(event: Readonly<WorkflowEvent<Cloudflare.WorkflowParameters>>, step: WorkflowStep) {
     const binding = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace }).WorkspaceContainer

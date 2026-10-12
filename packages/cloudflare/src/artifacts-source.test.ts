@@ -18,6 +18,16 @@ test("Artifacts exports binary and executable files at an immutable revision", a
   ])
 })
 
+test("Artifacts can export a standalone repository root", async () => {
+  const files = await readArtifactSource({
+    readCommit: async () => ({ hash: revision, treeHash: "root" }) as ArtifactsCommitMetadata,
+    readTree: async () => [entry("source.txt")],
+    readBlob: async () => new Blob(["source from artifacts\n"]),
+  }, revision, "")
+  assert.deepEqual(files.map(file => file.path), ["source.txt"])
+  assert.equal(atob(files[0]!.base64), "source from artifacts\n")
+})
+
 test("Artifacts rejects mutable refs, traversal, links and duplicate entries", async () => {
   await assert.rejects(readArtifactSource(repo([]), "main", "app"), /immutable/)
   await assert.rejects(readArtifactSource(repo([]), revision, "../app"), /directory/)
