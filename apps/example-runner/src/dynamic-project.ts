@@ -10,6 +10,8 @@ interface Parameters { readonly repository: string; readonly revision: string }
 /** Fetch immutable source in the trusted host; the child receives only code and synthetic requests. */
 export class DynamicProjectWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader }, Parameters> {
   override async run(event: Readonly<WorkflowEvent<Parameters>>, step: WorkflowStep) {
+    if (typeof event.payload !== "object" || event.payload === null || typeof event.payload.repository !== "string"
+      || typeof event.payload.revision !== "string") throw new NonRetryableError("Immutable GitHub source required")
     const repository = new URL(event.payload.repository)
     if (repository.origin !== "https://github.com" || repository.username || repository.password
       || repository.search || repository.hash || !/^\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+(?:\.git)?$/.test(repository.pathname)
@@ -35,7 +37,7 @@ export class DynamicProjectWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerL
         readFile: (_, path) => Effect.tryPromise(() => step.do(`project-source:${path}`, async () => {
           if (!["app/index.js", "app/lib.js"].includes(path)) throw new NonRetryableError("Source path not allowed")
           const response = await fetch(`https://raw.githubusercontent.com${project}/${event.payload.revision}/examples/dynamic-project-checks/${path}`,
-            { redirect: "error", signal: AbortSignal.timeout(10_000) })
+            { redirect: "manual", signal: AbortSignal.timeout(10_000) })
           if (!response.ok) throw new NonRetryableError(`Source fetch failed: ${response.status}`)
           return Dynamic.readBoundedText(response, Dynamic.projectPolicy.maxSourceBytes)
         })),
