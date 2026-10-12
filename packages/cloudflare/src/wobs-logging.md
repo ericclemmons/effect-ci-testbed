@@ -21,6 +21,10 @@ does not invoke getters, and never forwards environment/event payloads or raw
 container stdout/stderr automatically. This is not a guarantee for secrets a user
 explicitly unwraps, arbitrary direct `console` calls, or unknown credentials.
 Do not log them. The release token remains only in the release-manager Worker.
+If host environment inspection fails or a secret is an unevaluated accessor, the
+logger suppresses all payload/context records and emits at most one fixed warning.
+It neither calls that getter nor changes the business outcome. Native platform
+exception logging is independent; secrets must not be placed in thrown errors.
 
 Logs and retry attempts are diagnostics, **not independent health trials**.
 HMD Worker health uses version/window-bound native invocation outcomes; Workflow

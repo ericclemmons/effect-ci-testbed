@@ -45,5 +45,6 @@ assertion, and a separate `VERSION` read. Workflow version
 `1f7a05b3-fabc-4602-b761-bf67c5982efb`, host deployment
 `4d4e80ef-e00c-418b-9a4c-eaabad05956e`. This proves public pinned clone and
 checkpoint restoration, not private GitLab authentication or external CI execution.
-The local filesystem variant passed independently. GitHub coverage stays pending
-until its actual suite jobs pass.
+The local filesystem variant passed independently. PR118's exact-head full suite
+also passed the Effect-on-GitHub plan/execute jobs for that portable fixture variant;
+the real GitLab network clone proof remains the hosted run above.

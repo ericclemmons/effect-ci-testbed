@@ -8,9 +8,17 @@ export interface WobsContext { readonly workflow: string; readonly instance: str
 
 /** Trusted host logging only: never forwards container output or environment objects. */
 export const wobsLoggerLayer = (context: WobsContext, environment: object = {}, sink: Sink = console) => {
-  const secrets = Object.entries(Object.getOwnPropertyDescriptors(environment))
-    .filter(([key, descriptor]) => /token|secret|private.?key|password/i.test(key) && typeof descriptor.value === "string")
-    .map(([, descriptor]) => descriptor.value as string).filter(Boolean).sort((a, b) => b.length - a.length)
+  let secrets: string[] = []
+  let inventoryAvailable = true
+  let suppressionReported = false
+  try {
+    const sensitive = Object.entries(Object.getOwnPropertyDescriptors(environment))
+      .filter(([key]) => /token|secret|private.?key|password/i.test(key))
+    // Do not evaluate secret getters. Without their values we cannot promise masking.
+    if (sensitive.some(([, descriptor]) => !("value" in descriptor))) inventoryAvailable = false
+    secrets = sensitive.filter(([, descriptor]) => typeof descriptor.value === "string")
+      .map(([, descriptor]) => descriptor.value as string).filter(Boolean).sort((a, b) => b.length - a.length)
+  } catch { inventoryAvailable = false }
   const clean = (text: string) => {
     for (const secret of secrets) text = text.split(secret).join("<redacted>")
     return text.replace(/([?&](?:token|secret|password|capability)=)[^&#\s]*/gi, "$1<redacted>").slice(0, 2048)
@@ -39,6 +47,13 @@ export const wobsLoggerLayer = (context: WobsContext, environment: object = {}, 
   return Logger.layer([Logger.make(options => {
     // Serialization/transport failure must not change execution or retry semantics.
     try {
+      if (!inventoryAvailable) {
+        if (!suppressionReported) {
+          suppressionReported = true
+          sink.warn({ source: "effect-ci", level: "Warn", message: "Effect diagnostics suppressed: secret inventory unavailable" })
+        }
+        return
+      }
       const annotations = options.fiber.getRef(CurrentLogAnnotations)
       const record = { source: "effect-ci", level: options.logLevel, time: options.date.toISOString(),
         workflow: clean(context.workflow).slice(0, 256), instance: clean(context.instance).slice(0, 256),
