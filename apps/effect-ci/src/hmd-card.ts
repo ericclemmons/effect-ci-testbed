@@ -20,7 +20,8 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     if (update.type !== "observed") return
     const current = update.observations.at(-1)
     if (!current || update.observations.length > 84 || card.snapshot().identity.instanceId !== runId ||
-      current.owner !== runId || !/^[a-f0-9]{64}$/.test(current.snapshot)) throw new Error("Invalid HMD card identity")
+      current.owner !== runId || !/^[a-f0-9]{64}$/.test(current.snapshot) ||
+      !["closed-client-http-cohort", "experimental-native-wobs"].includes(current.evidenceSource ?? "closed-client-http-cohort")) throw new Error("Invalid HMD card identity")
     const baseline = update.observations[0]!.baseline
     let previousTime = -1
     let previousPhase = 0
@@ -39,6 +40,7 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
         observation.baseline.version !== baseline.version || observation.baseline.from !== baseline.from ||
         observation.baseline.to !== baseline.to || observation.candidate.version !== current.candidate.version ||
         observation.baseline.trials !== baseline.trials || observation.baseline.failures !== baseline.failures || observation.candidate.from !== observation.policy.phaseStartedAt ||
+        (observation.evidenceSource ?? "closed-client-http-cohort") !== (current.evidenceSource ?? "closed-client-http-cohort") ||
         observation.policy.baselineVersion !== baseline.version || observation.policy.candidateVersion !== current.candidate.version ||
         observation.policy.maxErrorRate !== current.policy.maxErrorRate) throw new Error("Mixed HMD card history")
       previousTime = elapsedSeconds
@@ -62,7 +64,7 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     })
     // Failure clears an older phase's graph; text still describes the current pinned observation.
     card.setHealth({ phase: current.phase, decision: current.regressionDetected && current.route.status === "review" ? "regression" : current.decision.status === "regression" && current.route.status === "review" ? "regression" : current.decision.status === "regression" ? "rollback" : current.decision.status,
-      evidenceSource: "closed-client-http-cohort" }, image.ok ? image.fileId : undefined)
+      evidenceSource: current.evidenceSource ?? "closed-client-http-cohort" }, image.ok ? image.fileId : undefined)
     await services.publish(card, `notification:hmd-card-${suffix}`)
   }
 }

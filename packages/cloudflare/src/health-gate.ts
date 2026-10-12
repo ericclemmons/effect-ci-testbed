@@ -63,7 +63,15 @@ export function evaluateHealth(baseline: HealthSample, candidate: HealthSample, 
   const uncertain = (reason: string): HealthDecision => ({ status: "uncertain", reason })
   if (baseline.version !== policy.baselineVersion || candidate.version !== policy.candidateVersion) return uncertain("version mismatch")
   if (baseline.from !== policy.baselineWindow.from || baseline.to !== policy.baselineWindow.to || candidate.from !== policy.phaseStartedAt) return uncertain("window does not match the pinned release cohort")
-  if (baseline.completeThrough < baseline.to || candidate.completeThrough < candidate.to) return uncertain("telemetry still arriving")
+  if (baseline.completeThrough < baseline.to || candidate.completeThrough < candidate.to) return {
+    ...uncertain("telemetry still arriving"),
+    // Independently complete cohorts can still be shown. Missing candidate
+    // ingestion must not erase the pinned previous metric or invent its peer.
+    ...(baseline.completeThrough >= baseline.to && baseline.sampling === "unsampled" && baseline.trials
+      ? { baseline: rateInterval(baseline, policy) } : {}),
+    ...(candidate.completeThrough >= candidate.to && candidate.sampling === "unsampled" && candidate.trials
+      ? { candidate: rateInterval(candidate, policy) } : {}),
+  }
   if (baseline.sampling !== "unsampled" || candidate.sampling !== "unsampled") return uncertain("weighted counts need a sampling-aware estimator")
   if (!baseline.trials || !candidate.trials) return {
     ...uncertain("needs more independent observations"),

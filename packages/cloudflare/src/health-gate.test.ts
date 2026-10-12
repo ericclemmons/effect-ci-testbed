@@ -38,6 +38,17 @@ test("bounds narrow as independent data arrives, and account for more simultaneo
   assert.equal(evaluateHealth(sample(false), sample(true), { ...policy, maxIncrease: 0 }).status, "uncertain")
 })
 
+test("candidate ingestion lag preserves only independently complete previous bounds", () => {
+  const result = evaluateHealth(sample(false), { ...sample(true, 30, 3), completeThrough: 100 }, policy)
+  assert.equal(result.status, "uncertain")
+  assert.ok(result.baseline)
+  assert.equal(result.candidate, undefined)
+  assert.equal(result.increase, undefined)
+  const bothMissing = evaluateHealth({ ...sample(false), completeThrough: 0 }, { ...sample(true), completeThrough: 100 }, policy)
+  assert.equal(bothMissing.baseline, undefined)
+  assert.equal(bothMissing.candidate, undefined)
+})
+
 test("invalid probabilities, fractional weighted totals and corrupt failures fail closed", () => {
   assert.throws(() => evaluateHealth(sample(false), sample(true), { ...policy, alpha: 0 }))
   assert.throws(() => evaluateHealth(sample(false), { ...sample(true), trials: 1.5 }, policy))

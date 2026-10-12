@@ -17,7 +17,8 @@ flowchart LR
 
 ---
 
-Hosted HTTP-cohort rollout verified; WOBS integration and live notification graphs remain in progress.
+Hosted HTTP-cohort rollout and private live Slack graphs are verified separately;
+full healthy native-WOBS gating and production telemetry remain unverified.
 
 Implemented foundations:
 
@@ -145,7 +146,10 @@ being reported as a successful expected regression. Fatal platform termination c
 bypass JavaScript cleanup; the broker now has independently verified
 [controller-death recovery](../../apps/release-manager/README.md#independent-controller-death-recovery).
 Controlled native WOBS regression cohorts are now verified separately; healthy
-four-phase WOBS promotion, ambient windows and Slack/GitHub images remain open.
+four-phase WOBS promotion and ambient windows remain open. The separate hosted
+[HTTP review lab](../../apps/effect-ci/README.md#separate-health-mediated-approval-lab)
+now verifies private Slack images in one live updating card; GitHub health graphs
+and representative native production telemetry are not proven by that lab.
 
 ### Hosted healthy four-phase proof
 
@@ -212,8 +216,9 @@ node --test apps/example-runner/ci/tests/live-hmd.test.ts
 3. Run each real 10/25/75/100 phase with an uncertainty budget. A regression is
    non-retryable; inconclusive data is retryable; exhaustion restores the prior split.
 4. Publish versioned chart snapshots and update the **same** Slack message and GitHub
-   check after each sample. An immutable sample history must survive retries. Slack
-   image delivery/PNG rendering and secure chart URLs are not implemented yet.
+   check after each sample. An immutable sample history must survive retries.
+   Private PNG delivery in one Slack card is verified for the separate HTTP lab;
+   native telemetry integration and GitHub health graphs require their own proof.
 5. Prove healthy promotion, regression rollback, inconclusive-to-conclusive progress,
    exhausted rollback, and concurrent-release ownership protection end-to-end.
 

@@ -4,7 +4,7 @@ export type SlackBlock = Readonly<Record<string, unknown>>
 export interface RunHealth {
   readonly phase: 10 | 25 | 75 | 100
   readonly decision: "uncertain" | "advance" | "rollback" | "regression"
-  readonly evidenceSource: "closed-client-http-cohort" | "native-wobs"
+  readonly evidenceSource: "closed-client-http-cohort" | "native-wobs" | "experimental-native-wobs"
 }
 export interface RunIdentity {
   readonly instanceId: string
@@ -125,7 +125,7 @@ export class RunCard {
   setHealth(health: RunHealth, fileId?: string): void {
     if (![10, 25, 75, 100].includes(health.phase) ||
       !["uncertain", "advance", "rollback", "regression"].includes(health.decision) ||
-      !["closed-client-http-cohort", "native-wobs"].includes(health.evidenceSource) ||
+      !["closed-client-http-cohort", "native-wobs", "experimental-native-wobs"].includes(health.evidenceSource) ||
       (fileId !== undefined && !/^F[A-Z0-9]+$/.test(fileId))) throw new Error("Invalid health presentation")
     this.health = Object.freeze({ phase: health.phase, decision: health.decision,
       evidenceSource: health.evidenceSource, ...(fileId ? { fileId } : {}) })
@@ -184,7 +184,8 @@ export class RunCard {
     blocks.push({ type: "section", text: { type: "mrkdwn", text: section || "Preparing checks…", verbatim: true } })
     if (lines.length > 100) blocks.push({ type: "context", elements: [{ type: "plain_text", text: `${lines.length - 100} more checks; see Workflow history.` }] })
     if (this.health) {
-      const evidence = this.health.evidenceSource === "native-wobs" ? "Native WOBS" : "HTTP cohort (not WOBS)"
+      const evidence = this.health.evidenceSource === "experimental-native-wobs" ? "Native Worker outcomes (experimental SQL)" :
+        this.health.evidenceSource === "native-wobs" ? "Native WOBS" : "HTTP cohort (not WOBS)"
       blocks.push({ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · ${evidence}` } })
       if (this.health.fileId) blocks.push({ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Observed health confidence intervals; not a forecast" })
     }

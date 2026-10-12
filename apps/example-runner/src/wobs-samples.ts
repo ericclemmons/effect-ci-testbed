@@ -53,7 +53,7 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
     !versions.length || versions.some((v) => typeof v !== "string" || !v) || new Set(versions).size !== versions.length) throw new Error("Invalid closed receipt cohort")
   if (!batch.receipts.length) return { complete: false, samples: Object.fromEntries(versions.map((version) => [version,
     { version, from, to, completeThrough: from, trials: 0, failures: 0, sampling: "unsampled" as const }])),
-    missing: batch.requested, conflicts: 0, invalid: 0, nativeRows: 0 }
+    missing: batch.requested, conflicts: 0, invalid: 0, attributionInvalid: 0, nativeRows: 0 }
   const data: Record<string, unknown>[] = []
   // Keep each SQL IN-list bounded. Reconcile the whole manifest together so one
   // native event cannot be counted twice across query partitions or versions.
@@ -72,16 +72,23 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
   const expected = new Map(batch.receipts.map((receipt) => [receipt.ray, receipt.version]))
   const native = data.filter((row) => row.logType === "cf-worker-event")
   const rows = native.map(sqlFetchOutcome)
+  // Distinguish incomplete/sampled observations from broken source attribution.
+  // This normalization is ONLY an integrity check; weighted rows remain excluded
+  // from health trials below. Never treat the forced unit weight as health data.
+  let attributionInvalid = native.filter((raw) => {
+    const identity = sqlFetchOutcome({ ...raw, sampleInterval: 1 })
+    return !identity || expected.get(identity.id) !== identity.version
+  }).length
   let invalid = rows.filter((row) => !row || expected.get(row.id) !== row.version).length
   const eventOwners = new Map<string, string>()
   for (const row of rows) if (row) {
     const previous = eventOwners.get(row.eventId)
-    if (previous && previous !== row.id) invalid++
+    if (previous && previous !== row.id) { invalid++; attributionInvalid++ }
     else eventOwners.set(row.eventId, row.id)
   }
   const samples: Record<string, HealthSample> = {}
   let complete = invalid === 0 && batch.unknown === 0 && batch.requested === batch.receipts.length
-  let missing = 0
+  let missing = batch.unknown
   let conflicts = 0
   for (const version of versions) {
     const ids = batch.receipts.filter((r) => r.version === version).map((r) => r.ray)
@@ -97,7 +104,7 @@ export async function readReceiptSamples(batch: ReceiptBatch, versions: Readonly
   }
   for (const version of versions) samples[version] = { ...samples[version]!, completeThrough: complete ? to : from }
   const timestamps = rows.filter((r) => r !== undefined).map((r) => r.timestamp)
-  return { complete, samples, missing, conflicts, invalid, nativeRows: native.length,
+  return { complete, samples, missing, conflicts, invalid, attributionInvalid, nativeRows: native.length,
     nativeTimeRange: timestamps.length ? { from: Math.min(...timestamps), to: Math.max(...timestamps) } : undefined }
 }
 

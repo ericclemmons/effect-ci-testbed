@@ -114,6 +114,8 @@ test("mixed identity/history is rejected before render, upload or publish", asyn
   await assert.rejects(observe({ type: "observed", observations: [observation(25), observation(10)] }), /history/)
   await assert.rejects(observe({ type: "observed", observations: [observation(10),
     { ...observation(25), baseline: { ...observation(25).baseline, from: 1 } }] }), /history/)
+  await assert.rejects(observe({ type: "observed", observations: [observation(10),
+    { ...observation(25), evidenceSource: "experimental-native-wobs" }] }), /history/)
 })
 
 test("same-stage samples grow the existing private graph without reusing image checkpoints", async () => {
