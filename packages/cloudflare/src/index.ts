@@ -13,6 +13,7 @@ import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
 import { withWobsLogging } from "./wobs-logger.ts"
 export { wobsLoggerLayer, withWobsLogging } from "./wobs-logger.ts"
+export { SourceRevisions, readDurableSource } from "./durable-source.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"

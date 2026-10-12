@@ -33,6 +33,8 @@ export default defineConfig({
       SecretOutboundWorkflow: exports.workflow({ name: "effect-ci-example-secret-outbound" }),
       ArtifactsSourceWorkflow: exports.workflow({ name: "effect-ci-example-artifacts-source" }),
       R2SourceWorkflow: exports.workflow({ name: "effect-ci-example-r2-source" }),
+      SourceRevisions: exports.durableObject({ storage: "sqlite" }),
+      DurableSourceWorkflow: exports.workflow({ name: "effect-ci-example-durable-source" }),
       AnalyticsProbeWorkflow: exports.workflow({ name: "effect-ci-probe-analytics" }),
       WobsCohortProbeWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-cohort" }),
       WobsReleaseWorkflow: exports.workflow({ name: "effect-ci-probe-wobs-release" }),

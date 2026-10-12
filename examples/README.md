@@ -25,10 +25,11 @@ revision, then attach a signed Git note. Working-file feedback is not attestatio
 ## Source and artifact boundaries
 
 [Source providers](./source-providers) → [R2 source](./r2-source) or
-[Artifacts source](./artifacts-source).
+[Artifacts source](./artifacts-source) or [Durable Object source](./durable-object-source).
 
 These answer where `source.checkout()` gets its inputs. R2 adds digest-pinned private
 storage; Artifacts adds commit-pinned input materialization through a host binding.
+Durable Object source adds immutable revision storage and a host-only RPC reader.
 [Portable artifacts](./portable-artifacts) answers a different question: how does a
 build output cross to another workload? Input providers and output publication are
 separate recipes even when both use stored bytes.

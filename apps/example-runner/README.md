@@ -92,6 +92,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
 | [Portable artifacts](../../examples/portable-artifacts) | `effect-ci-example-portable-artifacts` |
 | [Host-only outbound credentials](../../examples/secret-outbound) | `effect-ci-example-secret-outbound` |
+| [Immutable Durable Object source](../../examples/durable-object-source) | `effect-ci-example-durable-source` |
 | [Cloudflare Artifacts source](../../examples/artifacts-source) | `effect-ci-example-artifacts-source` |
 
 For local Dynamic Worker execution, start `pnpm --filter
