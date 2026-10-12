@@ -28,3 +28,27 @@ Run `./examples/secure-secrets/.cloudflare/ci/workflow.ts` locally with a
 with [Effect on GitHub](./.github/workflows/effect-on-github.yml). Redaction and missing
 secret assertions live in
 [`tests/secure-secrets.test.ts`](./.cloudflare/ci/tests/secure-secrets.test.ts).
+
+## Hosted Worker resolver
+
+The [example host](../../apps/example-runner/src/secure-secrets.ts) maps this recipe's
+`GITHUB_TOKEN` requirement to an **inert test canary**, `env.CI_DEMO_SECRET`, wrapped
+in `Redacted`. It is not a GitHub authentication token and does not authenticate a
+registry. This isolates the primitive: required-secret resolution and redacted
+metadata. The dedicated [outbound example](../secret-outbound) instead proves
+host-only credential substitution for an actual outbound request.
+
+Put an inert value in the Git-ignored `apps/example-runner/.secrets.env`, then deploy
+from that app directory with `cf deploy --secrets-file .secrets.env`. Do not overwrite
+an existing secrets file or put personal OAuth/refresh credentials there.
+
+```sh
+cf workflows instances create effect-ci-example-secure-secrets --body '{"instance_id":"my-host-secret-run","params":{"repository":"unused","revision":"unused"}}'
+```
+
+The resolver runs only in trusted Worker memory. The workflow returns a plan with
+the requirement name, not the value, and this recipe starts no container. A second
+administrative scenario uses `event.payload.scenario: "missing"` to request `UNKNOWN`;
+it must fail rather than falling back to another host credential. This is a Worker
+secret binding adapter, not the separate account-wide Secrets Store product.
+Hosted coverage remains unverified until both native scenarios have run.
