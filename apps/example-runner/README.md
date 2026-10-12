@@ -87,6 +87,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Deployment hooks](../../examples/deploy-hook) | `effect-ci-example-deploy-hook` |
 | [Source-only formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-source-checks` |
 | [Isolated Dynamic Worker formatter](../../examples/dynamic-worker-checks) | `effect-ci-example-dynamic-formatter` |
+| [Untrusted Dynamic Worker project](../../examples/dynamic-project-checks) | `effect-ci-example-dynamic-project` |
 | [Cache input correctness](../../examples/cache-policy) | `effect-ci-example-cache-policy` |
 | [Retries and timeouts](../../examples/execution-policy) | `effect-ci-example-execution-policy` |
 | [Action-owned rollback](../../examples/rollback-compensation) | `effect-ci-example-rollback` |
@@ -103,6 +104,12 @@ create an `effect-ci-example-dynamic-formatter` instance with the same repositor
 and full commit SHA parameters above. This exercises WorkerLoader locally, rather
 than the default Node formatter. The current CLI's `--local` instance commands do
 not connect to this Vite dev server; use its explorer instead.
+
+The separate `effect-ci-example-dynamic-project` runs project ESM in fresh
+capability-limited children. See its recipe for immutable source parameters, the
+raw-object CLI payload workaround and recorded positive/adversarial native proofs.
+It does not use Containers, even though this shared host also exports container
+recipes. Child workers receive none of those host bindings.
 
 A successful deployment alone does not verify an example. Inspect the completed
 instance, action statuses, commands, and checkpoint history before marking the matrix.
