@@ -24,10 +24,12 @@ for (const profile of ["healthy", "regression"] as const) {
     assert.equal(run.params.intent, "hmd-review-lab")
     assert.equal(run.params.profile ?? "healthy", profile)
     assert.match(run.params.revision, /^[a-f0-9]{40}$/)
+    const native = run.params.telemetry === "experimental-native-wobs"
+    const evidenceSource = native ? "experimental-native-wobs" : "closed-client-http-cohort"
     if (profile === "healthy") {
       assert.equal(run.output.releaseCommitted, false)
       assert.equal(run.output.wobsVerified, false)
-      assert.equal(run.output.evidenceSource, "closed-client-http-cohort")
+      assert.equal(run.output.evidenceSource, evidenceSource)
     }
     const phases = profile === "healthy" ? [10, 25, 75, 100] : [10]
     const images = run.steps.filter((s: any) => s.name.startsWith("notification:hmd-image-"))
@@ -51,7 +53,7 @@ for (const profile of ["healthy", "regression"] as const) {
       for (const request of requests) {
         assert.equal(request.baselineVersion, baseline)
         assert.equal(request.candidateVersion, candidates[profile])
-        assert.equal(request.evidenceSource, "closed-client-http-cohort")
+        assert.equal(request.evidenceSource, evidenceSource)
         assert.equal(request.baselineTrials, 100)
         assert.equal(request.expiresAt, requests[0].expiresAt, "sampling never extends the original deadline")
         assert.ok(request.candidateTrials >= trials && request.candidateFailures >= failures)
@@ -75,7 +77,13 @@ for (const profile of ["healthy", "regression"] as const) {
         checkpoint(run, `release:verify-after-review-${phase}`)
       } else {
         assert.ok(requests.some((r: any) => /Regression detected/.test(r.reason)))
-        assert.ok(failures >= 20)
+        if (native) {
+          const conclusive = requests.find((r: any) => r.telemetry?.complete && r.candidateBounds?.low > r.margins.maxErrorRate)
+          assert.ok(conclusive, "early native regression needs complete conclusive bounds, not a partial count")
+          assert.equal(conclusive.earlyRegression, true)
+          assert.equal(conclusive.telemetry.missing, 0)
+          assert.equal(conclusive.telemetry.invalid, 0)
+        } else assert.ok(failures >= 20)
         assert.equal(run.steps.some((s: any) => s.name === "release:promote-25-1"), false)
         const resolution = run.steps.find((s: any) => /^review:resolve-10(?:-sample-\d+)?-1$/.test(s.name))
         assert.equal(resolution?.success, false)
