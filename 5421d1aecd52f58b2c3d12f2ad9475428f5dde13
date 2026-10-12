@@ -1,0 +1,1 @@
+{"kind":"operator-advisory","reuseAuthority":false,"commit":"5421d1aecd52f58b2c3d12f2ad9475428f5dde13","pr":124,"fullSuite":38290335916,"fullSuiteConclusion":"success","jobs":151,"acceptedChecks":280,"documentationTestsPassed":5,"scope":"Capability inventory and planned static-site recipes only; no new hosted static-site or deployment proof"}
