@@ -184,7 +184,7 @@ Keep credentials outside workspace containers, including authenticated outbound 
 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
+| [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | ✅ |
 | [Authenticate outbound requests with host-only credentials and container placeholders](./examples/secret-outbound) | — | 🔜 | — | ✅ |
 
 ### Hosted CI, notifications, and approvals

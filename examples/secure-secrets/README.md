@@ -51,4 +51,10 @@ the requirement name, not the value, and this recipe starts no container. A seco
 administrative scenario uses `event.payload.scenario: "missing"` to request `UNKNOWN`;
 it must fail rather than falling back to another host credential. This is a Worker
 secret binding adapter, not the separate account-wide Secrets Store product.
-Hosted coverage remains unverified until both native scenarios have run.
+Native `coverage-host-secret-20261012-1` completed with only the `GITHUB_TOKEN`
+requirement in its plan; `coverage-host-secret-missing-20261012-1` errored with
+`Missing required secret: UNKNOWN`. Both had zero native workspace/command steps,
+and neither API result contained the canary. Host deployment
+`be55cd22-c3c1-4b14-b246-24a99c662446`, Workflow version
+`590724dd-82df-4795-8e29-b33623aab149`. This verifies primitive Worker-bound secret
+resolution/redaction and no credential fallback, not actual GitHub authentication.
