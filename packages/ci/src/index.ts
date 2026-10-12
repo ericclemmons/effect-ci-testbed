@@ -1787,6 +1787,7 @@ const makeRuntime = (
         return queued.pipe(
           Effect.andThen(body),
           Effect.provideService(CurrentStep, id),
+          Effect.annotateLogs({ "ci.step": id, "ci.attempt": 1 }),
           Effect.tap((value) => Effect.sync(() => {
             outputs.set(id, value)
           })),

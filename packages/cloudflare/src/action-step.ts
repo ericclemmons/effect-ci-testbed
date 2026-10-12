@@ -72,7 +72,10 @@ export const makeActionExecutor = (
       } as WorkflowStepConfig, async (context) => {
         activeBodies.add(request.stepId)
         try {
-          const body = request.run(context.attempt)
+          const body = request.run(context.attempt).pipe(
+            Effect.tapCause(cause => Effect.logWarning("Action attempt failed; native policy decides retry", cause)),
+            Effect.annotateLogs({ "ci.step": request.stepId, "ci.attempt": context.attempt }),
+          )
           // Native timeout owns the retry history; Effect timeout additionally
           // interrupts fibers so an expired attempt cannot later commit a result.
           const timed = request.options.timeout === undefined ? body : body.pipe(Effect.timeout(request.options.timeout))

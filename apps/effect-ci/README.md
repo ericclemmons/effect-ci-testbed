@@ -175,6 +175,18 @@ telemetry or a four-phase WOBS safety proof. Recorded hosted evidence is added o
 after an actual run. `wobsVerified: false` and `releaseCommitted: false` remain
 explicit; no matrix coverage flag is upgraded by this integration alone.
 
+Corrected live run `coverage-hmd-native-regression-20261012-2` used frozen receipt
+cohorts: baseline 0/100 errors; complete candidate cohorts 8/8 then 18/18 errors.
+The final candidate interval was 43.23–100%, above the 10% absolute error limit.
+Sticky regression prevented promotion beyond 10%; its deadline failed nonretryably
+and the broker automatically restored the full previous allocation at deployment
+`432309f9-5a8c-434a-9597-31cd8a5153ab`. No human/agent override was sent.
+The same Slack message `1791775191.302659` updated through ingestion, regression
+and rollback; signed-in visual inspection verified both versions' rates/bounds in
+private image `F0C8KDZQ4FN`, rollback icon, and removed terminal buttons. This proves
+that bounded synthetic native regression path, not ambient production completeness,
+causal comparison, or a full healthy four-phase safety proof.
+
 The first live native-card run, `coverage-hmd-native-regression-20261012-1`,
 **exposed a sampler bug**, not a successful rollback proof. Native SQL closed
 the previous 100 outcomes after 30s. The canary loop then kept adding 100 fresh
@@ -851,3 +863,9 @@ management remain follow-up slices.
   allow the execution API to be protected without intercepting GitHub's webhook.
 - [Cloudflare Access service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)
   authenticate the non-interactive `cf-ci` client.
+
+## Effect logging
+
+Hosted CI installs the [structured WOBS logger](../../packages/cloudflare/src/wobs-logging.md).
+Effect logs retain workflow, step and retry-attempt context; terminal failures
+still propagate. These diagnostics are not HMD health denominators.

@@ -11,6 +11,8 @@ import { makeCommandStepExecutor } from "./command-step.ts"
 import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
+import { withWobsLogging } from "./wobs-logger.ts"
+export { wobsLoggerLayer, withWobsLogging } from "./wobs-logger.ts"
 
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
@@ -822,7 +824,7 @@ export const workflowEntrypoint = <
     const definition = typeof workflow === "function"
       ? await workflow(event.payload, step)
       : workflow
-    const result = await CI.runPromise(definition, {
+    const result = await Effect.runPromise(withWobsLogging(CI.run(definition, {
       ci: true,
       env: "cloudflare",
       event: {
@@ -846,7 +848,7 @@ export const workflowEntrypoint = <
         : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,
-    })
+    }), { workflow: definition.id, instance: event.instanceId }, this.env))
 
     return result.plan
   }

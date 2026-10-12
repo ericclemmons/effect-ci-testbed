@@ -17,6 +17,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
+    observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
       HealthChartRenderer: exports.worker(),
       PrivateSlackImages: exports.durableObject({ storage: "sqlite" }),

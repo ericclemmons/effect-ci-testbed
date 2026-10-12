@@ -22,6 +22,7 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
+    observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     // Bounded HMD labs: HTTP/native SQL plus checkpoint, broker and recovery headroom.
     limits: { subrequests: HMD_SUBREQUEST_LIMIT },
     env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
@@ -49,6 +50,8 @@ export default defineConfig({
       EffectTimeoutProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-timeout" }),
       EffectExhaustionProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-exhaustion" }),
       EffectTerminalProbeWorkflow: exports.workflow({ name: "effect-ci-probe-effect-terminal" }),
+      EffectObservabilityWorkflow: exports.workflow({ name: "effect-ci-probe-observability" }),
+      EffectObservabilityTerminalWorkflow: exports.workflow({ name: "effect-ci-probe-observability-terminal" }),
       RollbackCompensationWorkflow: exports.workflow({ name: "effect-ci-example-rollback" }),
       RollbackExhaustionWorkflow: exports.workflow({ name: "effect-ci-probe-rollback-exhaustion" }),
       ReverseRollbackWorkflow: exports.workflow({ name: "effect-ci-probe-reverse-rollback" }),

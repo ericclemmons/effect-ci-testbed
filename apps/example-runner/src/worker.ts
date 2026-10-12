@@ -17,6 +17,7 @@ export { WobsReleaseWorkflow } from "./wobs-release.ts"
 export { WobsBatchProbeWorkflow, WobsLargeBatchProbeWorkflow, WobsDiagnosticWorkflow } from "./wobs-batch-probe.ts"
 export { WobsHealthyWorkflow } from "./wobs-healthy.ts"
 export { ReleaseBrokerProbeWorkflow } from "./release-broker-probe.ts"
+export { EffectObservabilityWorkflow, EffectObservabilityTerminalWorkflow } from "./effect-observability-probe.ts"
 
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts"
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts"

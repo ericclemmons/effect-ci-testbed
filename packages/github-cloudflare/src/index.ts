@@ -219,7 +219,7 @@ export const workflowEntrypoint = <A>(
     }
 
     try {
-      const result = await CI.runPromise(workflow, {
+      const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(workflow, {
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
             card.setReviewUrl(url)
@@ -260,7 +260,7 @@ export const workflowEntrypoint = <A>(
           ? { checkCache: options.checkCache(this.env) }
           : {}),
         workspacePersistence: runner.persistence,
-      })
+      }), { workflow: workflow.id, instance: event.instanceId }, this.env))
 
       return result.plan
     } catch (error) {
