@@ -830,7 +830,32 @@ idempotent.
 - **Check stays queued:** inspect the Workflow instance and Worker logs in the
   Cloudflare dashboard.
 - **Private clone fails:** confirm **Contents** is read-only and the App installation
-  includes the repository. Installation tokens are minted just in time.
+  includes the repository. Installation tokens are minted just in time, scoped to
+  that repository with **Contents: read**, and retained only in the host Durable
+  Object during checkout. Git receives a token-free `github-checkout.ci` URL;
+  the host proxy forwards only that repository's clone/fetch endpoints over HTTPS.
+  It denies pushes, redirects and other repositories, and revokes access before
+  project checkout/commands and on failure. No token enters VM arguments,
+  environment, Git config, snapshots or durable storage. Worker restarts fail closed.
+  Export `GitCheckoutOutbound` as a Worker entrypoint alongside `WorkspaceContainer`
+  (see this app's `cloudflare.config.ts`); missing wiring fails closed, with no
+  credential-in-command fallback. Reporting uses a separate host-only token.
+- **Checkout isolation evidence:** real GitHub delivery
+  `29e9eff0-c670-11f1-8e3e-5ac45bcf077b` completed both source/cache checkout
+  paths, install/build, snapshots and GitHub checks on deployment
+  `69b0e290-1b9e-4785-b163-ab094ff1c79f` at source
+  `4d32bc9357a0d63123cbdddbb29d5006556f65a5`. The App currently has access to
+  this public repository only: this is real authenticated Git smart HTTP proof,
+  not private-repository authorization proof. Command-recorder regressions check
+  no credentials in VM argv/environment/origin and revocation before project
+  checkout and after failure; they are not a live VM forensic scan.
+  Read-only replay assertion:
+
+  ```sh
+  LIVE_GITHUB_CHECKOUT_INSTANCE=29e9eff0-c670-11f1-8e3e-5ac45bcf077b \
+  LIVE_GITHUB_CHECKOUT_REVISION=4d32bc9357a0d63123cbdddbb29d5006556f65a5 \
+  node --test apps/effect-ci/src/live-github-checkout.test.ts
+  ```
 - **`cf-ci --remote` redirects to login:** the Access application needs a
   **Service Auth** policy containing the service token—not only a human Allow policy.
 - **`cf-ci --remote` returns 401 after Access:** `EFFECT_CI_REMOTE_TOKEN` does not match
@@ -847,7 +872,7 @@ import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
 
 import workflow from "./workflow.ts"
 
-export { WorkspaceContainer } from "@effect-ci-testbed/github-cloudflare"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare"
 
 export default GitHubCloudflare.worker()
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {

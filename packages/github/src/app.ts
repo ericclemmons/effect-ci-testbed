@@ -94,7 +94,9 @@ export const createAppJwt = async (
 export const createInstallationToken = async (
   credentials: GitHubAppCredentials,
   installationId: number,
+  checkoutRepository?: string,
 ): Promise<string> => {
+  if (checkoutRepository !== undefined && !/^[A-Za-z0-9_.-]+$/.test(checkoutRepository)) throw new Error("Invalid GitHub checkout repository")
   const jwt = await createAppJwt(credentials)
   const response = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
@@ -105,12 +107,14 @@ export const createInstallationToken = async (
         authorization: `Bearer ${jwt}`,
         "user-agent": "effect-ci-testbed",
         "x-github-api-version": "2026-03-10",
+        "content-type": "application/json",
       },
+      ...(checkoutRepository ? { body: JSON.stringify({ repositories: [checkoutRepository], permissions: { contents: "read" } }) } : {}),
     },
   )
 
   if (!response.ok) {
-    throw new Error(`GitHub installation token failed (${response.status}): ${await response.text()}`)
+    throw new Error(`GitHub installation token failed (${response.status})`)
   }
 
   const result = await response.json() as { readonly token: string }
