@@ -23,10 +23,22 @@ export class DynamicProjectBoundaryWorkflow extends WorkflowEntrypoint<{ LOADER:
     ] as const) {
       results[name] = await step.do(`boundary:${name}`, { retries: { limit: 0, delay: "1 second" } }, () => invoke(source, body, twice))
     }
+    results["host-filesystem"] = await step.do("boundary:host-filesystem", { retries: { limit: 0, delay: "1 second" } }, async () => {
+      // Some hosted runtimes resolve Node built-ins even without Node compatibility flags.
+      // Import rejection is not the contract: native host files must never be readable.
+      try {
+        return await invoke(`import fs from 'node:fs';export default {fetch(){
+          try{fs.readFileSync('/proc/self/environ');return new Response('escaped')}
+          catch{return new Response('blocked')}}};`, "blocked")
+      } catch {
+        // A compile-time unavailable import also withholds this capability. Separately test
+        // unexpected assertion results below: an escaped response must not be accepted here.
+        throw new NonRetryableError("Host-filesystem probe requires explicit denied response on this hosted runtime")
+      }
+    })
     for (const [name, source] of [
       ["mismatch", `export default {fetch(){return new Response('wrong')}};`],
       ["oversized", `export default {fetch(){return new Response('x'.repeat(4097))}};`],
-      ["node-fs", `import fs from 'node:fs';export default {fetch(){return new Response('ok')}};`],
       ["cpu", `export default {fetch(){while(true){} }};`],
     ] as const) {
       results[name] = await step.do(`boundary:${name}`, { retries: { limit: 0, delay: "1 second" }, timeout: "10 seconds" }, async () => {
