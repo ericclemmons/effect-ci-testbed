@@ -27,6 +27,7 @@ export interface RunSnapshot {
     readonly status: keyof typeof symbols
     readonly optional: boolean
     readonly dependencies: ReadonlyArray<string>
+    readonly failureReason?: string
   }>
 }
 
@@ -63,6 +64,7 @@ export class RunCard {
   private review: { stepId: string; request: ApprovalRequest; url?: string } | undefined
   private health: Readonly<RunHealth & { fileId?: string }> | undefined
   private readonly identity: RunIdentity
+  private readonly failures = new Map<string, string>()
 
   constructor(identity: RunIdentity) {
     this.identity = identity
@@ -84,6 +86,7 @@ export class RunCard {
       case "workflow.started": return true
       case "step.status":
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
+        if (event.status !== "failed") this.failures.delete(event.stepId)
 
         return true
       case "dependency.added":
@@ -121,6 +124,13 @@ export class RunCard {
     if (this.review) this.review.url = url
   }
 
+  /** Host-sanitized diagnostic only. Never pass raw errors, logs or capability payloads. */
+  setFailure(stepId: string, reason: string): void {
+    if (typeof reason !== "string" || !reason.trim() || reason.length > 500) throw new Error("Invalid failure presentation")
+    this.check(stepId).status = "failed"
+    this.failures.set(stepId, reason.replace(/[\r\n]/g, " "))
+  }
+
   /** Presentation only: never authorizes promotion or converts uncertainty to health.
    * Reconstruct from checkpointed observations and private image receipts on replay.
    */
@@ -146,11 +156,12 @@ export class RunCard {
       checks: Object.freeze(Array.from(this.checks, ([id, check]) => Object.freeze({
         id, status: check.status, optional: check.optional,
         dependencies: Object.freeze(Array.from(check.dependencies)),
+        ...(this.failures.has(id) ? { failureReason: this.failures.get(id)! } : {}),
       }))),
     })
   }
 
-  render(options: { hideSkipped?: boolean; rollbackStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean; currentStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -165,10 +176,28 @@ export class RunCard {
       this.checks.get(options.rollbackStep)?.status === "complete")
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
-    const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id) => {
+    if (options.minimal) {
+      const current = options.currentStep ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
+        ordered.find(id => this.checks.get(id)!.status === "running") ??
+        ordered.find(id => this.checks.get(id)!.status === "failed") ??
+        ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
+      const title = restored ? `${headline}${this.phase === "failure" && current ? ` · ${current}` : ""}` :
+        this.phase === "success" ? headline : `${headline}${current ? ` · ${current}` : ""}`
+      // Reuse the existing capability/button builder, but never carry its checklist,
+      // diagnostics, metric text or image into the continuously updated root card.
+      const full = this.render({ ...options, minimal: false })
+      const actions = full.blocks.filter(block => block.type === "actions")
+      return { text: title, blocks: [
+        { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
+        { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
+        ...(this.review ? [{ type: "section", text: { type: "plain_text", text: this.review.request.summary.slice(0, 1000) } }] : []),
+        ...actions,
+      ] }
+    }
+    const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id, index) => {
       const check = this.checks.get(id)!
 
-      return `${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}`
+      return `${index + 1}. ${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
     })
     const blocks: Array<SlackBlock> = [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },
@@ -178,7 +207,7 @@ export class RunCard {
     // One compact checklist, split into sections to respect Slack's text limit.
     let section = ""
     for (const line of lines.slice(0, 100)) {
-      const safe = escape(line).slice(0, 500)
+      const safe = escape(line).replaceAll("\n   &gt; ", "\n   > ").slice(0, 1100)
       if (section.length + safe.length > 2800) {
         blocks.push({ type: "section", text: { type: "mrkdwn", text: section, verbatim: true } })
         section = ""
@@ -190,7 +219,7 @@ export class RunCard {
     if (this.health) {
       const evidence = this.health.evidenceSource === "experimental-native-wobs" ? "Native Worker outcomes (experimental SQL)" :
         this.health.evidenceSource === "native-wobs" ? "Native WOBS" : "HTTP cohort (not WOBS)"
-      blocks.push({ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · ${evidence}` } })
+      if (!this.health.fileId) blocks.push({ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · ${evidence} · chart unavailable` } })
       if (this.health.fileId) blocks.push({ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Observed health confidence intervals; not a forecast" })
     }
     if (this.review) {

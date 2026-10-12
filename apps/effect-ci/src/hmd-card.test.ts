@@ -33,6 +33,7 @@ test("host health observer updates the owned card with cumulative history, no se
   let uploads = 0
   const receipt = { ts: "existing-ci-message" }
   const observe = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async (points) => { histories.push(points.map((point) => point.elapsedSeconds)); return new Uint8Array([1]) },
     upload: async () => { uploads++; return uploads === 2 ? { ok: false } : { ok: true, fileId: `F${uploads}` } },
     publish: async (owned) => { assert.equal(owned, card); assert.equal(receipt.ts, "existing-ci-message"); frames.push(owned.render()) },
@@ -47,7 +48,7 @@ test("host health observer updates the owned card with cumulative history, no se
   assert.equal(uploads, 4)
   assert.equal(frames[0]!.blocks.filter((b) => b.type === "image").length, 1)
   assert.equal(frames[1]!.blocks.filter((b) => b.type === "image").length, 0, "failed image cannot leave an old phase graph")
-  assert.ok(frames.every((frame) => JSON.stringify(frame).includes("HTTP cohort (not WOBS)")))
+  assert.ok(frames.every((frame) => frame.text.includes("closed-client-http-cohort")))
   assert.ok(frames.every((frame) => JSON.stringify(frame).includes("uncertain")))
   assert.ok(frames.every((frame) => JSON.stringify(frame).includes("release — running")))
   await observe({ type: "observed", observations: history })
@@ -84,6 +85,7 @@ test("native controller feeds each pinned observation to the same card before ap
     },
   } as unknown as WorkflowStep
   const bridge = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async (points) => {
       rendered++
       assert.equal(points.length, rendered)
@@ -110,6 +112,35 @@ test("native controller feeds each pinned observation to the same card before ap
   assert.ok(result.observations.every((o) => o.basis === "human-risk-acceptance" && o.decision.status === "uncertain"))
 })
 
+test("promotion failure identifies the attempted stage rather than the last observed healthy allocation", async () => {
+  const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
+  const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+  const journal = { previous: [{ version: baseline, percentage: 100 }], deployment: { id: "restored" } }
+  const updates: any[] = []
+  let current: HmdObservation
+  let restored = 0
+  const step = { do: async (_name: string, _policy: unknown, body: Function) => body(),
+    waitForEvent: async () => ({ payload: { snapshot: current.snapshot, decision: "approved", reason: "Local test only" } }),
+  } as unknown as WorkflowStep
+  const broker = { begin: async () => journal, renew: async () => journal,
+    promote: async (_owner: string, phase: number) => {
+      if (phase === 75) throw new Error("Release API request failed (transport)")
+      return journal
+    }, rollback: async () => { restored++; return journal },
+  } as unknown as Parameters<typeof runHumanReviewedHmd>[2]
+  await assert.rejects(runHumanReviewedHmd("run", step, broker, async (_origin, identity) => ({
+    requested: 100, unknown: 0, outcomes: Array.from({ length: 100 }, () => ({
+      version: identity.endsWith("baseline") ? baseline : candidate, healthy: true })),
+  }), undefined, async update => {
+    updates.push(update)
+    if (update.type === "observed") current = update.observations.at(-1)!
+  }), /prior allocation restored/)
+  assert.equal(restored, 1)
+  assert.equal(current!.phase, 25)
+  assert.deepEqual(updates.at(-1), { type: "restored", failed: true, failure: {
+    stepId: "75%", reason: "Release API request failed (transport): could not connect to Cloudflare." } })
+})
+
 test("mixed identity/history is rejected before render, upload or publish", async () => {
   const card = new RunCard({ instanceId: "run", repository: "repo", revision: "main" })
   const forbidden = async (): Promise<never> => { throw new Error("Must not call transport") }
@@ -126,7 +157,7 @@ test("same-stage samples grow the existing private graph without reusing image c
   const card = new RunCard({ instanceId: "run", repository: "repo", revision: "main" })
   const keys: string[] = []
   const step = { do: async (name: string, _options: unknown, body: Function) => { keys.push(name); return body() } } as unknown as WorkflowStep
-  const observe = hmdCardObserver("run", step, card, { render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
+  const observe = hmdCardObserver("run", step, card, { includeImage: true, render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
     upload: async () => ({ok:true,fileId:"F1"}), publish: async (_card, key) => { keys.push(key) } })
   const first = {...observation(10), sample:0}
   const next = {...first, sample:1, snapshot:"b".repeat(64), candidate:{...first.candidate,to:first.candidate.to+100,completeThrough:first.candidate.to+100,trials:20}}
@@ -142,6 +173,7 @@ test("native ingestion observations advance the chart clock without extending th
   const second = { ...first, sample: 1, snapshot: "b".repeat(64), observedAt: 32_000 }
   let renders = 0
   const observe = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async points => {
       renders++
       assert.deepEqual(points.map(point => point.elapsedSeconds), [2, 32])
@@ -153,4 +185,19 @@ test("native ingestion observations advance the chart clock without extending th
   await observe({ type: "observed", observations: [first, second] })
   assert.equal(renders, 1)
   await assert.rejects(observe({ type: "observed", observations: [first, { ...second, observedAt: 500 }] }), /history/)
+})
+
+test("default live observations publish semantic status without rendering or uploading images", async () => {
+  const card = new RunCard({ instanceId: "run", repository: "owner/repo", revision: "abcdef123" })
+  const step = { do: async () => { assert.fail("No image checkpoint by default") } } as unknown as WorkflowStep
+  let published = 0
+  const observe = hmdCardObserver("run", step, card, {
+    render: async () => { assert.fail("No default graph render") },
+    upload: async () => { assert.fail("No default image upload") },
+    publish: async () => { published++ },
+  })
+  await observe({ type: "observed", observations: [observation(10)] })
+  assert.equal(published, 1)
+  assert.equal(card.snapshot().health?.metrics?.current.trials, 10)
+  assert.equal(card.render({ minimal: true }).blocks.some(block => block.type === "image"), false)
 })

@@ -7,6 +7,7 @@ import { probeBatch, cohortSample } from "./hmd-cohort.ts"
 import type { HmdNativeSource } from "./hmd-native-source.ts"
 import type { ReceiptBatch } from "./wobs-samples.ts"
 import { canRetryNativeQuery, nativeSqlPolicy } from "./wobs-sql-policy.ts"
+import { hmdFailureReason } from "./hmd-failure.ts"
 
 const baselineVersion = "09593237-23b2-4873-bd04-88c8e8488840"
 const healthyCandidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
@@ -39,7 +40,7 @@ export type HmdReviewUpdate =
   | { readonly type: "promoted"; readonly phase: 10 | 25 | 75 | 100 }
   | { readonly type: "observed"; readonly observations: ReadonlyArray<HmdObservation> }
   | { readonly type: "settled"; readonly observation: HmdObservation; readonly basis: "health" | "human-risk-acceptance" | "deadline-risk-acceptance" }
-  | { readonly type: "restored"; readonly failed: boolean }
+  | { readonly type: "restored"; readonly failed: boolean; readonly failure?: { readonly stepId: string; readonly reason: string } }
 export type HmdReviewObserver = (update: HmdReviewUpdate) => Promise<void>
 
 /** Explicit release policy, never applied to the strict automatic controller. */
@@ -91,6 +92,7 @@ export async function runHumanReviewedHmd(
     const claimed = await step.do("release:claim", once, () => broker.begin(owner, candidateVersion))
     const observations = []
     const history: HmdObservation[] = []
+    let failedStep = "Previous version"
     try {
       if (claimed.previous.length !== 1 || claimed.previous[0]?.version !== baselineVersion || claimed.previous[0]?.percentage !== 100) {
         throw terminal("Unexpected review-lab baseline")
@@ -125,6 +127,7 @@ export async function runHumanReviewedHmd(
         baseline = await step.do("health:baseline-close", once, async () => cohortSample([batch], baselineVersion, from, Math.max(from + 1, Date.now())))
       }
       for (const phase of [10, 25, 75, 100] as const) {
+        failedStep = `${phase}%`
         await step.do(`release:promote-${phase}`, once, () => broker.promote(owner, phase))
         if (native) await observe?.(immutable({ type: "promoted", phase }))
         const phaseStartedAt = await step.do(`health:start-${phase}`, once, async () => Math.max(history.at(-1)?.candidate.to ?? baseline.to, Date.now()))
@@ -269,12 +272,13 @@ export async function runHumanReviewedHmd(
       try { await observe?.(immutable({ type: "restored", failed: false })) } catch { /* allocation already restored */ }
       return { status: "reviewed-all-phases", observations, restored: restored.deployment,
         releaseCommitted: false, wobsVerified: false, evidenceSource }
-    } catch {
+    } catch (error) {
       await step.do("release:restore-baseline", once, () => broker.rollback(owner))
       if (history.at(-1)?.route.status === "rollback") {
         try { await observe?.(immutable({ type: "observed", observations: history })) } catch { /* recovery takes precedence */ }
       }
-      try { await observe?.(immutable({ type: "restored", failed: true })) } catch { /* preserve the recovery result */ }
+      try { await observe?.(immutable({ type: "restored", failed: true,
+        failure: { stepId: failedStep, reason: hmdFailureReason(error) } })) } catch { /* preserve the recovery result */ }
       throw terminal("Review release failed closed; prior allocation restored")
     }
 }

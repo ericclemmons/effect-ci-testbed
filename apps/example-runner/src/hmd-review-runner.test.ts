@@ -97,7 +97,15 @@ async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | 
     assert.equal(reviews, ["regression", "unknown", "observer-failure"].includes(mode) ? 0 : 1)
   }
   assert.equal(rollbacks, 1)
-  assert.deepEqual(updates.at(-1), { type: "restored", failed: mode !== "approve" })
+  const restored = updates.at(-1)!
+  assert.equal(restored.type, "restored")
+  if (restored.type === "restored") {
+    assert.equal(restored.failed, mode !== "approve")
+    if (restored.failed) {
+      assert.equal(restored.failure?.stepId, "10%")
+      assert.ok(restored.failure?.reason)
+    } else assert.equal(restored.failure, undefined)
+  }
 }
 
 for (const scenario of ["early-health", "deadline", "sticky-regression", "manual-in-flight", "stale-button", "invalid-attribution", "health-drift"] as const) {

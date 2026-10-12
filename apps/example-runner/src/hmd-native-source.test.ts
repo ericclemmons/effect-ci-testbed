@@ -103,6 +103,7 @@ test(`native controller and existing card: ${mode}`, async () => {
   } as unknown as WorkflowStep
   const card = new RunCard({ instanceId: "native-test", repository: "owner/repo", revision: "abcdef123" })
   const bridge = hmdCardObserver("native-test", step, card, {
+    includeImage: true,
     render: async (points) => { assert.equal(inside, true); assert.ok(points.at(-1)!.baselineSample); return new Uint8Array([1]) },
     upload: async () => ({ ok: true, fileId: "F1" }),
     publish: async (owned) => { assert.equal(owned, card); frames.push(JSON.stringify(card.render())) },
@@ -127,7 +128,7 @@ test(`native controller and existing card: ${mode}`, async () => {
     if (mode === "query-error") assert.equal(keys.filter(k => k.startsWith("health:native-baseline")).length, 1)
   }
   assert.equal(restores, 1)
-  assert.ok(frames.every(frame => frame.includes("Native Worker outcomes (experimental SQL)")))
+  assert.ok(frames.every(frame => frame.includes("experimental-native-wobs")))
   assert.ok(frames.every(frame => !frame.includes("HTTP cohort")))
   if (current?.telemetry?.complete === false) assert.equal(current.decision.status, "uncertain")
 })

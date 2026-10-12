@@ -11,14 +11,14 @@ export function createHealthPngRenderer(module: WebAssembly.Module, font: Uint8A
   }
   const ownedFont = new Uint8Array(font)
   return async (points: ReadonlyArray<HealthPoint>, options: {
-    baseline: string; candidate: string; maxErrorRate: number
+    baseline: string; candidate: string; maxErrorRate: number; compact?: boolean
   }): Promise<Uint8Array> => {
     // Generate only our own bounded template, synchronously before any await.
     // No API accepts raw SVG, URLs, external images, logs, or arbitrary fonts.
     if (typeof options.baseline !== "string" || typeof options.candidate !== "string" ||
       options.baseline.length > 256 || options.candidate.length > 256) throw new Error("Invalid chart labels")
     const svg = healthChart(points, options)
-    const expectedHeight = points.length > 1 ? 460 : 300
+    const expectedHeight = options.compact ? 200 : points.length > 1 ? 460 : 300
     if (new TextEncoder().encode(svg).length > 100_000) throw new Error("Chart is too large")
     if (initializedModule && initializedModule !== module) throw new Error("Chart module already selected")
     if (!initialization) {
