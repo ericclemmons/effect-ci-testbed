@@ -15,6 +15,10 @@ export interface HealthPolicy {
   readonly phaseStartedAt: number
   readonly baselineWindow: { readonly from: number; readonly to: number }
   readonly minTrials: number
+  /** Opt-in: a conclusive breach can stop before the healthy-advancement floor.
+   * Never bypasses attribution, completeness or independent-sampling checks.
+   */
+  readonly earlyRegression?: boolean
   readonly maxErrorRate: number
   /** Absolute percentage-point increase, not a ratio to a possibly zero baseline. */
   readonly maxIncrease: number
@@ -46,6 +50,7 @@ export function rateInterval(sample: HealthSample, policy: HealthPolicy): RateIn
 export function evaluateHealth(baseline: HealthSample, candidate: HealthSample, policy: HealthPolicy): HealthDecision {
   const positiveInteger = (n: number) => Number.isSafeInteger(n) && n > 0
   if (!positiveInteger(policy.minTrials) || !positiveInteger(policy.comparisons) ||
+    (policy.earlyRegression !== undefined && typeof policy.earlyRegression !== "boolean") ||
     !Number.isFinite(policy.phaseStartedAt) || ![policy.baselineWindow.from, policy.baselineWindow.to].every(Number.isFinite) ||
     policy.baselineWindow.to <= policy.baselineWindow.from || policy.baselineWindow.to > policy.phaseStartedAt || !(policy.alpha > 0 && policy.alpha < 1) ||
     !Number.isFinite(policy.maxErrorRate) || policy.maxErrorRate < 0 || policy.maxErrorRate > 1 ||
@@ -82,8 +87,10 @@ export function evaluateHealth(baseline: HealthSample, candidate: HealthSample, 
   const current = rateInterval(candidate, policy)
   const increase = { low: current.low - previous.high, high: current.high - previous.low }
   const bounds = { baseline: previous, candidate: current, increase }
+  const breached = current.low > policy.maxErrorRate || increase.low > policy.maxIncrease
+  if (policy.earlyRegression && breached) return { ...bounds, status: "regression", reason: "conclusive SLO or regression breach" }
   if (baseline.trials < policy.minTrials || candidate.trials < policy.minTrials) return { ...bounds, status: "uncertain", reason: "needs more independent observations" }
-  if (current.low > policy.maxErrorRate || increase.low > policy.maxIncrease) return { ...bounds, status: "regression", reason: "conclusive SLO or regression breach" }
+  if (breached) return { ...bounds, status: "regression", reason: "conclusive SLO or regression breach" }
   if (current.high <= policy.maxErrorRate && increase.high <= policy.maxIncrease) return { ...bounds, status: "advance", reason: "within SLO and regression budget" }
   return { ...bounds, status: "uncertain", reason: "confidence bounds overlap the release threshold" }
 }

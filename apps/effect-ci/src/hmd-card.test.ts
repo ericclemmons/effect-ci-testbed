@@ -130,3 +130,23 @@ test("same-stage samples grow the existing private graph without reusing image c
   assert.deepEqual(keys,["notification:hmd-image-10-sample-1","notification:hmd-card-10-sample-1"])
   await assert.rejects(observe({type:"observed",observations:[first,{...next,candidate:{...next.candidate,trials:5}}]}),/history/)
 })
+
+test("native ingestion observations advance the chart clock without extending the frozen request window", async () => {
+  const card = new RunCard({ instanceId: "run", repository: "repo", revision: "main" })
+  const step = { do: async (_name: string, _options: unknown, body: Function) => body() } as unknown as WorkflowStep
+  const first = { ...observation(10), sample: 0, evidenceSource: "experimental-native-wobs" as const, observedAt: 2000 }
+  const second = { ...first, sample: 1, snapshot: "b".repeat(64), observedAt: 32_000 }
+  let renders = 0
+  const observe = hmdCardObserver("run", step, card, {
+    render: async points => {
+      renders++
+      assert.deepEqual(points.map(point => point.elapsedSeconds), [2, 32])
+      assert.equal(points[0]!.candidateSample!.to, points[1]!.candidateSample!.to)
+      return new Uint8Array([1])
+    },
+    upload: async () => ({ ok: true, fileId: "F1" }), publish: async () => {},
+  })
+  await observe({ type: "observed", observations: [first, second] })
+  assert.equal(renders, 1)
+  await assert.rejects(observe({ type: "observed", observations: [first, { ...second, observedAt: 500 }] }), /history/)
+})
