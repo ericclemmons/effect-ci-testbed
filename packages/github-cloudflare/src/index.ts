@@ -148,7 +148,7 @@ export const workflowEntrypoint = <A>(
       step,
       // Source credentials cannot write checks/comments or read another installed
       // repository. Reporting retains its independent host-only credential path.
-      ...(github ? { token: () => GitHub.createInstallationToken(credentials(this.env), github.installationId, github.repositoryName.split("/")[1]) } : {}),
+      ...(github ? { token: () => GitHub.createInstallationToken(credentials(this.env), github.installationId, github.repositoryName.split("/")[1] ?? "") } : {}),
       workspaceId: event.instanceId,
     })
     let operation = 0
