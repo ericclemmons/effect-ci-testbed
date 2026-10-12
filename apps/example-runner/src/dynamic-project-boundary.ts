@@ -39,9 +39,15 @@ export class DynamicProjectBoundaryWorkflow extends WorkflowEntrypoint<{ LOADER:
     for (const [name, source] of [
       ["mismatch", `export default {fetch(){return new Response('wrong')}};`],
       ["oversized", `export default {fetch(){return new Response('x'.repeat(4097))}};`],
-      ["cpu", `export default {fetch(){while(true){} }};`],
+      ["cpu", `export default {fetch(req){if(new URL(req.url).pathname==='/preflight')return new Response('ready');while(true){} }};`],
     ] as const) {
       results[name] = await step.do(`boundary:${name}`, { retries: { limit: 0, delay: "1 second" }, timeout: "10 seconds" }, async () => {
+        if (name === "cpu") {
+          // Establish that the exact loop module parses, loads and invokes successfully;
+          // a broken import/compile must not masquerade as resource-limit enforcement.
+          await runProjectChecks(this.env.LOADER, { mainModule: "index.js", modules: { "index.js": source },
+            checks: [{ name: "loop preflight", path: "/preflight", status: 200, body: "ready" }] })
+        }
         const started = Date.now()
         let rejected = false
         try { await invoke(source, "ok") } catch { rejected = true }
@@ -49,7 +55,8 @@ export class DynamicProjectBoundaryWorkflow extends WorkflowEntrypoint<{ LOADER:
         if (!rejected || (name === "cpu" && elapsedMs >= projectPolicy.timeoutMs - 1000)) {
           throw new NonRetryableError("Boundary probe did not establish prompt execution rejection")
         }
-        return { rejected, elapsedMs, policyCpuMs: projectPolicy.cpuMs, containers: 0 }
+        return { rejected, elapsedMs, policyCpuMs: projectPolicy.cpuMs, containers: 0,
+          ...(name === "cpu" ? { modulePreflightPassed: true } : {}) }
       })
     }
     return results
