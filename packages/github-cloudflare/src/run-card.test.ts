@@ -75,6 +75,32 @@ test("numbered steps retain a nested quoted host-safe failure and restoration is
   assert.equal(card.snapshot().checks.find(check => check.id === "75%")?.failureReason, undefined)
 })
 
+test("minimal root uses a live title and only decision content, never the checklist, image or diagnostics", () => {
+  const card = new RunCard(identity)
+  card.update(event("10%", "complete"))
+  card.update(event("25%", "running"))
+  card.setHealth({ phase: 25, decision: "uncertain", evidenceSource: "native-wobs" }, "FPRIVATE")
+  let frame = card.render({ minimal: true })
+  assert.equal(frame.blocks.length, 2)
+  assert.match(frame.text, /Running · 25%/)
+  assert.doesNotMatch(JSON.stringify(frame), /FPRIVATE|10%|uncertain/)
+  card.update({ type: "approval.requested", workflowId: "demo", stepId: "25%", requestId: "review",
+    approval: { title: "Progress?", summary: "Auto-progress at 12:00 UTC" }, timestamp: "now" })
+  card.setReviewUrl("https://example.com/runs/test-run/approvals/review?token=capability")
+  frame = card.render({ minimal: true })
+  assert.ok(JSON.stringify(frame).includes("Auto-progress at 12:00 UTC"))
+  assert.ok(frame.blocks.some(block => block.type === "actions"))
+  card.update({ type: "approval.resolved", workflowId: "demo", stepId: "25%", requestId: "review", decision: "approved", timestamp: "now" })
+  card.setFailure("75%", "Release API request failed (transport)")
+  card.update(event("restore", "complete"))
+  card.update({ type: "workflow.completed", workflowId: "demo", conclusion: "failure", timestamp: "now" })
+  frame = card.render({ minimal: true, rollbackStep: "restore" })
+  assert.equal(frame.blocks.length, 2)
+  assert.match(frame.text, /Rolled back · 75%/)
+  assert.doesNotMatch(JSON.stringify(frame), /transport|capability|FPRIVATE/)
+  assert.match(card.render().text, /   > Release API request failed/)
+})
+
 test("approval lives in the same card and its button disappears after resolution", () => {
   const card = new RunCard(identity)
   card.update(event("build", "complete"))

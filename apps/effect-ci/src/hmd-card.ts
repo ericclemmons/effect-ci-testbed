@@ -5,6 +5,8 @@ import type { PrivateSlackImageResult } from "../../../packages/github-cloudflar
 import type { RunCard } from "../../../packages/github-cloudflare/src/run-card.ts"
 
 interface HostHealthServices {
+  /** Graphs are opt-in detail, not a default root-card upload on every sample. */
+  readonly includeImage?: boolean
   render(points: ReadonlyArray<HealthPoint>, options: { baseline: string; candidate: string; maxErrorRate: number; compact?: boolean }): Promise<Uint8Array>
   upload(runId: string, snapshot: string, png: Uint8Array): Promise<PrivateSlackImageResult>
   /** Update the caller's existing owned card/receipt; never allocate a separate HMD message. */
@@ -58,13 +60,13 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     })
     // Persist only the small file receipt, not PNG bytes or credentials in Workflow history.
     const suffix = `${current.phase}${current.sample ? `-sample-${current.sample}` : ""}`
-    const image = await step.do(`notification:hmd-image-${suffix}`, once, async () => {
+    const image = services.includeImage ? await step.do(`notification:hmd-image-${suffix}`, once, async () => {
       try {
         const png = await services.render(points, { baseline: baseline.version.slice(0, 8),
           candidate: current.candidate.version.slice(0, 8), maxErrorRate: current.policy.maxErrorRate, compact: true })
         return await services.upload(runId, current.snapshot, png)
       } catch { return { ok: false as const } }
-    })
+    }) : { ok: false as const }
     // Failure clears an older phase's graph; text still describes the current pinned observation.
     card.setHealth({ phase: current.phase, decision: current.regressionDetected && current.route.status === "review" ? "regression" : current.decision.status === "regression" && current.route.status === "review" ? "regression" : current.decision.status === "regression" ? "rollback" : current.decision.status,
       evidenceSource: current.evidenceSource ?? "closed-client-http-cohort",

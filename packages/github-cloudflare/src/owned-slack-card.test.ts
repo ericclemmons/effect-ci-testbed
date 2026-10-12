@@ -11,6 +11,10 @@ function fixture(failReceipt = false) {
     reserve: async (intent) => {
       if (receipt && (receipt.owner !== intent.owner || receipt.destination !== intent.destination ||
         receipt.stage !== "complete" || receipt.sequence >= intent.sequence)) return { acquired: false, receipt }
+      if (receipt?.stage === "complete" && receipt.fingerprint === intent.fingerprint) {
+        receipt = { ...receipt, sequence: intent.sequence }
+        return { acquired: false, receipt }
+      }
       const ts = receipt?.ts
       receipt = { ...intent, ...(ts ? { ts } : {}) }
       return { acquired: true, ...(ts ? { ts } : {}) }
@@ -49,6 +53,32 @@ test("one initial post then same-ts updates; replay, stale, conflicting and rota
   assert.equal((await publishOwnedSlackCard("run", 2, frame, { ...env, SLACK_BOT_TOKEN: "rotated" }, f.store, f.transport)).ok, false)
   assert.equal(f.calls.length, 2)
   assert.equal(JSON.stringify(f.receipt()).includes(env.SLACK_BOT_TOKEN), false)
+})
+
+test("one maintained stage reply stays under its root, does not broadcast and replay cannot spam the thread", async () => {
+  const f = fixture()
+  const parent = "1791685465.111111"
+  const send = (sequence: number, content = frame, root = parent) =>
+    publishOwnedSlackCard("run", sequence, content, env, f.store, f.transport, undefined, root)
+  assert.equal((await send(0)).ok, true)
+  assert.equal(f.calls[0]!.body.thread_ts, parent)
+  assert.equal(f.calls[0]!.body.reply_broadcast, false)
+  assert.equal((await send(0)).ok, true)
+  assert.equal(f.calls.length, 1)
+  assert.equal((await send(1, { ...frame, text: "new evidence" })).ok, true)
+  assert.ok(f.calls[1]!.method.endsWith("chat.update"))
+  assert.equal(f.calls[1]!.body.ts, "1791685465.683799")
+  assert.equal(f.calls[1]!.body.thread_ts, undefined)
+  assert.equal((await send(2, frame, "1791685465.222222")).ok, false, "receipt cannot be moved to another root")
+  assert.equal(f.calls.length, 2)
+})
+
+test("unchanged live frames advance their receipt without another API update", async () => {
+  const f = fixture()
+  assert.equal((await publishOwnedSlackCard("run", 0, frame, env, f.store, f.transport)).ok, true)
+  assert.equal((await publishOwnedSlackCard("run", 1, frame, env, f.store, f.transport)).ok, true)
+  assert.equal(f.receipt()?.sequence, 1)
+  assert.equal(f.calls.length, 1)
 })
 
 test("lost first-post acknowledgement or receipt commit blocks replay without another post", async () => {

@@ -39,7 +39,7 @@ for (const profile of ["healthy", "regression"] as const) {
       assert.equal(receipt.ok, true)
       assert.match(receipt.fileId, /^F[A-Z0-9]+$/)
     }
-    const cards = run.steps.filter((s: any) => s.name.startsWith("notification:") && !s.name.startsWith("notification:hmd-image-"))
+    const cards = run.steps.filter((s: any) => s.name.startsWith("notification:") && !s.name.startsWith("notification:hmd-image-") && !s.name.endsWith(":thread-1"))
       .map((s: any) => checkpoint(run, s.name.slice(0, -2)))
     assert.ok(cards.length > images.length)
     assert.equal(cards[0].sequence, 0)

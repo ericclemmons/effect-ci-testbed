@@ -33,6 +33,7 @@ test("host health observer updates the owned card with cumulative history, no se
   let uploads = 0
   const receipt = { ts: "existing-ci-message" }
   const observe = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async (points) => { histories.push(points.map((point) => point.elapsedSeconds)); return new Uint8Array([1]) },
     upload: async () => { uploads++; return uploads === 2 ? { ok: false } : { ok: true, fileId: `F${uploads}` } },
     publish: async (owned) => { assert.equal(owned, card); assert.equal(receipt.ts, "existing-ci-message"); frames.push(owned.render()) },
@@ -84,6 +85,7 @@ test("native controller feeds each pinned observation to the same card before ap
     },
   } as unknown as WorkflowStep
   const bridge = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async (points) => {
       rendered++
       assert.equal(points.length, rendered)
@@ -155,7 +157,7 @@ test("same-stage samples grow the existing private graph without reusing image c
   const card = new RunCard({ instanceId: "run", repository: "repo", revision: "main" })
   const keys: string[] = []
   const step = { do: async (name: string, _options: unknown, body: Function) => { keys.push(name); return body() } } as unknown as WorkflowStep
-  const observe = hmdCardObserver("run", step, card, { render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
+  const observe = hmdCardObserver("run", step, card, { includeImage: true, render: async points => { assert.equal(points.length, 2); return new Uint8Array([1]) },
     upload: async () => ({ok:true,fileId:"F1"}), publish: async (_card, key) => { keys.push(key) } })
   const first = {...observation(10), sample:0}
   const next = {...first, sample:1, snapshot:"b".repeat(64), candidate:{...first.candidate,to:first.candidate.to+100,completeThrough:first.candidate.to+100,trials:20}}
@@ -171,6 +173,7 @@ test("native ingestion observations advance the chart clock without extending th
   const second = { ...first, sample: 1, snapshot: "b".repeat(64), observedAt: 32_000 }
   let renders = 0
   const observe = hmdCardObserver("run", step, card, {
+    includeImage: true,
     render: async points => {
       renders++
       assert.deepEqual(points.map(point => point.elapsedSeconds), [2, 32])
@@ -182,4 +185,19 @@ test("native ingestion observations advance the chart clock without extending th
   await observe({ type: "observed", observations: [first, second] })
   assert.equal(renders, 1)
   await assert.rejects(observe({ type: "observed", observations: [first, { ...second, observedAt: 500 }] }), /history/)
+})
+
+test("default live observations publish semantic status without rendering or uploading images", async () => {
+  const card = new RunCard({ instanceId: "run", repository: "owner/repo", revision: "abcdef123" })
+  const step = { do: async () => { assert.fail("No image checkpoint by default") } } as unknown as WorkflowStep
+  let published = 0
+  const observe = hmdCardObserver("run", step, card, {
+    render: async () => { assert.fail("No default graph render") },
+    upload: async () => { assert.fail("No default image upload") },
+    publish: async () => { published++ },
+  })
+  await observe({ type: "observed", observations: [observation(10)] })
+  assert.equal(published, 1)
+  assert.equal(card.snapshot().health?.metrics?.current.trials, 10)
+  assert.equal(card.render({ minimal: true }).blocks.some(block => block.type === "image"), false)
 })

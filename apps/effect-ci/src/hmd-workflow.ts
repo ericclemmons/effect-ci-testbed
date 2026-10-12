@@ -51,9 +51,10 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     const publish = async (_card: RunCard, checkpoint: string) => {
       // Keep the full semantic history, but reverted releases need only the
       // executed stages and restoration in their operator-facing checklist.
-      const frame = card.render({ hideSkipped: restored, ...(restored ? { rollbackStep: "Restore previous version" } : {}) })
-      const blocks = [...frame.blocks, { type: "context", elements: [{ type: "plain_text",
-        text: `${native ? "Native outcomes demo (experimental)" : "HTTP demo"} · Progress accepts risk · restores afterward` }] },
+      const renderOptions = { hideSkipped: restored, ...(restored ? { rollbackStep: "Restore previous version" } : {}) }
+      const frame = card.render({ ...renderOptions, minimal: true })
+      const detail = card.render(renderOptions)
+      const blocks = [...frame.blocks,
         ...(capability ? [{ type: "actions", elements: [
           { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Progress" }, style: "primary", value: JSON.stringify(capability) },
           { type: "button", action_id: "hmd_reject", text: { type: "plain_text", text: "Reject" }, style: "danger", value: JSON.stringify(capability) },
@@ -63,6 +64,23 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         const receipt = await cards.publish(owner, currentSequence, { text: frame.text, blocks })
         if (!receipt.ok) throw new NonRetryableError(`HMD card needs delivery reconciliation${receipt.error ? ` (${receipt.error})` : ""}`)
         return { ts: receipt.ts, sequence: currentSequence }
+      })
+      // One maintained reply per stage, not a new reply for every sampling tick.
+      // Thread delivery is separately checkpointed and cannot fail the release.
+      const stage = restored ? "restored" : activePhase ? String(activePhase) : "prepare"
+      const health = card.snapshot().health
+      const metrics = health?.metrics
+      const metric = (sample: NonNullable<typeof metrics>["previous"]) =>
+        `${sample.interval ? `${(sample.interval.rate * 100).toFixed(2)}%` : "unavailable"} (${sample.failures}/${sample.trials})${sample.sampling === "weighted" ? " · weighted" : sample.completeThrough < sample.to ? " · incomplete" : ""}`
+      await step.do(`${checkpoint}:thread`, once, async () => {
+        try {
+          return await cards.publishThread(owner, stage, currentSequence, { text: detail.text.slice(0, 3000),
+            blocks: [...detail.blocks.filter(block => block.type !== "actions" && block.type !== "image"),
+              ...(metrics ? [{ type: "section", text: { type: "plain_text", text:
+                `Previous: ${metric(metrics.previous)}\nNew: ${metric(metrics.current)}\n${health!.decision} · error-rate limit ${(metrics.maxErrorRate * 100).toFixed(2)}% · historical evidence, not a forecast` } }] : []),
+              { type: "context", elements: [{ type: "plain_text", text:
+                `${native ? "Native outcomes demo (experimental)" : "HTTP demo"} · Progress accepts risk · restores afterward` }] }] })
+        } catch { return { ok: false as const } }
       })
     }
     const graph = hmdCardObserver(owner, step, card, {

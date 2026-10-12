@@ -103,6 +103,7 @@ test(`native controller and existing card: ${mode}`, async () => {
   } as unknown as WorkflowStep
   const card = new RunCard({ instanceId: "native-test", repository: "owner/repo", revision: "abcdef123" })
   const bridge = hmdCardObserver("native-test", step, card, {
+    includeImage: true,
     render: async (points) => { assert.equal(inside, true); assert.ok(points.at(-1)!.baselineSample); return new Uint8Array([1]) },
     upload: async () => ({ ok: true, fileId: "F1" }),
     publish: async (owned) => { assert.equal(owned, card); frames.push(JSON.stringify(card.render())) },

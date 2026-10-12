@@ -161,7 +161,7 @@ export class RunCard {
     })
   }
 
-  render(options: { hideSkipped?: boolean; rollbackStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -176,6 +176,24 @@ export class RunCard {
       this.checks.get(options.rollbackStep)?.status === "complete")
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
+    if (options.minimal) {
+      const current = ordered.find(id => this.checks.get(id)!.status === "waiting") ??
+        ordered.find(id => this.checks.get(id)!.status === "running") ??
+        ordered.find(id => this.checks.get(id)!.status === "failed") ??
+        ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
+      const title = restored ? `${headline}${this.phase === "failure" && current ? ` · ${current}` : ""}` :
+        this.phase === "success" ? headline : `${headline}${current ? ` · ${current}` : ""}`
+      // Reuse the existing capability/button builder, but never carry its checklist,
+      // diagnostics, metric text or image into the continuously updated root card.
+      const full = this.render({ ...options, minimal: false })
+      const actions = full.blocks.filter(block => block.type === "actions")
+      return { text: title, blocks: [
+        { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
+        { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
+        ...(this.review ? [{ type: "section", text: { type: "plain_text", text: this.review.request.summary.slice(0, 1000) } }] : []),
+        ...actions,
+      ] }
+    }
     const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id, index) => {
       const check = this.checks.get(id)!
 
