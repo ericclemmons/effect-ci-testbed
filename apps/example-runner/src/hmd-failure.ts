@@ -10,6 +10,10 @@ export function hmdFailureReason(error: unknown): string {
     "Ambiguous deployment acknowledgement; reconcile required", "Unresolved deployment intent; operator review required",
     "Release controller lease expired", "Release ownership mismatch", "Release phase must advance in order",
     "Invalid native outcome attribution", "Native health query failed; no HTTP fallback",
-    "Progression deadline cannot accept this stage", "Unexpected review-lab baseline"]
+    "Progression deadline cannot accept this stage", "Unexpected review-lab baseline",
+    "Previous native cohort incomplete; no promotion", "Invalid baseline receipts", "Invalid candidate receipts",
+    "Conclusive regression; approval is prohibited", "HMD sampling window exhausted", "Human rejected the release",
+    "Health review expired", "Invalid health review response", "Invalid or stale health review response",
+    "Release is terminal", "Release cannot renew"]
   return known.includes(message) ? message : "Release operation failed; see Details."
 }

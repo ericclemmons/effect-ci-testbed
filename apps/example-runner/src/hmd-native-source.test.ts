@@ -127,7 +127,7 @@ test(`native controller and existing card: ${mode}`, async () => {
     if (mode === "query-error") assert.equal(keys.filter(k => k.startsWith("health:native-baseline")).length, 1)
   }
   assert.equal(restores, 1)
-  assert.ok(frames.every(frame => frame.includes("Native Worker outcomes (experimental SQL)")))
+  assert.ok(frames.every(frame => frame.includes("experimental-native-wobs")))
   assert.ok(frames.every(frame => !frame.includes("HTTP cohort")))
   if (current?.telemetry?.complete === false) assert.equal(current.decision.status, "uncertain")
 })
