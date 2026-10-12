@@ -2,6 +2,10 @@
 
 > How do I keep source on GitHub and execute checkout, install, and build in a Cloudflare Workflow that reports GitHub checks?
 
+Integration recipe: combine the [ordinary pipeline](../node-npm) with
+[durable workspace execution](../cloudflare-runner) and GitHub reporting.
+Continue to [release approval](../cloudflare-hitl-release) for the opt-in notification gate.
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]

@@ -2,6 +2,10 @@
 
 > How do I build on Cloudflare, notify a reviewer, wait durably, and release only after approval?
 
+Integration recipe: build on [GitHub-source Cloudflare CI](../github-cloudflare-ci)
+and add a durable release gate. Remote dispatch is an entrypoint into that service,
+not a second build recipe. See the [recipe guide](../README.md#hosted-ci-notifications-and-approvals).
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]
@@ -21,7 +25,7 @@ Cloudflare runner that request becomes a native `waitForEvent`; the Workflow can
 hibernate until a reviewer responds without keeping a request or Container alive.
 
 The deployed service maintains one Slack checklist message. A waiting release adds
-inline **Approve** and **Reject** buttons; **View Workflow** opens the native
+inline **Approve** and **Reject** buttons; the compact **Details** link opens the native
 Cloudflare dashboard. A signed, authorized Slack decision sends an event to the exact
 Workflow instance. No custom review page is needed. Discord notification support is
 separate and still needs its own live approval proof.

@@ -65,7 +65,8 @@ GitHub approach beside the portable Effect approach.
 service and step-by-step setup: `cf` deployment, GitHub App integration, Cloudflare
 Access protection, remote runs, and live Slack checklists with inline release approval.
 Native hosted builds, real GitHub webhook/check delivery with logs, and Slack approval
-have been exercised. CLI authentication through Access remains a separate validation step.
+have been exercised, including Access-authenticated CLI remote dispatch and event-stream
+reconnection. See the guide for credentials and the exact supported remote contract.
 
 [`apps/example-runner`](./apps/example-runner) hosts unchanged consumer workflows
 for real Cloudflare coverage checks, separately from the GitHub/Slack service.
@@ -84,72 +85,142 @@ Workflows and exported actions serve different entrypoints:
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.
 
-## Examples, in implementation order
+## Recipes by feature
 
-The matrix is stack-ranked. Rows marked for conventional GitHub Actions include
-comparison YAML alongside the portable Effect CI version. A checkmark means the
-use-case is exercised end-to-end in that actual environment. Local `cf dev` counts as
-Effect CI Local, not Cloudflare. Cloudflare remains unchecked until the example is
-deployed to an account and exercised there. `🔜` is committed roadmap work; `—`
-means that execution model is genuinely irrelevant to the use-case.
+Choose a group by the job you need to solve. Within each group, simpler ingredients
+come before recipes that compose them. The [recipe guide](./examples/README.md)
+provides suggested learning paths and explains the boundaries between similar examples.
 
-| Use-case | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+Rows marked for conventional GitHub Actions include comparison YAML alongside the
+portable Effect CI version. ✅ means end-to-end execution in that actual environment;
+local `cf dev` counts as Local, not Cloudflare. 🔜 means unverified roadmap coverage,
+not necessarily missing code; — means the execution model is irrelevant. Moving a
+recipe into a group does not change its verification status.
+
+### Author a workflow
+
+Start with a conventional pipeline, then choose explicit actions or task discovery.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run an ordinary npm pipeline](./examples/node-npm) | ✅ | ✅ | ✅ | ✅ |
-| [Infer lint, format, check, test, and build from an empty `ci.ts`](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
-| [Demo discovery, cached checks, and agent feedback before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
-| [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
-| [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
-| [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | ✅ | ✅ |
-| [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | ✅ | ✅ |
-| Materialize Durable Object source revisions | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
-| Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
-| [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
-| [Fail once and pass on the native retry](./examples/retry) | — | ✅ | ✅ | ✅ |
-| [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
-| [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
-| [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
 | [Use pnpm without changing the workflow shape](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
-| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Infer lint, format, check, test, and build from an empty `ci.ts`](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
+| [Expose selected actions as direct `cf-ci` targets](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
+| [Demo discovery, cached checks, and agent feedback before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
+
+### Source and artifact boundaries
+
+Change where inputs come from without changing actions; publish outputs separately.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Swap filesystem and Git source providers without changing the workflow](./examples/source-providers) | — | ✅ | — | — |
+| [Materialize digest-pinned source from a private R2 bucket](./examples/r2-source) | 🔜 | ✅ | ✅ | ✅ |
+| [Materialize private commit-pinned Cloudflare Artifacts source](./examples/artifacts-source) | — | ✅ | ✅ | ✅ |
+| Materialize Durable Object source revisions | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
+
+### Runners and execution tiers
+
+Choose where the same program runs, from local containers to durable Workflows and isolates.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Run local CI in an isolated container](./examples/local-container) | ✅ | ✅ | ✅ | — |
 | [Restore a workspace between durable Cloudflare steps](./examples/cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
-| [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
-| [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | ✅ |
-| [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
-| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
-| [Trigger the configured remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Choose GitHub-hosted, Blacksmith, or self-hosted compute](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run the portable CI workflow on Blacksmith compute](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
 | [Run source-only checks outside the workspace container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ |
 | Execute untrusted project checks in capability-limited Dynamic Workers | — | 🔜 | — | 🔜 |
+
+### Toolchains and container images
+
+Select runtimes and OS tools before adding a custom image. A runner image is not a project image.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | ✅ |
+| [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | ✅ |
+| [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | ✅ |
+| [Install Python at runtime without a project-specific image](./examples/cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
+| [Customize the Cloudflare runner with a project Dockerfile](./examples/custom-runner-image) | — | ✅ | — | ✅ |
+| [Build and run a user-provided Dockerfile inside a Cloudflare Sandbox](./examples/docker-in-docker) | — | 🔜 | — | 🔜 |
+| [Build and publish a custom container image alongside Cloudflare services](./examples/custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
+
+### Control flow and recovery
+
+Add inspectable routing, parallel checks, retry policy, and compensation one at a time.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Make event and branch conditions inspectable](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
+| Route an inspectable condition over a whole action subgraph | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Route deployment lifecycle hooks into an inspectable workflow branch](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
+| [Run required and optional checks in parallel](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
+| [Fan one prepared snapshot out to isolated parallel checks](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | ✅ |
+| [Apply retries and timeouts consistently](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
+| [Fail once and pass on the native retry](./examples/retry) | — | ✅ | ✅ | ✅ |
+| [Roll back actions only after retries are exhausted](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
+
+### Caching, reruns, and verification
+
+Keep download caches, task caches, workspace checkpoints, and signed commit evidence distinct.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Infer task inputs and outputs automatically with Vite+](./examples/vite-plus-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Reuse Turborepo's local or remote task cache](./examples/turborepo-cache) | ✅ | ✅ | ✅ | ✅ |
-| [Reuse package-manager downloads without replacing the workspace](./examples/package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
-| [Install all runtimes declared by Mise](./examples/mise-toolchain) | ✅ | ✅ | ✅ | ✅ |
-| [Select and cache a project-specific Node.js version](./examples/node-version) | ✅ | ✅ | ✅ | ✅ |
-| [Install a system dependency such as ImageMagick](./examples/system-package) | ✅ | ✅ | ✅ | ✅ |
 | [Customize cache keys, paths, invalidation, or disable caching](./examples/cache-policy) | ✅ | ✅ | ✅ | ✅ |
-| [Fan one prepared snapshot out to isolated parallel checks](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | ✅ |
+| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
 | [Select only the dependency-affected rerun subgraph](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Preserve immutable attempts and reuse unaffected checkpoints](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
+
+### Secrets and outbound authentication
+
+Keep credentials outside workspace containers, including authenticated outbound requests.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
 | [Resolve secrets without putting them in containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | 🔜 |
 | [Authenticate outbound requests with host-only credentials and container placeholders](./examples/secret-outbound) | — | 🔜 | — | ✅ |
-| [Publish and restore portable build artifacts](./examples/portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
-| [Reuse signed evidence for side-effect-free checks](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
+
+### Hosted CI, notifications, and approvals
+
+Integration recipes compose the earlier ingredients. Notification channels are not separate build pipelines.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Run GitHub-source CI on Cloudflare and report checks back](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
+| [Trigger the configured remote Workflow with `cf-ci --remote` and follow its native events](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
+| [Require GitHub approval before production deployment](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Pause and durably resume a release with authorized inline Slack approval](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Send a Discord approval notification for a waiting release](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
+
+### Deployment and progressive release
+
+Start with ordering and migrations, then study health gates and opt-in human review.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
 | Deploy a built workspace to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Health-mediated release: upload a version, advance 10% → 25% → 75% → 100%, and restore the prior traffic split on failure](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Review inconclusive or near-margin HMD evidence, without overriding confirmed regression](./examples/health-mediated-approval) | — | 🔜 | — | 🔜 |
+| [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Apply a D1 migration before deploying the Worker that requires it](./examples/d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Recover safely when deployment fails after a database migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
-| [Deploy two dependent applications in an explicit order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Health-mediated release: upload a version, advance 10% → 25% → 75% → 100%, and restore the prior traffic split on failure](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Review inconclusive or near-margin HMD evidence, without overriding confirmed regression](./examples/health-mediated-approval) | — | 🔜 | — | 🔜 |
 | Derive a monorepo deployment order from its Turborepo or Vite+ graph | 🔜 | 🔜 | 🔜 | 🔜 |
 | Define multiple Workers as code with Cloudflare `defineConfig` and prevent settings drift | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Build and publish a custom container image alongside Cloudflare services](./examples/custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
 | Pin a compatible Worker version throughout a long external rollout | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up pull-request preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
+
+### Diagnosis and repair
+
+Future recipes for responding to failures and observability events.
+
+| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 | Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 

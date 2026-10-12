@@ -3,6 +3,10 @@
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?
 
+Composition recipe: [zero-config discovery](../zero-config) +
+[Vite+ task caching](../vite-plus-cache). Continue to
+[verification evidence](../verification-evidence) when the result must be attested.
+
 ```mermaid
 flowchart LR
   checkout --> install
@@ -127,7 +131,8 @@ Give the agent this task:
 > Change the exported message to "Checked before pushing". Discover the available
 > CI targets, inspect the lint plan, then run lint, test, and build with JSON output.
 > Fix any failure and rerun. Confirm the generated artifact contains the new
-> message. Do not commit or push.
+> message. If committing is authorized, commit the intended changes and verify that
+> exact revision before attaching signed evidence. Do not push without authorization.
 
 The agent uses the same entrypoint as the human:
 
@@ -148,9 +153,11 @@ with undefined identifiers treated as errors. `build` first checks types and
 lint, then bundles the source into an ES module at `dist/message.js`. Run
 `cf-ci run check` for formatting/lint and `cf-ci run test` for behavioral tests.
 
-No trailer is suggested: the existing commit-scoped signer does not bind dirty
-working-tree content. See [verification evidence](../verification-evidence) for
-that separate contract and its trust requirements.
+Working-file checks provide feedback, not reusable proof for old `HEAD`. Commits do
+not need to wait for checks to pass: an authorized agent can commit, run checks,
+fix failures in a new commit, then attest the passing revision with a signed Git
+note. See [verification evidence](../verification-evidence#commit-first-then-attest)
+for that separate contract; no dirty-tree attestation handoff is needed.
 
 ## GitHub checks
 

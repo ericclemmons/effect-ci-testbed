@@ -1,0 +1,54 @@
+import assert from "node:assert/strict"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
+import { test } from "node:test"
+
+const root = readFileSync("README.md", "utf8")
+const guide = readFileSync("examples/README.md", "utf8")
+const recipes = readdirSync("examples", { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join("examples", entry.name, "README.md")))
+  .map((entry) => entry.name)
+  .sort()
+
+test("every runnable recipe is discoverable in the matrix and reading guide", () => {
+  const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
+    .map((match) => match[1]).filter((path) => path !== "README.md")
+  const guideRecipes = [...guide.matchAll(/\]\(\.\/([^/#)]+)/g)].map((match) => match[1])
+  assert.deepEqual([...new Set(matrixRecipes)].sort(), recipes)
+  assert.deepEqual([...new Set(guideRecipes)].sort(), recipes)
+})
+
+test("recipe groups have coverage tables with only explicit evidence states", () => {
+  const matrix = root.split("## Recipes by feature\n")[1]?.split("The Dynamic Worker slice")[0]
+  assert.ok(matrix)
+  const groups = matrix.split(/^### /m).slice(1)
+  assert.equal(groups.length, 10)
+  for (const group of groups) {
+    const rows = group.split("\n").filter((line) => /^\| (?!Recipe|---)/.test(line))
+    assert.ok(rows.length > 0, group.split("\n")[0])
+    for (const row of rows) {
+      const columns = row.split("|").slice(1, -1).map((cell) => cell.trim())
+      assert.equal(columns.length, 5, row)
+      assert.ok(columns.slice(1).every((cell) => ["✅", "🔜", "—"].includes(cell)), row)
+    }
+  }
+})
+
+test("each recipe opens with a focused question", () => {
+  for (const recipe of recipes) {
+    const readme = readFileSync(join("examples", recipe, "README.md"), "utf8")
+    const question = readme.match(/^> .*(?:\n> .*)*/m)?.[0]
+    assert.ok(question?.includes("?"), `${recipe} needs its opening question`)
+  }
+})
+
+test("recipe documentation links resolve locally", () => {
+  const files = ["README.md", "examples/README.md", ...recipes.map((recipe) => join("examples", recipe, "README.md"))]
+  for (const file of files) {
+    const markdown = readFileSync(file, "utf8")
+    for (const match of markdown.matchAll(/\]\((\.{1,2}\/[^)]+)\)/g)) {
+      const path = match[1].split("#")[0]
+      assert.ok(existsSync(resolve(dirname(file), path)), `${file}: ${match[1]}`)
+    }
+  }
+})

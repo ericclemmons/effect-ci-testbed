@@ -604,6 +604,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
+      - name: Verify recipe coverage, questions, and documentation links
+        run: node --test scripts/check-recipe-docs.test.ts
       - name: Verify production Worker bundle
         run: |
           pnpm --filter @effect-ci-testbed/app exec cf deploy --dry-run
