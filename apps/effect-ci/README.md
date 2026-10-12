@@ -174,6 +174,9 @@ the standalone human-review example retain their existing fail-closed policies.
 After restoration, the card omits stages that never ran. It retains executed
 stages, the failure, comparison graph and restoration result. Skipped statuses
 remain in the semantic run history and do not change ordinary CI cards.
+Restoration uses **↩️**, not a success checkmark: failed rollouts say **Rolled back**;
+successful demo cleanup says **Previous version restored**, not **Passed**.
+Neither label changes the native Workflow result or declares the release healthy.
 Previously recorded cards below predate this presentation change.
 The continuous progression policy has local regression coverage and the real
 Cloudflare timer evidence below. The earlier direct-rejection browser evidence
