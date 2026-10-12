@@ -54,3 +54,15 @@ test("invalid probabilities, fractional weighted totals and corrupt failures fai
   assert.throws(() => evaluateHealth(sample(false), { ...sample(true), trials: 1.5 }, policy))
   assert.throws(() => evaluateHealth(sample(false), { ...sample(true), failures: 100001 }, policy))
 })
+
+test("opt-in early regression cannot turn incomplete data or a small healthy cohort into advancement", () => {
+  const failed = sample(true, 10, 10)
+  assert.equal(evaluateHealth(sample(false), failed, policy).status, "uncertain", "existing default floor is unchanged")
+  const early = { ...policy, earlyRegression: true }
+  const result = evaluateHealth(sample(false), failed, early)
+  assert.equal(result.status, "regression")
+  assert.ok(result.candidate!.low > policy.maxErrorRate)
+  assert.equal(evaluateHealth(sample(false), sample(true, 10), early).status, "uncertain")
+  assert.equal(evaluateHealth(sample(false), { ...failed, completeThrough: 100 }, early).status, "uncertain")
+  assert.equal(evaluateHealth(sample(false), { ...failed, sampling: "weighted" }, early).status, "uncertain")
+})

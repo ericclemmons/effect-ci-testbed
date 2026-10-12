@@ -142,8 +142,12 @@ This path captures 100 edge-generated request receipts before reading SQL. It
 pins the previous version/window and waits at most three 30-second ingestion
 intervals for that exact previous cohort. An incomplete previous cohort restores
 without promoting; it never generates replacement traffic to get a passing sample.
-Each canary sample captures another 100 receipts and re-reads every retained identity
-in the current stage. Only native terminal fetch rows supply errors/successes.
+Each canary cohort captures 100 receipts. Ingestion polls re-read those same
+identities and the same request-window end; no new traffic is added until the
+pending cohort closes. Once closed, a further cohort may accumulate statistical
+power within the same stage. The separate observation clock advances the chart
+without pretending the query time closed an ambient ingestion window.
+Only native terminal fetch rows supply errors/successes.
 Missing or weighted rows remain incomplete, not independent zero-error trials;
 foreign attribution or conflicting outcomes abort. Query/schema failures restore
 without falling back to HTTP. Native query retries apply only to explicitly
@@ -156,6 +160,10 @@ stays visible while candidate ingestion is incomplete; partial candidate counts
 are labeled partial and do not get fabricated confidence bounds. A promotion is
 shown before sampling, so a failed query does not hide a stage that actually ran.
 Deadline/emergency acceptance remains risk acceptance, not healthy evidence.
+The native policy explicitly sets `earlyRegression: true`: complete independent
+bounds that conclusively breach the SLO/regression budget can stop before the
+minimum count required for healthy advancement. Missing/weighted/incomplete data
+cannot use that shortcut. Existing HTTP and standalone policy defaults are unchanged.
 
 **Compatibility boundary:** Cloudflare's current
 [SQL binding documentation](https://developers.cloudflare.com/analytics/sql-api/workers-binding/)
@@ -166,6 +174,21 @@ rows with actual native Workflow/RPC/SQLite/PNG execution. They are not live nat
 telemetry or a four-phase WOBS safety proof. Recorded hosted evidence is added only
 after an actual run. `wobsVerified: false` and `releaseCommitted: false` remain
 explicit; no matrix coverage flag is upgraded by this integration alone.
+
+The first live native-card run, `coverage-hmd-native-regression-20261012-1`,
+**exposed a sampler bug**, not a successful rollback proof. Native SQL closed
+the previous 100 outcomes after 30s. The canary loop then kept adding 100 fresh
+requests at each refresh: every read remained 100 outcomes short, even while
+23 received candidate outcomes were all failures. The timer accepted uncertainty
+and advanced 10% → 25% → 75%. The test was terminated; authenticated broker-owned
+operator recovery `coverage-hmd-native-recovery-20261012-1` independently restored
+the exact prior 100% allocation in deployment
+`89c8bccb-cc3d-43f8-a325-7a3ffd8ae785`.
+The same Slack message `1791772497.264069` was corrected in place to **Test stopped ·
+Previous version restored**, with stale buttons removed and its original private
+graph preserved. This was operator recovery, not automatic HMD success or human
+approval. The regression test reproduces perpetual ingestion lag before the fix;
+new hosted proof is required for the corrected frozen-cohort loop.
 
 The SHA identifies the reviewed code in the card; this fixed-target lab does
 not build or upload that commit. It uses the dedicated demo's already-uploaded

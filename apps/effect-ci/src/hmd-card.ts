@@ -29,13 +29,15 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
     let previousTrials = 0
     let previousFailures = 0
     let previousFrom = 0
+    let previousTo = 0
     let previousExpiry = 0
     const points = update.observations.map((observation): HealthPoint => {
-      const elapsedSeconds = (observation.candidate.to - baseline.from) / 1000
+      const elapsedSeconds = ((observation.observedAt ?? observation.candidate.to) - baseline.from) / 1000
       if (observation.owner !== runId || !/^[a-f0-9]{64}$/.test(observation.snapshot) ||
-        ![10, 25, 75, 100].includes(observation.phase) || observation.phase < previousPhase || elapsedSeconds <= previousTime ||
+        ![10, 25, 75, 100].includes(observation.phase) || observation.phase < previousPhase || !Number.isFinite(elapsedSeconds) || elapsedSeconds <= previousTime ||
+        (observation.observedAt !== undefined && observation.observedAt < observation.candidate.to) ||
         !Number.isSafeInteger(observation.sample ?? 0) || (observation.sample ?? 0) < 0 || (observation.sample ?? 0) > 20 ||
-        (observation.phase === previousPhase && ((observation.sample ?? 0) !== previousSample + 1 || observation.candidate.trials < previousTrials || observation.candidate.failures < previousFailures || observation.candidate.from !== previousFrom || observation.expiresAt !== previousExpiry)) ||
+        (observation.phase === previousPhase && ((observation.sample ?? 0) !== previousSample + 1 || observation.candidate.trials < previousTrials || observation.candidate.failures < previousFailures || observation.candidate.from !== previousFrom || observation.candidate.to < previousTo || observation.expiresAt !== previousExpiry)) ||
         (observation.phase !== previousPhase && (observation.sample ?? 0) !== 0) ||
         observation.baseline.version !== baseline.version || observation.baseline.from !== baseline.from ||
         observation.baseline.to !== baseline.to || observation.candidate.version !== current.candidate.version ||
@@ -49,6 +51,7 @@ export function hmdCardObserver(runId: string, step: WorkflowStep, card: RunCard
       previousTrials = observation.candidate.trials
       previousFailures = observation.candidate.failures
       previousFrom = observation.candidate.from
+      previousTo = observation.candidate.to
       previousExpiry = observation.expiresAt
       return { elapsedSeconds, decision: observation.decision,
         baselineSample: observation.baseline, candidateSample: observation.candidate }

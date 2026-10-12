@@ -31,6 +31,8 @@ export interface HmdObservation {
   /** Sticky release safety state; the latest measured decision is still retained. */
   readonly regressionDetected?: boolean
   readonly evidenceSource?: "closed-client-http-cohort" | "experimental-native-wobs"
+  /** Observation time differs from the frozen request window while SQL ingests. */
+  readonly observedAt?: number
   readonly telemetry?: { readonly complete: boolean; readonly missing: number; readonly conflicts: number; readonly invalid: number }
 }
 export type HmdReviewUpdate =
@@ -128,6 +130,8 @@ export async function runHumanReviewedHmd(
         const phaseStartedAt = await step.do(`health:start-${phase}`, once, async () => Math.max(history.at(-1)?.candidate.to ?? baseline.to, Date.now()))
         const batches: Awaited<ReturnType<typeof probe>>[] = []
         const nativeBatches: ReceiptBatch[] = []
+        let nativeNeedsCapture = true
+        let nativeWindowEnd: number | undefined
         let deadline: number | undefined
         let regressionDetected = false
         const collect = async (sample: number) => {
@@ -136,14 +140,22 @@ export async function runHumanReviewedHmd(
           // Broken attribution is not an approvable shortage of statistical power.
           if (receipts?.unknown) throw terminal("Invalid candidate receipts")
           if (receipts) batches.push(receipts)
-          if (native) nativeBatches.push(await step.do(`health:receipts-${suffix}`, once, () => native.capture([baselineVersion, candidateVersion])))
-          const observedAt = await step.do(`health:window-${suffix}`, once, async () => Math.max(phaseStartedAt + 1, (history.at(-1)?.candidate.to ?? 0) + 1, Date.now()))
-          const nativeResult = native ? await readNative(`health:native-${suffix}`, nativeBatches, [baselineVersion, candidateVersion], phaseStartedAt, observedAt) : undefined
+          if (native && nativeNeedsCapture) {
+            nativeBatches.push(await step.do(`health:receipts-${suffix}`, once, () => native.capture([baselineVersion, candidateVersion])))
+            nativeWindowEnd = await step.do(`health:receipt-window-${suffix}`, once, async () => Math.max(phaseStartedAt + 1, Date.now()))
+          }
+          // Poll the frozen cohort until it closes. Appending fresh requests on
+          // every poll chases ingestion forever and prevents regression detection.
+          const nativeResult = native ? await readNative(`health:native-${suffix}`, nativeBatches, [baselineVersion, candidateVersion], phaseStartedAt, nativeWindowEnd!) : undefined
+          if (nativeResult) nativeNeedsCapture = nativeResult.complete
           if (nativeResult && (nativeResult.attributionInvalid || nativeResult.conflicts)) throw terminal("Invalid native outcome attribution")
+          const previous = history.at(-1)
+          const observedAt = await step.do(`health:window-${suffix}`, once, async () => Math.max(phaseStartedAt + 1, (previous?.observedAt ?? previous?.candidate.to ?? 0) + 1, Date.now()))
           const snapshot = await step.do(`health:snapshot-${suffix}`, once, async () => {
             const candidate = nativeResult?.samples[candidateVersion] ?? cohortSample(batches, candidateVersion, phaseStartedAt, observedAt)
             const policy = { baselineVersion, candidateVersion, phaseStartedAt,
               baselineWindow: { from: baseline.from, to: baseline.to }, minTrials: 20,
+              ...(native ? { earlyRegression: true } : {}),
               maxErrorRate: margins.maxErrorRate, maxIncrease: margins.maxIncrease, alpha: 0.05, comparisons: 4 }
             const decision = evaluateHealth(baseline, candidate, policy)
             const detected = regressionDetected || decision.status === "regression"
@@ -152,6 +164,7 @@ export async function runHumanReviewedHmd(
               ? { status: "review", reason: "Regression detected in this stage. Explicit emergency override only; no automatic progression." }
               : strictRoute
             const evidence = { owner, phase, baseline, candidate, policy, margins, decision, route, evidenceSource,
+              ...(native ? { observedAt } : {}),
               ...(nativeResult ? { telemetry: { complete: nativeResult.complete, missing: nativeResult.missing,
                 conflicts: nativeResult.conflicts, invalid: nativeResult.invalid } } : {}),
               ...(progress ? { progression: { autoProgressMinutes: progress.autoProgressMinutes, allowRegressionOverride: progress.allowRegressionOverride,
@@ -189,7 +202,7 @@ export async function runHumanReviewedHmd(
             reason: snapshot.route.status === "review" ? snapshot.route.reason : "",
             baselineTrials: snapshot.baseline.trials, candidateTrials: snapshot.candidate.trials,
             candidateFailures: snapshot.candidate.failures, candidateBounds: snapshot.decision.candidate,
-            increaseBounds: snapshot.decision.increase, margins, evidenceSource, ...(snapshot.telemetry ? { telemetry: snapshot.telemetry } : {}) }))
+            increaseBounds: snapshot.decision.increase, margins, evidenceSource, ...(native ? { earlyRegression: true } : {}), ...(snapshot.telemetry ? { telemetry: snapshot.telemetry } : {}) }))
           await step.do(`release:renew-before-review-${phase}-${waitIndex}`, once, () => broker.renew(owner))
           const window = progress?.samplingIntervalSeconds ? await step.do(`review:window-${phase}-${waitIndex}`, once, async () => ({
             milliseconds: Math.max(1, Math.min(progress.samplingIntervalSeconds! * 1000, snapshot.expiresAt - Date.now())),
