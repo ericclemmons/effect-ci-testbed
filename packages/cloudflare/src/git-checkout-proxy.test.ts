@@ -1,10 +1,29 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { gitCheckoutRequest, githubCheckoutRepository } from "./git-checkout-proxy.ts"
+import { authenticatedGitFailure, gitCheckoutRequest, githubCheckoutRepository } from "./git-checkout-proxy.ts"
 
 const repository = "https://github.com/owner/private.git"
 const token = "host-only-secret-canary"
 const url = "http://github-checkout.ci/owner/private.git/info/refs?service=git-upload-pack"
+
+test("safe Git failure categories never include reflected tokens or arbitrary output", () => {
+  assert.equal(authenticatedGitFailure("clone", `fatal: ${token} requested URL returned error: 403`).message, "Authenticated git clone failed (HTTP 403)")
+  assert.equal(authenticatedGitFailure("clone", `destination ${token} already exists and is not an empty directory`).message, "Authenticated git clone failed (destination is not empty)")
+  assert.equal(authenticatedGitFailure("fetch", token).message, "Authenticated git fetch failed")
+})
+
+test("compressed Git upload-pack requests retain their encoding without forwarding arbitrary headers", async () => {
+  const bytes = new Uint8Array([31, 139, 8, 0])
+  const response = await gitCheckoutRequest(new Request("http://github-checkout.ci/owner/private.git/git-upload-pack", {
+    method: "POST", headers: { "content-type": "application/x-git-upload-pack-request", "content-encoding": "gzip", cookie: token }, body: bytes,
+  }), repository, token, async (incoming) => {
+    assert.equal(incoming.headers.get("content-encoding"), "gzip")
+    assert.equal(incoming.headers.get("cookie"), null)
+    assert.deepEqual(new Uint8Array(await incoming.arrayBuffer()), bytes)
+    return new Response("pack", { headers: { "content-type": "application/x-git-upload-pack-result" } })
+  })
+  assert.equal(response.status, 200)
+})
 
 test("GitHub smart HTTP authenticates only upstream and strips all response metadata", async () => {
   for (const method of ["GET", "POST"]) {

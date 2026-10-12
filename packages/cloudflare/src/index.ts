@@ -13,7 +13,7 @@ import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
 import { withWobsLogging } from "./wobs-logger.ts"
-import { gitCheckoutHost, githubCheckoutRepository, gitCheckoutRequest } from "./git-checkout-proxy.ts"
+import { authenticatedGitFailure, gitCheckoutHost, githubCheckoutRepository, gitCheckoutRequest } from "./git-checkout-proxy.ts"
 export { wobsLoggerLayer, withWobsLogging } from "./wobs-logger.ts"
 export { SourceRevisions, readDurableSource } from "./durable-source.ts"
 
@@ -101,13 +101,16 @@ export class GitCheckoutOutbound extends WorkerEntrypoint<unknown, { workspaceId
 }
 
 export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironment> {
-  private gitCheckout: { repository: string; token: string; capability: string; expiresAt: number } | undefined
+  private gitCheckout: { repository: string; token: string; capability: string; expiresAt: number; failure?: string } | undefined
 
   /** Called by the host outbound Worker, never exported as a public HTTP route. */
   async gitCheckoutFetch(request: Request, capability: string): Promise<Response> {
     const checkout = this.gitCheckout
     if (!checkout || checkout.capability !== capability || Date.now() >= checkout.expiresAt) return new Response("Git checkout inactive", { status: 403 })
-    return gitCheckoutRequest(request, checkout.repository, checkout.token)
+    const response = await gitCheckoutRequest(request, checkout.repository, checkout.token)
+    const failure = response.headers.get("x-effect-ci-git-failure")
+    if (failure && /^(upstream-http-[1-5][0-9]{2}|unexpected-content-type|upstream-transport)$/.test(failure)) checkout.failure = failure
+    return response
   }
   private activeStepId: string | undefined
   private dirty = false
@@ -332,7 +335,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
         ])
 
         if (clone.exitCode !== 0) {
-          throw new Error(token ? "Authenticated git clone failed" : clone.stderr || clone.stdout || "git clone failed")
+          throw token ? new Error(this.gitCheckout?.failure ? `Authenticated git clone failed (${this.gitCheckout.failure})` : authenticatedGitFailure("clone", clone.stderr).message) : new Error(clone.stderr || clone.stdout || "git clone failed")
         }
       }
 
@@ -351,7 +354,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       ])
 
       if (fetch.exitCode !== 0) {
-        throw new Error(token ? "Authenticated git fetch failed" : fetch.stderr || fetch.stdout || "git fetch failed")
+        throw token ? new Error(this.gitCheckout?.failure ? `Authenticated git fetch failed (${this.gitCheckout.failure})` : authenticatedGitFailure("fetch", fetch.stderr).message) : new Error(fetch.stderr || fetch.stdout || "git fetch failed")
       }
 
       // Revoke before checking out project-controlled files or running any hooks.
