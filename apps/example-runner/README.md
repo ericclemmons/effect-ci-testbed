@@ -96,7 +96,7 @@ select the instance ID. Verify the returned ID instead of assuming it was honore
 | [Immutable Durable Object source](../../examples/durable-object-source) | `effect-ci-example-durable-source` |
 | [Pinned public GitLab source](../../examples/gitlab-source) | `effect-ci-example-gitlab-source` |
 | [Host-only secret resolution](../../examples/secure-secrets) | `effect-ci-example-secure-secrets` |
-| [Cloudflare Artifacts source](../../examples/artifacts-source) | `effect-ci-example-artifacts-source` |
+| [Cloudflare Artifacts source](../../examples/artifacts-source) (legacy host; deploy from the example for new runs) | `effect-ci-example-artifacts-source` |
 
 For local Dynamic Worker execution, start `pnpm --filter
 @effect-ci-testbed/example-runner exec cf dev`. Open the printed local explorer and
@@ -361,6 +361,11 @@ and delay are native policy, with no container or checkout. Host deployment
 unused; the check body is bundled in that Workflow version.
 
 ### Artifacts source history
+
+New deployments belong to `examples/artifacts-source`, which owns its config,
+binding and native `effect-ci-artifacts-source-checks` Workflow. The old export here
+is retained for existing callers and history only; it is not the example's required
+host. Evidence below predates the standalone deployment and does not verify it.
 
 The dedicated `examples/artifacts-source` consumer passed in
 `coverage-artifacts-focused-20261010-1` at source

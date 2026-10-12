@@ -612,11 +612,14 @@ jobs:
       - run: pnpm install
       - name: Verify recipe coverage, questions, and documentation links
         run: node --test scripts/check-recipe-docs.test.ts
+      - name: Verify standalone Artifacts example owns its deployment wiring
+        run: node --test examples/artifacts-source/src/standalone.test.ts
       - name: Verify production Worker bundle
         run: |
           pnpm --filter @effect-ci-testbed/app exec cf deploy --dry-run
           pnpm --filter @effect-ci-testbed/example-runner exec cf deploy --dry-run
           pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec cf deploy --dry-run
+          pnpm --filter effect-ci-artifacts-source-fixture exec cf deploy --dry-run
       - name: Verify Cloudflare HITL locally
         env:
           EFFECT_CI_APPROVAL: approved

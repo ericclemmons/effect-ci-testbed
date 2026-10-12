@@ -7,7 +7,7 @@ export interface SourceFile {
 /** Bounded, immutable export. Never creates or forwards a repository token. */
 export async function readArtifactSource(repo: Pick<ArtifactsRepo, "readCommit" | "readTree" | "readBlob">, revision: string, directory: string): Promise<SourceFile[]> {
   if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error("Source requires an immutable commit SHA")
-  const segments = directory.split("/")
+  const segments = directory === "" ? [] : directory.split("/")
   const safeName = (name: string) => name !== "." && name !== ".." && /^[^/\\\x00]+$/.test(name) && new TextEncoder().encode(name).length <= 255
   if (!segments.every(safeName)) throw new Error("Invalid source directory")
   const commit = await repo.readCommit(revision)
