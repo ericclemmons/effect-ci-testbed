@@ -10,8 +10,9 @@ test("recorded native proposal is charged durably without claiming repair", { sk
     "--workflow-name", "effect-ci-repair-budget-probe"], { encoding: "utf8", timeout: 30_000, maxBuffer: 1024 * 1024 }))
   assert.equal(run.status, "complete")
   assert.equal(run.params.mode, "proposal")
-  assert.deepEqual(run.steps.map((entry: any) => entry.name), ["budget:before", "budget:owned-proposal", "budget:after"])
+  assert.deepEqual(run.steps.map((entry: any) => entry.name), ["budget:before-1", "budget:owned-proposal-1", "budget:after-1"])
   assert.ok(run.steps.every((entry: any) => entry.success))
+  assert.ok(run.steps.every((entry: any) => entry.attempts.length === 1 && entry.config.retries.limit === 0))
   const result = run.output
   assert.equal(result.before.budget, BUDGET_NAME)
   assert.equal(result.after.budget, BUDGET_NAME)
