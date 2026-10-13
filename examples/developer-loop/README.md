@@ -224,11 +224,52 @@ unknown. Open that Markdown file locally to inspect the footage and transcript.
 It neither uploads media nor edits this README, and it does not certify redaction,
 playback or signed trust. Publish only after those separate reviews.
 
-**Video:** Pending — no same-run recording has been published for this recipe.
+**Video:** [Local browser recording + original manifest and assertion transcript](https://github.com/ericclemmons/effect-ci-testbed/releases/tag/proof-developer-loop-4ebc193).
+The WebM shows the actual generated build preview, click and visible assertion;
+it does not show the CLI or a hosted deployment. Footage is unedited and was
+played through to completion and reviewed before publication. It is deliberately
+small: a proof of interaction, not a polished Friday demo recording.
 
-**Measured results:** Pending — no structured per-environment timing summary has
-been published here. Existing recorded runs and coverage claims remain as documented;
-missing media or measurements do not imply those runs failed or were never verified.
+**Measured results:** [Published capture receipt](./verification/published/local-4ebc193.json),
+historical source [`4ebc193`](https://github.com/ericclemmons/effect-ci-testbed/commit/4ebc193aba8b828b87bff44b6328e860583d8dea),
+recorded October 13, 2026 — **not a latest-HEAD badge**.
+
+Recorded command's plan (from that same-run manifest, not the full inferred suite):
+
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_install["install"]
+  step_build["build"]
+  step_checkout --> step_install
+  step_install --> step_build
+```
+
+| Environment                  | This recorded result                                    | Observed timing                                                               |
+| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Effect CI Local              | Build + browser assertion passed                        | Build process 1286 ms; browser process 1436 ms; total recorder window 2860 ms |
+| GitHub Actions               | Historical checks linked above; no browser capture here | Not measured by this recording                                                |
+| Effect CI GitHub             | Historical checks linked above; no browser capture here | Not measured by this recording                                                |
+| Hosted Cloudflare / Kitesurf | Not verified by this capture                            | Unknown                                                                       |
+
+One sample on Node 26.8.2 / darwin arm64, e2e 0.19.0 / web 0.14.0,
+Chromium 153.0.8010.12. Dependencies and a prior build artifact were present;
+cache hits were not independently measured. Queue and decision waits are unknown,
+not zero. Timing includes process startup/cleanup and is not a speedup benchmark.
+
+The original manifest retains recording-time quarantine/redaction-incomplete
+labels; the separate receipt documents the capture-specific agent content review.
+The positive video is public. The intentional negative capture stays local with
+its actual failed assertion and is not falsely presented as a successful test.
+Assets have pinned SHA256 values; GitHub release immutability is **not** enabled,
+so the links alone do not guarantee the files cannot be replaced. This is unsigned
+explanatory evidence, not attestation or permission to skip CI.
+
+Run `npm run proof:verify-published` to check the public tag/source, release asset
+metadata, downloaded bytes/digests and original manifest against the receipt.
+This is an explicit read-only network check; normal unit tests do not fetch media
+or dispatch CI. Missing/replaced media and source drift fail verification rather
+than silently refreshing the proof. It does not recertify playback or privacy.
 
 Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
 assertions, video/transcript, outcome and cold/warm timings. See the

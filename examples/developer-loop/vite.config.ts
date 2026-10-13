@@ -9,7 +9,7 @@ export default defineConfig({
         command: "vp lint --type-aware --type-check --allow all src",
         cache: true,
       },
-      "test:source": { command: "vp test && node --test verification/proof.test.mjs", cache: true },
+      "test:source": { command: "vp test && node --test verification/*.test.mjs", cache: true },
       "build:source": { command: "vp build", cache: true },
     },
   },
