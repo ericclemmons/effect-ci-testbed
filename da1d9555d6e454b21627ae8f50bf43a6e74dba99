@@ -1,0 +1,1 @@
+Advisory operator evidence only; not signed reusable check authorization. Exact commit da1d9555d6e454b21627ae8f50bf43a6e74dba99: post-commit node --test scripts/check-recipe-docs.test.ts passed all 7 tests; node scripts/check-example-plans.ts passed; git diff --check passed. Full exact-head GitHub suite remains pending on PR179. No runtime deployment or video proof claimed.
