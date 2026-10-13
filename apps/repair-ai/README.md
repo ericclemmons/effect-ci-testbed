@@ -176,6 +176,40 @@ The test reads the retained instance and full untruncated step. It never spends
 or redispatches. Raw original bytes and an ignored local receipt are preserved
 in `.verification/native-stream-20261013-1.json`.
 
+### Flue provider bridge
+
+`budgetedFlueProvider` uses the actual pinned `@flue/runtime@2.2.2` Cloudflare
+provider with `gateway: false`. Its catalog exposes only the fixed model, and
+every binding request independently passes the input guard before budget RPC.
+The trusted host supplies the run identity and reservation IDs. The bridge
+checks the returned reservation/byte count and reconstructs a Response from
+**unchanged** native SSE; it does not synthesize usage or a finish reason.
+There is no transport retry or paid-provider fallback in this bridge. A binding
+failure halts that provider instance, preventing another RPC on an automatic
+retry. This in-memory latch is not durable recovery; the future native host must
+persist its identities and ambiguity state across restarts.
+
+Four offline tests exercise the actual Flue parser, rejected model/tools/headers,
+bad receipts and a missing finish reason. An opt-in local replay also consumed
+the **original retained native stream**, SHA-256
+`a53e23adafa3c96b117e82978f5c95ca7c4e170b695625bbd55d3226716ef8bd`:
+Flue returned text `OK`, stop reason `stop`, and the provider's reported 47
+tokens. That replay used a fake budget RPC returning recorded bytes—**no new
+inference**, not a live agent or billing verification.
+
+```sh
+cd apps/repair-ai
+LIVE_FLUE_REPLAY_RECEIPT=.verification/native-stream-20261013-1.json \
+node --test src/live-flue-replay.test.ts
+```
+
+This provider is not wired into the deployed Worker. A native Flue agent still
+needs durable per-call identities, explicit retry/ambiguity handling, bounded
+tools and a tested `cf` configuration. Session-affinity headers are currently
+rejected along with arbitrary headers; do not quietly bypass the guard to enable
+them. Neither the bridge nor the replay implements incident delivery, a hosted
+GitHub writer, proposed-PR verification or an autonomous repair.
+
 The [local private-fixture proof](scripts/README.md) can intentionally replay that
 retained proposal through the fixed GitHub writer and a real exact-commit Node
 check. It does not add credentials to this deployed AI broker or claim a hosted
