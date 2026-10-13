@@ -89,3 +89,15 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-toolchain \
 The completed `build python package` step produces a wheel and source archive in the
 materialized workspace. Publishing portable artifacts remains separate from durable
 workspace revisions.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

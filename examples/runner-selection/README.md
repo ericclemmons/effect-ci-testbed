@@ -44,3 +44,15 @@ pnpm cf-ci --workflow examples/runner-selection/.cloudflare/ci/workflow.ts
 
 Cloudflare is marked not applicable for this use-case because a Cloudflare Container,
 not a GitHub runner label, selects that compute.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

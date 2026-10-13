@@ -4,6 +4,49 @@
 
 > Experimental prototype. The examples are the product specification.
 
+**CI isn't a pipeline. It's a flywheel.** Run checks, retain trustworthy evidence,
+release deliberately, observe what happens, and use failures to propose verified
+repairs. This testbed asks an agent to prove those customer needs with standalone
+recipes—not to declare an entire CI product finished.
+
+## Try it locally
+
+Use Node 24.11+ or Node 26+ and the repository's pnpm version. From a clone:
+
+```sh
+pnpm install
+export PATH="$PWD/node_modules/.bin:$PATH"
+cd examples/developer-loop
+cf-ci list --format=text
+cf-ci plan --format=mermaid
+cf-ci run lint --format=text
+cf-ci run build --format=text
+```
+
+The example already contains an empty workflow marker. Its package scripts are
+discovered automatically; the CLI does **not yet create that marker for you**.
+Run the build again to inspect Vite+ task reuse, then change source to check
+invalidation. A cache hit is not signed verification evidence, and a small cached
+task is not necessarily faster than executing it. Follow the
+[developer walkthrough](./examples/developer-loop/TALKING-SCRIPT.md) for expected
+results and intentional failures.
+
+Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
+a different Source adapter while preserving the actions. Want hosted execution?
+Use the [Cloudflare app setup](./apps/effect-ci/README.md); `--remote` dispatches the
+configured hosted workflow, not arbitrary local code. Trusted exact-commit reuse
+is a separate capability—not a promise that remote runs, pushes, builds or
+deployments become no-ops.
+
+Each recipe includes an execution plan and a **Verification proof** section.
+Videos and measured results remain explicitly pending until actual E2E runs
+produce them. The [proof-page contract](./examples/PROOF-PAGES.md) defines what
+future agents must record. Existing coverage evidence stays valid; missing video
+does not erase it. Observability-driven repair and full GitLab runner parity are
+roadmap work, not completed features.
+
+## Execution model
+
 Effect CI is an agent-first execution and verification layer. It runs one pipeline
 locally, in the background on compute selected by a GitHub job, or in a Cloudflare
 Workflow, and aims to avoid repeating work already proven for the same inputs. Actions

@@ -176,3 +176,15 @@ At source `b5e2a663aeef5e87a993001ea446e000a2447584`, all five developer-loop
 jobs in [the full E2E run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/37958032547)
 passed: conventional GitHub Actions, local plan/execution, and Effect-on-GitHub
 plan/execution. Hosted Cloudflare zero-config execution remains unverified.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

@@ -108,3 +108,15 @@ The [hosted example runner](../../apps/example-runner) populated the cache in
 build result in an 85 ms task run. The hash was `f37d6ec47086f918` in both instances.
 This proves runner-backed filesystem cache reuse; Turbo's separate remote-cache API
 was disabled and is not claimed as part of this hosted proof.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
