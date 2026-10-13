@@ -58,6 +58,16 @@ PR is claimed by these tests. This first slice transports text only; a future
 Flue adapter must preserve reservations for every invocation and explicitly
 disable its default AI Gateway, without bypassing this broker for tool calls.
 
+`src/flue-policy.ts` validates the **input** shape emitted by the pinned Flue
+2.2.2 Workers AI provider: `stream: true`, usage requests and
+`max_completion_tokens`. It copies text messages into the existing bounded
+request and rejects tools, gateway/header overrides, other models, accessors
+and already-aborted requests. This guard is not connected to a provider yet.
+The broker returns buffered text, while Flue expects OpenAI-style SSE with a
+real finish reason. An adapter must resolve that transport mismatch without
+inventing completion, usage or streaming evidence. Cancellation after a durable
+reservation must never refund it. No inference is invoked by the guard tests.
+
 The administrative `effect-ci-repair-budget-probe` Workflow requires an explicit
 `{"mode":"inspect"}` or `{"mode":"proposal"}` payload. Inspect is read-only.
 Proposal spends **one** reservation on a fixed owned failing function and returns
