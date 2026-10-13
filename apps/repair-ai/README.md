@@ -189,6 +189,13 @@ failure halts that provider instance, preventing another RPC on an automatic
 retry. This in-memory latch is not durable recovery; the future native host must
 persist its identities and ambiguity state across restarts.
 
+Flue's transitive provider packages include `@google/genai` and `protobufjs`.
+Their install scripts are explicitly **disabled** in `pnpm-workspace.yaml`;
+the Cloudflare bridge does not need them. The first full-suite attempt exposed
+`ERR_PNPM_IGNORED_BUILDS` until that explicit denial was added. A fresh archived
+workspace reproduces the failure before the policy change and installs normally
+afterward, without approving either script or weakening release-age policy.
+
 Four offline tests exercise the actual Flue parser, rejected model/tools/headers,
 bad receipts and a missing finish reason. An opt-in local replay also consumed
 the **original retained native stream**, SHA-256
