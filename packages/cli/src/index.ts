@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -497,6 +497,11 @@ export const loadProgram = async (
   cwd: string = process.cwd(),
 ): Promise<LoadedProgram> => {
   const selected = extractWorkflow(args, cwd)
+  // Empty markers also work in CommonJS packages, where import otherwise yields default {}.
+  if (basename(selected.path).startsWith("ci.") && readFileSync(selected.path, "utf8").trim() === "") {
+    return { args: selected.args, path: selected.path,
+      program: inferJavaScriptProgram(projectRoot(selected.path)) }
+  }
   const module = await import(pathToFileURL(selected.path).href) as Readonly<Record<string, unknown>> & {
     readonly default?: CI.Workflow<unknown>
     readonly local?: CI.RunConfiguration | ((context: LocalContext) => CI.RunConfiguration)
@@ -566,6 +571,35 @@ const inferJavaScriptProgram = (root: string): Program => {
   }
 
   return CI.fromPackageJson(manifest)
+}
+
+/** Explicit local execution opts this package into script discovery, never remote or plan. */
+export const initializeJavaScriptProject = (
+  args: ReadonlyArray<string>,
+  cwd: string,
+): string | undefined => {
+  if (findWorkflow(cwd) || args.some((arg) =>
+    arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg)
+  )) return undefined
+  const invocation = parseInvocation(args)
+  if (invocation.command !== "run" || invocation.location !== "local") return undefined
+  // Validate scripts and the requested target before writing anything or running scripts.
+  const program = inferJavaScriptProgram(resolve(cwd))
+  selectedWorkflow(program, invocation.target)
+  for (const directory of [join(cwd, ".cloudflare"), join(cwd, ".cloudflare", "ci")]) {
+    if (existsSync(directory)) {
+      const entry = lstatSync(directory)
+      if (!entry.isDirectory() || entry.isSymbolicLink()) {
+        throw new CliFailure("CI_INITIALIZATION_UNSAFE", ExitCode.usage,
+          "Zero-config initialization requires ordinary project-owned directories")
+      }
+    } else {
+      mkdirSync(directory)
+    }
+  }
+  const marker = join(cwd, ".cloudflare", "ci", "ci.ts")
+  writeFileSync(marker, "", { flag: "wx" })
+  return marker
 }
 
 const printJson = (value: unknown): void => {
@@ -830,6 +864,7 @@ export const runCli = async (
         return
       }
     }
+    initializeJavaScriptProject(args, cwd)
     const loaded = await loadProgram(args, cwd)
     process.exitCode = await main(loaded.program, loaded.args, loaded.path)
   } catch (error) {
