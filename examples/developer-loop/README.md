@@ -179,6 +179,36 @@ plan/execution. Hosted Cloudflare zero-config execution remains unverified.
 
 ## Verification proof
 
+### Record the local user journey
+
+After installing dependencies, **commit the recipe first**, then run:
+
+```sh
+npm run verify:browser
+npm run verify:browser -- --negative
+```
+
+The recipe owns its preview, browser config and test fixtures. The first command
+runs the real `cf-ci run build`, opens its generated module in a fresh local
+Chromium context, clicks **Show message**, and asserts a nonempty visible result.
+The second deliberately uses a wrong expectation: it must retain a failed E2E
+outcome and failed-run video. The verification wrapper succeeds only when that
+expected negative outcome is preserved; it does not relabel the application test.
+No agent steps/model calls or signed-in account pages are involved.
+
+Both write ignored `.e2e/` recordings/traces and a create-only `.verification/`
+manifest: exact commit, scenario, expected/actual outcome, real browser/runner,
+independently timed build/browser processes, observed warm-input conditions and
+media SHA256. Source changes during the run fail verification. The preview binds
+only loopback and refuses to reuse an unrelated existing server. First use may
+download the framework's official Chromium binary.
+
+These are **local, quarantined outputs**, not hosted Cloudflare proof, signed
+attestation or an automatic public upload. The framework marks videos as
+redaction-incomplete; review captured content and validate playback before
+publication. Timing is one observed sample, not a benchmark or assumed cache hit.
+Kitesurf remains a separate compatibility probe, not a silent fallback.
+
 **Video:** Pending — no same-run recording has been published for this recipe.
 
 **Measured results:** Pending — no structured per-environment timing summary has
