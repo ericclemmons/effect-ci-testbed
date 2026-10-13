@@ -73,7 +73,8 @@ The optional host-only `runStream` method reserves against the **same ledger**
 before requesting native streaming. It collects at most 64 KiB of original SSE
 within 45 seconds, cancels stalled/oversized streams, retains failure charges,
 and never retries. It does not invent deltas, finish reasons or usage. Native
-protocol compatibility and Flue execution still require live verification.
+transport is recorded below; actual Flue provider consumption and agent execution
+still require their own verification.
 The authenticated probe's explicit `{"mode":"stream"}` spends one reservation
 on a fixed “Reply with only OK” prompt and reports protocol shape only—not raw
 model text or repair success. A `[DONE]` sentinel alone is not a finish reason.
@@ -139,6 +140,41 @@ registration without changing privacy or the fixed ledger identity. The failed
 not-found inspection created no instance or inference; no blind retry loop.
 
 Video: not recorded. Full Flue repair verification: not yet verified.
+
+### Recorded native streaming proof
+
+The stream code built at `a803b60eb0734ff7660dd313e24aa4cca2c0f391` was
+deployed after merge `d8193def5cc6793db927d241546088b0039995e9`, using the
+same private service and unchanged durable ledger. Worker version
+`3c1e18e1-61ec-4dff-97af-6a49b6e26be9` serves 100% at deployment
+`575426cf-4e0a-4060-8285-79793ce92050`.
+
+1. `coverage-repair-stream-inspect-before-20261013-1` read the existing ledger:
+   10 cents reserved, no inference.
+2. `coverage-repair-budget-stream-20261013-1` completed one native streaming
+   call, with all three checkpoints at one attempt / zero retries. The ledger
+   moved from 10 to 20 cents reserved, leaving **$1.80 authorized**, not a
+   measured invoice. Original output was 1,964 bytes / six SSE events, including
+   actual OpenAI `choices`, an `OK` delta, `finish_reason: "stop"`, reported
+   usage and `[DONE]`. No finish reason or usage was synthesized.
+
+The fixed requested model remains `@cf/meta/llama-3.3-70b-instruct-fp8-fast`.
+The provider's raw events identify `@cf/meta/llama-3.3-70b-instruct-sd`; that
+reported identity is retained, not rewritten to match the request. Observed
+stream checkpoint: **907 ms**; native execution: **1,193 ms**; queue: **433 ms**,
+one sample October 13, 2026. This proves bounded native transport and preserved
+budget state—not Flue execution, a repair, a billing benchmark or a video.
+
+```sh
+cd apps/repair-ai
+CF_BIN=/Users/eric/Library/pnpm/bin/cf \
+LIVE_REPAIR_STREAM_INSTANCE=coverage-repair-budget-stream-20261013-1 \
+node --test src/live-stream.test.ts
+```
+
+The test reads the retained instance and full untruncated step. It never spends
+or redispatches. Raw original bytes and an ignored local receipt are preserved
+in `.verification/native-stream-20261013-1.json`.
 
 The [local private-fixture proof](scripts/README.md) can intentionally replay that
 retained proposal through the fixed GitHub writer and a real exact-commit Node
