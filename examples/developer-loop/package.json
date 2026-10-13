@@ -11,7 +11,8 @@
     "test": "vpr test:source",
     "prebuild": "vpr typecheck && vpr lint",
     "build": "vpr build:source",
-    "verify:browser": "node verification/run.mjs"
+    "verify:browser": "node verification/run.mjs",
+    "proof:preview": "node verification/preview-proof.mjs"
   },
   "devDependencies": {
     "@e2e-dev/web": "0.14.0",

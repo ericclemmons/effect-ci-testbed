@@ -210,6 +210,20 @@ redaction-incomplete; review captured content and validate playback before
 publication. Timing is one observed sample, not a benchmark or assumed cache hit.
 Kitesurf remains a separate compatibility probe, not a silent fallback.
 
+To review an existing capture without rerunning CI or the browser:
+
+```sh
+npm run proof:preview -- <recorded-run-UUID>
+```
+
+This validates the report's actual assertions, outcome, timing and video digest,
+then creates `.verification/<run-UUID>.md` with the selected command's generated
+plan, same-run video/transcript links and raw timings. It refuses to overwrite an
+existing review. Failed tests stay labelled failed; unknown queue/wait times stay
+unknown. Open that Markdown file locally to inspect the footage and transcript.
+It neither uploads media nor edits this README, and it does not certify redaction,
+playback or signed trust. Publish only after those separate reviews.
+
 **Video:** Pending — no same-run recording has been published for this recipe.
 
 **Measured results:** Pending — no structured per-environment timing summary has
