@@ -114,7 +114,7 @@ export const createInstallationToken = async (
         // Explicit reduction matters when the parent App gains Contents write
         // for the separate, fixed-target repair broker. Ordinary CI reporting
         // must never inherit that writer authority by omission.
-        : { permissions: { contents: "read", checks: "write", pull_requests: "write" } }),
+        : { permissions: { contents: "read", checks: "write" } }),
     },
   )
 

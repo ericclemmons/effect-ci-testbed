@@ -10,7 +10,7 @@ test("checkout installation tokens are restricted to one repository and Contents
   globalThis.fetch = async (_url, options) => {
     if (scoped) assert.deepEqual(JSON.parse(String(options!.body)), { repositories: ["private"], permissions: { contents: "read" } })
     else assert.deepEqual(JSON.parse(String(options!.body)), {
-      permissions: { contents: "read", checks: "write", pull_requests: "write" },
+      permissions: { contents: "read", checks: "write" },
     }, "ordinary reporting cannot inherit the parent App's Contents write permission")
     return Response.json({ token: "test-token" })
   }

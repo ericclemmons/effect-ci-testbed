@@ -65,8 +65,10 @@ account-wide. The application must still constrain every repair to its fixed dem
 repository and mint a repository-scoped writer token only for that trusted operation.
 Repair proposes a verified PR; it never automatically merges or deploys it.
 
-Ordinary reporting requests explicit reduced token permissions: **Contents: read**,
-**Checks: write**, and **Pull requests: write**. Checkout requests only **Contents:
+Ordinary reporting requests explicit reduced token permissions: **Contents: read**
+and **Checks: write**. The optional PR-comment provider needs its separate scoped
+**Pull requests: write** token; ordinary reporting does not require that permission.
+Checkout requests only **Contents:
 read** on its one repository. Neither path inherits Contents write just because the
 parent App has it. App credentials and installation tokens remain host-only, outside
 project containers and model prompts. A compromised App credential remains broader
