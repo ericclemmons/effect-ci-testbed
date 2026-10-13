@@ -7,7 +7,8 @@
     "test": "node --test src/*.test.ts",
     "build": "cf build",
     "deploy": "cf deploy",
-    "verify:browser": "node verification/record-browser.ts"
+    "verify:browser": "node verification/record-browser.ts",
+    "proof:verify-published": "node verification/verify-published.ts"
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",

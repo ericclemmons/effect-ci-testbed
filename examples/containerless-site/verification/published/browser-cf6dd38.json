@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "recipe": "containerless-site",
+  "sourceRevision": "cf6dd38f2cbb6e89840fb7dc75b6ee681c5eb3c0",
+  "harnessRevision": "121ea93e58c3773bafa02faa25e68b13eb2d6f2c",
+  "nativeInstanceId": "coverage-containerless-site-20261013-1",
+  "nativeReceiptSha256": "3aba666b1d1dd0afe5ae8861739e80897e3dc34b5abaf21cb4c7fac12e113f14",
+  "originalBrowserManifestSha256": "c4023a29389507f4c803c72abba67813511f159708f393881440a82d97869228",
+  "reportSha256": "a42c85648d30f23c2c599d2d5ef3a6b468a44960740ff135bfe5393870372382",
+  "browserRunId": "01a1378d-b462-706c-af76-b1367127a683",
+  "recordingId": "534dde25-2476-4718-a67a-5c0460bc9445",
+  "framework": "e2e@0.19.0 + @e2e-dev/web@0.14.0",
+  "startedAt": "2026-10-13T23:16:35.888Z",
+  "finishedAt": "2026-10-13T23:16:37.358Z",
+  "browserProcessMs": 1470,
+  "outcome": "passed",
+  "assertions": 3,
+  "attempts": 1,
+  "cleanup": "complete",
+  "nativeRunRedispatched": false,
+  "cliFootage": false,
+  "video": {
+    "asset": "video.webm",
+    "bytes": 45635,
+    "sha256": "146fe28e266f86b9c600cfac2b5386773534a10c5b8207606652a7dd17ef7914",
+    "durationMs": 1600,
+    "width": 960,
+    "height": 540,
+    "decodedFrames": 40,
+    "visualFinalCounter": 1,
+    "frameworkRedaction": "incomplete"
+  },
+  "poster": {
+    "asset": "002-counter-2.png",
+    "bytes": 33311,
+    "sha256": "e6ca3eed04bd83c66d2cd4a112a47bcfbdb5910f58a6b701be23890a11ab981e",
+    "counter": 2
+  },
+  "contentReview": {
+    "reviewer": "Codex agent",
+    "uniqueFramesReviewed": 20,
+    "scope": "Every distinct decoded frame and final screenshot: blank startup and owned public site only; no account or private page content observed",
+    "humanApproval": false,
+    "generalPrivacyCertification": false
+  },
+  "originalManifestPreserved": { "quarantined": true, "frameReviewComplete": false },
+  "boundary": "Film visibly reaches Count1; recorded assertion and original screenshot reach Count2. Derivative publication receipt does not rewrite the original recording manifest or claim CLI/dashboard footage.",
+  "signedReuseAuthorization": false
+}

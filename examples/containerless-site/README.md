@@ -79,7 +79,23 @@ The operator uses `cf` locally; no OAuth or deployment secret is stored here.
 
 ## Verification proof
 
-**Video:** Pending — no same-run browser recording has been published.
+**Video:** [Watch the recorded browser verification](https://github.com/ericclemmons/effect-ci-testbed/releases/download/proof-containerless-site-cf6dd38/video.webm) · [transcript](./verification/published/transcript-cf6dd38.md) · [source/run/media receipt](./verification/published/browser-cf6dd38.json).
+
+[![Final asserted state](https://github.com/ericclemmons/effect-ci-testbed/releases/download/proof-containerless-site-cf6dd38/002-counter-2.png)](https://github.com/ericclemmons/effect-ci-testbed/releases/download/proof-containerless-site-cf6dd38/video.webm)
+
+The public clip is browser footage of the exact built revision, recorded after
+the native run—not a continuous CLI/dashboard build recording. All three
+assertions passed, and the final PNG shows Count2. The film visibly ends at
+Count1 before cleanup; that last update is not reconstructed into the video.
+All distinct decoded frames were agent-reviewed as blank startup/public site only.
+Original incomplete framework redaction and quarantine flags remain preserved;
+the separate review is not human approval or general privacy certification.
+
+The historical proof release is a non-latest prerelease, not an immutable release.
+`pnpm proof:verify-published` anonymously checks its tag, asset metadata and actual
+downloaded SHA-256 bytes; it never rebuilds or redeploys. No proof asset authorizes
+cache reuse or skipping a CI action. Source and recorder commits are separately
+bound in the receipt; this is not footage of whichever commit is latest today.
 
 **Measured results:** [Recorded native timings](./verification/published/native-cf6dd38.json) — one original run and one replay, not a benchmark distribution.
 
