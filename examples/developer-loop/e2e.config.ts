@@ -1,4 +1,5 @@
 import { web } from "@e2e-dev/web";
+import type { E2EConfig } from "e2e";
 
 export default {
   projectId: "effect-ci-developer-loop",
@@ -18,4 +19,4 @@ export default {
       command: { executable: "node", args: ["verification/preview.mjs"], reuseExisting: false },
     },
   }],
-};
+} satisfies E2EConfig;

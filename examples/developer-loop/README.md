@@ -196,7 +196,8 @@ outcome and failed-run video. The verification wrapper succeeds only when that
 expected negative outcome is preserved; it does not relabel the application test.
 No agent steps/model calls or signed-in account pages are involved.
 
-Both write ignored `.e2e/` recordings/traces and a create-only `.verification/`
+Both retain separate, uniquely named ignored `.e2e/` recordings/traces (reruns do
+not replace prior media) and a create-only `.verification/`
 manifest: exact commit, scenario, expected/actual outcome, real browser/runner,
 independently timed build/browser processes, observed warm-input conditions and
 media SHA256. Source changes during the run fail verification. The preview binds

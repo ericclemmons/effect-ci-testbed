@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import process from "node:process";
 import console from "node:console";
+import { randomUUID } from "node:crypto";
 import { verifyReport, verifyVideo } from "./proof.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -32,7 +33,11 @@ const result = JSON.parse(execFileSync(process.execPath, [cli, "run", "build", "
 const buildFinishedAt = new Date().toISOString();
 if (!result.ok || result.plan.nodes.some((node) => node.status !== "complete")) throw new Error("Build incomplete");
 clean();
-const output = `.e2e/${negative ? "negative" : "positive"}`;
+const captureId = `${negative ? "negative" : "positive"}-${randomUUID()}`;
+const output = `.e2e/${captureId}`;
+if (!existsSync(resolve(root, ".e2e"))) mkdirSync(resolve(root, ".e2e"));
+if (lstatSync(resolve(root, ".e2e")).isSymbolicLink()) throw new Error("Unsafe recording directory");
+mkdirSync(resolve(root, output));
 const browserStartedAt = new Date().toISOString();
 const browser = spawnSync("e2e", ["run", `verification/${negative ? "negative" : "flow"}.e2e.ts`, "--output", output], {
   cwd: root, encoding: "utf8", timeout: 60_000,
@@ -51,7 +56,7 @@ clean();
 if (git("rev-parse", "HEAD") !== sourceRevision) throw new Error("Source revision changed during verification");
 mkdirSync(resolve(root, ".verification"), { recursive: true });
 const manifest = {
-  schemaVersion: 1, recipe: "developer-loop", environment: "Effect CI Local", sourceRevision,
+  schemaVersion: 1, recipe: "developer-loop", environment: "Effect CI Local", sourceRevision, captureId,
   scenario: negative ? "intentional wrong expectation" : "build then browser interaction",
   expected, actual: run.status, runId: run.id, startedAt, buildFinishedAt, browserStartedAt, finishedAt,
   buildElapsedMs: Date.parse(buildFinishedAt) - Date.parse(startedAt),
