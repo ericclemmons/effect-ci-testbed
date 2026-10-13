@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "recipe": "developer-loop",
+  "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+  "sourceRevision": "4ebc193aba8b828b87bff44b6328e860583d8dea",
+  "runId": "01a133b4-c6f6-7de8-a000-48bc1794cfae",
+  "environment": "Effect CI Local",
+  "scenario": "build then browser interaction",
+  "command": "cf-ci run build --format=json",
+  "expected": "passed",
+  "actual": "passed",
+  "historical": true,
+  "signedAttestation": false,
+  "startedAt": "2026-10-13T05:20:46.214Z",
+  "buildFinishedAt": "2026-10-13T05:20:47.500Z",
+  "browserStartedAt": "2026-10-13T05:20:47.638Z",
+  "finishedAt": "2026-10-13T05:20:49.074Z",
+  "buildElapsedMs": 1286,
+  "browserElapsedMs": 1436,
+  "totalElapsedMs": 2860,
+  "queueElapsedMs": null,
+  "decisionWaitMs": null,
+  "sampleCount": 1,
+  "conditions": {
+    "dependenciesPresent": true,
+    "artifactPresent": true,
+    "cacheHit": "not independently measured"
+  },
+  "runner": { "name": "e2e", "version": "0.19.0" },
+  "engine": { "name": "web", "version": "0.14.0", "spiVersion": 1 },
+  "browser": "chromium 153.0.8010.12",
+  "runtime": "v26.8.2",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "planMermaid": "flowchart LR\n  step_checkout[\"checkout\"]\n  step_install[\"install\"]\n  step_build[\"build\"]\n  step_checkout --> step_install\n  step_install --> step_build",
+  "release": {
+    "id": 411345151,
+    "tag": "proof-developer-loop-4ebc193",
+    "publishedAt": "2026-10-13T06:15:55Z",
+    "immutable": false
+  },
+  "assets": [
+    {
+      "id": 636096481,
+      "name": "video.webm",
+      "bytes": 21852,
+      "sha256": "5cc8f9613ef3efb528dc216d513c4065b7a9da5b5012041a575ed77b4d1f595a"
+    },
+    {
+      "id": 636096492,
+      "name": "01a133b4-c6f6-7de8-a000-48bc1794cfae.json",
+      "bytes": 1791,
+      "sha256": "2a3bfd52e8f87ac6d649a6321c7b7aa4b886ff5bd2a4c4b0915eccac132c58ec"
+    },
+    {
+      "id": 636096491,
+      "name": "trace.md",
+      "bytes": 1168,
+      "sha256": "d0fbf4d06f87bad6b7e64250b263352640ea0881196dd5e638f9403956312ae9"
+    },
+    {
+      "id": 636096480,
+      "name": "positive-0011.png",
+      "bytes": 30836,
+      "sha256": "93498b4076370202dac5f8981b406a6aa97e4ecf03447ee60785f890cd93abd2"
+    }
+  ],
+  "review": {
+    "reviewer": "Codex",
+    "reviewedBeforePublication": true,
+    "decodedFrames": 31,
+    "visuallyReviewedDistinctFrames": 21,
+    "content": "Only blank startup and the owned public Tiny Vite app/message; no accounts, private source, credentials, Slack or Access sessions.",
+    "frameworkRedaction": "incomplete",
+    "playbackRunId": "01a133b7-87ab-7685-9545-4e89184473c4",
+    "playback": "Independent Chromium playback completed at 960x540; e2e 0.20.0 laboratory, not the recipe recorder version.",
+    "editing": "Unedited footage. Poster is one decoded frame; no speed changes."
+  }
+}
