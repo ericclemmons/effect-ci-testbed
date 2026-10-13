@@ -72,6 +72,10 @@ in an isolate**. A trusted host retrieves commit-pinned GitHub files; a DO store
 immutable revisions and deployment receipts. For the second recipe, a bounded
 Dynamic Worker transforms source into assets without receiving deployment secrets.
 A fixed-target uploader validates outputs and uses the static-assets deployment API.
+The standalone [containerless site](./containerless-site) explores another path:
+build bounded project ESM, publish an immutable DO revision, and serve all assets
+through a Dynamic Worker. Its local workerd proof is not yet a hosted run, and
+it does not claim the direct Static Assets upload path.
 Running `cf` locally to dispatch that pipeline is distinct from running the CLI in
 a DO; unrestricted Node tooling and lifecycle scripts are not implied by this plan.
 
