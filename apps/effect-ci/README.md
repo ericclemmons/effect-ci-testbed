@@ -77,6 +77,10 @@ than a restricted token; this policy does not make the parent credential demo-on
 These token restrictions are library behavior; existing deployments must be rebuilt
 and deployed to receive changes. The live repair writer is not implemented by merely
 changing the App permissions. See [#159](https://github.com/ericclemmons/effect-ci-testbed/issues/159).
+The [fixed repair writer primitive](../../packages/github/REPAIR.md) restricts the
+demo to one file and dedicated branch, verifies exact commit/patch identity and
+reconciles owned PRs. Its mocked tests are not a deployed repair or permission to
+accept model-provided verification; hosted integration remains unfinished.
 
 ## Check-suite trigger
 
