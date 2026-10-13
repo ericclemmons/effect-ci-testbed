@@ -119,3 +119,23 @@ test("hostile reflection traps cannot leak their exceptions", () => {
     message: "Flue inference request rejected",
   });
 });
+
+test("message-array accessors and overridden methods never execute", () => {
+  let reads = 0;
+  const accessor = Object.defineProperty([null], "0", {
+    get() {
+      reads++;
+      throw new Error("secret");
+    },
+  });
+  const overridden = Object.assign(request().messages, {
+    map() {
+      reads++;
+      throw new Error("secret");
+    },
+  });
+  for (const messages of [accessor, overridden, Array(1)]) {
+    assert.throws(() => flueBudgetInput(MODEL, { ...request(), messages }, options()), /rejected/);
+  }
+  assert.equal(reads, 0);
+});

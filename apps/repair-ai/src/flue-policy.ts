@@ -21,6 +21,20 @@ function record(value: unknown, allowed: string[]): Record<string, unknown> {
   return result;
 }
 
+function messagesFor(value: unknown) {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) throw rejected();
+  const length = Object.getOwnPropertyDescriptor(value, "length")?.value;
+  if (!Number.isSafeInteger(length) || length < 1 || length > 16) throw rejected();
+  const allowed = ["length", ...Array.from({ length }, (_, index) => String(index))];
+  if (Reflect.ownKeys(value).some((key) => typeof key !== "string" || !allowed.includes(key)))
+    throw rejected();
+  return Array.from({ length }, (_, index) => {
+    const property = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!property || !("value" in property)) throw rejected();
+    return record(property.value, ["role", "content"]);
+  });
+}
+
 /**
  * Pinned Flue 2.2.2's text-only Workers AI request -> existing reserved request.
  * This validates INPUT ONLY. It does not fabricate SSE, a finish reason, token
@@ -45,13 +59,7 @@ function checkedInput(model: unknown, payload: unknown, options: unknown): Infer
   )
     throw rejected();
   if ((transport.signal as AbortSignal | undefined)?.aborted) throw rejected();
-  if (
-    !Array.isArray(request.messages) ||
-    request.messages.length < 1 ||
-    request.messages.length > 16
-  )
-    throw rejected();
-  const messages = request.messages.map((value) => record(value, ["role", "content"]));
+  const messages = messagesFor(request.messages);
   try {
     return inputFor(model, {
       messages,
