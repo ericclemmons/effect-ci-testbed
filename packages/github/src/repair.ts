@@ -87,21 +87,32 @@ async function request(fetcher: typeof fetch, url: string, token: string, method
 }
 
 /** Only the host calls this. Neither arbitrary installations nor repositories are parameters. */
-export async function withRepairInstallationToken<T>(credentials: GitHubAppCredentials,
-  operation: (token: string) => Promise<T>, fetcher: typeof fetch = fetch): Promise<T> {
+async function withToken<T>(credentials: GitHubAppCredentials, permissions: Record<string, string>,
+  operation: (token: string) => Promise<T>, fetcher: typeof fetch): Promise<T> {
   if (credentials.appId !== APP_ID) throw reject()
   const jwt = await createAppJwt(credentials)
   const result = await request(fetcher, `https://api.github.com/app/installations/${INSTALLATION}/access_tokens`, jwt, "POST", {
-    repositories: [REPAIR_REPOSITORY.split("/")[1]], permissions: { contents: "write", pull_requests: "write" },
+    repositories: [REPAIR_REPOSITORY.split("/")[1]], permissions,
   })
   if (!record(result) || typeof result.token !== "string" || !result.token || result.token.length > 1024) throw new Error("Repair token unavailable")
   const token = result.token
   try {
-    if (!record(result.permissions) || result.permissions.contents !== "write" || result.permissions.pull_requests !== "write" ||
-        Object.keys(result.permissions).some(key => !["contents", "pull_requests", "metadata"].includes(key)) ||
+    if (!record(result.permissions) || Object.entries(permissions).some(([key, value]) => result.permissions[key] !== value) ||
+        Object.keys(result.permissions).some(key => ![...Object.keys(permissions), "metadata"].includes(key)) ||
         (result.permissions.metadata !== undefined && result.permissions.metadata !== "read")) throw new Error("Repair token permissions rejected")
     return await operation(token)
   } finally { await request(fetcher, "https://api.github.com/installation/token", token, "DELETE") }
+}
+
+export function withRepairInstallationToken<T>(credentials: GitHubAppCredentials,
+  operation: (token: string) => Promise<T>, fetcher: typeof fetch = fetch) {
+  return withToken(credentials, { contents: "write", pull_requests: "write" }, operation, fetcher)
+}
+
+/** Verification can read this repo and publish checks, but cannot write its code or PRs. */
+export function withRepairCheckToken<T>(credentials: GitHubAppCredentials,
+  operation: (token: string) => Promise<T>, fetcher: typeof fetch = fetch) {
+  return withToken(credentials, { contents: "read", checks: "write" }, operation, fetcher)
 }
 
 export interface RepairVerification {
