@@ -20,7 +20,7 @@ test("real SQLite transactions serialize RPC reservations and preserve failure c
       async call(run,id,fail=false) {
         return this.run(run,id,MODEL,{messages:[{role:'user',content:fail?'fail':'owned fixture'}]});
       }
-      async inspect(){return this.ctx.storage.get('ledger');}
+      async inspect(){return this.status();}
       async corrupt(){await this.ctx.storage.put('ledger',{version:2,reservations:[]});}
     }
     export default {async fetch(req,env){
@@ -29,7 +29,7 @@ test("real SQLite transactions serialize RPC reservations and preserve failure c
       catch(e){return Response.json({error:e.message},{status:400});}
     }};
   `, resolveDir: new URL(".", import.meta.url).pathname, loader: "ts", sourcefile: "budget-probe.ts" },
-    bundle: true, write: false, format: "esm", target: "esnext", external: ["cloudflare:workers"] })
+    bundle: true, write: false, format: "esm", target: "esnext", external: ["cloudflare:workers", "cloudflare:workflows"] })
   const name = "budget-probe"
   const runtime = new Miniflare({ workers: [{ config: {
     name, compatibilityDate: "2026-10-07",
@@ -47,6 +47,7 @@ test("real SQLite transactions serialize RPC reservations and preserve failure c
     const results = await Promise.all(Array.from({ length: 24 }, (_, i) => send({ run: `run${Math.floor(i / 4)}`, id: `call${i}` })))
     assert.equal(results.filter((result) => result.status === 200).length, 19)
     assert.equal((await send({ op: "inspect" })).body.reservations.length, 20)
+    assert.equal((await send({ op: "inspect" })).body.remainingCents, 0)
     assert.equal((await send({ run: "new", id: "overflow" })).status, 400)
     await send({ op: "corrupt" })
     assert.equal((await send({ run: "new", id: "after-corruption" })).body.error, "Inference budget ledger unavailable")

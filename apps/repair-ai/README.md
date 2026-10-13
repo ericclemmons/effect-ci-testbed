@@ -58,4 +58,24 @@ PR is claimed by these tests. This first slice transports text only; a future
 Flue adapter must preserve reservations for every invocation and explicitly
 disable its default AI Gateway, without bypassing this broker for tool calls.
 
+The administrative `effect-ci-repair-budget-probe` Workflow requires an explicit
+`{"mode":"inspect"}` or `{"mode":"proposal"}` payload. Inspect is read-only.
+Proposal spends **one** reservation on a fixed owned failing function and returns
+untrusted proposed text; it never applies a patch or creates a PR. Model calls
+have zero native retries. Native step replay uses the same consumed reservation
+ID, so an ambiguous call fails closed rather than sending a second inference.
+The probe has a shared four-call lifetime cap within the global twenty-call cap.
+Only authenticated account operators can dispatch it; there is no HTTP trigger.
+
+```sh
+cf workflows instances create effect-ci-repair-budget-probe \
+  --body '{"instance_id":"owned-budget-inspect-1","params":{"mode":"inspect"}}'
+cf workflows instances get owned-budget-inspect-1 \
+  --workflow-name effect-ci-repair-budget-probe
+```
+
+Use a fresh instance ID for intentional executions; never blindly redispatch a
+proposal after a timeout. Inspect the durable reservations first. Avoid `--params`
+for object payloads: the installed CLI treats that option as a string.
+
 Video: not recorded. Native verification and measured timings: not yet verified.
