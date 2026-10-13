@@ -4,6 +4,7 @@ import { generateKeyPairSync } from "node:crypto"
 import test from "node:test"
 import { BROKEN_SOURCE, FIXED_SOURCE, REPAIR_BASE, REPAIR_COMMAND, REPAIR_PATH, REPAIR_REPOSITORY,
   proposeRepair, repairBlobHash, repairSource, repairTreeHash, withRepairInstallationToken,
+  withRepairCheckToken,
   type GitTreeEntry, type RepairVerificationInput } from "./repair.ts"
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
@@ -167,4 +168,15 @@ test("redirect, reflected error body and broken response streams never expose cr
   }))), { message: "Repair API returned invalid data" })
   await assert.rejects(withRepairInstallationToken(credentials, async () => {}, async () => Response.json({ value: "x".repeat(65537) })),
     { message: "Repair API returned invalid data" })
+})
+
+test("repair check tokens are repository-only read/checks, never code or PR writers", async () => {
+  let revoked = false
+  const result = await withRepairCheckToken(credentials, async token => { assert.equal(token, "check-token"); return "verified" }, async (_url, init) => {
+    if (init?.method === "DELETE") { revoked = true; return new Response(null, { status: 204 }) }
+    assert.deepEqual(JSON.parse(String(init?.body)), { repositories: ["effect-ci-private-github-fixture"], permissions: { contents: "read", checks: "write" } })
+    return Response.json({ token: "check-token", permissions: { contents: "read", checks: "write", metadata: "read" } })
+  })
+  assert.equal(result, "verified")
+  assert.equal(revoked, true)
 })

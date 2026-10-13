@@ -119,3 +119,9 @@ registration without changing privacy or the fixed ledger identity. The failed
 not-found inspection created no instance or inference; no blind retry loop.
 
 Video: not recorded. Full Flue repair verification: not yet verified.
+
+The [local private-fixture proof](scripts/README.md) can intentionally replay that
+retained proposal through the fixed GitHub writer and a real exact-commit Node
+check. It does not add credentials to this deployed AI broker or claim a hosted
+Flue/Workers Issues repair. Its fixture and denied-input tests run without network;
+live repository writes require the explicit operator commands.
