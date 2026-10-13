@@ -68,6 +68,32 @@ never asked to trust an arbitrary status submitted by the developer. Repositorie
 mix policies—for example, accepting developer proofs for lint while always rerunning
 release and security checks remotely.
 
+### Hosted verifier foundation (not yet integrated)
+
+The Cloudflare package now provides `hostedCheckBytes` and
+`verifyHostedCheckEvidence`: a bounded, read-only WebCrypto Ed25519 verifier with
+no Git subprocess or signer secret. Its versioned identity binds the canonical
+repository URL, full commit, workflow/check/command, policy digest, toolchain
+digest and prepared-source digest. The host supplies the expected identity and
+explicitly enrolled public keys; project code must not choose either.
+
+Malformed, missing, mismatched, legacy/advisory or unknown-key evidence returns a
+miss. This new format deliberately does not accept the older local Git-note
+envelope, whose policy field only binds the commit reuse scope and does not bind
+toolchain or prepared-source digests. Neither format authorizes ordinary actions
+or deployment reuse; the host still has to enforce eligibility for a genuinely
+side-effect-free `CI.check`.
+
+Node tests and an actual local workerd test use ephemeral lab keys to prove
+exact-input signature verification and fail-closed misses. The workerd test pins
+expected inputs and only raw public-key bytes in host bindings; an incoming
+request cannot substitute its own expected identity. Raw key import avoids
+Node/workerd differences in exported JWK algorithm labels.
+**This is not hosted cache reuse proof:** trusted note fetching,
+host-computed input identities, approved signer enrollment and actual hosted
+execute-versus-reuse tests remain necessary. No signer has been enrolled and no
+hosted command is skipped by this foundation. See [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
+
 Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
