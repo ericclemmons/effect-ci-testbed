@@ -18,7 +18,8 @@ flowchart LR
 ```
 
 Only `@cf/meta/llama-3.3-70b-instruct-fp8-fast` is allowed. Requests are limited to
-16 text messages / 32 KiB and 2,048 output tokens, with streaming disabled.
+16 text messages / 32 KiB and 2,048 output tokens. The original text method
+disables streaming; the bounded stream probe is described below.
 No tools, gateway options, arbitrary model, or caller-controlled provider options
 are accepted. The response cannot execute code or mutate GitHub.
 
@@ -63,13 +64,22 @@ disable its default AI Gateway, without bypassing this broker for tool calls.
 `max_completion_tokens`. It copies text messages into the existing bounded
 request and rejects tools, gateway/header overrides, other models, accessors
 and already-aborted requests. This guard is not connected to a provider yet.
-The broker returns buffered text, while Flue expects OpenAI-style SSE with a
+The original text method returns buffered text, while Flue expects OpenAI-style SSE with a
 real finish reason. An adapter must resolve that transport mismatch without
 inventing completion, usage or streaming evidence. Cancellation after a durable
 reservation must never refund it. No inference is invoked by the guard tests.
 
+The optional host-only `runStream` method reserves against the **same ledger**
+before requesting native streaming. It collects at most 64 KiB of original SSE
+within 45 seconds, cancels stalled/oversized streams, retains failure charges,
+and never retries. It does not invent deltas, finish reasons or usage. Native
+protocol compatibility and Flue execution still require live verification.
+The authenticated probe's explicit `{"mode":"stream"}` spends one reservation
+on a fixed “Reply with only OK” prompt and reports protocol shape only—not raw
+model text or repair success. A `[DONE]` sentinel alone is not a finish reason.
+
 The administrative `effect-ci-repair-budget-probe` Workflow requires an explicit
-`{"mode":"inspect"}` or `{"mode":"proposal"}` payload. Inspect is read-only.
+`{"mode":"inspect"}`, `{"mode":"proposal"}`, or `{"mode":"stream"}` payload. Inspect is read-only.
 Proposal spends **one** reservation on a fixed owned failing function and returns
 untrusted proposed text; it never applies a patch or creates a PR. Model calls
 have zero native retries. Native step replay uses the same consumed reservation
