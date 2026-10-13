@@ -6,6 +6,8 @@ test("the exact hosted build renders and its client counter works", async ({ app
   await expect(screen.getByRole("heading", "CI without the container")).toBeVisible();
   await screen.getByRole("button", "Count: 0").click();
   await expect(screen.getByRole("button", "Count: 1")).toBeVisible();
+  await app.screenshot("counter-1");
   await screen.getByRole("button", "Count: 1").click();
   await expect(screen.getByRole("button", "Count: 2")).toBeVisible();
+  await app.screenshot("counter-2");
 });
