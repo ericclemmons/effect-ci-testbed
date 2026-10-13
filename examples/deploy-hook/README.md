@@ -47,3 +47,15 @@ The standalone conventional YAML also passed on a real GitHub-hosted runner in
 at revision `927ff9093da7c21edacf88a4a6fe28ac428fb2b3`. The root suite stages this
 example independently and runs its `workflow_dispatch` path with `act`, so neither
 the TypeScript config nor the locked dependencies can rely on the monorepo root.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

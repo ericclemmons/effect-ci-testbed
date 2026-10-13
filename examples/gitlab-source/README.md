@@ -48,3 +48,15 @@ checkpoint restoration, not private GitLab authentication or external CI executi
 The local filesystem variant passed independently. PR118's exact-head full suite
 also passed the Effect-on-GitHub plan/execute jobs for that portable fixture variant;
 the real GitLab network clone proof remains the hosted run above.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

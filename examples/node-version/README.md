@@ -45,3 +45,15 @@ workflow depends on `CI.Toolchain.Node`, so another runner can satisfy the same
 capability with its native tool cache without changing the actions. The GitHub runner
 uses `.node-version` as its cache input and persists `.effect-ci/cache/mise`; other
 runners can provide an equivalent policy without changing the workflow.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

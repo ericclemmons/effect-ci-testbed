@@ -55,3 +55,15 @@ it exposed an incorrect attempt to dispose the entrypoint rather than its RPC re
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

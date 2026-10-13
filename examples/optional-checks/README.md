@@ -53,3 +53,15 @@ completed, format warned, and the workflow succeeded. See the
 The native command-failure regression also passed in
 `coverage-optional-native-failure-20261008-4`: the format step has one failed native
 attempt, lint passes, and the Workflow completes with format marked as a warning.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

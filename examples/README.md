@@ -9,6 +9,11 @@ The paths below are reading paths, not execution dependencies. Each recipe remai
 independently runnable. Start with its opening question, inspect its plan, then use
 its own commands and verification notes.
 
+Every README now reserves a **Verification proof** section for a real same-run
+video and environment-specific measured evidence. Follow the
+[proof-page contract](./PROOF-PAGES.md) when filling it in. Pending media is not a
+new coverage verdict: keep existing histories, limitations and matrix cells intact.
+
 An example must own its fixtures, configuration, bindings and hosted wrapper when
 it needs them. Import reusable library packages; do not import another example's
 implementation, Dockerfile, or app configuration. Duplicating a small fixture is

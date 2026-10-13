@@ -53,3 +53,15 @@ Hosted verification: `coverage-snapshot-fanout-20261008-1` completed against
 `55be3e8c7bff809aa9a8a910f888bc86613922e0`. Native history shows one prepared
 checkpoint and both branch commands starting at the same instant. Both wrote the
 same filename and passed their own assertions with live workspace reuse disabled.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

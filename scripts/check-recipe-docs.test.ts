@@ -12,8 +12,9 @@ const recipes = readdirSync("examples", { withFileTypes: true })
 
 test("every runnable recipe is discoverable in the matrix and reading guide", () => {
   const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
-    .map((match) => match[1]).filter((path) => path !== "README.md")
-  const guideRecipes = [...guide.matchAll(/\]\(\.\/([^/#)]+)/g)].map((match) => match[1])
+    .map((match) => match[1]).filter((path) => !path.endsWith(".md"))
+  const guideRecipes = [...guide.matchAll(/\]\(\.\/([^/#)]+)/g)]
+    .map((match) => match[1]).filter((path) => !path.endsWith(".md"))
   assert.deepEqual([...new Set(matrixRecipes)].sort(), recipes)
   assert.deepEqual([...new Set(guideRecipes)].sort(), recipes)
 })
@@ -53,6 +54,16 @@ test("each recipe opens with a focused question", () => {
     const readme = readFileSync(join("examples", recipe, "README.md"), "utf8")
     const question = readme.match(/^> .*(?:\n> .*)*/m)?.[0]
     assert.ok(question?.includes("?"), `${recipe} needs its opening question`)
+  }
+})
+
+test("every recipe reserves honest video and measured verification slots", () => {
+  for (const recipe of recipes) {
+    const readme = readFileSync(join("examples", recipe, "README.md"), "utf8")
+    assert.equal((readme.match(/^## Verification proof$/gm) ?? []).length, 1, recipe)
+    assert.match(readme, /\*\*Video:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe)
+    assert.match(readme, /\*\*Measured results:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe)
+    assert.ok(readme.includes("../PROOF-PAGES.md"), recipe)
   }
 })
 

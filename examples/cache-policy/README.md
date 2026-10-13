@@ -71,3 +71,15 @@ Native `effect-ci-example-cache-policy` instances on October 9, 2026:
 
 All three completed with real snapshot restoration and command execution. The earlier
 `cold-20261009-1` attempt used an unfetchable abbreviated Git ref and is not proof.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

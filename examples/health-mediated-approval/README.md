@@ -128,3 +128,15 @@ event as approval. The administrative validation used that installed CLI's local
 authenticated request helper to send JSON; it never exported credentials to a
 Worker. That private helper is a development workaround, not a supported setup API.
 Use the dashboard event form above until the CLI exposes arbitrary event payloads.
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.

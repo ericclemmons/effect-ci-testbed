@@ -51,3 +51,15 @@ its snapshot commit, and the authenticated command. The command printed
 `host-authentication-verified` after consuming the restored snapshot; native
 outputs contain only the placeholder and verification result. Full provenance is
 recorded in the [host runner README](../../apps/example-runner/README.md).
+
+## Verification proof
+
+**Video:** Pending — no same-run recording has been published for this recipe.
+
+**Measured results:** Pending — no structured per-environment timing summary has
+been published here. Existing recorded runs and coverage claims remain as documented;
+missing media or measurements do not imply those runs failed or were never verified.
+
+Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
+assertions, video/transcript, outcome and cold/warm timings. See the
+[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
