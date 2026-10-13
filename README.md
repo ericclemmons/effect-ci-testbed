@@ -1,3 +1,5 @@
+<img src="./apps/effect-ci/assets/bolt-stack.svg" alt="Effect CI layered lightning logo" width="96" height="96">
+
 # Effect CI testbed
 
 > Experimental prototype. The examples are the product specification.
