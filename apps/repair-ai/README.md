@@ -78,4 +78,44 @@ Use a fresh instance ID for intentional executions; never blindly redispatch a
 proposal after a timeout. Inspect the durable reservations first. Avoid `--params`
 for object payloads: the installed CLI treats that option as a string.
 
-Video: not recorded. Native verification and measured timings: not yet verified.
+### Recorded native proof
+
+At source `27ee536001f2e9c7a316ed2d5ab8e760268ad7e0`, private Worker version
+`6834dfd0-3b93-4a94-857c-e444c9100017` / Workflow version
+`b7e3ff29-19e6-4cc8-8b06-cd6d55631f50` ran:
+
+1. `coverage-repair-budget-inspect-20261013-1`: complete, zero reservations,
+   no inference.
+2. `coverage-repair-budget-proposal-20261013-1`: complete, one real Workers AI
+   call, durable authorization went from $2.00 to $1.90. All three native
+   checkpoints used one attempt with retry limit zero. The proposed function
+   returned 200, but included Markdown fences despite the instruction not to:
+   **model output remains untrusted**, not an executable patch.
+3. `coverage-repair-budget-inspect-after-20261013-1`: independent read-only
+   Workflow confirmed the same consumed reservation; no second model call.
+
+Observed proposal checkpoint: **406 ms**; native execution: **586 ms**; queue
+wait: **2,207 ms**, one sample on October 13, 2026. These are administrative
+probe timings, not full repair benchmarks. $0.10 is the reservation, **not
+measured billed usage**. No Flue, patch, proposed PR, deployment repair or
+Workers Issues delivery was verified by this probe. Private version metadata
+reported no public URLs. No account secrets were passed in the fixed prompt.
+
+```sh
+CF_BIN=/Users/eric/Library/pnpm/bin/cf \
+LIVE_REPAIR_BUDGET_INSTANCE=coverage-repair-budget-proposal-20261013-1 \
+node --test src/live-budget.test.ts
+```
+
+That test only reads the retained instance; it never dispatches or spends.
+The initial live assertion expected logical checkpoint names and failed because
+the native API adds `-1`; it now asserts the exact recorded native names and
+zero-retry/single-attempt configuration, without changing the Workflow.
+
+Initial `cf deploy` uploaded a private version but failed post-upload with API
+10007 before registering the Workflow. Read-only APIs confirmed its allocation
+and absent Workflow. One bounded `cf deploy --prebuilt` reconciliation completed
+registration without changing privacy or the fixed ledger identity. The failed
+not-found inspection created no instance or inference; no blind retry loop.
+
+Video: not recorded. Full Flue repair verification: not yet verified.
