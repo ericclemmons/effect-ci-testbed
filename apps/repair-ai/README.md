@@ -217,6 +217,16 @@ rejected along with arbitrary headers; do not quietly bypass the guard to enable
 them. Neither the bridge nor the replay implements incident delivery, a hosted
 GitHub writer, proposed-PR verification or an autonomous repair.
 
+The offline lifecycle regression also starts Flue's actual Node submission
+coordinator with only this provider and an empty environment. A submission is
+admitted, then settles **failed before requesting a reservation**; reading that
+settlement again spends nothing. This is intentional fail-closed evidence, not
+a successful agent run. Even a no-sandbox agent includes Flue's framework
+`task` tool, and Flue can supply session-affinity headers: the text-only bridge
+does not accept those capabilities yet. Native integration must explicitly
+bound its tools, host-owned session identity and durable retry policy rather
+than remove the guard or mistake admission for success.
+
 The [local private-fixture proof](scripts/README.md) can intentionally replay that
 retained proposal through the fixed GitHub writer and a real exact-commit Node
 check. It does not add credentials to this deployed AI broker or claim a hosted
