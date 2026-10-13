@@ -94,6 +94,20 @@ host-computed input identities, approved signer enrollment and actual hosted
 execute-versus-reuse tests remain necessary. No signer has been enrolled and no
 hosted command is skipped by this foundation. See [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 
+`readGitHubCheckNote` supplies a separate host-only retrieval primitive for the
+dedicated `refs/notes/effect-ci-hosted-checks-v1` namespace. It pins the notes
+commit before reading its tree/blob, supports flat and fanout Git-note paths,
+and verifies the decoded bytes against their Git blob object ID. It uses fixed
+GitHub GET endpoints and a host-owned request callback; project code receives
+neither that callback nor GitHub credentials. Responses are size-bounded, with
+a ten-second overall deadline; missing/auth/redirect/truncation/ambiguity or
+integrity errors return a miss without reflected upstream errors.
+
+Retrieval is **not authorization**. The returned text still needs the exact-input
+signature verifier and approved trust policy. Tests use mocked GitHub responses;
+the integration is not yet installed in the native hosted cache path, and the
+operator's advisory `effect-ci-verification` notes are never read as reusable proof.
+
 Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
