@@ -12,11 +12,13 @@ export default {
   workers: 1,
   video: "on",
   trace: "on",
-  targets: [{
-    engine: web({ viewport: { width: 960, height: 540 } }),
-    app: {
-      url: "http://127.0.0.1:18764",
-      command: { executable: "node", args: ["verification/preview.mjs"], reuseExisting: false },
+  targets: [
+    {
+      engine: web({ viewport: { width: 960, height: 540 } }),
+      app: {
+        url: "http://127.0.0.1:18764",
+        command: { executable: "node", args: ["verification/preview.mjs"], reuseExisting: false },
+      },
     },
-  }],
+  ],
 } satisfies E2EConfig;

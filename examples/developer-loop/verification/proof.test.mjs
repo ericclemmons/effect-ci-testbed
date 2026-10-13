@@ -8,12 +8,34 @@ import { verifyReport, verifyVideo } from "./proof.mjs";
 
 const report = (negative = false) => {
   const status = negative ? "failed" : "passed";
-  return { status, exitCode: negative ? 1 : 0, startedAt: "2026-10-13T00:00:00Z", finishedAt: "2026-10-13T00:00:10Z",
-    results: [{ status, selected: true, kind: "test", attempts: [{ status, cleanup: "complete", secondaryErrors: [],
-      error: negative ? { code: "ASSERTION_FAILED" } : undefined,
-      steps: [{ kind: "app", status: "passed" }, { kind: "assertion", api: "expect.toHaveText", status }],
-      artifacts: [{ kind: "video", mediaType: "video/webm", startedAt: "2026-10-13T00:00:01Z" }],
-    }] }] };
+  return {
+    status,
+    exitCode: negative ? 1 : 0,
+    startedAt: "2026-10-13T00:00:00Z",
+    finishedAt: "2026-10-13T00:00:10Z",
+    results: [
+      {
+        status,
+        selected: true,
+        kind: "test",
+        attempts: [
+          {
+            status,
+            cleanup: "complete",
+            secondaryErrors: [],
+            error: negative ? { code: "ASSERTION_FAILED" } : undefined,
+            steps: [
+              { kind: "app", status: "passed" },
+              { kind: "assertion", api: "expect.toHaveText", status },
+            ],
+            artifacts: [
+              { kind: "video", mediaType: "video/webm", startedAt: "2026-10-13T00:00:01Z" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
 };
 
 test("passed and expected failed observations retain their actual outcome", () => {
@@ -39,9 +61,11 @@ test("engine failures, incomplete cleanup and missing assertions cannot satisfy 
 });
 
 test("missing media and out-of-window video timestamps fail closed", () => {
-  const missing = report(); missing.results[0].attempts[0].artifacts = [];
+  const missing = report();
+  missing.results[0].attempts[0].artifacts = [];
   assert.throws(() => verifyReport(missing, false));
-  const late = report(); late.results[0].attempts[0].artifacts[0].startedAt = "2026-10-14T00:00:00Z";
+  const late = report();
+  late.results[0].attempts[0].artifacts[0].startedAt = "2026-10-14T00:00:00Z";
   assert.throws(() => verifyReport(late, false));
 });
 
@@ -51,8 +75,13 @@ test("media paths, digests and byte counts are validated independently of report
   try {
     // Metadata-unit fixture, deliberately NOT a playable-video proof.
     const bytes = new Uint8Array(1200).fill(1);
-    const file = join(root, "video.webm"); writeFileSync(file, bytes);
-    const video = { path: "video.webm", size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
+    const file = join(root, "video.webm");
+    writeFileSync(file, bytes);
+    const video = {
+      path: "video.webm",
+      size: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    };
     assert.equal(verifyVideo(root, video).bytes, 1200);
     assert.throws(() => verifyVideo(root, { ...video, sha256: "bad" }));
     assert.throws(() => verifyVideo(root, { ...video, size: 1 }));
@@ -60,5 +89,8 @@ test("media paths, digests and byte counts are validated independently of report
     writeFileSync(join(outside, "video.webm"), bytes);
     symlinkSync(join(outside, "video.webm"), join(root, "escape.webm"));
     assert.throws(() => verifyVideo(root, { ...video, path: "escape.webm" }));
-  } finally { rmSync(root, { recursive: true, force: true }); rmSync(outside, { recursive: true, force: true }); }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
 });
