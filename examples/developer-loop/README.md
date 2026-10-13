@@ -80,6 +80,29 @@ Vite+ cache replay. `NO_COLOR`, `NODE_DISABLE_COLORS`, and explicit `FORCE_COLOR
 settings are respected. Redirected output does not automatically enable colors,
 and JSON output remains separate from command logs.
 
+## Hosted browser transport (development boundary)
+
+The recorder still defaults to local Chromium. The owned
+[CDP relay](./verification/cdp-relay.mjs) is a tested building block for a
+future authenticated Kitesurf browser provider, not an enabled hosted recipe.
+It accepts an explicit **trusted host** authorization callback only after checking
+the exact Cloudflare account and browser session endpoint. It gives the browser
+engine a random, loopback-only WebSocket capability; the bearer token stays in
+the upstream TLS handshake, never in the page or returned endpoint.
+
+The listener expires within 60 seconds, closes on cancellation, rejects page
+Origins and concurrent clients, bounds buffered traffic, and refuses redirects.
+Its tests use real loopback WebSockets with inert credentials, not a Cloudflare
+session. An owning provider must still create/delete its remote session on every
+exit path and retain a server-side expiry if the host crashes. Do not publish
+the temporary CDP capability in verification reports or supply personal OAuth
+credentials to hosted Workers or project containers. A maintained session/auth
+adapter and same-run hosted recording remain pending.
+
+```sh
+node --test verification/cdp-relay.test.mjs
+```
+
 ## Set up once
 
 Use Node 24.11+ or Node 26+. From the testbed repository root:
