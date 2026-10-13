@@ -66,16 +66,19 @@ execute.
 
 ## Current evidence and remaining integration
 
-Eight unit tests use **mock GitHub replies** to cover exact scope, verification
+Nine unit tests use **mock GitHub replies** to cover exact scope, verification
 ordering, one-file tree identity, drift, foreign PRs, unsafe model output, token
 revocation and lost-response replay. Tree hashing is compared to independent
 `git hash-object`; that command does not write Git objects. No GitHub repository
 mutation, native writer, Flue agent, actual verifier or proposed repair PR is
-claimed by these tests.
+claimed by these tests. Separately, the
+[operator proof](../../apps/repair-ai/scripts/README.md) created a real one-file
+private PR after a local exact-commit check; it records source, timings and
+boundaries rather than relabeling that replay as hosted Flue execution.
 
-The dedicated failing branch still needs create-only fixture setup (preserve the
-existing private repository `main`), a genuine exact-commit verifier, a host RPC
-boundary and real successful/denied/replay E2E. Workers Issues delivery and the
-budgeted Flue agent are separate remaining slices. Video and measured end-to-end
-repair timings are not yet recorded. Track implementation in
+The dedicated failing branch and local verifier are now exercised by that operator
+proof, preserving private `main`. A host RPC boundary, genuine hosted
+successful/denied/replay E2E, Workers Issues delivery and the budgeted Flue agent
+remain separate slices. Video and measured full end-to-end repair timings are not
+yet recorded. Track implementation in
 [#159](https://github.com/ericclemmons/effect-ci-testbed/issues/159).

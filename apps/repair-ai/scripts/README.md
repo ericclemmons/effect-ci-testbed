@@ -45,7 +45,38 @@ seed; this is not an atomic multi-API transaction.
 
 The owned failing/passing tests and unsafe-input refusal run locally in CI. The
 GitHub integration script needs explicit operator invocation and is **not** run by
-unit tests or ordinary CI. Actual private branch/PR proof is not recorded yet.
+unit tests or ordinary CI. Actual private branch/PR proof is recorded below.
 No fresh AI call, Flue execution, hosted writer, Workers Issues delivery, video or
 production fix is claimed here. The private repair PR, once created, stays open
 for human review; permission to merge testbed PRs does not authorize merging it.
+
+### Recorded private proof — October 13, 2026
+
+At testbed source `25a5769afa6baef7fb33a8bdccb6ac0c1c299638`:
+
+1. Create-only baseline branch `demo/friday-repair` at
+   `352327387f610d84282a567bf9a40ceee3978950`; real owned Node test exited **1**.
+   Private `main` stayed `ecf13c17597b2718e44509e8850eba1b0b15866d`.
+2. Replayed the retained native proposal without another model call. App committed
+   the one-file fix at `bd9682e5b9ca5f8f696ea8052bd5afd4cd2c0a00`.
+3. Authenticated exact-commit reads verified the three fixture blobs, then the real
+   Node test exited **0**, observed **105 ms** (one sample, not a benchmark).
+4. Owned App check `115491016138` completed successfully at **19:18:09 UTC**;
+   [private repair PR #1](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/1)
+   was created at **19:18:11 UTC**. Its diff contains only `repair-demo/health.js`,
+   returning 200 instead of 500. PR stays open and nothing was deployed.
+
+The unchanged ordinary hosted checkout/install/build also passed on the fix commit;
+those checks are not the repair-specific Node test or proof of Flue/Issues delivery.
+Ignored prepared/confirmed/proposal receipts preserve actual source, commit,
+digest, command, check and environment. Scoped tokens were revoked by the helpers.
+No Slack notification or release was performed.
+
+```sh
+LIVE_GITHUB_REPAIR=1 node --test apps/repair-ai/src/live-github-repair.test.ts
+```
+
+That test only reads the existing PR, check and main via the local `gh` login. It
+does not spend inference or mutate anything. Video, hosted writer and genuine
+incident-triggered Flue execution remain unverified; this is explicitly an
+**administrative replay with local verification**, not the final Friday flywheel.
