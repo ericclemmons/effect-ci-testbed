@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Layered lightning bolt</title>
+  <desc>A white filled lightning bolt with two closely stacked white outlines on orange.</desc>
+  <defs>
+    <!-- All layers reuse this geometry; only the Y translation changes. -->
+    <path id="bolt" d="M 462 170 H 730 L 568 350 H 726 L 294 754 L 448 464 H 302 Z"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#f38020"/>
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <!-- Lowest outline, drawn first. -->
+    <use href="#bolt" transform="translate(0 144)" fill="none" stroke="white" stroke-width="14"/>
+    <!-- Orange fill and wide stroke hide the touching parts of the lowest layer. -->
+    <use href="#bolt" transform="translate(0 72)" fill="#f38020" stroke="#f38020" stroke-width="56"/>
+    <use href="#bolt" transform="translate(0 72)" fill="none" stroke="white" stroke-width="14"/>
+    <!-- No masking stroke: the middle outline meets the filled top layer. -->
+    <use href="#bolt" fill="white"/>
+  </g>
+</svg>
