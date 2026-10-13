@@ -22,6 +22,13 @@ for (const name of [".e2e", ".verification"]) {
   }
 }
 const sourceRevision = git("rev-parse", "HEAD");
+const remote = git("config", "--get", "remote.origin.url");
+const repositoryUrl = new URL(remote.replace(/^git@([^:]+):/, "https://$1/"));
+repositoryUrl.username = "";
+repositoryUrl.password = "";
+repositoryUrl.search = "";
+repositoryUrl.hash = "";
+repositoryUrl.pathname = repositoryUrl.pathname.replace(/\.git$/, "");
 const negative = process.argv.includes("--negative");
 if (process.argv.slice(2).some((arg) => arg !== "--negative")) throw new Error("Only --negative is supported");
 const conditions = { dependenciesPresent: existsSync(resolve(root, "node_modules")), artifactPresent: existsSync(resolve(root, "dist/message.js")), cacheHit: "not independently measured" };
@@ -32,6 +39,9 @@ const result = JSON.parse(execFileSync(process.execPath, [cli, "run", "build", "
 }));
 const buildFinishedAt = new Date().toISOString();
 if (!result.ok || result.plan.nodes.some((node) => node.status !== "complete")) throw new Error("Build incomplete");
+const planMermaid = execFileSync(process.execPath, [cli, "plan", "build", "--format=mermaid"], {
+  cwd: root, encoding: "utf8", timeout: 30_000,
+}).trim();
 clean();
 const captureId = `${negative ? "negative" : "positive"}-${randomUUID()}`;
 const output = `.e2e/${captureId}`;
@@ -56,11 +66,15 @@ clean();
 if (git("rev-parse", "HEAD") !== sourceRevision) throw new Error("Source revision changed during verification");
 mkdirSync(resolve(root, ".verification"), { recursive: true });
 const manifest = {
-  schemaVersion: 1, recipe: "developer-loop", environment: "Effect CI Local", sourceRevision, captureId,
+  schemaVersion: 1, recipe: "developer-loop", repository: repositoryUrl.href,
+  environment: "Effect CI Local", sourceRevision, captureId,
+  command: "cf-ci run build --format=json", workflow: result.workflow, planMermaid,
+  runtime: process.version, platform: process.platform, architecture: process.arch,
   scenario: negative ? "intentional wrong expectation" : "build then browser interaction",
   expected, actual: run.status, runId: run.id, startedAt, buildFinishedAt, browserStartedAt, finishedAt,
   buildElapsedMs: Date.parse(buildFinishedAt) - Date.parse(startedAt),
   browserElapsedMs: Date.parse(finishedAt) - Date.parse(browserStartedAt), conditions,
+  queueElapsedMs: null, decisionWaitMs: null,
   runner: run.runner, engine: run.targets.find((target) => target.id === observation.targetId).engine,
   browser: observation.attempts[0].environment.browser,
   video: { path: `${output}/results/${video.path}`, ...media, redaction: video.redaction },
