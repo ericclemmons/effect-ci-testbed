@@ -62,6 +62,16 @@ function ledgerFor(value: unknown): Ledger {
   return { version: 1, reservations }
 }
 
+export function budgetStatus(current: unknown) {
+  const ledger = ledgerFor(current)
+  return {
+    budget: BUDGET_NAME,
+    reservedCents: ledger.reservations.length * RESERVATION_CENTS,
+    remainingCents: LIMIT_CENTS - ledger.reservations.length * RESERVATION_CENTS,
+    reservations: ledger.reservations,
+  }
+}
+
 export async function reserve(store: BudgetStore, run: unknown, id: unknown) {
   if (!identifier(run) || !identifier(id)) throw invalid()
   return store.update((current) => {

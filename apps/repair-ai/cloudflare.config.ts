@@ -8,6 +8,9 @@ export default defineConfig({
     workersDev: false,
     previewUrls: false,
     env: { AI: bindings.ai() },
-    exports: { InferenceBudgetObject: exports.durableObject({ storage: "sqlite" }) },
+    exports: {
+      InferenceBudgetObject: exports.durableObject({ storage: "sqlite" }),
+      BudgetProbeWorkflow: exports.workflow({ name: "effect-ci-repair-budget-probe" }),
+    },
   },
 })
