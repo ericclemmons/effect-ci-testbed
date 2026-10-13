@@ -11,6 +11,19 @@ export interface HostedCheckIdentity {
   readonly sourceDigest: string
 }
 
+/** Host-owned enrollment. A valid signature alone does not authorize reuse. */
+export interface HostedCheckEnrollment {
+  readonly keyId: string
+  readonly publicKey: CryptoKey
+  readonly repository: string
+  readonly checks: ReadonlyArray<{
+    readonly workflowId: string
+    readonly stepId: string
+    readonly command: string
+    readonly policyDigest: string
+  }>
+}
+
 const fields = ["kind", "repository", "revision", "workflowId", "stepId", "command",
   "policyDigest", "toolchainDigest", "sourceDigest"] as const
 const digest = /^[0-9a-f]{64}$/
@@ -67,6 +80,36 @@ export const verifyHostedCheckEvidence = async (
     return await crypto.subtle.verify("Ed25519", key, signature, bytes)
   } catch {
     // Avoid echoing malformed notes, keys, project commands or credentials.
+    return false
+  }
+}
+
+/** Apply repository/check policy before cryptographic verification. This does
+ * not compute prepared-source/toolchain inputs or install a native CheckCache.
+ * Callers must keep enrollment and expected identity outside project control.
+ */
+export const verifyEnrolledCheckEvidence = async (
+  serialized: string | undefined,
+  expected: HostedCheckIdentity,
+  enrollments: ReadonlyArray<HostedCheckEnrollment>,
+): Promise<boolean> => {
+  try {
+    if (!Array.isArray(enrollments) || enrollments.length > 32) return false
+    const ids = new Set<string>()
+    const keys = new Map<string, CryptoKey>()
+    for (const enrollment of enrollments) {
+      if (!enrollment || !bounded(enrollment.keyId, 64) ||
+          !/^[a-zA-Z0-9_-]+$/.test(enrollment.keyId) || ids.has(enrollment.keyId) ||
+          !Array.isArray(enrollment.checks) || enrollment.checks.length > 32) return false
+      ids.add(enrollment.keyId)
+      if (expected.kind !== "check" || enrollment.repository !== expected.repository) continue
+      if (enrollment.checks.some((check: HostedCheckEnrollment["checks"][number]) => check &&
+          check.workflowId === expected.workflowId && check.stepId === expected.stepId &&
+          check.command === expected.command && check.policyDigest === expected.policyDigest))
+        keys.set(enrollment.keyId, enrollment.publicKey)
+    }
+    return await verifyHostedCheckEvidence(serialized, expected, keys)
+  } catch {
     return false
   }
 }

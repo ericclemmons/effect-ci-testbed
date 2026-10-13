@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { hostedCheckBytes, verifyHostedCheckEvidence, type HostedCheckIdentity } from "./check-evidence.ts"
+import { hostedCheckBytes, verifyHostedCheckEvidence, verifyEnrolledCheckEvidence, type HostedCheckIdentity, type HostedCheckEnrollment } from "./check-evidence.ts"
 
 const identity: HostedCheckIdentity = {
   kind: "check", repository: "https://github.com/example/fixture", revision: "a".repeat(40),
@@ -55,4 +55,34 @@ test("incomplete or credential-bearing identities and ordinary actions cannot be
     assert.throws(() => hostedCheckBytes(invalid))
     assert.equal(await verifyHostedCheckEvidence(note, invalid, keys), false)
   }
+})
+
+const enrollment: HostedCheckEnrollment = {
+  keyId: "lab-only", publicKey: keyPair.publicKey, repository: identity.repository,
+  checks: [{ workflowId: identity.workflowId, stepId: identity.stepId,
+    command: identity.command, policyDigest: identity.policyDigest }],
+}
+
+test("an enrolled signer cannot authorize a different repository, workflow, check, command or policy", async () => {
+  assert.equal(await verifyEnrolledCheckEvidence(await sign(), identity, [enrollment]), true)
+  for (const changed of [
+    { repository: "https://github.com/other/fixture" }, { workflowId: "release" },
+    { stepId: "build" }, { command: "node deploy.js" }, { policyDigest: "e".repeat(64) },
+  ]) {
+    const other = { ...identity, ...changed }
+    // Even a genuinely valid fresh signature from this key is outside policy.
+    assert.equal(await verifyHostedCheckEvidence(await sign(other), other, keys), true)
+    assert.equal(await verifyEnrolledCheckEvidence(await sign(other), other, [enrollment]), false)
+  }
+})
+
+test("removing a key or check revokes reuse; ambiguous and oversized enrollment misses", async () => {
+  const note = await sign()
+  for (const policy of [[], [{ ...enrollment, checks: [] }], [enrollment, enrollment],
+    Array(33).fill(enrollment), [{ ...enrollment, checks: Array(33).fill(enrollment.checks[0]) }]])
+    assert.equal(await verifyEnrolledCheckEvidence(note, identity, policy), false)
+  assert.equal(await verifyEnrolledCheckEvidence(note, identity,
+    [{ ...enrollment, keyId: "rotated-key" }]), false)
+  assert.equal(await verifyEnrolledCheckEvidence(note, { ...identity, kind: "action" } as unknown as HostedCheckIdentity,
+    [enrollment]), false)
 })

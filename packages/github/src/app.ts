@@ -109,7 +109,12 @@ export const createInstallationToken = async (
         "x-github-api-version": "2026-03-10",
         "content-type": "application/json",
       },
-      ...(checkoutRepository ? { body: JSON.stringify({ repositories: [checkoutRepository], permissions: { contents: "read" } }) } : {}),
+      body: JSON.stringify(checkoutRepository
+        ? { repositories: [checkoutRepository], permissions: { contents: "read" } }
+        // Explicit reduction matters when the parent App gains Contents write
+        // for the separate, fixed-target repair broker. Ordinary CI reporting
+        // must never inherit that writer authority by omission.
+        : { permissions: { contents: "read", checks: "write", pull_requests: "write" } }),
     },
   )
 

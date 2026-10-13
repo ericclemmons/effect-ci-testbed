@@ -56,6 +56,28 @@ Cloudflare Worker ── create({ id: deliveryId, params }) ──▶ Workflow i
 
 ## Trigger and identity
 
+### GitHub App repair authority
+
+The existing App can have **Contents: write** for the separately scoped repair demo.
+GitHub applies that App permission to all repositories selected in its installation;
+it is not a per-repository permission toggle. Keep repository access selected, not
+account-wide. The application must still constrain every repair to its fixed demo
+repository and mint a repository-scoped writer token only for that trusted operation.
+Repair proposes a verified PR; it never automatically merges or deploys it.
+
+Ordinary reporting requests explicit reduced token permissions: **Contents: read**,
+**Checks: write**, and **Pull requests: write**. Checkout requests only **Contents:
+read** on its one repository. Neither path inherits Contents write just because the
+parent App has it. App credentials and installation tokens remain host-only, outside
+project containers and model prompts. A compromised App credential remains broader
+than a restricted token; this policy does not make the parent credential demo-only.
+
+These token restrictions are library behavior; existing deployments must be rebuilt
+and deployed to receive changes. The live repair writer is not implemented by merely
+changing the App permissions. See [#159](https://github.com/ericclemmons/effect-ci-testbed/issues/159).
+
+## Check-suite trigger
+
 The GitHub App subscribes to `check_suite.requested` and
 `check_suite.rerequested`. GitHub's default Checks flow emits `requested` after a push,
 and `rerequested` gives the normal **Re-run** experience. The webhook supplies the App

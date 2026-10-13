@@ -112,6 +112,42 @@ Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
 
+### Demo enrollment and revocation
+
+The operator has authorized a **dedicated demo signing key**, not a repository-wide
+trust bypass. Enrollment is a host-controlled allowlist binding a public key to one
+demo repository and explicit side-effect-free checks. A project cannot enroll itself,
+choose the verifier's expected inputs, or opt a build/deploy/release into reuse.
+The private key stays on the local signing machine; only the public key belongs in
+the hosted verifier configuration. Permission to enroll is not a claim that the
+native integration below is already installed or verified.
+
+The intended user journey is:
+
+1. Commit the change. Run the approved check against that exact clean commit.
+2. The local signer binds the successful result to the repository, full commit,
+   workflow, check, exact command, policy, toolchain and prepared-source digests.
+3. Attach the signed envelope as a Git note and push the dedicated
+   `refs/notes/effect-ci-hosted-checks-v1` ref alongside the source commit.
+4. The hosted runner prepares the actual source and computes its own identity.
+   It reads the note and verifies it using the host's enrolled public key and
+   repository/check allowlist. An exact match may reuse **only that check**.
+5. Missing notes, changed inputs, wrong repository/check, unknown keys, invalid
+   signatures or lookup failures execute the check normally. Checkout, installation,
+   builds, artifacts and deployment continue normally even after a valid check hit.
+
+Removing the public key from the host allowlist revokes reuse for that signer.
+Removing one check from the policy revokes reuse for that check. Rotation means
+enrolling a new public key and removing the old one; old notes do not acquire trust
+merely because they remain in Git. Changes to the policy digest invalidate earlier
+proofs. Git note transport and cryptographic validity alone never grant authority.
+
+This is **developer/agent-signed verification**: an authorized signer asserts that
+the check passed. It does not prove execution on independent hardware, guarantee a
+compromise-free signing machine, or turn an advisory operator note into trusted
+evidence. The native hosted execute/reuse/fallback path remains unverified until
+its actual end-to-end runs are recorded. See [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
+
 ## Commit first, then attest
 
 Commits are checkpoints, not assertions that checks passed. An authorized agent
