@@ -40,18 +40,27 @@ const response = await fetch(`${api}/releases/tags/${tag}`, {
   signal: AbortSignal.timeout(10_000),
 });
 assert.equal(response.status, 200);
-const release = await response.json();
+const release = (await response.json()) as {
+  tag_name: unknown;
+  target_commitish: unknown;
+  prerelease: unknown;
+  draft: unknown;
+  immutable?: boolean;
+  assets: { name: string; id: number; size: number; digest: string; state: string }[];
+};
 assert.equal(release.tag_name, tag);
 assert.equal(release.target_commitish, revision);
 assert.equal(release.prerelease, true);
 assert.equal(release.draft, false);
 const ref = await fetch(`${api}/git/ref/tags/${tag}`, { signal: AbortSignal.timeout(10_000) });
 assert.equal(ref.status, 200);
-const reference = await ref.json();
+const reference = (await ref.json()) as { object: { type: unknown; sha: unknown } };
 assert.equal(reference.object.type, "commit");
 assert.equal(reference.object.sha, revision);
 for (const [name, id, size, sha] of assets) {
-  const meta = release.assets.find((a: any) => a.name === name);
+  assert.ok(Array.isArray(release.assets));
+  const meta = release.assets.find((a) => a.name === name);
+  assert.ok(meta, `Missing published asset: ${name}`);
   assert.equal(meta.id, id);
   assert.equal(meta.size, size);
   assert.equal(meta.digest, `sha256:${sha}`);
