@@ -22,7 +22,15 @@ flowchart LR
 
 ---
 
-The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) is the opt-in. `cf-ci`
+The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) is the opt-in. An explicit
+local `cf-ci run` in a package with conventional scripts and no discovered workflow
+creates this empty marker automatically, then executes the inferred workflow.
+`cf-ci run lint` creates it and runs the selected inferred target. A known package
+manager declaration or lockfile is needed for installation. Existing workflows
+are never overwritten; unknown targets and packages without supported scripts
+are rejected before creating the marker. Initialization refuses symlinked config
+directories. `plan`, `list`, explicit workflow paths and remote dispatch remain
+non-initializing. With the marker in place, `cf-ci`
 discovers `package.json`, detects conventional `format`, `lint`, `check`, `typecheck`,
 `test`, and `build` scripts, and synthesizes ordinary CI actions before planning.
 
@@ -37,6 +45,11 @@ pnpm exec cf-ci
 ```
 
 Adding an explicit default workflow later replaces CLI inference completely.
+
+Inference currently uses a conservative serial script order. This is not proof
+of automatic dependency-driven parallelism or of Vite/Node execution in an isolate.
+The CLI bootstrap regression executes a real dependency-free npm package from a
+fresh temporary directory; it is local proof, not a new hosted coverage result.
 
 The [hosted example runner](../../apps/example-runner) uses the same SDK inference,
 but reads `package.json` from the requested immutable GitHub revision in a native

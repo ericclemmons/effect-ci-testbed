@@ -23,8 +23,11 @@ cf-ci run lint --format=text
 cf-ci run build --format=text
 ```
 
-The example already contains an empty workflow marker. Its package scripts are
-discovered automatically; the CLI does **not yet create that marker for you**.
+The example already contains an empty workflow marker. In a package without a
+discovered workflow, an explicit local `cf-ci run` now creates an empty
+`.cloudflare/ci/ci.ts` and discovers conventional package scripts. Existing
+workflows take precedence; `plan`, `list`, and remote dispatch do not create files.
+Use a package-manager declaration or lockfile so installation can be resolved.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the

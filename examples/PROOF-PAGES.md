@@ -62,7 +62,7 @@ run a real progressive release; trigger a dedicated Worker error; observe a boun
 repair propose a verified PR. The complete scripted run may take ten minutes.
 The three-minute presentation uses real checkpoints and disclosed recorded cuts.
 
-Automatic marker creation, safe automatic DAG concurrency, hosted attestation
-consumption, full production HMD and Workers Issues-to-Flue repair must each pass
+Local marker creation has a real CLI regression. Safe automatic DAG concurrency,
+hosted attestation consumption, full production HMD and Workers Issues-to-Flue repair must each pass
 their own end-to-end proof before the script claims them. Never silently treat an
 ordinary build/deployment as a reusable side-effect-free check.
