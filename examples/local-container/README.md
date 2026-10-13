@@ -1,4 +1,4 @@
-# Run local CI in a container
+# Run CI in a local container
 
 > How can I run the same Effect CI workflow in an isolated local container?
 

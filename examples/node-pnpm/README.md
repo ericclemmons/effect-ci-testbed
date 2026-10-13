@@ -1,4 +1,4 @@
-# Node + pnpm
+# Run CI with pnpm
 
 > How do I run the same CI shape with pnpm while keeping package-manager-specific setup
 > out of the workflow orchestration?

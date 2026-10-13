@@ -1,4 +1,4 @@
-# Declare secrets without putting them in a container
+# Use secrets without exposing them to containers
 
 > How does an action require a credential without leaking it into plans, logs, or command environments?
 

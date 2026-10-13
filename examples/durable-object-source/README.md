@@ -1,4 +1,4 @@
-# Immutable Durable Object source
+# Checkout from a Durable Object
 
 > How do I run CI against an immutable Durable Object source revision without handing the storage binding to the container?
 

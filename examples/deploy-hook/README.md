@@ -1,4 +1,4 @@
-# Trigger deployment from a hook
+# Trigger CI from a deployment hook
 
 > How do I route a deployment hook into the same inspectable build and deploy graph?
 

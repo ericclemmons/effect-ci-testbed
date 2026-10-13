@@ -1,4 +1,4 @@
-# Fan one prepared workspace out to isolated checks
+# Run checks in parallel from one workspace
 
 > How can parallel checks start from the same prepared filesystem without mutating each other?
 

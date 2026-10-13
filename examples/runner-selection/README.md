@@ -1,4 +1,4 @@
-# Choose the GitHub runner without changing CI
+# Choose where CI runs
 
 > How can the same Effect CI program run on GitHub-hosted, Blacksmith, or self-hosted compute?
 

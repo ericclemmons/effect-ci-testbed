@@ -1,4 +1,4 @@
-# Put inspectable conditions in a workflow plan
+# Deploy only on matching branches or events
 
 > How do I deploy only for a push to `main` without hiding that rule in arbitrary JavaScript?
 

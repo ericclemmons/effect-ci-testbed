@@ -1,4 +1,4 @@
-# Node + npm
+# Run CI with npm
 
 > How do I run an ordinary npm project with parity between GitHub Actions and
 > Effect CI?

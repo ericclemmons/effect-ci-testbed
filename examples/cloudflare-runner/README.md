@@ -1,4 +1,4 @@
-# Run Effect CI on Cloudflare
+# Resume CI steps on Cloudflare
 
 > How does one logical workspace survive durable `checkout → install → build` actions on Cloudflare?
 

@@ -1,4 +1,4 @@
-# Roll back only after retries are exhausted
+# Roll back after a failed action
 
 > If deployment still fails after retrying, how does its recovery remain visible?
 

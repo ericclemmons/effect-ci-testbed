@@ -1,4 +1,4 @@
-# Build and run a user Dockerfile
+# Build and run Docker in CI
 
 > How do I build and run a project-owned Dockerfile inside Cloudflare CI?
 

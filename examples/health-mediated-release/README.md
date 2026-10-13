@@ -1,4 +1,4 @@
-# Release a Worker only while its health remains acceptable
+# Roll out a Worker with health checks
 
 > How do I upload a candidate without releasing it, progressively shift traffic, and roll back on a confirmed regression?
 

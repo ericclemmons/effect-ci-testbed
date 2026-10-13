@@ -1,4 +1,4 @@
-# Run source checks in a Worker isolate
+# Format code without a container
 
 > How do I format-check source without paying to execute the formatter inside a container?
 

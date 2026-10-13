@@ -1,4 +1,4 @@
-# Swap source providers
+# Checkout from local files or Git
 
 > How do I run one unchanged workflow against a local directory or Git checkout?
 

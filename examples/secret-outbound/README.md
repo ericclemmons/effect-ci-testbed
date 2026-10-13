@@ -1,4 +1,4 @@
-# Authenticate outside the container
+# Call authenticated APIs without exposing credentials
 
 > How can a command use a credential without ever receiving its value?
 

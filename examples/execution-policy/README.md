@@ -1,4 +1,4 @@
-# Retry and time out actions consistently
+# Set retry and timeout limits
 
 > How do retries and timeouts mean the same thing locally and on a durable runner?
 

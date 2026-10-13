@@ -1,4 +1,4 @@
-# Run Effect CI on Blacksmith
+# Run CI on Blacksmith
 
 > How can Blacksmith run the same CI program that my agent runs locally?
 

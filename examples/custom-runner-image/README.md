@@ -1,4 +1,4 @@
-# Customize the Cloudflare runner image
+# Customize the CI container
 
 > How do I bake operating-system tools into the CI image instead of installing them on every run?
 

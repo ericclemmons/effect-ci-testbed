@@ -1,4 +1,4 @@
-# Customize or disable a reusable cache
+# Customize or disable caching
 
 > How do I customize a runner's cache without coupling the workflow to its storage?
 

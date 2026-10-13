@@ -1,4 +1,4 @@
-# Install Python at runtime on Cloudflare
+# Install Python on Cloudflare
 
 > How do I install an additional operating-system tool without creating a project-specific runner image?
 

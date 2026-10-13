@@ -1,4 +1,4 @@
-# Human-approved production deployment
+# Approve a deployment in GitHub
 
 > How do I require a human to approve a production deployment after its build dependency succeeds?
 

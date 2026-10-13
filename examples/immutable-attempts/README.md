@@ -1,4 +1,4 @@
-# Preserve immutable attempts
+# Keep rerun history and reuse passed steps
 
 > How can I rerun one action without erasing the previous run or recomputing unrelated work?
 

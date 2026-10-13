@@ -56,6 +56,22 @@ test("each recipe opens with a focused question", () => {
   }
 })
 
+test("recipe names describe user tasks rather than source implementation jargon", () => {
+  for (const recipe of recipes) {
+    const title = readFileSync(join("examples", recipe, "README.md"), "utf8").split("\n")[0]
+    assert.doesNotMatch(title, /materializ|digest-pinned|subgraph|compensation/i, recipe)
+  }
+  for (const [recipe, label] of [
+    ["r2-source", "Checkout from R2"],
+    ["artifacts-source", "Checkout from Cloudflare Artifacts"],
+    ["durable-object-source", "Checkout from a Durable Object"],
+    ["gitlab-source", "Checkout from GitLab"],
+  ]) {
+    assert.ok(root.includes(`[${label}](./examples/${recipe})`), recipe)
+    assert.equal(readFileSync(join("examples", recipe, "README.md"), "utf8").split("\n")[0], `# ${label}`)
+  }
+})
+
 test("recipe documentation links resolve locally", () => {
   const files = ["README.md", "examples/README.md", ...recipes.map((recipe) => join("examples", recipe, "README.md"))]
   for (const file of files) {

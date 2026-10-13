@@ -1,4 +1,4 @@
-# Reuse a package-manager download cache
+# Cache dependency downloads
 
 > How does an install reuse package-manager downloads without replacing its incoming workspace?
 

@@ -1,4 +1,4 @@
-# Select the project's Node.js version
+# Choose a Node.js version
 
 > How do I run CI with the exact Node.js version declared by the project?
 

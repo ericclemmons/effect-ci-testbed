@@ -1,4 +1,4 @@
-# Deploy dependent applications in order
+# Deploy apps in dependency order
 
 > How do I guarantee that the backend deploys before the frontend that consumes it?
 

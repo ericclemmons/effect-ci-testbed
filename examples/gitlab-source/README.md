@@ -1,4 +1,4 @@
-# Clone public GitLab source
+# Checkout from GitLab
 
 > How do I run the same `CI.Source` workflow against a pinned GitLab commit instead of a GitHub repository?
 

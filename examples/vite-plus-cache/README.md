@@ -1,4 +1,4 @@
-# Reuse the Vite+ task cache
+# Cache tasks with Vite+
 
 > How can separate CI runs reuse Vite+ task results without teaching Effect CI how
 > Vite+ fingerprints a build?
