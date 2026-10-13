@@ -1,0 +1,4 @@
+{
+  "title": "CI without the container",
+  "description": "A real static site, built from source in a capability-limited isolate."
+}

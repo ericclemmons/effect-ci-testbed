@@ -1,0 +1,23 @@
+{
+  "name": "@effect-ci-testbed/containerless-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test src/*.test.ts",
+    "build": "cf build",
+    "deploy": "cf deploy"
+  },
+  "dependencies": {
+    "@effect-ci-testbed/ci": "workspace:*",
+    "effect": "4.0.0-beta.19"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
+    "@cloudflare/workers-types": "5.20261001.1",
+    "@types/node": "^26.6.3",
+    "cf": "1.0.0-beta.12",
+    "typescript": "^7.0.2",
+    "vite": "^7.1.12"
+  }
+}
