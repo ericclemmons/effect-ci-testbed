@@ -897,3 +897,4 @@ export const workflowEntrypoint = <
     return result.plan
   }
 }
+export { hostedCheckBytes, verifyHostedCheckEvidence, type HostedCheckIdentity } from "./check-evidence.ts"
