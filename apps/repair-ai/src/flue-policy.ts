@@ -26,11 +26,7 @@ function record(value: unknown, allowed: string[]): Record<string, unknown> {
  * This validates INPUT ONLY. It does not fabricate SSE, a finish reason, token
  * usage, streaming support or agent execution from a buffered text response.
  */
-export function flueBudgetInput(
-  model: unknown,
-  payload: unknown,
-  options: unknown,
-): InferenceInput {
+function checkedInput(model: unknown, payload: unknown, options: unknown): InferenceInput {
   if (model !== MODEL) throw rejected();
   const request = record(payload, [
     "messages",
@@ -63,6 +59,18 @@ export function flueBudgetInput(
       stream: false,
       temperature: request.temperature,
     });
+  } catch {
+    throw rejected();
+  }
+}
+
+export function flueBudgetInput(
+  model: unknown,
+  payload: unknown,
+  options: unknown,
+): InferenceInput {
+  try {
+    return checkedInput(model, payload, options);
   } catch {
     throw rejected();
   }

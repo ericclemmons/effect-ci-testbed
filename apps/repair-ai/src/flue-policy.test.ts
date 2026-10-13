@@ -102,3 +102,20 @@ test("an already aborted request is rejected; live abort transport is not serial
   );
   assert.throws(() => flueBudgetInput(MODEL, request(), { ...options(), signal: {} }), /rejected/);
 });
+
+test("hostile reflection traps cannot leak their exceptions", () => {
+  const hostile = new Proxy(
+    {},
+    {
+      getPrototypeOf() {
+        throw new Error("private credential");
+      },
+    },
+  );
+  assert.throws(() => flueBudgetInput(MODEL, hostile, options()), {
+    message: "Flue inference request rejected",
+  });
+  assert.throws(() => flueBudgetInput(MODEL, request(), hostile), {
+    message: "Flue inference request rejected",
+  });
+});
