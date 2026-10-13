@@ -1,4 +1,4 @@
-# Publish a restorable build artifact
+# Share build artifacts between jobs
 
 > When a later workload needs build output, what crosses the runner boundary?
 

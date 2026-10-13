@@ -1,4 +1,4 @@
-# Install a system package
+# Install system tools
 
 > How do I install an operating-system dependency before running my project?
 

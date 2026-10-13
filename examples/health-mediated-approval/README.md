@@ -1,4 +1,4 @@
-# Review an inconclusive or near-margin Worker rollout
+# Review a rollout when health is uncertain
 
 > How do I pause for a human when health data cannot decide, without letting approval bypass a confirmed regression?
 

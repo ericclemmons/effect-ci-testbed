@@ -1,4 +1,4 @@
-# Expose selected actions to `cf-ci`
+# Run a single check from the CLI
 
 > How do I let an agent or developer run one action without making every internal
 > action a public CLI target?

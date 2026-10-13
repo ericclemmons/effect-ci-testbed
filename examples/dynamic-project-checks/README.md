@@ -1,4 +1,4 @@
-# Execute untrusted project modules without a container
+# Test untrusted code without a container
 
 > How do I check a project's HTTP behavior in an isolate without giving its code host capabilities?
 

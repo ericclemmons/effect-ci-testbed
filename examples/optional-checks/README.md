@@ -1,4 +1,4 @@
-# Required and optional checks
+# Run required and optional checks
 
 > How do required and optional checks run together without an advisory failure
 > blocking the workflow?

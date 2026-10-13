@@ -1,4 +1,4 @@
-# GitHub source, Cloudflare CI
+# Run GitHub CI on Cloudflare
 
 > How do I keep source on GitHub and execute checkout, install, and build in a Cloudflare Workflow that reports GitHub checks?
 

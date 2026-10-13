@@ -1,4 +1,4 @@
-# Select dependency-aware reruns
+# Rerun only affected checks
 
 > If one action is rerun, which successful actions can Effect CI safely reuse?
 

@@ -1,4 +1,4 @@
-# Cloudflare Artifacts source
+# Checkout from Cloudflare Artifacts
 
 > How do I materialize commit-pinned source through a Worker binding without putting Git credentials in the container?
 

@@ -29,13 +29,13 @@ composition recipe, not another task-inference implementation. For reusable proo
 continue to [commit-bound verification](./verification-evidence): commit, check that
 revision, then attach a signed Git note. Working-file feedback is not attestation.
 
-## Source and artifact boundaries
+## Checkout and build artifacts
 
-[Source providers](./source-providers) → [R2 source](./r2-source) or
-[Artifacts source](./artifacts-source) or [Durable Object source](./durable-object-source).
+[Checkout from local files or Git](./source-providers) → [Checkout from R2](./r2-source) or
+[Checkout from Cloudflare Artifacts](./artifacts-source) or [Checkout from a Durable Object](./durable-object-source).
 
 These answer where `source.checkout()` gets its inputs. R2 adds digest-pinned private
-storage; Artifacts adds commit-pinned input materialization through a host binding.
+storage; Artifacts checks out a pinned commit through a host binding.
 Durable Object source adds immutable revision storage and a host-only RPC reader.
 [GitLab source](./gitlab-source) instead reuses Git checkout against a pinned public
 GitLab URL, without implying private GitLab auth or GitLab pipeline integration.
@@ -157,6 +157,8 @@ a second execution engine.
 
 ## Adding a recipe
 
+- Name the recipe for the user's task, such as “Checkout from R2” or “Retry a flaky test.”
+  Keep provider mechanics, hashes and implementation terms in the explanation, not the title.
 - Open with one question. Keep actions needed to answer it; do not add unrelated demos.
 - Link the simpler ingredient and name the one new capability or policy this adds.
 - Label deliberate compositions as integrations; keep credentials and setup in apps.

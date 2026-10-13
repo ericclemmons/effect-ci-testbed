@@ -1,4 +1,4 @@
-# Reuse signed evidence for side-effect-free checks
+# Reuse verified checks for a commit
 
 > If the exact commit already passed lint locally, can trusted CI avoid doing the same work again?
 

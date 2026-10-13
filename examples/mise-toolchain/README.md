@@ -1,4 +1,4 @@
-# Install a declared toolchain with Mise
+# Install runtimes with Mise
 
 > How do I install every runtime declared by my project's Mise configuration?
 

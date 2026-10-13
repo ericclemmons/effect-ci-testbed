@@ -1,4 +1,4 @@
-# Check an edit before pushing, then reuse unchanged work
+# Check changes before pushing
 
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?

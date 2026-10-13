@@ -1,4 +1,4 @@
-# Materialize source from R2
+# Checkout from R2
 
 > How do I run CI against a content-addressed R2 source object without sending storage credentials to a container?
 

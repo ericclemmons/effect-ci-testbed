@@ -1,4 +1,4 @@
-# Infer conventional project tasks
+# Discover checks automatically
 
 > How do I get an inspectable CI workflow by adding an empty `ci.ts`?
 

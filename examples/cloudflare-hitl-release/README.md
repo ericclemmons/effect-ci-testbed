@@ -1,4 +1,4 @@
-# Cloudflare human-approved release
+# Approve a release in Slack
 
 > How do I build on Cloudflare, notify a reviewer, wait durably, and release only after approval?
 

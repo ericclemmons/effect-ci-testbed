@@ -1,4 +1,4 @@
-# Build a custom container image
+# Build and publish a container image
 
 > How do I build a project-owned container image in the same CI program as my other work?
 
