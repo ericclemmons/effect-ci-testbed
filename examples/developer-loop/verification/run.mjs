@@ -45,6 +45,7 @@ if (browser.error || browser.status !== (negative ? 1 : 0)) throw new Error("Une
 const run = JSON.parse(readFileSync(resolve(root, output, "report.json"), "utf8")).run;
 const expected = negative ? "failed" : "passed";
 const video = verifyReport(run, negative);
+const observation = run.results.find((result) => result.selected === true && result.kind === "test");
 const media = verifyVideo(resolve(root, output, "results"), video);
 clean();
 if (git("rev-parse", "HEAD") !== sourceRevision) throw new Error("Source revision changed during verification");
@@ -55,7 +56,8 @@ const manifest = {
   expected, actual: run.status, runId: run.id, startedAt, buildFinishedAt, browserStartedAt, finishedAt,
   buildElapsedMs: Date.parse(buildFinishedAt) - Date.parse(startedAt),
   browserElapsedMs: Date.parse(finishedAt) - Date.parse(browserStartedAt), conditions,
-  runner: run.runner, engine: run.targets[0].engine, browser: run.results[0].attempts[0].environment.browser,
+  runner: run.runner, engine: run.targets.find((target) => target.id === observation.targetId).engine,
+  browser: observation.attempts[0].environment.browser,
   video: { path: `${output}/results/${video.path}`, ...media, redaction: video.redaction },
   publication: "quarantined local artifact; review before any public publication",
   signedAttestation: false,

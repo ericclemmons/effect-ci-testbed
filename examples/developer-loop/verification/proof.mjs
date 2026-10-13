@@ -4,9 +4,10 @@ import { createHash } from "node:crypto";
 
 export function verifyReport(run, negative) {
   const expected = negative ? "failed" : "passed";
-  const result = run.results?.[0];
+  const selected = run.results?.filter((result) => result.selected === true && result.kind === "test");
+  const result = selected?.[0];
   const attempt = result?.attempts?.[0];
-  if (run.status !== expected || run.exitCode !== (negative ? 1 : 0) || run.results?.length !== 1 ||
+  if (run.status !== expected || run.exitCode !== (negative ? 1 : 0) || selected?.length !== 1 ||
       result?.status !== expected || result?.attempts?.length !== 1 || attempt?.status !== expected ||
       attempt?.cleanup !== "complete" || attempt?.secondaryErrors?.length !== 0) {
     throw new Error("Unexpected recorded outcome or incomplete cleanup");

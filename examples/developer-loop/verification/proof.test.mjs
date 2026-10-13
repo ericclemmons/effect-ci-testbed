@@ -9,7 +9,7 @@ import { verifyReport, verifyVideo } from "./proof.mjs";
 const report = (negative = false) => {
   const status = negative ? "failed" : "passed";
   return { status, exitCode: negative ? 1 : 0, startedAt: "2026-10-13T00:00:00Z", finishedAt: "2026-10-13T00:00:10Z",
-    results: [{ status, attempts: [{ status, cleanup: "complete", secondaryErrors: [],
+    results: [{ status, selected: true, kind: "test", attempts: [{ status, cleanup: "complete", secondaryErrors: [],
       error: negative ? { code: "ASSERTION_FAILED" } : undefined,
       steps: [{ kind: "app", status: "passed" }, { kind: "assertion", api: "expect.toHaveText", status }],
       artifacts: [{ kind: "video", mediaType: "video/webm", startedAt: "2026-10-13T00:00:01Z" }],
@@ -21,6 +21,9 @@ test("passed and expected failed observations retain their actual outcome", () =
   assert.equal(verifyReport(report(true), true).kind, "video");
   assert.throws(() => verifyReport(report(true), false));
   assert.throws(() => verifyReport(report(), true));
+  const unselected = report();
+  unselected.results.push({ selected: false, kind: "test", status: "skipped", attempts: [] });
+  assert.equal(verifyReport(unselected, false).kind, "video");
 });
 
 test("engine failures, incomplete cleanup and missing assertions cannot satisfy a negative test", () => {
