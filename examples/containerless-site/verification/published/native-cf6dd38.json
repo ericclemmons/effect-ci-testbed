@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "recipe": "containerless-site",
+  "environment": "Effect CI Cloudflare",
+  "sourceRevision": "cf6dd38f2cbb6e89840fb7dc75b6ee681c5eb3c0",
+  "workerVersion": "ddf5abfa-3eb6-4bd6-bcfc-47e088dbea7e",
+  "workflowVersion": "3936a648-8261-427a-9860-26c756846abe",
+  "instanceId": "coverage-containerless-site-20261013-1",
+  "siteUrl": "https://effect-ci-containerless-site.ericclemmons.workers.dev/r/cf6dd38f2cbb6e89840fb7dc75b6ee681c5eb3c0/index.html",
+  "sourceDigest": "dcaa5d55fdc295d9134ee87bb602e4d2d5964ac4839ec088e44b59ad4ee67a2f",
+  "assetDigest": "872be3ac211568f89244a98b652ea5f7157e8340bf6a3c4578bfc3d99efb4b39",
+  "outcome": "complete",
+  "containers": 0,
+  "commands": 0,
+  "nativeSteps": 4,
+  "attemptsPerStep": 1,
+  "queueMs": 2671,
+  "executionMs": 1675,
+  "totalMs": 4346,
+  "steps": { "sourceMs": 1131, "buildMs": 37, "publishMs": 68, "verifyMs": 290 },
+  "cache": "unknown",
+  "coldWarm": "unknown",
+  "samples": 1,
+  "replay": {
+    "instanceId": "coverage-containerless-site-replay-20261013-1",
+    "queueMs": 2014,
+    "executionMs": 627,
+    "totalMs": 2641,
+    "sameDigests": true,
+    "cache": "unknown",
+    "samples": 1
+  },
+  "negative": {
+    "instanceId": "coverage-containerless-site-rejected-20261013-1",
+    "inputRevision": "main",
+    "outcome": "errored",
+    "nativeSteps": 0
+  },
+  "browserObservation": {
+    "browser": "Codex in-app Browser",
+    "counterBefore": "Count: 0",
+    "counterAfter": "Count: 1",
+    "styledPageVisible": true
+  },
+  "hostedCpuExhaustionVerified": false,
+  "videoVerified": false,
+  "benchmarkDistribution": false,
+  "signedReuseAuthorization": false
+}
