@@ -7,10 +7,10 @@ import { runBudgetProbe } from "./probe-policy.ts";
 /** No fetch route or event-prompt forwarding. Account-authenticated Workflow dispatch. */
 export class BudgetProbeWorkflow extends WorkflowEntrypoint<
   {},
-  { mode: "inspect" | "proposal" | "stream" }
+  { mode: "inspect" | "proposal" | "stream" | "recovery" }
 > {
   override async run(
-    event: Readonly<WorkflowEvent<{ mode: "inspect" | "proposal" | "stream" }>>,
+    event: Readonly<WorkflowEvent<{ mode: "inspect" | "proposal" | "stream" | "recovery" }>>,
     step: WorkflowStep,
   ) {
     const namespace = (

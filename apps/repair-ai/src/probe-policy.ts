@@ -35,14 +35,14 @@ export async function runBudgetProbe(
     Array.isArray(payload) ||
     Object.keys(payload).length !== 1 ||
     !("mode" in payload) ||
-    (payload.mode !== "inspect" && payload.mode !== "proposal" && payload.mode !== "stream")
+    !["inspect", "proposal", "stream", "recovery"].includes(payload.mode as string)
   )
     throw new Error("Explicit fixed budget probe mode required");
-  if (payload.mode === "stream" && !budget.runStream)
+  if ((payload.mode === "stream" || payload.mode === "recovery") && !budget.runStream)
     throw new Error("Streaming budget unavailable");
   const before = await step.do("budget:before", options, () => budget.status());
   if (payload.mode === "inspect") return { before, inferenceCalled: false };
-  if (payload.mode === "stream") {
+  if (payload.mode === "stream" || payload.mode === "recovery") {
     const result = await step.do("budget:owned-stream", options, () =>
       budget.runStream!("native-budget-probe", `probe_${instance}`, MODEL, {
         messages: [{ role: "user", content: "Reply with only OK. Do not use tools." }],
@@ -52,6 +52,53 @@ export async function runBudgetProbe(
         temperature: 0,
       }),
     );
+    if (payload.mode === "recovery") {
+      const charged = await step.do("budget:charged", options, () => budget.status());
+      const replay = await step.do("budget:replay-stream", options, () =>
+        budget.runStream!("native-budget-probe", `probe_${instance}`, MODEL, {
+          messages: [{ role: "user", content: "Reply with only OK. Do not use tools." }],
+          stream: true,
+          stream_options: { include_usage: true },
+          max_completion_tokens: 128,
+          temperature: 0,
+        }),
+      );
+      const after = await step.do("budget:after", options, () => budget.status());
+      if (
+        charged.reservedCents !== before.reservedCents + 10 ||
+        after.reservedCents !== charged.reservedCents ||
+        JSON.stringify(after.reservations) !== JSON.stringify(charged.reservations) ||
+        result.body !== replay.body ||
+        result.byteLength !== replay.byteLength ||
+        result.reservationId !== replay.reservationId ||
+        result.reservedCents !== replay.reservedCents ||
+        result.contentType !== "text/event-stream" ||
+        replay.contentType !== result.contentType ||
+        result.byteLength < 1 ||
+        result.byteLength > 65_536 ||
+        new TextEncoder().encode(result.body).byteLength !== result.byteLength
+      )
+        throw new Error("Native stream recovery evidence mismatch");
+      const digest = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(result.body)),
+        ),
+        (byte) => byte.toString(16).padStart(2, "0"),
+      ).join("");
+      return {
+        before,
+        charged,
+        after,
+        reservationId: result.reservationId,
+        byteLength: result.byteLength,
+        bodySha256: digest,
+        replayMatches: true,
+        inferenceCalled: true,
+        replayInferenceCalled: false,
+        flueVerified: false,
+        repairVerified: false,
+      };
+    }
     const after = await step.do("budget:after", options, () => budget.status());
     return {
       before,

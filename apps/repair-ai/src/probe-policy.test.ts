@@ -94,3 +94,60 @@ test("explicit streaming probe exposes only protocol observations, not model tex
   assert.equal("protocol" in result && result.protocol.finishReason, false);
   assert.deepEqual(h.steps, ["budget:before", "budget:owned-stream", "budget:after"]);
 });
+
+test("recovery probe checkpoints identical request replay and unchanged durable charge", async () => {
+  const h = harness();
+  const body = 'data: {"response":"OK"}\n\ndata: [DONE]\n\n';
+  const original = h.budget.runStream!;
+  let first: Awaited<ReturnType<typeof original>> | undefined;
+  let rpcCalls = 0;
+  h.budget.runStream = async (...args) => {
+    rpcCalls++;
+    if (!first) first = { ...(await original(...args)), byteLength: Buffer.byteLength(body) };
+    return { ...first };
+  };
+  const result = await runBudgetProbe("owned", { mode: "recovery" }, h.step, h.budget);
+  assert.equal(rpcCalls, 2);
+  assert.equal(h.calls(), 1);
+  assert.equal("replayMatches" in result && result.replayMatches, true);
+  assert.equal("replayInferenceCalled" in result && result.replayInferenceCalled, false);
+  assert.equal("bodySha256" in result && result.bodySha256.length, 64);
+  assert.equal("body" in result, false);
+  assert.deepEqual(h.steps, [
+    "budget:before",
+    "budget:owned-stream",
+    "budget:charged",
+    "budget:replay-stream",
+    "budget:after",
+  ]);
+});
+
+test("recovery probe rejects changed bytes or a second charge instead of reporting success", async () => {
+  for (const change of ["bytes", "charge"]) {
+    const h = harness();
+    const original = h.budget.runStream!;
+    let first: Awaited<ReturnType<typeof original>> | undefined;
+    h.budget.runStream = async (...args) => {
+      if (!first)
+        return (first = {
+          ...(await original(...args)),
+          byteLength: Buffer.byteLength('data: {"response":"OK"}\n\ndata: [DONE]\n\n'),
+        });
+      if (change === "charge") await original(...args);
+      return { ...first, body: change === "bytes" ? "different" : first.body };
+    };
+    if (change === "charge")
+      h.budget.status = async () =>
+        budgetStatus({
+          version: 1,
+          reservations: Array.from({ length: h.calls() }, (_, i) => ({
+            run: "native-budget-probe",
+            id: `call${i}`,
+          })),
+        });
+    await assert.rejects(
+      runBudgetProbe("owned", { mode: "recovery" }, h.step, h.budget),
+      /evidence mismatch/,
+    );
+  }
+});
