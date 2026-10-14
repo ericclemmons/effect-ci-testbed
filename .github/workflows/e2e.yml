@@ -644,6 +644,11 @@ jobs:
           pnpm --filter @effect-ci-testbed/flue-budget-provider check
           pnpm --filter @effect-ci-testbed/flue-cloudflare-config check
           pnpm --filter @effect-ci-testbed/flue-cloudflare-config test
+      - name: Verify private generated Flue host without paid inference
+        run: |
+          pnpm --filter @effect-ci-testbed/repair-agent check
+          pnpm --filter @effect-ci-testbed/repair-agent test
+          pnpm --filter @effect-ci-testbed/repair-agent exec cf build
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
