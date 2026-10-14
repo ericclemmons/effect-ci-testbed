@@ -9,6 +9,10 @@ export default defineConfig({
     exports: {
       NotificationCaptures: exports.durableObject({ storage: "sqlite" }),
       NotificationEvidence: exports.worker(),
+      OwnedIncidentAdmission: exports.worker(),
+      OwnedIncidentAdmissionWorkflow: exports.workflow({
+        name: "effect-ci-owned-incident-admission",
+      }),
       NotificationInspectionWorkflow: exports.workflow({
         name: "effect-ci-notification-inspection",
       }),
