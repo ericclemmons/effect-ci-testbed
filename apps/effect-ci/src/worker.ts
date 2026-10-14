@@ -1,39 +1,43 @@
-import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
+import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
-import workflow from "./workflow.ts"
-import { notificationChannels } from "./notification-policy.ts"
-import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts"
-import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
-import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
+import workflow from "./workflow.ts";
+import { notificationChannels } from "./notification-policy.ts";
+import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
+import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
+import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
 
-export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare"
-export { HealthChartRenderer } from "./health-renderer.ts"
-export { PrivateSlackImages } from "./private-images.ts"
-export { PrivateSlackCards } from "./private-cards.ts"
-export { HmdApprovals } from "./hmd-approval.ts"
-export { HmdReviewWorkflow } from "./hmd-workflow.ts"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
+export { HealthChartRenderer } from "./health-renderer.ts";
+export { PrivateSlackImages } from "./private-images.ts";
+export { PrivateSlackCards } from "./private-cards.ts";
+export { HmdApprovals } from "./hmd-approval.ts";
+export { HmdReviewWorkflow } from "./hmd-workflow.ts";
+export { RepairVerifier, OwnedRepairVerificationWorkflow } from "./repair-verifier.ts";
 
-const ci = GitHubCloudflare.worker()
+const ci = GitHubCloudflare.worker();
 export default {
   async fetch(request: Request, environment: WorkerEnvironment, context: ExecutionContext) {
     if (request.method === "POST" && new URL(request.url).pathname === "/webhooks/slack") {
-      const body = await request.clone().text()
-      if (body.length > 32_000) return new Response("Payload too large", { status: 413 })
+      const body = await request.clone().text();
+      if (body.length > 32_000) return new Response("Payload too large", { status: 413 });
       if (isHmdSlackBody(body)) {
-        const binding = (context.exports as unknown as { HmdApprovals: DurableObjectNamespace<HmdApprovals> }).HmdApprovals
-        const review = (capability: HmdCapability) => binding.getByName(capability.owner)
+        const binding = (
+          context.exports as unknown as { HmdApprovals: DurableObjectNamespace<HmdApprovals> }
+        ).HmdApprovals;
+        const review = (capability: HmdCapability) => binding.getByName(capability.owner);
         return hmdSlackInteraction(request, environment, {
           inspect: (capability) => review(capability).inspect(capability),
-          submit: (capability, decision, reason, actor) => review(capability).submit(capability, decision, reason, actor),
-        })
+          submit: (capability, decision, reason, actor) =>
+            review(capability).submit(capability, decision, reason, actor),
+        });
       }
     }
-    return ci.fetch(request, environment, context)
+    return ci.fetch(request, environment, context);
   },
-}
+};
 
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {
   notificationChannels,
   root: "examples/github-cloudflare-ci",
   container: { image: "workspace", instance: "standard-1" },
-})
+});

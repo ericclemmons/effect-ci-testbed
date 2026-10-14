@@ -82,3 +82,44 @@ successful/denied/replay E2E, Workers Issues delivery and the budgeted Flue agen
 remain separate slices. Video and measured full end-to-end repair timings are not
 yet recorded. Track implementation in
 [#159](https://github.com/ericclemmons/effect-ci-testbed/issues/159).
+
+## Native Node verifier boundary
+
+`verifyOwnedRepair` is the separately scoped host verifier. It accepts only a full
+candidate commit and owned run ID. Before execution it pins the dedicated base,
+candidate ref, single parent and writer message, then fetches all three files at
+that exact commit. The health source, test and package manifest must match the
+host's fixed bytes and Git blob hashes; changed tests, symlinks and other source
+are rejected. This is deliberately not arbitrary project verification.
+
+The existing App host exports a private `RepairVerifier` capability. Its trusted
+implementation materializes only those three already-validated files into an
+owned `WorkspaceContainer`, then actually executes:
+
+```sh
+env -i PATH=/usr/local/bin:/usr/bin:/bin node --test repair-demo/health.test.mjs
+```
+
+No checkout token, App credential, installation token, model command, install
+script or other repository file enters the container. Successful execution
+publishes an owned exact-commit native Node check using a separate private-fixture
+**Contents: read + Checks: write** token, revoked on success or failure. Check
+identity and refs are checked again before returning the verifier receipt. Raw
+container/API output is not published. A check may exist after late ref drift,
+but the rejected receipt cannot authorize a PR.
+
+The authenticated `effect-ci-owned-repair-verification` Workflow has a fixed
+`verify-retained` pilot mode for the already-existing private fixture PR1 commit.
+It uses one checkpoint with zero retries and performs no code/PR/merge/deploy
+writes. Nothing adds a public repair route or gives the model this capability.
+
+Eight tests use mocked GitHub responses and real **local** Node execution for the
+positive fixture; they cover token separation/revocation, changed bytes, symlinks,
+truncated/tampered Git trees, execution failure, foreign checks, ref drift and
+replay without duplicate checks. A separate actual local workerd Workflow/RPC/DO
+test checks serialization, rejected content and private fetch 404 with **fake**
+GitHub and container execution. It does not relabel fake execution as native Node.
+This code is not yet deployed or verified natively. The existing private PR1 is
+still a local operator replay, not an incident-driven repair. Native successful
+and denied/replay evidence, writer integration and real Workers Issues delivery
+remain required before claiming the live flywheel is complete.

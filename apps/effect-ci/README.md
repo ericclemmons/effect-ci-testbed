@@ -82,6 +82,16 @@ demo to one file and dedicated branch, verifies exact commit/patch identity and
 reconciles owned PRs. Its mocked tests are not a deployed repair or permission to
 accept model-provided verification; hosted integration remains unfinished.
 
+The private `RepairVerifier` export now provides a separate exact-commit Node
+verification boundary: host-pinned source/test/manifest bytes are fetched with
+private-fixture Contents read + Checks write, materialized into an owned container
+without credentials, and tested under an empty environment. An owned native check
+is published only after actual Node exit code 0. The administrative
+`effect-ci-owned-repair-verification` Workflow accepts only `{ "mode": "verify-retained" }`
+and checks the existing demo fix once, with checkpoint retries disabled. It cannot
+create a code change, PR, merge or deployment. This new export/Workflow is **not yet
+deployed or natively verified**; see the [verifier boundary](../../packages/github/REPAIR.md#native-node-verifier-boundary).
+
 ## Check-suite trigger
 
 The GitHub App subscribes to `check_suite.requested` and
