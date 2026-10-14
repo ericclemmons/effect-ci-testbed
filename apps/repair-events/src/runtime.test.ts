@@ -23,7 +23,7 @@ test(
       write: false,
       format: "esm",
       platform: "neutral",
-      external: ["cloudflare:workers"],
+      external: ["cloudflare:workers", "cloudflare:workflows"],
     });
     const code = compiled.outputFiles[0].text;
     const secret = "a".repeat(64);
@@ -34,6 +34,10 @@ test(
       exports: {
         NotificationCaptures: { type: "durable-object", storage: "sqlite" },
         NotificationEvidence: { type: "worker" },
+        NotificationInspectionWorkflow: {
+          type: "workflow",
+          name: "effect-ci-notification-inspection",
+        },
       },
       manifest: {
         mainModule: "index.js",
@@ -108,6 +112,47 @@ test(
       assert.equal(capture.quarantined, true);
       assert.equal(capture.incidentDedupeVerified, false);
       assert.equal(typeof capture.receivedAt, "number");
+      assert.equal(
+        (
+          await runtime.dispatchFetch(
+            "https://owned.invalid/local-inspection",
+            { method: "POST", body: '{"mode":"inventory"}' },
+          )
+        ).status,
+        404,
+      );
+      const localBundle = await build({
+        entryPoints: [join(pkg, "fixtures/local.ts")],
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "neutral",
+        external: ["cloudflare:workers", "cloudflare:workflows"],
+      });
+      await runtime.setOptions({
+        workers: [
+          { config: real(localBundle.outputFiles[0].text) },
+          { config: reader },
+        ],
+      });
+      read = await runtime.getWorker("local-evidence-reader");
+      const inspect = async (payload: unknown) => {
+        const response = await runtime.dispatchFetch(
+          "https://owned.invalid/local-inspection",
+          { method: "POST", body: JSON.stringify(payload) },
+        );
+        assert.equal(response.status, 200);
+        return response.json();
+      };
+      const list = await inspect({ mode: "inventory" });
+      assert.deepEqual(list.result.digests, ids);
+      assert.deepEqual(list.steps, ["notification:inventory"]);
+      const single = await inspect({ mode: "read", digest: ids[0] });
+      assert.equal(single.result.raw, raw);
+      assert.equal(single.result.digest, ids[0]);
+      assert.equal(single.result.quarantined, true);
+      assert.equal(single.result.incidentDedupeVerified, false);
+      assert.deepEqual(single.steps, ["notification:read"]);
       await runtime.setOptions({
         workers: [
           { config: real(code + "\n// local reload\n") },
