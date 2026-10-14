@@ -61,8 +61,8 @@ ledger are retained. No new budget run or namespace evades old reservations.
 The inspection mode calls no budget/model. Proposal mode adds the admission checkpoint
 then uses the existing four proposal checkpoints, all zero retries.
 
-The receiver/admission is already natively proved; this **new continuation is NOT yet
-deployed or natively executed**. Local tests exercise actual generated workerd/SQLite
+The receiver/admission and this continuation are now separately natively proved below.
+Local tests exercise actual generated workerd/SQLite
 agent plus service-bound FAKE admission/budget: fixed inspect consumes nothing, a fresh
 owned incident instance makes one fake call, repeated submission is denied without
 another charge, invalid admission rejects even after previous success. The Workflow
@@ -85,11 +85,36 @@ reconcile that SAME instance if acknowledgement is uncertain. Do not redispatch 
 or proof. This is authenticated operator continuation of an already captured real Issue,
 NOT an automatic webhook-triggered repair or a new deployed failure.
 
+Native incident continuation (2026-10-14): exact merged source `9e0afc23b9c36b8f505c68df62935d2239ba27a9`
+rebuilt1657modules and deployed once as private agent version `a8bfdf29-f2a1-421f-a4ef-ee88e522149f`.
+Actual bindings retain the generated SQLite namespace, `REPAIR_AI` and ONLY the private
+`OWNED_INCIDENT` service; no secret/writer/public route. Fixed inspect completed with no AI.
+ONE `owned-issue-flue-e28e6b86-v1` completed17:12:57.208UTC, all FIVE checkpoints once/zero retries,
+class `c584b280-2ae8-486b-8ea7-7b50ec9b9ca5`. Admission verified BEFORE the fresh Flue dispatch,
+which returned exact untrusted `export function healthStatus() { return 200; }`.
+New reservation `flue_54c540e5b12e62cae83001008487f8a26b1652a7664fb511a576e045f8e47c87`
+under SAME `friday-flue-proposal-v1` moved40→50 cents reserved/660→650 cents remaining.
+Independent inspect-only before/after histories retain all FOUR old IDs. FIVE actual AI
+calls across all history; $6.50 lifetime authorization remains, NOT measured billing.
+The host run now used2of4 lifetime slots. Official model pricing/limits were rechecked
+before a create-only proposal intent; no retries/fallback or source re-emission occurred.
+
+Native queue243ms/execution4548ms/total4791ms, one sample of **operator continuation**
+after a previously authenticated real Issue and native admission. Not a measured whole
+500→Issue→repair-PR benchmark or automatic webhook activation. Raw model alias/finish/usage
+is not exposed by this host receipt and is not invented. Private full receipt/intents
+retain source/deployment/histories, never diagnostics or credentials in a public artifact.
+
+Read-only regression: `LIVE_INCIDENT_FLUE=owned-issue-flue-e28e6b86-v1 CF_BIN=/Users/eric/Library/pnpm/bin/cf node --test src/live-incident-proposal.test.ts`.
+It reads only retained proposal and before/after histories. Ordinary CI skips it; no
+redispatch, emission, inference, GitHub write or deployment. Never spend again to parse
+or retest this completed proposal. Earlier historical proposal evidence is unchanged.
+
 The model output remains untrusted; `repairVerified:false` and `githubWritePerformed:false`.
 Native exact-commit Node verification and a NEW proposed PR require a separately scoped
 trusted App-host writer policy. Never merge/deploy repair PRs. This slice invokes no native
-AI or GitHub write; hosting remains subject to account metering. Four actual historical AI
-calls/$0.40 reserved/$6.60 authorization are unchanged. For cleanup, disable only the owned
+GitHub write; hosting remains subject to account metering. The one fresh native call is
+explicitly recorded above; do not reset its reservation. For cleanup, disable only the owned
 incident automation/policy; retain historical receipts and generated/budget storage, do not
 reset reservations or overwrite the old pilot operation.
 
