@@ -105,6 +105,62 @@ fixed administrative pilot using the earlier real Flue proposal, not an authenti
 Workers Issues trigger, automatic merge or deployment. See the [bounded pilot and
 recorded proof](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-verified-natively).
 
+### Incident-bound proposed repair (native execution pending)
+
+The separate private `IncidentRepairWriter`, `OwnedIncidentRepairOperations` SQLite
+DO and `effect-ci-owned-incident-repair` Workflow use the enrolled actual Issue and
+fresh native proposal, not the old pilot record. The only new external binding is
+`INCIDENT_EVIDENCE` → the agent's private `IncidentProposalEvidence` export. The
+App key stays on this App host; the agent receives no writer binding or credential.
+The trusted evidence service's seven fields are copied to plain data before strict
+validation. A separate fixed owner/key/run/digest pins the Issue/source/version/base
+and model tuple. Pending is persisted before any Git write, completion before ACK;
+completed replay returns historical identity without another evidence/writer call.
+Pending, failed, corrupt and mismatched identities reject recovery automatically.
+
+The host callback uses the existing canonical one-file parser and scoped private
+fixture writer. Its own loopback `RepairVerifier` must fetch the exact commit's
+three pinned files with a separate read/check token and actually execute the fixed
+empty-environment Node command before an App Check and proposed PR. All tokens are
+revoked in their existing finally boundaries. No actor/model `passed:true`, arbitrary
+command/code, automatic merge, fixture deployment or new inference is accepted.
+The result explicitly says authenticated operator continuation, NOT automatic
+webhook activation. The original admission's historic false authority flags remain.
+
+Local actual workerd/Workflow/RPC/SQLite tests use FAKE GitHub and a FAKE verifier:
+foreign evidence rejects before a claim/write, one proposed PR follows verification,
+completed replay and isolate reload call neither writer nor evidence again. The
+pure protocol separately tests concurrent claims and lost completion ACK. These
+are not native writer/Node execution proof. This integration is **not deployed or
+natively executed yet**, and no new repair PR has been created by it.
+
+To reproduce, first follow the [owned Issue enrollment guide](../repair-events/REPRODUCE.md)
+and [private proposal host guide](../repair-agent/README.md), reviewing your host-owned
+constants and preserving the same budget/history. Configure only the owned App
+installation/repository permissions and private evidence binding; App credentials
+stay host-only, never in project/model/container input. Then:
+
+```sh
+pnpm --filter @effect-ci-testbed/app check
+node --test apps/effect-ci/src/incident-repair-writer-runtime.test.ts
+cd apps/effect-ci
+cf build
+# Only after exact merged full CI and current allocation/binding/Access inspection:
+cf deploy --prebuilt
+cf workflows instances create effect-ci-owned-incident-repair --body '{"instance_id":"owned-incident-inspect-1","params":{"mode":"inspect"}}'
+cf workflows instances create effect-ci-owned-incident-repair --body '{"instance_id":"owned-incident-evidence-1","params":{"mode":"inspect-evidence"}}'
+# Save a create-only intent first; dispatch once and reconcile the SAME ID on uncertainty:
+cf workflows instances create effect-ci-owned-incident-repair --body '{"instance_id":"owned-incident-proposal-1","params":{"mode":"propose-incident"}}'
+```
+
+Before proposing, independently check private base/main/old PRs and native evidence
+readiness. Preserve full source/version/history plus independent exact-commit Check,
+new OPEN PR/files and unchanged budget readbacks. Never emit another error or call
+the model for parsing/proof. Host/container/API costs remain metered, but this writer
+calls no inference. Cleanup: disable only the owned Issue automation/policy; retain
+operation/capture/budget storage and private receipts. Never reset failed operations,
+delete owned branches for retry, or merge/deploy any private repair PR unattended.
+
 ## Check-suite trigger
 
 The GitHub App subscribes to `check_suite.requested` and

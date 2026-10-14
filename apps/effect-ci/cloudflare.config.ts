@@ -23,6 +23,9 @@ export default defineConfig({
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),
       RepairWriter: exports.worker(),
+      IncidentRepairWriter: exports.worker(),
+      OwnedIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
+      OwnedIncidentRepairWorkflow: exports.workflow({ name: "effect-ci-owned-incident-repair" }),
       OwnedRepairOperations: exports.durableObject({ storage: "sqlite" }),
       OwnedRepairProposalWorkflow: exports.workflow({ name: "effect-ci-owned-repair-proposal" }),
       OwnedRepairVerificationWorkflow: exports.workflow({
@@ -41,6 +44,7 @@ export default defineConfig({
       }),
     },
     env: {
+      INCIDENT_EVIDENCE: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "IncidentProposalEvidence" }),
       REPAIR_EVIDENCE: bindings.worker({
         worker: "effect-ci-repair-agent",
         exportName: "RecordedProposalEvidence",

@@ -13,6 +13,7 @@ export { PrivateSlackCards } from "./private-cards.ts";
 export { HmdApprovals } from "./hmd-approval.ts";
 export { HmdReviewWorkflow } from "./hmd-workflow.ts";
 export { RepairVerifier, OwnedRepairVerificationWorkflow } from "./repair-verifier.ts";
+export { IncidentRepairWriter, OwnedIncidentRepairOperations, OwnedIncidentRepairWorkflow } from "./incident-repair-writer.ts";
 export {
   OwnedRepairOperations,
   RepairWriter,
