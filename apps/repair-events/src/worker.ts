@@ -1,4 +1,12 @@
-import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import {
+  DurableObject,
+  WorkerEntrypoint,
+  WorkflowEntrypoint,
+  type WorkflowEvent,
+  type WorkflowStep,
+} from "cloudflare:workers";
+import { NonRetryableError } from "cloudflare:workflows";
+import { inspection } from "./inspection.ts";
 import {
   authenticated,
   boundedBody,
@@ -124,6 +132,45 @@ export class NotificationEvidence extends WorkerEntrypoint {
   }
   override fetch() {
     return new Response("Not found", { status: 404 });
+  }
+}
+/** Authenticated Workflow API ONLY. Public HTTP never dispatches this reader. */
+export class NotificationInspectionWorkflow extends WorkflowEntrypoint<
+  {},
+  unknown
+> {
+  async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
+    try {
+      const request = inspection(event.payload);
+      return await step.do(
+        `notification:${request.mode}`,
+        { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
+        async () => {
+          const evidence = (
+            this.ctx.exports as unknown as {
+              NotificationEvidence: (props: {}) => Service<NotificationEvidence>;
+            }
+          ).NotificationEvidence({});
+          if (request.mode === "inventory")
+            return {
+              digests: [...(await evidence.inventory())],
+              quarantined: true,
+              incidentDedupeVerified: false,
+            };
+          const result = await evidence.read(request.digest);
+          return {
+            version: 1,
+            digest: result.digest,
+            raw: result.raw,
+            receivedAt: result.receivedAt,
+            quarantined: true,
+            incidentDedupeVerified: false,
+          };
+        },
+      );
+    } catch {
+      throw new NonRetryableError("Notification inspection unavailable");
+    }
   }
 }
 export default class NotificationReceiver extends WorkerEntrypoint<Environment> {

@@ -9,6 +9,9 @@ export default defineConfig({
     exports: {
       NotificationCaptures: exports.durableObject({ storage: "sqlite" }),
       NotificationEvidence: exports.worker(),
+      NotificationInspectionWorkflow: exports.workflow({
+        name: "effect-ci-notification-inspection",
+      }),
     },
   },
 });
