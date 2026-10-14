@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./recorded-proposal": "./src/recorded-proposal.ts",
-    "./incident-proposal": "./src/incident-proposal.ts"
+    "./incident-proposal": "./src/incident-proposal.ts",
+    "./incident-evidence": "./src/incident-evidence.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

@@ -18,6 +18,10 @@ export default defineConfig({
         name: "effect-ci-flue-proposal-probe",
       }),
       RecordedProposalEvidence: exports.worker(),
+      IncidentProposalEvidence: exports.worker(),
+      IncidentEvidenceWorkflow: exports.workflow({
+        name: "effect-ci-owned-incident-evidence",
+      }),
       IncidentProposalWorkflow: exports.workflow({
         name: "effect-ci-owned-incident-proposal",
       }),
