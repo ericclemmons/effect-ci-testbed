@@ -94,6 +94,15 @@ test(
       assert.equal((await post("{}", null)).status, 401);
       assert.equal((await post("{}", "b".repeat(64))).status, 401);
       assert.deepEqual(await inventory(), []);
+      assert.equal(
+        (
+          await post(
+            '{"text":"Owned non-Issue callback; no capture authority"}',
+          )
+        ).status,
+        204,
+      );
+      assert.deepEqual(await inventory(), []);
       const raw =
         '{"alert_type":"workers_observability_real_time_issue","data":{"owned":"PRIVATE-SENTINEL"}}';
       const responses = await Promise.all(
@@ -161,7 +170,18 @@ test(
       });
       read = await runtime.getWorker("local-evidence-reader");
       assert.deepEqual(await inventory(), ids);
-      for (let i = 0; i < 3; i++)
+      const unclassified = '{"unknownEnvelope":"LOCAL ONLY; not an Issue"}';
+      assert.equal((await post(unclassified)).status, 202);
+      const diagnosticId = (await inventory()).find(
+        (id: string) => !ids.includes(id),
+      );
+      const diagnostic = await (
+        await read.fetch(`https://private.invalid/?id=${diagnosticId}`)
+      ).json();
+      assert.equal(diagnostic.raw, unclassified);
+      assert.equal(diagnostic.quarantined, true);
+      assert.equal(diagnostic.incidentDedupeVerified, false);
+      for (let i = 0; i < 2; i++)
         assert.equal(
           (
             await post(
