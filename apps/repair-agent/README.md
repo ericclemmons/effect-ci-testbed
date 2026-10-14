@@ -1,8 +1,8 @@
 # Run a private Flue proposal agent on Cloudflare
 
 This host uses the real pinned Flue generator, its Agents SDK Durable Object,
-and an account-authenticated Workflow. Its sole external capability is the
-private `REPAIR_AI` service binding. No raw AI, GitHub credential, sandbox, shell,
+and account-authenticated Workflows. Its external capabilities are the
+private `REPAIR_AI` service and host-only `OWNED_INCIDENT` admission service bindings. No raw AI, GitHub credential, sandbox, shell,
 tool, public route, automatic merge or deployment capability is given to the agent.
 
 Only `inspect` or `proposal` administrative modes are accepted. The owned fixture
@@ -38,6 +38,60 @@ cf deploy --prebuilt
 Do not dispatch a proposal just to test parsing. First inspect the real ledger,
 verify current model pricing, and record a unique create-only dispatch intent.
 Local fake-service tests are not native inference, repair or Workers Issues proof.
+
+## Incident-gated proposal continuation
+
+`effect-ci-owned-incident-proposal` is a separate private, authenticated Workflow.
+Its ONLY accepted instance/mode pairs are `owned-issue-flue-e28e6b86-inspect-v1`
+with `{mode:"inspect"}` and `owned-issue-flue-e28e6b86-v1` with `{mode:"proposal"}`.
+Unknown/fresh caller IDs or additional payload fields reject before capabilities
+or budget calls. It reads the existing receiver's private `OwnedIncidentAdmission.inspect()`
+capability BEFORE any model call. Pinned admission policy/Issue/occurrence/source/version/
+private-base/path/operation and admitted timestamp must all match. Service RPC metadata
+is stripped by copying only pinned schema fields before strict plain-data validation;
+actor accessors/symbols/extra keys remain rejected by the reusable protocol validator.
+
+This explicit host-code activation policy permits **proposal-only** continuation of
+ONE enrolled actual Issue. The admission receipt's `repairAuthorized:false` and
+`inferenceTriggered:false` flags remain unchanged: admission alone is not paid authority.
+No notification text/title/raw context is passed to the model. The generated agent,
+fixed fixture/prompt/model, no-tool/delegation policy, durable one-submission SQL slot,
+same `friday-flue-proposal-v1` four-call lifetime cap and SAME cumulative$7 broker
+ledger are retained. No new budget run or namespace evades old reservations.
+The inspection mode calls no budget/model. Proposal mode adds the admission checkpoint
+then uses the existing four proposal checkpoints, all zero retries.
+
+The receiver/admission is already natively proved; this **new continuation is NOT yet
+deployed or natively executed**. Local tests exercise actual generated workerd/SQLite
+agent plus service-bound FAKE admission/budget: fixed inspect consumes nothing, a fresh
+owned incident instance makes one fake call, repeated submission is denied without
+another charge, invalid admission rejects even after previous success. The Workflow
+coordinator is mocked locally; none of this is new native inference. The first local
+service test rejected a Disposable RPC wrapper; explicit pinned-field copying fixed
+the integration without weakening the pure admission guard. Expected second-submission
+negative logs are not test failures. Existing historical proposal receipts are untouched.
+
+To reproduce, first follow the receiver's [owned Issue setup and enrollment guide](../repair-events/REPRODUCE.md)
+in your account. This host imports reusable `@effect-ci-testbed/github/incident-proposal`,
+not another app's implementation. Review and commit corresponding host-owned enrollment
+constants for your independently verified source/version/base; never pass them as event
+or model parameters. Build/deploy this private host from exact full-CI-verified source,
+preserving its generated DO/provider and existing private budget service. No new secret
+or OAuth/App credential is required. Read the deployed bindings/config before dispatch.
+Then inspect the fixed admission through the authenticated Workflow API. Before the ONE
+fresh proposal, verify official model pricing and current native ledger, save a create-only
+intent, use its EXACT fixed instance and `{mode:"proposal"}` structured `--body`, and
+reconcile that SAME instance if acknowledgement is uncertain. Do not redispatch for parsing
+or proof. This is authenticated operator continuation of an already captured real Issue,
+NOT an automatic webhook-triggered repair or a new deployed failure.
+
+The model output remains untrusted; `repairVerified:false` and `githubWritePerformed:false`.
+Native exact-commit Node verification and a NEW proposed PR require a separately scoped
+trusted App-host writer policy. Never merge/deploy repair PRs. This slice invokes no native
+AI or GitHub write; hosting remains subject to account metering. Four actual historical AI
+calls/$0.40 reserved/$6.60 authorization are unchanged. For cleanup, disable only the owned
+incident automation/policy; retain historical receipts and generated/budget storage, do not
+reset reservations or overwrite the old pilot operation.
 
 ## Recorded native proposal
 
