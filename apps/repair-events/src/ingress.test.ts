@@ -25,16 +25,28 @@ test("fixed shared-secret authentication and capture-only classification", async
         text: "Hello World! This is a test message sent from https://cloudflare.com. If you can see this, your webhook is configured properly.",
       }),
     ),
-    "test",
+    "non-issue-text",
   );
   for (const body of [
     "null",
     "[]",
-    '{"text":"not an Issue"}',
     '{"alert_type":"workers_observability_alert","data":{}}',
     '{"alert_type":"workers_observability_real_time_issue","data":[]}',
   ])
     assert.throws(() => notificationKind(body));
+  assert.equal(notificationKind('{"text":"not an Issue"}'), "non-issue-text");
+  assert.equal(
+    notificationKind('{"unrecognized":"owned diagnostic"}'),
+    "unclassified",
+  );
+  assert.throws(() =>
+    notificationKind(JSON.stringify({ text: "x".repeat(1025) })),
+  );
+  assert.throws(() => notificationKind('{"text":""}'));
+  assert.equal(
+    notificationKind('{"text":"test","passed":true}'),
+    "unclassified",
+  );
   assert.equal((await digest("owned")).length, 64);
 });
 test("body bounds enforce actual bytes, encoding and streamed size", async () => {

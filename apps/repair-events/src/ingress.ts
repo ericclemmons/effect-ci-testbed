@@ -1,8 +1,6 @@
 export const MAX_BYTES = 32768;
 export const MAX_CAPTURES = 4;
 export const ALERT_TYPE = "workers_observability_real_time_issue";
-const TEST_MESSAGE =
-  "Hello World! This is a test message sent from https://cloudflare.com. If you can see this, your webhook is configured properly.";
 export async function authenticated(header: string | null, secret: unknown) {
   if (
     typeof secret !== "string" ||
@@ -57,12 +55,26 @@ export async function boundedBody(request: Request): Promise<string> {
   }
 }
 /** Capture, not semantic incident authorization. No data field enters a model. */
-export function notificationKind(raw: string): "test" | "quarantine" {
+export function notificationKind(
+  raw: string,
+): "non-issue-text" | "quarantine" | "unclassified" {
   const body = JSON.parse(raw);
   if (!body || typeof body !== "object" || Array.isArray(body))
     throw new Error("Invalid notification");
-  if (Object.keys(body).length === 1 && body.text === TEST_MESSAGE)
-    return "test";
+  // Wording is not a protocol identity. A bounded authenticated text-only
+  // callback grants NO Issue, storage, model or repair authority.
+  if (Object.keys(body).length === 1 && Object.hasOwn(body, "text")) {
+    if (
+      typeof body.text === "string" &&
+      body.text.length > 0 &&
+      new TextEncoder().encode(body.text).byteLength <= 1024
+    )
+      return "non-issue-text";
+    throw new Error("Invalid notification");
+  }
+  // An authenticated object missing the alert tag is only diagnostic evidence.
+  // Some platform callbacks omit envelope identity; never infer an Issue tag.
+  if (!Object.hasOwn(body, "alert_type")) return "unclassified";
   if (
     body.alert_type !== ALERT_TYPE ||
     !body.data ||

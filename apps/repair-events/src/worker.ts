@@ -30,7 +30,7 @@ export class NotificationCaptures extends DurableObject {
     if (
       typeof raw !== "string" ||
       new TextEncoder().encode(raw).byteLength > MAX_BYTES ||
-      notificationKind(raw) !== "quarantine"
+      notificationKind(raw) === "non-issue-text"
     )
       throw new Error("Notification capture rejected");
     const id = await digest(raw);
@@ -197,7 +197,7 @@ export default class NotificationReceiver extends WorkerEntrypoint<Environment> 
       return new Response("Invalid notification", { status: 400 });
     try {
       const raw = await boundedBody(request);
-      if (notificationKind(raw) === "test")
+      if (notificationKind(raw) === "non-issue-text")
         return new Response(null, { status: 204 });
       const namespace = (
         this.ctx.exports as unknown as {
