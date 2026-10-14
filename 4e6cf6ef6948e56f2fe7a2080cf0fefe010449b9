@@ -1,0 +1,14 @@
+Advisory operator evidence — no cache-skip authority
+
+Repository: ericclemmons/effect-ci-testbed
+Commit: 4e6cf6ef6948e56f2fe7a2080cf0fefe010449b9
+PR206 exact head: b25a653c2538d9c725f1faf4d4f107ddb4459e05
+Full GitHub suite38506560252: SUCCESS; all280 checks accepted (277SUCCESS,1NEUTRAL,2SKIPPED).
+PR205 exact0a27022fd70d712a49adadc1de390cdd86846d8a suite38505827009 SUCCESS/all280accepted; merged620ed22ab4cdf56927e61dba470a40f6feaba31c.
+
+The user approved an additional $5 beyond the original $2. Fixed cumulative authorization is $7, not an invoice/account top-up. Same ledger namespace/name retained. Ten-cent reservations, per-run4 cap, model/input/output bounds, uncertain-call retention and no paid fallback unchanged.
+Actual merged4e6cf6e broker build deployed once to existing private Worker effect-ci-repair-ai, version1a922857-9b88-4c00-86d7-0c3f4629e40b. AI-only binding; workersDev/preview false; no personal OAuth or new credentials copied.
+Native inspect-only coverage-repair-extension-before-20261014-1 and coverage-repair-extension-after-20261014-1 completed one checkpoint/one attempt/zero retries. Reserved30c and all three original reservation/run IDs unchanged; remaining170c->670c. No inference called during migration. Create-only private receipt apps/repair-ai/.verification/native-budget-extension-20261014-1.json retained, not published.
+All historical AI calls remain THREE. No Flue native model call, repair activation, private PR merge/deploy, Slack/HMD or production release claim from this budget verification.
+
+This unsigned operator Git note is advisory only. It is not an enrolled signed check envelope, independent attestation, permission approval or an authorization to bypass any check/build/deploy/release.
