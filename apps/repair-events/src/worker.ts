@@ -8,6 +8,13 @@ import {
 import { NonRetryableError } from "cloudflare:workflows";
 import { inspection } from "./inspection.ts";
 import {
+  OWNED_INCIDENT,
+  normalizeOwnedIncident,
+  ownedIncidentIdentity,
+  ownedAdmissionMode,
+  type OwnedIncident,
+} from "./owned-incident.ts";
+import {
   authenticated,
   boundedBody,
   digest,
@@ -25,7 +32,62 @@ type Capture = {
 };
 type Environment = { NOTIFICATIONS_SECRET: string };
 const OWNER = "owned-issue-capture-v1";
+const ADMISSION_KEY = "owned-semantic-incident-v1";
+type Admission = { version: 1; identity: OwnedIncident; admittedAt: number };
+function validAdmission(input: Admission | undefined): input is Admission {
+  return (
+    !!input &&
+    input.version === 1 &&
+    Number.isSafeInteger(input.admittedAt) &&
+    input.admittedAt >= 0 &&
+    JSON.stringify(input.identity) === JSON.stringify(ownedIncidentIdentity())
+  );
+}
 export class NotificationCaptures extends DurableObject {
+  async inspectOwnedIncident() {
+    const stored = await this.ctx.storage.get<Admission>(ADMISSION_KEY);
+    if (stored === undefined) return { state: "absent" as const };
+    if (!validAdmission(stored))
+      throw new Error("Owned incident storage unavailable");
+    return {
+      state: "admitted" as const,
+      identity: { ...stored.identity },
+      admittedAt: stored.admittedAt,
+    };
+  }
+  async admitOwnedCapture(id: string) {
+    // Caller cannot provide raw evidence, a version, repo, base, prompt or paid identity.
+    // Capture provenance is the receiver's authenticated immutable store, not RPC claims.
+    const captured = await this.read(id);
+    const identity = normalizeOwnedIncident(captured.raw);
+    return this.ctx.storage.transaction(async (storage) => {
+      const old = await storage.get<Admission>(ADMISSION_KEY);
+      if (old !== undefined) {
+        if (!validAdmission(old))
+          throw new Error("Owned incident storage unavailable");
+        return {
+          identity: { ...old.identity },
+          admittedAt: old.admittedAt,
+          duplicate: true,
+          incidentDedupeVerified: true,
+        };
+      }
+      const receipt: Admission = {
+        version: 1,
+        identity,
+        admittedAt: Date.now(),
+      };
+      await storage.put(ADMISSION_KEY, receipt);
+      // No side effect/inference follows this transaction. ACK uncertainty can safely
+      // reconcile this SAME semantic record; this is not a paid-call retry mechanism.
+      return {
+        identity,
+        admittedAt: receipt.admittedAt,
+        duplicate: false,
+        incidentDedupeVerified: true,
+      };
+    });
+  }
   async capture(raw: string) {
     if (
       typeof raw !== "string" ||
@@ -132,6 +194,78 @@ export class NotificationEvidence extends WorkerEntrypoint {
   }
   override fetch() {
     return new Response("Not found", { status: 404 });
+  }
+}
+/** Private host-owned policy capability. No public route or paid/writer binding. */
+export class OwnedIncidentAdmission extends WorkerEntrypoint {
+  private store() {
+    return (
+      this.ctx.exports as unknown as {
+        NotificationCaptures: DurableObjectNamespace<NotificationCaptures>;
+      }
+    ).NotificationCaptures.getByName(OWNER);
+  }
+  async inspect() {
+    const r = await this.store().inspectOwnedIncident();
+    if (r.state === "absent") return { state: "absent" as const };
+    return {
+      state: "admitted" as const,
+      identity: { ...r.identity },
+      admittedAt: r.admittedAt,
+    };
+  }
+  async admitRetained() {
+    const r = await this.store().admitOwnedCapture(
+      OWNED_INCIDENT.captureDigest,
+    );
+    return {
+      identity: { ...r.identity },
+      admittedAt: r.admittedAt,
+      duplicate: r.duplicate,
+      incidentDedupeVerified: true,
+    };
+  }
+  override fetch() {
+    return new Response("Not found", { status: 404 });
+  }
+}
+export class OwnedIncidentAdmissionWorkflow extends WorkflowEntrypoint<
+  {},
+  unknown
+> {
+  async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
+    try {
+      const mode = ownedAdmissionMode(event.payload);
+      return await step.do(
+        `incident:${mode}`,
+        { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
+        async () => {
+          const capability = (
+            this.ctx.exports as unknown as {
+              OwnedIncidentAdmission: (props: {}) => Service<OwnedIncidentAdmission>;
+            }
+          ).OwnedIncidentAdmission({});
+          if (mode === "inspect") {
+            const r = await capability.inspect();
+            if (r.state === "absent") return { state: "absent" };
+            return {
+              state: "admitted",
+              identity: { ...r.identity },
+              admittedAt: r.admittedAt,
+            };
+          }
+          const r = await capability.admitRetained();
+          return {
+            identity: { ...r.identity },
+            admittedAt: r.admittedAt,
+            duplicate: r.duplicate,
+            incidentDedupeVerified: true,
+          };
+        },
+      );
+    } catch {
+      throw new NonRetryableError("Owned incident admission unavailable");
+    }
   }
 }
 /** Authenticated Workflow API ONLY. Public HTTP never dispatches this reader. */
