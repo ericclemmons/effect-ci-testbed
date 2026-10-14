@@ -165,6 +165,46 @@ redispatch, write GitHub or spend inference.
 
 ## Read-only evidence capability
 
+`IncidentProposalEvidence` is a NEW private capability for the **fresh admitted-Issue**
+proposal, not a relabeling of `RecordedProposalEvidence`. It reads its OWN fixed
+completed `IncidentProposalWorkflow.status()` and an independently current broker
+ledger. The reusable lightweight `github/incident-evidence` protocol checks enrolled
+Issue/source/version/base/admission, activation policy, exact model submission/UID/
+acceptance time/reservation/run/original text, historical40→50-cent transition and all
+five retained IDs in the current$7 ledger. Unknown/pending/foreign/tampered/duplicate
+or missing identities reject. Later valid reservations do not invalidate historical
+proof. No actor/model `passed:true` is verification authority.
+
+It returns only seven bounded plain fields (instance/reservation/run/text/Issue/
+operation/activation policy), no raw capture or arbitrary reply. It has no dispatch,
+AI call, credential, writer, merge or deployment method; HTTP404. The authenticated
+`effect-ci-owned-incident-evidence` Workflow accepts ONLY `{mode:"read"}`, uses zero
+checkpoint retries and explicit plain RPC field copies. No new external binding,
+secret, namespace, dependency or model authority is added. `Workflow.status()` exposes
+completion/output, **not per-step attempts**; the separate retained native regression
+above verifies all five actual checkpoint histories. Do not claim the capability
+queried those attempts through a nonexistent API.
+
+Local actual workerd/Workflow/RPC tests read clearly FAKE completed history and a
+separate fake ledger that throws on inference, serialize the reader checkpoint,
+reject incomplete source history and fail after ledger invalidation. Pure protocol
+negative tests reject changed model/incident/budget/receipt identities and accessors.
+The actual retained native proposal also passes the pure validator offline with no
+model call. **This new read-only capability is not yet deployed/natively executed.**
+After exact-head full CI, rebuild the exact merged source and update this SAME private
+host once, retaining generated agent/storage/provider/budget and existing admission
+bindings. A fresh authenticated read-only evidence Workflow can then verify the
+capability without dispatching another proposal. Preserve its source/version/history
+receipt. Existing model/native Issue/activation histories must never be redispatched.
+
+The subsequent trusted App host writer must use a NEW immutable incident operation,
+canonical patch validation and real exact-commit Node check before proposing a PR.
+It must not reset the older administrative pilot, give credentials to this host/model,
+accept a model verification claim, merge or deploy a fixture repair. See the receiver's
+[reproduction and safe cleanup guide](../repair-events/REPRODUCE.md); read-only inspection
+still uses account Workflow/storage metering but no inference. Five historic AI calls/
+$0.50 reserved/$6.50 authorization remain unchanged in this capability slice.
+
 `RecordedProposalEvidence` now reads that fixed completed native Workflow and
 independently validates its reservation/run against the existing private broker
 ledger. It returns only four bounded fields to a trusted service-bound caller.
