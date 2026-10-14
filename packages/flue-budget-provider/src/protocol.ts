@@ -1,5 +1,6 @@
 export const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-export const LIMIT_CENTS = 200;
+// Original $2 plus explicitly approved $5 extension; cumulative, never reset.
+export const LIMIT_CENTS = 700;
 export const RESERVATION_CENTS = 10;
 export const MAX_OUTPUT_TOKENS = 2048;
 
