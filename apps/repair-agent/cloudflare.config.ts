@@ -6,10 +6,21 @@ export default defineConfig({
     compatibilityDate: "2026-10-07",
     workersDev: false,
     previewUrls: false,
-    env: { REPAIR_AI: bindings.worker({ worker: "effect-ci-repair-ai" }) },
+    env: {
+      REPAIR_AI: bindings.worker({ worker: "effect-ci-repair-ai" }),
+      OWNED_INCIDENT: bindings.worker({
+        worker: "effect-ci-repair-events",
+        exportName: "OwnedIncidentAdmission",
+      }),
+    },
     exports: {
-      ProposalProbeWorkflow: exports.workflow({ name: "effect-ci-flue-proposal-probe" }),
+      ProposalProbeWorkflow: exports.workflow({
+        name: "effect-ci-flue-proposal-probe",
+      }),
       RecordedProposalEvidence: exports.worker(),
+      IncidentProposalWorkflow: exports.workflow({
+        name: "effect-ci-owned-incident-proposal",
+      }),
     },
   },
 });

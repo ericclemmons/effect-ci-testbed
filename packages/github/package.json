@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./recorded-proposal": "./src/recorded-proposal.ts"
+    "./recorded-proposal": "./src/recorded-proposal.ts",
+    "./incident-proposal": "./src/incident-proposal.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"
