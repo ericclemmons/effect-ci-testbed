@@ -105,7 +105,7 @@ fixed administrative pilot using the earlier real Flue proposal, not an authenti
 Workers Issues trigger, automatic merge or deployment. See the [bounded pilot and
 recorded proof](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-verified-natively).
 
-### Incident-bound proposed repair (native execution pending)
+### Incident-bound proposed repair (natively verified)
 
 The separate private `IncidentRepairWriter`, `OwnedIncidentRepairOperations` SQLite
 DO and `effect-ci-owned-incident-repair` Workflow use the enrolled actual Issue and
@@ -131,8 +131,32 @@ Local actual workerd/Workflow/RPC/SQLite tests use FAKE GitHub and a FAKE verifi
 foreign evidence rejects before a claim/write, one proposed PR follows verification,
 completed replay and isolate reload call neither writer nor evidence again. The
 pure protocol separately tests concurrent claims and lost completion ACK. These
-are not native writer/Node execution proof. This integration is **not deployed or
-natively executed yet**, and no new repair PR has been created by it.
+are not native writer/Node execution proof. Separately, exact merged source
+`3f808fbcd1ed18cefbd1751d945e9ceb416811b0` rebuilt157modules and the unchanged Dockerfile,
+then deployed ONCE as App version `784b836d-0e0d-434c-aea5-d86d94aaf571`. Access302 and
+unsigned GitHub/Slack401 remain intact; all existing secret bindings are retained.
+The image now resolves to7b2ede4459d6738f1465db630f3fe3794fd9c9ba28f8b5a9dffc3900b8df9924;
+unchanged Dockerfile does not mean unchanged upstream image bytes.
+Native inspect first found the separate operation absent, then native evidence inspect
+verified the fresh original proposal. ONE `coverage-owned-incident-writer-proposal-20261014-1`
+completed22:31:45.380UTC, one checkpoint/attempt/zero retries. Actual native Node exit0
+produced App5089816 Check116140407284 at22:31:42Z BEFORE new private proposed PR3 at22:31:44Z,
+exact commit `979958bfbe39d5d560dd94a73a51220d981c6900`. Independent APIs verify only
+`repair-demo/health.js`500→200 changed; PR3 remains OPEN/unmerged. Old PR1/PR2 and main
+are unchanged. Writer/verifier tokens are revoked in the trusted completion boundaries.
+Separate completed-record replay returned createdfalse/replaytrue with the same commit,
+Check and PR, taking no new evidence/writer/verification calls in that completed branch.
+Independent inspect-only budget history confirms all five IDs and50/650 cents unchanged.
+Queue392ms/execution17391ms/total17783ms, sample1 of writer orchestration, NOT measured
+whole500→Issue→model→PR latency or isolated Node latency. The original Issue13:40,
+admission15:36 and fresh model17:12 preceded this authenticated operator continuation;
+automatic webhook activation remains unfinished. No new error/model call, merge or
+fixture deployment. Private full histories/counterparts/intents are retained; never
+redispatch them for parsing or proof. Read-only regression below reads retained data.
+
+`LIVE_INCIDENT_WRITER=coverage-owned-incident-writer-proposal-20261014-1 CF_BIN=/Users/eric/Library/pnpm/bin/cf node --test src/live-incident-writer.test.ts`
+from this app reads the original writer/replay/budget histories plus independent GitHub
+Check/PR/files. Ordinary CI skips it; no native dispatch, deployment or model call.
 
 To reproduce, first follow the [owned Issue enrollment guide](../repair-events/REPRODUCE.md)
 and [private proposal host guide](../repair-agent/README.md), reviewing your host-owned
