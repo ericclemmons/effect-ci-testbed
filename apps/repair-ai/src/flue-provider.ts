@@ -1,6 +1,6 @@
 import { cloudflareBindingProvider } from "@flue/runtime/cloudflare/workers-ai";
 import { MODEL, RESERVATION_CENTS, LIMIT_CENTS } from "./budget.ts";
-import { flueBudgetInput } from "./flue-policy.ts";
+import { flueBudgetInput, flueProposalInput, assertProposalStream } from "./flue-policy.ts";
 
 export interface FlueBudgetService {
   runStream(
@@ -22,6 +22,7 @@ export function budgetedFlueProvider(
   run: string,
   budget: FlueBudgetService,
   nextReservation: () => string,
+  policy?: { proposalOnly: true },
 ) {
   if (typeof run !== "string" || !/^[a-zA-Z0-9_-]{1,96}$/.test(run))
     throw new Error("Flue host run rejected");
@@ -33,7 +34,9 @@ export function budgetedFlueProvider(
       async run(model, input, options) {
         try {
           if (halted) throw new Error("halted");
-          const bounded = flueBudgetInput(model, input, options);
+          const bounded = policy?.proposalOnly
+            ? await flueProposalInput(model, input, options)
+            : flueBudgetInput(model, input, options);
           const signal =
             options &&
             (Object.getOwnPropertyDescriptor(options, "signal")?.value as AbortSignal | undefined);
@@ -62,6 +65,7 @@ export function budgetedFlueProvider(
             throw new Error("receipt");
           // Cancellation never refunds a reservation. No automatic re-inference.
           if (signal?.aborted) throw new Error("aborted");
+          if (policy?.proposalOnly) assertProposalStream(result.body);
           return new Response(result.body, { headers: { "content-type": result.contentType } });
         } catch {
           halted = true;

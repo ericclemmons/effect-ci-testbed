@@ -67,7 +67,8 @@ disable its default AI Gateway, without bypassing this broker for tool calls.
 2.2.2 Workers AI provider: `stream: true`, usage requests and
 `max_completion_tokens`. It copies text messages into the existing bounded
 request and rejects tools, gateway/header overrides, other models, accessors
-and already-aborted requests. This guard is not connected to a provider yet.
+and already-aborted requests. The library provider below uses this guard; a native
+Flue agent is not deployed yet.
 The original text method returns buffered text, while Flue expects OpenAI-style SSE with a
 real finish reason. An adapter must resolve that transport mismatch without
 inventing completion, usage or streaming evidence. Cancellation after a durable
@@ -81,8 +82,8 @@ transport is recorded below; actual Flue provider consumption and agent executio
 still require their own verification.
 Its create-only call records are separately capped at twenty, with one bounded
 response per storage key. Old reservations without a response record still fail
-closed through the unchanged ledger. The recovery tests use fake model responses;
-durable replay is not yet deployed or verified against a new native AI call.
+closed through the unchanged ledger. Local recovery tests use fake model responses;
+separate recorded native receipt recovery is described below.
 
 An explicit authenticated `{"mode":"recovery"}` probe spends **one** reservation
 on the fixed stream prompt, then calls the identical request again from a separate
@@ -214,8 +215,51 @@ checks the returned reservation/byte count and reconstructs a Response from
 **unchanged** native SSE; it does not synthesize usage or a finish reason.
 There is no transport retry or paid-provider fallback in this bridge. A binding
 failure halts that provider instance, preventing another RPC on an automatic
-retry. This in-memory latch is not durable recovery; the future native host must
-persist its identities and ambiguity state across restarts.
+retry. This in-memory latch does not replace durable caller identities; the broker
+now retains same-ID responses, but the future native agent must preserve its IDs
+and ambiguity state across restarts too.
+
+The explicit fourth argument `{ proposalOnly: true }` defines a **text-only
+proposal agent**, not a general tool agent. It recognizes the exact pinned Flue
+2.2.2 framework `task` declaration by canonical SHA256 and removes that
+advertisement before inference: delegation is disabled, not authorized. Any other
+tool declaration fails closed. Plain text blocks are joined in order with newline
+boundaries; images/documents and accessor properties are rejected. A well-formed
+Flue-generated `aff_…` routing hint is discarded, never used for authorization,
+cache identity or forwarded to the model service. Arbitrary/auth headers remain
+rejected. The general provider guard is unchanged unless the trusted host opts in.
+
+Original responses containing tool-call data or a tool-call finish reason are
+rejected **before** reaching Flue's executor. No shell, delegation, source edits,
+GitHub token or paid fallback is available through this policy. Output text remains
+an untrusted proposal requiring the host's separate exact-commit verification.
+Actual Node Flue `start/init/dispatch/read` tests settle a proposal and recover the
+same settled reply after SQLite runtime restart without a second broker call.
+Those tests use **fake SSE**, not new inference or hosted Cloudflare agent proof.
+
+### Recorded native receipt recovery
+
+Merged source `6208e5a6252cc516b8a00a6996799e0ce91e462e` deployed the same
+private broker to Worker `850dcf34-e1aa-41cf-b21d-f6bb7600a0d8`, preserving its
+ledger, AI-only binding and no public URLs. Read-only before/after-deploy probes
+confirmed 20 cents reserved / $1.80 authorized remaining. Instance
+`coverage-repair-recovery-stream-20261014-1` completed all five checkpoints with
+one attempt and zero retries at Workflow version
+`105b2ed9-f0a6-4a93-b911-17c2e43859c1`.
+
+The first request reserved ten cents; its identical second request returned the
+original **1,939 bytes** with SHA256
+`1cdc9d0a86c3069e885b45dd3c351a1ec9db4492861080642c973660b6e1f081`.
+The post-replay ledger stayed at 30 cents, leaving **$1.70 authorized**. Total
+historic native inference calls: three. `live-recovery.test.ts` independently
+read both full native outputs and passed; its create-only private receipt is
+retained under `.verification/native-recovery-20261014-1.json`.
+
+Observed queue: 3,704 ms; execution: 653 ms; total: 4,357 ms, one sample on
+October 14, 2026 UTC. This proves native service receipt replay, **not** a forced
+native process restart, Flue agent, repair, billing measurement or benchmark.
+No response was rewritten and no failed reservation refunded. Local workerd
+separately tests worker reload. Video: not recorded for this private probe.
 
 Flue's transitive provider packages include `@google/genai` and `protobufjs`.
 Their install scripts are explicitly **disabled** in `pnpm-workspace.yaml`;
