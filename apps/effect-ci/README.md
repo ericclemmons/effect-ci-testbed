@@ -89,8 +89,8 @@ without credentials, and tested under an empty environment. An owned native chec
 is published only after actual Node exit code 0. The administrative
 `effect-ci-owned-repair-verification` Workflow accepts only `{ "mode": "verify-retained" }`
 and checks the existing demo fix once, with checkpoint retries disabled. It cannot
-create a code change, PR, merge or deployment. This new export/Workflow is **not yet
-deployed or natively verified**; see the [verifier boundary](../../packages/github/REPAIR.md#native-node-verifier-boundary).
+create a code change, PR, merge or deployment. The first **actual native Node
+verification succeeded**; see the [verifier boundary and recorded evidence](../../packages/github/REPAIR.md#native-node-verifier-boundary).
 
 ## Check-suite trigger
 

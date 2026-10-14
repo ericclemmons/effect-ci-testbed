@@ -119,7 +119,47 @@ truncated/tampered Git trees, execution failure, foreign checks, ref drift and
 replay without duplicate checks. A separate actual local workerd Workflow/RPC/DO
 test checks serialization, rejected content and private fetch 404 with **fake**
 GitHub and container execution. It does not relabel fake execution as native Node.
-This code is not yet deployed or verified natively. The existing private PR1 is
-still a local operator replay, not an incident-driven repair. Native successful
-and denied/replay evidence, writer integration and real Workers Issues delivery
-remain required before claiming the live flywheel is complete.
+The first real native verification is recorded below. The existing private PR1
+still originated as a local operator replay, not an incident-driven repair.
+Native denied/replay evidence, writer integration and real Workers Issues
+delivery remain required before claiming the live flywheel is complete.
+
+### Recorded native Node verification
+
+Merged source `ee5444614ee070a1530bb84c52f152a36278d7c2` was rebuilt and deployed
+once to the existing App Worker, version `d625ce13-4c21-4234-a095-c916812b9b69`.
+The existing Docker image and all prior exports/bindings were retained; no new
+secret was required. Root Access still returned 302 and unsigned GitHub/Slack
+callbacks still returned 401 before and after. No HMD review was running or
+waiting, and no new HMD, Slack message or fixture deployment was initiated.
+
+`coverage-owned-native-verifier-20261014-1` completed its one checkpoint with one
+attempt and zero retries. Actual native container Node execution checked the
+three host-pinned files fetched from commit
+`bd9682e5b9ca5f8f696ea8052bd5afd4cd2c0a00`, then published App-owned check
+`115744830965`. An independent GitHub read confirmed App `5089816`, exact head,
+external identity, completed status and **SUCCESS**. The complete native receipt
+is retained privately in `/private/tmp/effect-ci-owned-node-verifier-20261014-receipt.json`;
+it is not uploaded or reusable cache authorization.
+
+Observed queue **3,708 ms**, native execution **5,171 ms**, total **8,879 ms**,
+one sample on October 14, 2026 UTC. These include GitHub API operations, container
+preparation and check publication; they are not isolated Node test latency or a
+full repair benchmark. No raw container output was published. The scoped verifier
+token was revoked before the completed Workflow returned.
+
+This verifies native exact-commit Node execution, not native writer/PR creation,
+real Workers Issues delivery or the complete Flue-to-PR ordering. Private `main`
+remained `ecf13c17597b2718e44509e8850eba1b0b15866d`, PR1 stayed open at the same
+head, and no inference was called. The lifetime AI ledger remains four historical
+calls, $0.40 reserved and $6.60 remaining authorization, not measured billing.
+
+```sh
+CF_BIN=/Users/eric/Library/pnpm/bin/cf \
+LIVE_NATIVE_REPAIR_INSTANCE=coverage-owned-native-verifier-20261014-1 \
+node --test apps/effect-ci/src/live-repair-verifier.test.ts
+```
+
+This opt-in regression reads retained native history and the owned GitHub check
+only. Ordinary CI skips it; it cannot deploy, redispatch, spend inference or write
+GitHub. Local fake-service tests remain separate from this native proof.
