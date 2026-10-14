@@ -45,6 +45,8 @@ pnpm --filter @effect-ci-testbed/flue-cloudflare-config check
 ```
 
 Verification includes the real generator/build and local workerd/SQLite settled
-reply recovery using **fake model output**. It does not deploy, call Workers AI,
+reply recovery through the shared guarded proposal provider using **fake model
+output**. The fixture's constant fake call identity is not a production durable
+identity policy. It does not deploy, call Workers AI,
 verify a hosted agent, propose a repair or expose a public route. The native
 repair inference broker remains a separate private service.

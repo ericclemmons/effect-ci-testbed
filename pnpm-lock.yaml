@@ -294,6 +294,9 @@ importers:
 
   apps/repair-ai:
     dependencies:
+      '@effect-ci-testbed/flue-budget-provider':
+        specifier: workspace:*
+        version: link:../../packages/flue-budget-provider
       '@flue/runtime':
         specifier: 2.2.2
         version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
@@ -913,8 +916,24 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/flue-budget-provider:
+    dependencies:
+      '@flue/runtime':
+        specifier: 2.2.2
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
   packages/flue-cloudflare-config:
     devDependencies:
+      '@effect-ci-testbed/flue-budget-provider':
+        specifier: workspace:*
+        version: link:../flue-budget-provider
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
         version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
