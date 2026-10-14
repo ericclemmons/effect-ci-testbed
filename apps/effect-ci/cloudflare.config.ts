@@ -22,6 +22,9 @@ export default defineConfig({
       GitCheckoutOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),
+      RepairWriter: exports.worker(),
+      OwnedRepairOperations: exports.durableObject({ storage: "sqlite" }),
+      OwnedRepairProposalWorkflow: exports.workflow({ name: "effect-ci-owned-repair-proposal" }),
       OwnedRepairVerificationWorkflow: exports.workflow({
         name: "effect-ci-owned-repair-verification",
       }),
@@ -38,6 +41,10 @@ export default defineConfig({
       }),
     },
     env: {
+      REPAIR_EVIDENCE: bindings.worker({
+        worker: "effect-ci-repair-agent",
+        exportName: "RecordedProposalEvidence",
+      }),
       RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }),
       ANALYTICS_SQL: bindings.analyticsSQL(),
     },

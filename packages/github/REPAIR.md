@@ -163,3 +163,46 @@ node --test apps/effect-ci/src/live-repair-verifier.test.ts
 This opt-in regression reads retained native history and the owned GitHub check
 only. Ordinary CI skips it; it cannot deploy, redispatch, spend inference or write
 GitHub. Local fake-service tests remain separate from this native proof.
+
+## Retained-proposal native writer pilot (not yet deployed)
+
+The private generated Flue host now exports a **read-only**
+`RecordedProposalEvidence` capability. It reads its own fixed completed native
+Workflow and independently checks the durable broker's retained reservation/run
+identity. It exposes only the recorded instance, reservation, run and bounded
+canonical text. No agent dispatch or model call is made by reading that evidence.
+The Flue host still receives no App credential or GitHub mutation capability.
+
+The existing App host's private `RepairWriter` uses one fixed operation and run:
+`friday-native-repair-20261014-1`. Callers cannot choose a repository, base, file,
+patch, command, verifier, model prompt or fresh operation ID. The dedicated
+`OwnedRepairOperations` SQLite-backed DO persists the pending request identity
+**before** invoking the scoped writer. The proven native verifier runs on the new
+exact candidate commit **before** any proposed PR. Writer and verifier tokens
+remain separate and host-only, and are revoked finally.
+
+A completed result is persisted before acknowledgement. Replays return that
+historical receipt with `replay: true` and `created: false`, without another
+evidence read, model call, Git write or verification. It is not a current PR-state
+assertion, approval or permission to merge/deploy. Pending, failed, corrupt or
+mismatched records fail closed: there is no automatic fresh operation, storage
+reset or retry. An owned branch/PR may remain after a lost acknowledgement; inspect
+both durable state and GitHub before explicitly designing recovery. Nothing is
+silently deleted or overwritten.
+
+The authenticated `effect-ci-owned-repair-proposal` Workflow accepts only one
+mode field: `inspect` (read operation state), `inspect-evidence` (read retained
+native proof), or `propose-retained` (the fixed writer pilot). Every checkpoint has
+zero retries. There is no public writer route, automatic merge, deployment or
+Workers Issues trigger here. This pilot is explicitly **administrative composition
+of real retained Flue evidence**, not a fresh incident-driven repair.
+
+Eight new pure tests cover evidence identity/ledger mismatch/accessors, concurrent
+admission, failure/uncertainty, completion-ACK loss, corrupt state and completed
+replay. Actual local workerd Workflow/RPC/SQLite tests exercise the coordinator,
+result serialization and restart without further calls using **fake GitHub and
+fake verification**; another local RPC test reads a real local Workflow carrying
+**fake historical contents** plus a separate fake broker. None of those tests is
+native writer or real Flue proof. Deploy and verify both exact-source private
+capabilities before making that claim; then prove authentic Workers Issues
+delivery and the complete ordered live flywheel separately.

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@effect-ci-testbed/flue-budget-provider": "workspace:*",
+    "@effect-ci-testbed/github": "workspace:*",
     "@flue/runtime": "2.2.2"
   },
   "devDependencies": {

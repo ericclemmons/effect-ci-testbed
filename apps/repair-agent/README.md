@@ -83,3 +83,18 @@ node --test src/live-proposal.test.ts
 
 That opt-in test reads retained native histories only. It cannot deploy,
 redispatch, write GitHub or spend inference.
+
+## Read-only evidence capability
+
+`RecordedProposalEvidence` now reads that fixed completed native Workflow and
+independently validates its reservation/run against the existing private broker
+ledger. It returns only four bounded fields to a trusted service-bound caller.
+It cannot dispatch the agent, call a model, write GitHub or choose an incident.
+The generated default entrypoint, agent namespace and `REPAIR_AI` binding remain
+unchanged; no App credential, writer service or raw AI binding is added here.
+
+The new capability is **not yet deployed or natively verified**. Local workerd
+tests use fake historical Workflow contents and a separate fake ledger. The
+[native writer pilot](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-not-yet-deployed)
+must verify this actual read-only seam before any private fixture writes. Reading
+the old proposal never turns it into a fresh Workers Issues-triggered repair.
