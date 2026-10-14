@@ -31,6 +31,14 @@ Cloudflare Vite `2.0.0-beta.sha-52b0dc0e9`. No claim of arbitrary versions.
 Existing deployment histories, namespace renames/deletions and authority still
 need operator review; a config translation is not an authorization boundary.
 
+The generator's Babel dependency includes `core-js-pure`. Its postinstall only
+prints a funding banner/manages a temporary banner marker; it is explicitly
+**disabled** in the workspace policy. The first full-suite head failed with
+`ERR_PNPM_IGNORED_BUILDS` until that denial was declared. A fresh tracked-only
+archive reproduced the failure; another fresh archive installed and ran the real
+generator/workerd test with only that policy change. No new install script was
+approved and no release-age exception added.
+
 ```sh
 pnpm --filter @effect-ci-testbed/flue-cloudflare-config test
 pnpm --filter @effect-ci-testbed/flue-cloudflare-config check
