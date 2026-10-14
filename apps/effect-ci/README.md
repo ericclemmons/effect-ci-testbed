@@ -98,9 +98,12 @@ Flue proposal with that verifier before one new proposed PR. One durable operati
 identity is claimed before Git writes; completed receipts replay without another
 call, while pending/failed/uncertain states reject automatic retry. The App key
 stays here and the Flue host gains only a read-only evidence export, not GitHub
-permissions. These new writer/evidence exports are **not yet deployed or natively
-verified**. This is a fixed administrative pilot, not an authentic Workers Issues
-trigger, automatic merge or deployment. See the [bounded pilot](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-not-yet-deployed).
+permissions. The private writer is now **deployed and natively verified**, creating
+one new App-owned proposed PR only after an exact-commit native Node SUCCESS.
+Completed-result replay created nothing and spent no inference. This remains a
+fixed administrative pilot using the earlier real Flue proposal, not an authentic
+Workers Issues trigger, automatic merge or deployment. See the [bounded pilot and
+recorded proof](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-verified-natively).
 
 ## Check-suite trigger
 

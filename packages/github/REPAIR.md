@@ -164,7 +164,7 @@ This opt-in regression reads retained native history and the owned GitHub check
 only. Ordinary CI skips it; it cannot deploy, redispatch, spend inference or write
 GitHub. Local fake-service tests remain separate from this native proof.
 
-## Retained-proposal native writer pilot (not yet deployed)
+## Retained-proposal native writer pilot (verified natively)
 
 The private generated Flue host now exports a **read-only**
 `RecordedProposalEvidence` capability. It reads its own fixed completed native
@@ -203,6 +203,58 @@ replay. Actual local workerd Workflow/RPC/SQLite tests exercise the coordinator,
 result serialization and restart without further calls using **fake GitHub and
 fake verification**; another local RPC test reads a real local Workflow carrying
 **fake historical contents** plus a separate fake broker. None of those tests is
-native writer or real Flue proof. Deploy and verify both exact-source private
-capabilities before making that claim; then prove authentic Workers Issues
-delivery and the complete ordered live flywheel separately.
+native writer or real Flue proof. The actual native pilot is recorded below;
+authentic Workers Issues delivery and the complete ordered live flywheel remain
+separate.
+
+### Recorded native proposed PR and replay
+
+Merged source `37ccda5045368b5576afc426d85169e78a01ed1d` built and deployed both
+private capabilities once: App Worker `fa320ac8-a1bd-48d9-b6e7-24639715a4c7`
+and Flue evidence host `92e6cfb8-4344-4141-9cb4-dfffc72ed800`. No App key or
+writer binding reached the Flue host; no new secret, model authority, Access
+policy or HMD approval was introduced. Protected root/unsigned callbacks kept
+their previous 302/401/401 statuses.
+
+Read-only native `coverage-native-writer-evidence-20261014-1` validated the
+retained real Flue tuple against its actual Workflow and independent ledger.
+`coverage-native-writer-inspect-20261014-1` confirmed the operation was absent.
+Then **one** `coverage-native-repair-proposal-20261014-1` completed its single
+checkpoint once, with zero retries. It created
+[private proposed PR2](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/2)
+as `effect-ci-testbed[bot]`: only `repair-demo/health.js`, literal 500 → 200.
+Exact head `08b74a4688844a26be097ea28f9706c7a7b35a79` passed actual native
+Node check `115785356860` at 09:39:42 UTC **before** PR creation at 09:39:43 UTC.
+Independent GitHub reads confirmed App `5089816`, head/check identity, SUCCESS,
+the one-file patch and open/unmerged state. Private `main`, base and PR1 were
+preserved. Neither repair PR was merged or deployed.
+
+Completed native `coverage-native-repair-replay-20261014-1` returned the same
+commit/check/PR with `created: false`, `replay: true`; its own checkpoint reads
+the persisted result, without another evidence/model/Git/verification call.
+This proves native persisted-result replay, not forced native process restart
+or reusable CI-check attestation. The saved receipt is not current PR status.
+
+| Native administrative run | Queue | Execution | Total |
+| --- | ---: | ---: | ---: |
+| Proposed PR | 646 ms | 11,933 ms | 12,579 ms |
+| Completed-result replay | 2,094 ms | 151 ms | 2,245 ms |
+
+One sample each on October 14, 2026 UTC. The writer consumes the **earlier**
+04:13 UTC Flue proposal; these timings exclude that model run and are not a fresh
+incident-to-PR benchmark. This is genuine native administrative composition,
+**not** a Workers Issues-triggered repair. `workersIssuesVerified` remains false.
+No Slack or HMD run was started. Independent inspect-only
+`coverage-flue-budget-after-writer-20261014-1` confirmed all four original IDs,
+$0.40 reserved and $6.60 remaining lifetime authorization; no additional AI call.
+
+Create-only complete proof is retained privately in
+`/private/tmp/effect-ci-native-writer-20261014-receipt.json`; raw private metadata
+is not uploaded. The following opt-in test reads histories and owned GitHub
+metadata only; ordinary CI skips it. It cannot redispatch, deploy, infer or write:
+
+```sh
+CF_BIN=/Users/eric/Library/pnpm/bin/cf \
+LIVE_NATIVE_WRITER_INSTANCE=coverage-native-repair-proposal-20261014-1 \
+node --test apps/effect-ci/src/live-repair-writer.test.ts
+```

@@ -93,8 +93,12 @@ It cannot dispatch the agent, call a model, write GitHub or choose an incident.
 The generated default entrypoint, agent namespace and `REPAIR_AI` binding remain
 unchanged; no App credential, writer service or raw AI binding is added here.
 
-The new capability is **not yet deployed or natively verified**. Local workerd
-tests use fake historical Workflow contents and a separate fake ledger. The
-[native writer pilot](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-not-yet-deployed)
-must verify this actual read-only seam before any private fixture writes. Reading
-the old proposal never turns it into a fresh Workers Issues-triggered repair.
+The capability is now **deployed and natively verified** on merged source
+`37ccda5045368b5576afc426d85169e78a01ed1d`, private Worker
+`92e6cfb8-4344-4141-9cb4-dfffc72ed800`. A real read-only native inspection
+validated the historical tuple before the App host created a natively verified
+proposed PR. Local tests with fake history/ledger remain separate. The
+[native writer pilot](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-verified-natively)
+records exact identities, replay, timings and limits. Reading the old proposal
+never turns it into a fresh Workers Issues-triggered repair; no new AI call was
+made by this pilot.
