@@ -25,6 +25,9 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     let phase=0,files=0,posts=0,updates=0,threadPosts=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0;
     const promotions=[],frames=[],threadFrames=[],replyIds=new Set();
     const nativeRows=new Map();
+    // Test-only clock for the deadline fence, restored before any Workflow starts.
+    const wallNow=Date.now.bind(Date);let fenceNow=null;
+    Date.now=()=>fenceNow===null?wallNow():fenceNow;
     export class Analytics extends WorkerEntrypoint {
       query(input){
         nativeQueries++;
@@ -93,18 +96,24 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
           return Response.json({fenced,oldRejected,newReady,pendingPreserved,replacementRejected});
         }
         if(path==="/deadline-fence"){
+          fenceNow=wallNow();
+          try{
           const idle=this.ctx.exports.HmdApprovals.getByName("deadline-idle");
           const consumed=this.ctx.exports.HmdApprovals.getByName("deadline-consumed");
           const digest="b".repeat(64),deadline=Date.now()+300;
           const first=await idle.register("deadline-idle",10,digest,deadline);
+          // Simulate CI scheduling taking longer than the logical 300ms window.
+          // Registration must not depend on host scheduling while testing fences.
+          await new Promise(resolve=>setTimeout(resolve,350));
           const second=await consumed.register("deadline-consumed",10,digest,deadline);
           let earlyRejected=false,consumedRejected=false;
           try{await idle.expire(first.owner,10,digest)}catch{earlyRejected=true}
           await consumed.submit(second,"rejected","Automated unresolved rejection fixture","slack:T1:U1");
-          await new Promise(resolve=>setTimeout(resolve,350));
+          fenceNow=deadline;
           await idle.expire(first.owner,10,digest);
           try{await consumed.expire(second.owner,10,digest)}catch{consumedRejected=true}
           return Response.json({earlyRejected,consumedRejected,closed:!await idle.inspect(first)});
+          }finally{fenceNow=null}
         }
         if(path==="/start"){await workflow.create({id:"local-hmd",params:{intent:"hmd-review-lab",revision:"a".repeat(40),...(${JSON.stringify(scenario)}==="native-reject"?{telemetry:"experimental-native-wobs"}:{})}});return Response.json({started:true})}
         if(path==="/callback")return hmdSlackInteraction(req,this.env,{
@@ -160,7 +169,9 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     if (scenario === "approve") {
       assert.deepEqual(await (await runtime.dispatchFetch("https://probe.invalid/refresh-fence")).json(),
         {fenced:true,oldRejected:true,newReady:true,pendingPreserved:true,replacementRejected:true}, "native refresh invalidates stale buttons but never replaces a consumed rejection")
-      const fence = await (await runtime.dispatchFetch("https://probe.invalid/deadline-fence")).json()
+      const fenceResponse = await runtime.dispatchFetch("https://probe.invalid/deadline-fence")
+      assert.equal(fenceResponse.status, 200, await fenceResponse.clone().text())
+      const fence = await fenceResponse.json()
       assert.deepEqual(fence, { earlyRejected: true, consumedRejected: true, closed: true }, "native SQLite deadline fences pending decisions without bypassing consumed Reject")
     }
     assert.equal((await runtime.dispatchFetch("https://probe.invalid/start")).status, 200)

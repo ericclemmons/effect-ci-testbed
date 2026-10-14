@@ -190,12 +190,23 @@ separate fake ledger that throws on inference, serialize the reader checkpoint,
 reject incomplete source history and fail after ledger invalidation. Pure protocol
 negative tests reject changed model/incident/budget/receipt identities and accessors.
 The actual retained native proposal also passes the pure validator offline with no
-model call. **This new read-only capability is not yet deployed/natively executed.**
-After exact-head full CI, rebuild the exact merged source and update this SAME private
-host once, retaining generated agent/storage/provider/budget and existing admission
-bindings. A fresh authenticated read-only evidence Workflow can then verify the
-capability without dispatching another proposal. Preserve its source/version/history
-receipt. Existing model/native Issue/activation histories must never be redispatched.
+model call. The capability is now natively verified (2026-10-14): exact merged source
+`15a0144299b08af47ddf037e2dde7b5b2ccd7c72`, rebuilt1659modules, deployed once as private
+version `0f1fb80d-bb61-4d64-8756-120a786c63d8`. Independent version readback confirms the
+same generated SQLite namespace, existing broker/admission bindings and no public URL
+or secret. ONE read-only instance completed18:30:46.392UTC, one checkpoint/attempt,
+zero retries, returning the seven original bounded fields. Its actual ID is
+`cf_3fd031ac19e7130f22c40e61a51b95af933aeee6d70eee40a40cdb5a4a569653`.
+The operator supplied `id` instead of `instance_id` in the raw create body, so the
+platform generated that ID. The original intent and returned identity are retained;
+only that actual instance was reconciled, with NO redispatch. Reproduction must use
+`--body '{"instance_id":"YOUR_READ_ONLY_ID","params":{"mode":"read"}}'`.
+Queue2507ms/execution1001ms/total3508ms, one read-only orchestration sample, NOT model
+latency or full repair timing. A separate native inspect-only budget Workflow confirms
+50 cents reserved/650 remaining and all five IDs unchanged. No inference, GitHub write,
+new error emission or repair authorization occurred. Private create-only full receipt
+and pre-dispatch intents are retained; existing histories must never be redispatched.
+Read-only regression: `LIVE_INCIDENT_EVIDENCE=cf_3fd031ac19e7130f22c40e61a51b95af933aeee6d70eee40a40cdb5a4a569653 CF_BIN=/Users/eric/Library/pnpm/bin/cf node --test src/live-incident-evidence.test.ts`.
 
 The subsequent trusted App host writer must use a NEW immutable incident operation,
 canonical patch validation and real exact-commit Node check before proposing a PR.
