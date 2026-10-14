@@ -654,6 +654,11 @@ jobs:
           pnpm --filter @effect-ci-testbed/repair-incident check
           pnpm --filter @effect-ci-testbed/repair-incident test
           pnpm --filter @effect-ci-testbed/repair-incident exec cf build
+      - name: Verify bounded Issue notification capture without external delivery
+        run: |
+          pnpm --filter @effect-ci-testbed/repair-events check
+          pnpm --filter @effect-ci-testbed/repair-events test
+          pnpm --filter @effect-ci-testbed/repair-events exec cf build
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
