@@ -639,6 +639,10 @@ jobs:
         run: node --test packages/cli/src/*test.ts apps/example-runner/src/*test.ts
       - name: Verify source exports and HMD health foundations
         run: node --test packages/cloudflare/src/*.test.ts apps/hmd-demo/src/*.test.ts apps/release-manager/src/*.test.ts apps/repair-ai/src/*.test.ts
+      - name: Verify actual Flue generation and modern Cloudflare config locally
+        run: |
+          pnpm --filter @effect-ci-testbed/flue-cloudflare-config check
+          pnpm --filter @effect-ci-testbed/flue-cloudflare-config test
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
