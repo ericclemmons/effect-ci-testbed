@@ -1,0 +1,7 @@
+Operator verification evidence — ADVISORY ONLY; NEVER cache authorization.
+
+Commit e1fcb44455d21b1dce2a544491d2d76f0c7c2f25 includes PR201 exact7b52ef8 fullsuite38487815310 SUCCESS, PR202 exact3ab0cc7 suite38495916509 SUCCESS, PR203 exact4a9c7bc suite38498129263 SUCCESS; all280checks terminalaccepted at each merge. Original PR201 native checkpoint-disconnection failure retained; only scoped App suite rerun passed, no full-suite rerun.
+
+Native service receipt recovery at source6208e5a6252cc516b8a00a6996799e0ce91e462e, private broker850dcf34-e1aa-41cf-b21d-f6bb7600a0d8, instancecoverage-repair-recovery-stream-20261014-1 COMPLETE5native steps oneattempt/retries0. Original and replay1939bytes SHA2561cdc9d0a86c3069e885b45dd3c351a1ec9db4492861080642c973660b6e1f081; reserved20->30c, replayunchanged30c/remaining170c. Read-only live-recovery.test.ts PASS. Total native inference calls3. Queue3704ms/execution653ms/sample1; not invoice/benchmark/forced-native-process-restart/Flue repair.
+
+PR203 library text-only policy: actual Node Flue coordinator plus SQLite settled reply/restart tests use fake SSE; generic tool/header guard unchanged, explicit proposal policy disables pinned task advertisement and rejects tool responses before execution.40repairtestsPASS5liveSKIP/TSC/format/docs/buildPASS. No native Flue agent/Issues/writer/proposed-PR integration claim; private fixture PR1 remains unmerged. Raw ignored receipts/media/secrets not published by this note.
