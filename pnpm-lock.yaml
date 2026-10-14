@@ -297,6 +297,9 @@ importers:
       '@effect-ci-testbed/flue-budget-provider':
         specifier: workspace:*
         version: link:../../packages/flue-budget-provider
+      '@effect-ci-testbed/github':
+        specifier: workspace:*
+        version: link:../../packages/github
       '@flue/runtime':
         specifier: 2.2.2
         version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)

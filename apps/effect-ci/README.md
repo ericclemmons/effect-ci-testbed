@@ -92,6 +92,16 @@ and checks the existing demo fix once, with checkpoint retries disabled. It cann
 create a code change, PR, merge or deployment. The first **actual native Node
 verification succeeded**; see the [verifier boundary and recorded evidence](../../packages/github/REPAIR.md#native-node-verifier-boundary).
 
+The next private `RepairWriter`/`OwnedRepairOperations` capability and
+`effect-ci-owned-repair-proposal` Workflow compose the **retained** real native
+Flue proposal with that verifier before one new proposed PR. One durable operation
+identity is claimed before Git writes; completed receipts replay without another
+call, while pending/failed/uncertain states reject automatic retry. The App key
+stays here and the Flue host gains only a read-only evidence export, not GitHub
+permissions. These new writer/evidence exports are **not yet deployed or natively
+verified**. This is a fixed administrative pilot, not an authentic Workers Issues
+trigger, automatic merge or deployment. See the [bounded pilot](../../packages/github/REPAIR.md#retained-proposal-native-writer-pilot-not-yet-deployed).
+
 ## Check-suite trigger
 
 The GitHub App subscribes to `check_suite.requested` and
