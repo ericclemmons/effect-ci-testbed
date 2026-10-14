@@ -6,7 +6,8 @@ import {
   type BudgetStore,
   type InferenceInput,
 } from "./budget.ts";
-import { inferStream, type StreamBinding } from "./budget-stream.ts";
+import { type StreamBinding } from "./budget-stream.ts";
+import { recoverableStream, type StreamCallStore, type StreamCall } from "./stream-recovery.ts";
 export { BudgetProbeWorkflow } from "./probe.ts";
 
 interface Environment {
@@ -31,7 +32,41 @@ export class InferenceBudgetObject extends DurableObject<Environment> {
     return infer(this.store(), this.env.AI, run, reservationId, model, input);
   }
   runStream(run: string, reservationId: string, model: string, input: unknown) {
-    return inferStream(this.store(), this.env.AI, run, reservationId, model, input);
+    const calls: StreamCallStore = {
+      claim: (id, initial) =>
+        this.ctx.storage.transaction(async (storage) => {
+          const key = `stream-call-v1:${id}`;
+          const existing = await storage.get<StreamCall>(key);
+          if (existing !== undefined) return { fresh: false, call: existing };
+          const ids = (await storage.get<string[]>("stream-call-ids-v1")) ?? [];
+          if (
+            !Array.isArray(ids) ||
+            ids.length >= 20 ||
+            new Set(ids).size !== ids.length ||
+            ids.some((value) => typeof value !== "string" || !/^[a-zA-Z0-9_-]{1,96}$/.test(value))
+          )
+            throw new Error("Stream call storage unavailable");
+          await storage.put(key, initial);
+          await storage.put("stream-call-ids-v1", [...ids, id]);
+          return { fresh: true, call: initial };
+        }),
+      complete: (id, admitted, receipt) =>
+        this.ctx.storage.transaction(async (storage) => {
+          const key = `stream-call-v1:${id}`;
+          const current = await storage.get<StreamCall>(key);
+          if (
+            !current ||
+            current.version !== 1 ||
+            current.state !== "pending" ||
+            current.run !== admitted.run ||
+            current.digest !== admitted.digest ||
+            current.receipt !== undefined
+          )
+            throw new Error("Stream call storage unavailable");
+          await storage.put(key, { ...admitted, state: "complete", receipt });
+        }),
+    };
+    return recoverableStream(calls, this.store(), this.env.AI, run, reservationId, model, input);
   }
   override fetch() {
     return new Response("Not found", { status: 404 });

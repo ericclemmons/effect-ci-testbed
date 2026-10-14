@@ -5,8 +5,12 @@ run. This private service owns the Workers AI binding outside project code and
 containers. A single SQLite-backed Durable Object commits a ten-cent reservation
 before each model request. Twenty reservations exhaust the authorization; a run
 can consume at most four. Failed requests and lost responses remain charged.
-Retries need new reservation IDs and consume the same global budget. Replayed IDs
-are rejected, not re-executed. There is no reset, refund, caller-selected budget,
+The original text method rejects replayed reservation IDs. Streaming calls persist
+their run/request digest and original bounded SSE before returning: a completed
+same-ID request replays those bytes without another reservation or model call.
+Pending or uncertain calls fail closed, including after restart; a changed prompt,
+run or token limit cannot reuse the receipt. Never automatically retry uncertainty
+with a new ID. There is no reset, refund, caller-selected budget,
 public administration route, or paid-provider fallback.
 
 ```mermaid
@@ -75,6 +79,10 @@ within 45 seconds, cancels stalled/oversized streams, retains failure charges,
 and never retries. It does not invent deltas, finish reasons or usage. Native
 transport is recorded below; actual Flue provider consumption and agent execution
 still require their own verification.
+Its create-only call records are separately capped at twenty, with one bounded
+response per storage key. Old reservations without a response record still fail
+closed through the unchanged ledger. The recovery tests use fake model responses;
+durable replay is not yet deployed or verified against a new native AI call.
 The authenticated probe's explicit `{"mode":"stream"}` spends one reservation
 on a fixed “Reply with only OK” prompt and reports protocol shape only—not raw
 model text or repair success. A `[DONE]` sentinel alone is not a finish reason.
