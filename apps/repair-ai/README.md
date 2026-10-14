@@ -83,6 +83,26 @@ Its create-only call records are separately capped at twenty, with one bounded
 response per storage key. Old reservations without a response record still fail
 closed through the unchanged ledger. The recovery tests use fake model responses;
 durable replay is not yet deployed or verified against a new native AI call.
+
+An explicit authenticated `{"mode":"recovery"}` probe spends **one** reservation
+on the fixed stream prompt, then calls the identical request again from a separate
+native checkpoint. It requires unchanged original bytes and an unchanged ledger
+after replay, and reports a response SHA256 without raw text. All five checkpoints
+have retry limit zero. It fails rather than reporting successful recovery if bytes
+or charges change. This is service receipt replay, not a durable Flue agent or a
+forced process-restart experiment; local workerd separately tests worker reload.
+
+After intentionally dispatching a fresh recovery instance, the optional check below
+**only reads** its retained native instance and both full stream checkpoints. It
+verifies exact original bytes/SHA256, one charge, unchanged post-replay ledger and
+zero native retries; it never dispatches, deploys or spends.
+
+```sh
+CF_BIN=/Users/eric/Library/pnpm/bin/cf \
+LIVE_REPAIR_RECOVERY_INSTANCE=your-completed-recovery-instance \
+node --test src/live-recovery.test.ts
+```
+
 The authenticated probe's explicit `{"mode":"stream"}` spends one reservation
 on a fixed “Reply with only OK” prompt and reports protocol shape only—not raw
 model text or repair success. A `[DONE]` sentinel alone is not a finish reason.
