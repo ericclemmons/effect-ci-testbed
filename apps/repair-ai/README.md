@@ -18,8 +18,15 @@ The original authorization was $2; the operator explicitly added $5 on October
 stays unchanged. All original reservations and streaming receipts survive the
 extension. This is a code-enforced authorization increase, not a billing top-up,
 refund or reset. The historical $2 receipts below remain historical facts.
-Until this change is deployed and independently inspected, the live broker still
-enforces its previous $2 cap. No new inference is needed to verify the extension.
+Merged source `4e6cf6ef6948e56f2fe7a2080cf0fefe010449b9` was deployed as
+Worker version `1a922857-9b88-4c00-86d7-0c3f4629e40b`. Native inspect-only
+instances `coverage-repair-extension-before-20261014-1` and
+`coverage-repair-extension-after-20261014-1` retained all three historical
+reservation/run IDs and $0.30 reserved, while remaining authorization changed
+from $1.70 to $6.70. Both completed one checkpoint/one attempt/zero retries and
+called no inference. Their create-only receipt is retained privately at
+`.verification/native-budget-extension-20261014-1.json`. This is recorded
+authorization accounting, not measured billing; later calls consume the balance.
 
 ```mermaid
 flowchart LR

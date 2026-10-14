@@ -1,0 +1,26 @@
+{
+  "name": "@effect-ci-testbed/repair-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test src/*.test.ts",
+    "deploy": "cf deploy"
+  },
+  "dependencies": {
+    "@effect-ci-testbed/flue-budget-provider": "workspace:*",
+    "@flue/runtime": "2.2.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
+    "@cloudflare/workers-types": "5.20261001.1",
+    "@effect-ci-testbed/flue-cloudflare-config": "workspace:*",
+    "@flue/vite": "2.2.2",
+    "@types/node": "^26.6.3",
+    "agents": "0.20.1",
+    "cf": "1.0.0-beta.12",
+    "typescript": "7.0.2",
+    "vite": "8.1.2"
+  }
+}
