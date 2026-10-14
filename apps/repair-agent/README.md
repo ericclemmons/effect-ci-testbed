@@ -210,6 +210,23 @@ Read-only regression: `LIVE_INCIDENT_EVIDENCE=cf_3fd031ac19e7130f22c40e61a51b95a
 
 The subsequent trusted App host writer must use a NEW immutable incident operation,
 canonical patch validation and real exact-commit Node check before proposing a PR.
+The reusable pure `@effect-ci-testbed/github/incident-repair-operation` protocol now
+defines that separate host policy, fixed owner/key/run and digest. It binds the entire
+enrolled Issue/occurrence/source/version/private-base/path/admitted timestamp plus
+the fresh proposal tuple and fixed native Node command. It accepts only the seven
+descriptor-safe private evidence fields; matching caller data alone is NOT a capability.
+The App host must supply its trusted evidence service and writer closures, never RPC
+or model callbacks. Pending state is persisted before the writer; completion is
+persisted before acknowledgement. Completed replay reads/writes nothing and returns
+historical identity, not current PR approval or cache authority. Pending, failed,
+corrupt or mismatched state fails closed; there is no reset/retry/new identity.
+The old administrative pilot digest/PR1/PR2 cannot satisfy this new operation.
+This pure protocol is locally tested with FAKE writer/store results: concurrent claims,
+lost completion acknowledgement, invalid results and descriptor negatives. It has
+NOT yet been wired into the App Worker, natively executed or created a new repair PR.
+Reproduce those local checks with `node --test packages/github/src/incident-repair-operation.test.ts`
+from the repository root. No credentials, network, deployment or inference are needed
+for these protocol tests. Existing native model/reader proofs remain separate.
 It must not reset the older administrative pilot, give credentials to this host/model,
 accept a model verification claim, merge or deploy a fixture repair. See the receiver's
 [reproduction and safe cleanup guide](../repair-events/REPRODUCE.md); read-only inspection
