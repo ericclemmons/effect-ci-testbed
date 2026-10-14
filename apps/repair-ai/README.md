@@ -1,9 +1,9 @@
 # Bound repair inference before calling a model
 
-The Friday repair demo has a **$2 lifetime inference authorization**, not $2 per
+The Friday repair demo has a **$7 cumulative lifetime inference authorization**, not $7 per
 run. This private service owns the Workers AI binding outside project code and
 containers. A single SQLite-backed Durable Object commits a ten-cent reservation
-before each model request. Twenty reservations exhaust the authorization; a run
+before each model request. Seventy reservations exhaust the authorization; a run
 can consume at most four. Failed requests and lost responses remain charged.
 The original text method rejects replayed reservation IDs. Streaming calls persist
 their run/request digest and original bounded SSE before returning: a completed
@@ -12,6 +12,14 @@ Pending or uncertain calls fail closed, including after restart; a changed promp
 run or token limit cannot reuse the receipt. Never automatically retry uncertainty
 with a new ID. There is no reset, refund, caller-selected budget,
 public administration route, or paid-provider fallback.
+
+The original authorization was $2; the operator explicitly added $5 on October
+13, 2026. The legacy Durable Object name `friday-demo-repair-2-usd-v1` intentionally
+stays unchanged. All original reservations and streaming receipts survive the
+extension. This is a code-enforced authorization increase, not a billing top-up,
+refund or reset. The historical $2 receipts below remain historical facts.
+Until this change is deployed and independently inspected, the live broker still
+enforces its previous $2 cap. No new inference is needed to verify the extension.
 
 ```mermaid
 flowchart LR
@@ -80,7 +88,7 @@ within 45 seconds, cancels stalled/oversized streams, retains failure charges,
 and never retries. It does not invent deltas, finish reasons or usage. Native
 transport is recorded below; actual Flue provider consumption and agent execution
 still require their own verification.
-Its create-only call records are separately capped at twenty, with one bounded
+Its create-only call records are separately capped at seventy, with one bounded
 response per storage key. Old reservations without a response record still fail
 closed through the unchanged ledger. Local recovery tests use fake model responses;
 separate recorded native receipt recovery is described below.
@@ -114,7 +122,7 @@ Proposal spends **one** reservation on a fixed owned failing function and return
 untrusted proposed text; it never applies a patch or creates a PR. Model calls
 have zero native retries. Native step replay uses the same consumed reservation
 ID, so an ambiguous call fails closed rather than sending a second inference.
-The probe has a shared four-call lifetime cap within the global twenty-call cap.
+The probe has a shared four-call lifetime cap within the global seventy-call cap.
 Only authenticated account operators can dispatch it; there is no HTTP trigger.
 
 ```sh

@@ -74,12 +74,12 @@ test(
       assert.equal((await send({ run: "first", id: "lost", fail: true })).status, 400);
       assert.equal((await send({ run: "first", id: "lost" })).status, 400);
       const results = await Promise.all(
-        Array.from({ length: 24 }, (_, i) =>
+        Array.from({ length: 74 }, (_, i) =>
           send({ run: `run${Math.floor(i / 4)}`, id: `call${i}` }),
         ),
       );
-      assert.equal(results.filter((result) => result.status === 200).length, 19);
-      assert.equal((await send({ op: "inspect" })).body.reservations.length, 20);
+      assert.equal(results.filter((result) => result.status === 200).length, 69);
+      assert.equal((await send({ op: "inspect" })).body.reservations.length, 70);
       assert.equal((await send({ op: "inspect" })).body.remainingCents, 0);
       assert.equal((await send({ run: "new", id: "overflow" })).status, 400);
       await send({ op: "corrupt" });

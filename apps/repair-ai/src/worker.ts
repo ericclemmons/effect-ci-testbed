@@ -1,6 +1,8 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import {
   BUDGET_NAME,
+  LIMIT_CENTS,
+  RESERVATION_CENTS,
   budgetStatus,
   infer,
   type BudgetStore,
@@ -41,7 +43,7 @@ export class InferenceBudgetObject extends DurableObject<Environment> {
           const ids = (await storage.get<string[]>("stream-call-ids-v1")) ?? [];
           if (
             !Array.isArray(ids) ||
-            ids.length >= 20 ||
+            ids.length >= LIMIT_CENTS / RESERVATION_CENTS ||
             new Set(ids).size !== ids.length ||
             ids.some((value) => typeof value !== "string" || !/^[a-zA-Z0-9_-]{1,96}$/.test(value))
           )
