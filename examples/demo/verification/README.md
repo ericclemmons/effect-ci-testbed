@@ -113,9 +113,39 @@ truncation flag. Malformed, oversized, context-mismatched and unknown frames are
 not promoted to structured command evidence. Output is descriptive untrusted data,
 not a command to execute, check-cache proof, retry permission or release approval.
 
-This local composition is not yet a fresh deployed command-failure/remote-CLI
-acceptance. Do not replay old native failures, upload an old candidate or reset a
-public incident to claim that missing proof.
+Actual native/remote JSON transport was then verified on October15 with one
+normal `AI_AGENT=true cf-ci run --remote` from a clean managed checkout. Exact
+host `c57576e09e319b0da5fb611a9e17c0b395ef0957` was built179modules and deployed
+once as Worker `478e387d-3973-4108-bb4f-d5e9f0d9db43`, preserving23exports,
+19bindings, secret names, Docker image and the committed release.
+
+The dedicated negative source `4005974fd8fb85765008428e21a75e6792cc3fca` produced
+Workflow `edbdb213-1ce2-44d2-84ab-40688db4dcb1`, still **ERRORED**. Its new fixture
+unexpectedly failed lint first: three real `no-undef` diagnostics for Node globals
+were on stdout while stderr contained npm notices. The planned exit7 script did
+not run, so its original acceptance flag remains false. Independent full failed
+checkpoint output and the actual CLI JSON agree exactly on lint exit1, both
+streams, one attempt and zero retries. This proves diagnostics transport, not an
+exit7 run or a successful build. No publication, candidate preparation, approval,
+Slack message, traffic change or model call followed.
+
+The diagnostics identified the fixture bug without a text-mode rerun. Explicit
+Node imports in `47dd64b01b52d9e271780a74ae2f48326e621359` pass local lint; that
+fix remains only on `codex/native-command-negative-fixture`, not main/demo/live.
+It was **not remotely redispatched** for a prettier result. Both original and
+fixed fixture histories are retained; never merge its deliberate failing package
+script into the normal demo or replay the consumed public incident for evidence.
+
+Read-only native regression (ordinary CI skips):
+
+```sh
+LIVE_NATIVE_COMMAND_DIAGNOSTICS=1 CF_BIN=path/to/installed/cf node --test apps/effect-ci/src/live-command-diagnostics.test.ts
+```
+
+An optional `LIVE_NATIVE_COMMAND_CLI_RECEIPT` points to the private original CLI
+receipt for equality against independent full native output. The unsigned receipt
+is supporting evidence, not reusable trust. The test does not hit a failing URL,
+dispatch, execute, publish, approve, spend or write anything remotely.
 
 ```sh
 node --test packages/ci/src/command-diagnostics.test.ts packages/cli/src/remote-diagnostics.test.ts
