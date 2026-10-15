@@ -1,6 +1,7 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  base: "./",
   run: {
     tasks: {
       "check:source": { command: "vp check", cache: true },

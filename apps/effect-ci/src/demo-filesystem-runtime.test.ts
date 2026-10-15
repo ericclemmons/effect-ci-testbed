@@ -24,10 +24,15 @@ test(
         sourcefile: "demo-filesystem-probe.ts",
         loader: "ts",
         contents: `
-      import {DurableObject} from "cloudflare:workers";
+      import {DurableObject,WorkerEntrypoint} from "cloudflare:workers";
+      import {demoSite,demoSiteUrl} from '@effect-ci-testbed/cloudflare/demo-site';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[],snapshots=[],restores=[];let missingLock=false,cacheReads=0;
+      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0;
+      const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
+      export class Publisher extends WorkerEntrypoint {
+        async publish(revision,files){publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
+      }
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
         async checkout(){}
@@ -38,7 +43,7 @@ test(
         async readFile(path,root){
           if(root!==cwd&&root!=="/workspace/repository")throw new Error("Wrong remote root: "+root);
           reads.push({path,root});
-          return path==="package.json"?JSON.stringify(manifest):undefined;
+          return path==="package.json"?JSON.stringify(manifest):path.startsWith('dist/')?assets[path.slice(5)]:undefined;
         }
         async exists(path,root){
           if(root!==cwd)throw new Error("Wrong package root");
@@ -62,7 +67,7 @@ test(
           return Response.json({started:true});
         }
         if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
-        return Response.json({reads,exists,commands,cacheReads,snapshots,restores});
+        return Response.json({reads,exists,commands,cacheReads,snapshots,restores,publications});
       }};
     `,
       },
@@ -88,6 +93,14 @@ test(
             exports: {
               WorkspaceContainer: { type: "durable-object", storage: "sqlite" },
               DemoCIWorkflow: { type: "workflow", name: "demo-filesystem-probe" },
+              Publisher: { type: "worker" },
+            },
+            env: {
+              DEMO_SITE: {
+                type: "worker",
+                worker: "demo-filesystem-probe",
+                exportName: "Publisher",
+              },
             },
           },
         },
@@ -130,9 +143,14 @@ test(
         'npm run "build"',
         "node .cloudflare/ci/verify-build.ts",
       ]);
-      assert.equal(output.nodes.length, 9);
+      assert.equal(output.nodes.length, 10);
+      assert.equal(state.publications.length, 1);
+      assert.equal(state.publications[0].revision, "a".repeat(40));
+      assert.equal(output.nodes.at(-1).id, "publish site");
       assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "build-workspace"));
-      assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "verify build-workspace"));
+      assert.ok(
+        state.snapshots.some((snapshot: any) => snapshot.name === "verify build-workspace"),
+      );
       assert.equal(state.restores.length, 0, "normal dependencies need no explicit restore");
       assert.ok(output.nodes.every((node: any) => node.artifacts.length === 0));
       assert.ok(output.nodes.every((node: { status: string }) => node.status === "complete"));
