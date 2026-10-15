@@ -16,6 +16,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let disconnectOnce = false
   let resumed = 0
   let failWorkflow = false
+  let routePrefix = ""
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
     for (const args of [
@@ -38,16 +39,16 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(request.headers["cf-access-client-id"], "fixture-access-id")
         assert.equal(request.headers["cf-access-client-secret"], "fixture-access-secret")
       }
-      if (request.url === "/runs") {
+      if (request.url === `${routePrefix}/runs`) {
         dispatches++
         let body = ""
         for await (const chunk of request) body += chunk
         assert.match(JSON.parse(body).revision, /^[a-f0-9]{40}$/)
         response.writeHead(202, { "content-type": "application/json" })
-        response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}/runs/fixture/events`, statusUrl: `${origin}/runs/fixture` }))
+        response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture` }))
       } else {
         response.writeHead(200, { "content-type": "application/x-ndjson" })
-        if (request.url === "/runs/fixture/events?cursor=1") {
+        if (request.url === `${routePrefix}/runs/fixture/events?cursor=1`) {
           resumed++
           response.write(JSON.stringify({ eventId: 1, type: "step_completed", stepName: "lint", output: JSON.stringify({ stdout: "lint passed" }) }) + "\n")
           response.write(JSON.stringify({ eventId: 2, type: "workflow_completed" }) + "\n")
@@ -70,7 +71,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const run = (userToken = "", explicit = true) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
+        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
@@ -101,11 +102,15 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const hosted = await run("fixture-user-token", false)
     assert.equal(hosted.code, 0, hosted.output)
     assert.match(hosted.output, /Workflow completed/)
+    routePrefix = "/demo"
+    const mounted = await run("fixture-user-token", false)
+    assert.equal(mounted.code, 0, mounted.output)
+    assert.match(mounted.output, /Workflow completed/)
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 5)
+    assert.equal(dispatches, 6)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

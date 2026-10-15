@@ -246,7 +246,7 @@ does **not** upload arbitrary local TypeScript or dirty source files.
 After an authorized commit and push, from a clean repository checkout:
 
 ```sh
-export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL"
+export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL/demo"
 export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
 cf-ci run --remote
 ```
@@ -256,9 +256,15 @@ success/failure. Do not redispatch if the stream disconnects without first
 inspecting the original instance. Never pass personal credentials into project
 code, containers, or agent prompts.
 
-**Integration gap:** the existing service has real remote-run evidence, but the
-same brownfield demo workflow is not yet enrolled and verified there. Until it is,
-this command runs the service's configured suite, not this local Vite build.
+The host's `DemoCIWorkflow` selects this package's manifest and uses the same
+`CI.fromPackageJson` discovery as the local CLI. Its `/demo` mount has separate
+dispatch, status and event-stream routes, without changing the existing root
+workflow. Host policy permits only this repository, a full commit SHA and the
+whole suite. It does not accept an incoming module or deployment target.
+
+**Live verification pending:** deploy the merged host integration and verify an
+actual `cf-ci run --remote` on this same app before counting this step complete.
+The root service's older build receipt is not evidence for this new workflow.
 [GitHub-to-Cloudflare composition](../github-cloudflare-ci).
 
 ## 8. Attest a pure check, then let hosted CI verify reuse

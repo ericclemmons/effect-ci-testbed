@@ -44,6 +44,10 @@ export interface GitHubClient {
 }
 
 export interface WorkerOptions {
+  /** Host-owned mount point; keeps dispatch/status/events on the selected workflow. */
+  readonly routePrefix?: string
+  /** Optional trusted host enrollment, checked after authentication and before creation. */
+  readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   readonly github?: GitHubClient
   readonly workflow?: (
     environment: WorkerEnvironment,
@@ -51,7 +55,7 @@ export interface WorkerOptions {
   ) => Workflow<WorkflowParameters>
 }
 
-interface RemoteRunRequest {
+export interface RemoteRunRequest {
   readonly repository: string
   readonly revision: string
   readonly ref?: string
@@ -181,6 +185,7 @@ const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
   workflow: Workflow<WorkflowParameters>,
+  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed"> = {},
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -189,6 +194,9 @@ const remoteRun = async (
   const input = await readRemoteRun(request)
 
   if (!input) return new Response("Invalid remote run", { status: 400 })
+  if (options.remoteRunAllowed && !options.remoteRunAllowed(input)) {
+    return new Response("Remote workflow is not enrolled for these inputs", { status: 403 })
+  }
 
   const instanceId = crypto.randomUUID()
   await workflow.create({
@@ -196,7 +204,7 @@ const remoteRun = async (
     params: { trigger: "remote", ...input },
   })
 
-  const origin = new URL(request.url).origin
+  const origin = new URL(request.url).origin + (options.routePrefix ?? "")
 
   return Response.json({
     instanceId,
@@ -289,6 +297,10 @@ const resolveApproval = async (
 }
 
 export const worker = (options: WorkerOptions = {}) => {
+  const prefix = options.routePrefix ?? ""
+  if (prefix !== "" && !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(prefix)) {
+    throw new Error("Invalid workflow route prefix")
+  }
   const github = options.github ?? defaultGitHubClient
   const getWorkflow = options.workflow ?? ((environment, context) => {
     const workflow = environment.EFFECT_CI ??
@@ -308,11 +320,15 @@ export const worker = (options: WorkerOptions = {}) => {
       context?: ExecutionContext,
     ): Promise<Response> {
       const url = new URL(request.url)
+      if (prefix && url.pathname !== prefix && !url.pathname.startsWith(`${prefix}/`)) {
+        return new Response("Not found", { status: 404 })
+      }
+      const pathname = url.pathname.slice(prefix.length) || "/"
       const workflow = getWorkflow(environment, context)
 
-      if (request.method === "POST" && url.pathname === "/webhooks/slack") {
+      if (request.method === "POST" && pathname === "/webhooks/slack") {
         return slackInteraction(request, environment, async (decision) => {
-          const authorization = new URL(`/runs/${encodeURIComponent(decision.instanceId)}/approvals/${encodeURIComponent(decision.requestId)}`, url.origin)
+          const authorization = new URL(`${prefix}/runs/${encodeURIComponent(decision.instanceId)}/approvals/${encodeURIComponent(decision.requestId)}`, url.origin)
           authorization.searchParams.set("token", decision.token)
           if (!await isApprovalAuthorized(new Request(authorization), environment, decision.instanceId, decision.requestId)) return false
           const instance = await workflow.get(decision.instanceId)
@@ -324,15 +340,15 @@ export const worker = (options: WorkerOptions = {}) => {
         })
       }
 
-      if (request.method === "GET" && url.pathname === "/") {
+      if (request.method === "GET" && pathname === "/") {
         return Response.json({ service: "Effect CI", status: "ready" })
       }
 
-      if (request.method === "POST" && url.pathname === "/runs") {
-        return remoteRun(request, environment, workflow)
+      if (request.method === "POST" && pathname === "/runs") {
+        return remoteRun(request, environment, workflow, options)
       }
 
-      const eventRoute = url.pathname.match(/^\/runs\/([^/]+)\/events$/)
+      const eventRoute = pathname.match(/^\/runs\/([^/]+)\/events$/)
 
       if (request.method === "GET" && eventRoute) {
         return streamEvents(
@@ -343,7 +359,7 @@ export const worker = (options: WorkerOptions = {}) => {
         )
       }
 
-      const statusRoute = url.pathname.match(/^\/runs\/([^/]+)$/)
+      const statusRoute = pathname.match(/^\/runs\/([^/]+)$/)
 
       if (request.method === "GET" && statusRoute) {
         if (!isAuthorized(request, environment)) {
@@ -357,7 +373,7 @@ export const worker = (options: WorkerOptions = {}) => {
         return Response.json(await instance.status())
       }
 
-      const approvalRoute = url.pathname.match(/^\/runs\/([^/]+)\/approvals\/([^/]+)$/)
+      const approvalRoute = pathname.match(/^\/runs\/([^/]+)\/approvals\/([^/]+)$/)
 
       if (approvalRoute) {
         const instanceId = decodeURIComponent(approvalRoute[1]!)
@@ -388,7 +404,7 @@ export const worker = (options: WorkerOptions = {}) => {
         }
       }
 
-      if (request.method !== "POST" || url.pathname !== "/webhooks/github") {
+      if (request.method !== "POST" || pathname !== "/webhooks/github") {
         return new Response("Not found", { status: 404 })
       }
 

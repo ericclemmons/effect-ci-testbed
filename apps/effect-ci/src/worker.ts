@@ -5,6 +5,8 @@ import { notificationChannels } from "./notification-policy.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
+import { demoRouteAllowed, demoRunAllowed } from "./demo-policy.ts";
+export { DemoCIWorkflow } from "./demo-workflow.ts";
 
 export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 export { HealthChartRenderer } from "./health-renderer.ts";
@@ -21,8 +23,24 @@ export {
 } from "./repair-writer.ts";
 
 const ci = GitHubCloudflare.worker();
+const demo = GitHubCloudflare.worker({
+  routePrefix: "/demo",
+  remoteRunAllowed: demoRunAllowed,
+  workflow: (_environment, context) => {
+    const binding = (context?.exports as unknown as {
+      DemoCIWorkflow?: Workflow<GitHubCloudflare.WorkflowParameters>;
+    } | undefined)?.DemoCIWorkflow;
+    if (!binding) throw new Error("DemoCIWorkflow is not exported");
+    return binding;
+  },
+});
 export default {
   async fetch(request: Request, environment: WorkerEnvironment, context: ExecutionContext) {
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/demo" || pathname.startsWith("/demo/")) {
+      if (!demoRouteAllowed(pathname)) return new Response("Not found", { status: 404 });
+      return demo.fetch(request, environment, context);
+    }
     if (request.method === "POST" && new URL(request.url).pathname === "/webhooks/slack") {
       const body = await request.clone().text();
       if (body.length > 32_000) return new Response("Payload too large", { status: 413 });
