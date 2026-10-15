@@ -53,6 +53,7 @@ function harness() {
   );
   const names: string[] = [];
   const step = {
+    sleep: async (name: string, duration: string) => { names.push(name); assert.equal(duration, "10 seconds"); },
     do: async (name: string, config: any, body: () => Promise<any>) => {
       names.push(name);
       assert.equal(config.retries.limit, 0);
@@ -117,8 +118,25 @@ test("same verified candidate progresses with four human decisions and commits i
   assert.equal(h.state().commits, 1);
   assert.ok(!h.names.includes("vite-release:restore"));
 });
+
+test("phase observation waits for a bounded data-plane settling interval, without inventing candidate data", async () => {
+  const h = harness();
+  let settled = false, waits = 0;
+  const promote = h.broker.promote;
+  h.broker.promote = async (owner, percentage) => { settled = false; return promote(owner, percentage); };
+  h.step.sleep = async (_name, duration) => { assert.equal(duration, "10 seconds"); settled = true; waits++; };
+  const result = await runReviewedRelease({
+    owner: "settling-demo", candidate, broker: h.broker, step: h.step,
+    probe: async (identity, allowed) => identity.endsWith("baseline") || settled
+      ? h.probe(identity)
+      : { requested: 100, unknown: 0, outcomes: Array.from({ length: 100 }, () => ({ version: previous, healthy: true })) },
+    review: async o => ({ snapshot: o.snapshot, decision: "approved", reason: "FAKE test risk acceptance" }),
+  });
+  assert.equal(result.releaseCommitted, true);
+  assert.equal(waits, 4);
+});
 test("reject, stale decision, missing attribution and regression restore the captured prior allocation", async () => {
-  for (const mode of ["reject", "stale", "missing", "regression", "timeout"]) {
+  for (const mode of ["reject", "stale", "missing", "zero-candidate", "regression", "timeout"]) {
     const h = harness();
     let reviews = 0;
     await assert.rejects(
@@ -133,6 +151,8 @@ test("reject, stale decision, missing attribution and regression restore the cap
             ? b
             : mode === "missing"
               ? { ...b, unknown: 1 }
+              : mode === "zero-candidate"
+                ? { ...b, outcomes: b.outcomes.map(o => ({ ...o, version: previous })) }
               : mode === "regression"
                 ? {
                     ...b,
@@ -155,7 +175,7 @@ test("reject, stale decision, missing attribution and regression restore the cap
     assert.equal(h.state().journal?.status, "rolled-back", mode);
     assert.deepEqual(h.state().allocation.versions, [{ version: previous, percentage: 100 }]);
     assert.equal(h.state().commits, 0);
-    if (mode === "missing" || mode === "regression")
+    if (mode === "missing" || mode === "zero-candidate" || mode === "regression")
       assert.equal(reviews, 0, "invalid/conclusive health cannot be overridden");
   }
 });

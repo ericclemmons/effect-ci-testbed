@@ -35,6 +35,12 @@ then runs 10%, 25%, 75% and 100% stages. The health comparison currently require
 a single-version 100% baseline; unsupported mixed baselines fail closed and the
 broker restores their full captured allocation.
 
+After each allocation write, a native ten-second sleep precedes the single
+100-request cohort. API allocation readback is not proof that the data plane is
+ready. This is a bounded settling interval, not a readiness guarantee: missing
+candidate observations, foreign attribution or regression still fail closed;
+there is no probe-until-green loop or automatic decision.
+
 Every stage requires real authenticated human Progress, even when health looks
 good. Sparse observations remain uncertain, never a fabricated health pass.
 Missing attribution or conclusive regression cannot be overridden. Reject,
