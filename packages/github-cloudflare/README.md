@@ -18,9 +18,14 @@ Without `finalize`, existing reporting and return values are unchanged.
 `publish` updates the same acknowledged Slack bot message rather than opening a
 separate release card. Stable keys must match `[A-Za-z0-9:_-]{1,128}`. Host updates
 use zero retries and a 20-second timeout, and delivery rejection fails closed.
+One transport-level exception applies to an existing Slack message containing a
+private image: a definite `invalid_blocks` rejection may retry the identical
+serialized update three times after 500/1000/2000 ms. No initial post, HTTP or
+network failure, malformed/lost acknowledgement or other API error is retried.
+Receipts expose only bounded failure categories and validation-retry counts.
 A missing build-card acknowledgement or a Slack webhook-only destination cannot
 create a replacement review card. After an update failure, a distinct terminal
-failure may update an already-known message once; it never retries the failed
+failure may update an already-known message once; it never retries an ambiguous failed
 update. Notification credentials remain host-only.
 
 This extension does not itself authenticate a human decision, acquire a release

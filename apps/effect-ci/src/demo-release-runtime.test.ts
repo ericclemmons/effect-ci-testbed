@@ -21,7 +21,7 @@ test(
     import{finalizeDemoRelease}from'./demo-release.ts';export{HmdApprovals}from'./hmd-approval.ts';
     const previous='11111111-1111-4111-8111-111111111111',version='22222222-2222-4222-8222-222222222222';
     const receipt={revision:'a'.repeat(40),digest:'b'.repeat(64),moduleDigest:'c'.repeat(64),version,policy:'owned-vite-release-pointer-v1',script:'effect-ci-hmd-demo'};
-    let messages=[],phase=0,commits=0,rollbacks=0,images=0,renders=0,requests=0;
+    let messages=[],phase=0,commits=0,rollbacks=0,images=0,renders=0,requests=0,rejectedPhases=new Set();
     let journal;const copy=()=>structuredClone(journal);
     export class Broker extends WorkerEntrypoint{
       prepareCandidate(){return receipt;}
@@ -36,7 +36,7 @@ test(
     export class PrivateSlackImages extends DurableObject{upload(){images++;return {ok:true,fileId:'F123'};}}
     globalThis.fetch=async(input,init)=>{
       const url=String(input);
-      if(url.startsWith('https://slack.com/api/')){messages.push({url,body:JSON.parse(init.body)});return Response.json({ok:true,ts:'123.456'});}
+      if(url.startsWith('https://slack.com/api/')){const body=JSON.parse(init.body),button=body.blocks?.find(b=>b.type==='actions')?.elements?.find(e=>e.action_id==='hmd_approve'),p=button?JSON.parse(button.value).phase:0,rejected=p&&!rejectedPhases.has(p);messages.push({url,body,accepted:!rejected});if(rejected){rejectedPhases.add(p);return Response.json({ok:false,error:'invalid_blocks'});}return Response.json({ok:true,ts:'123.456'});}
       if(url.startsWith('https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
       throw Error('Unexpected outbound request');
     };
@@ -44,10 +44,10 @@ test(
     // TEST ONLY clock: keep the real Workflow/RPC/approval composition, skip elapsed settling time.
     export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,finalize:ctx=>finalizeDemoRelease({...ctx,step:{do:(...args)=>ctx.step.do(...args),waitForEvent:(...args)=>ctx.step.waitForEvent(...args),sleep:async(name,duration)=>{if(!name.startsWith('vite-release:settle-')||duration!=='10 seconds')throw Error('Unexpected test clock sleep');}}})});
     export default{async fetch(request,env,ctx){const p=await request.json();
-      if(p.op==='start'){messages=[];commits=rollbacks=images=renders=requests=0;await ctx.exports.DemoCIWorkflow.create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:receipt.revision}});return Response.json({started:true});}
+      if(p.op==='start'){messages=[];rejectedPhases=new Set();commits=rollbacks=images=renders=requests=0;await ctx.exports.DemoCIWorkflow.create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:receipt.revision}});return Response.json({started:true});}
       if(p.op==='status')return Response.json(await(await ctx.exports.DemoCIWorkflow.get(p.id)).status());
       if(p.op==='submit'){const r=ctx.exports.HmdApprovals.getByName(p.cap.owner);return Response.json(await r.submit(p.cap,p.decision,'FAKE local test human decision','slack:T1:U1'));}
-      return Response.json({messages,phase,commits,rollbacks,images,renders,requests,journal});
+      return Response.json({messages,phase,commits,rollbacks,images,renders,requests,rejectedPhases:[...rejectedPhases],journal});
     }};`,
       },
       bundle: true,
@@ -101,7 +101,7 @@ test(
     async function reviewAt(phase: number) {
       for (let n = 0; n < 200; n++) {
         const state = await call({});
-        const frame = state.messages.at(-1)?.body;
+        const frame = state.messages.filter((m: any) => m.accepted).at(-1)?.body;
         const button = frame?.blocks
           ?.find((b: any) => b.type === "actions")
           ?.elements?.find((e: any) => e.action_id === "hmd_approve");
@@ -157,6 +157,7 @@ test(
         );
         assert.equal(state.images, id === "accept" ? 4 : 2);
         assert.equal(state.renders, state.images);
+        assert.equal(state.rejectedPhases.length, state.images, "each private image's definite validation rejection is bounded and recovered before review");
         assert.equal(state.requests, id === "accept" ? 500 : 300);
         assert.ok(!state.messages.at(-1).body.blocks.some((b: any) => b.type === "actions"));
       }
