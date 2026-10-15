@@ -314,6 +314,18 @@ dispatch, status and event-stream routes, without changing the existing root
 workflow. Host policy permits only this repository, a full commit SHA and the
 whole suite. It does not accept an incoming module or deployment target.
 
+For the owned testbed's enrolled `demo/live` branch, push a new source change:
+
+```sh
+git push origin HEAD:refs/heads/demo/live
+```
+
+Open **#effect-ci** in Slack. The same build card changes from Running to Passed
+as the native checks finish, including publishing the checked site and preparing
+its candidate. This enrollment is specific to the owned host, not standalone
+Cloudflare onboarding. The human-release gate remains off; a passed build does
+not mean traffic was promoted. [Host enrollment](../../apps/effect-ci/DEMO-RELEASE.md).
+
 **Live verified:** `cf-ci run --remote` from clean commit
 `2c8a27600b168655c2fd989e4abb200d60f3ffb8` completed all seven nodes in native
 Workflow `f62fe0db-05e6-4acd-9492-9c8cbfacb6ac`: install, lint, formatting,
