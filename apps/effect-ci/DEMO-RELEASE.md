@@ -3,14 +3,16 @@
 The demo finalizer now connects its actual workflow result to
 `@effect-ci-testbed/cloudflare/reviewed-release`, the existing private release
 broker, private review records, graph renderer and the maintained build card.
-It is **implemented and locally verified, but not armed or live-accepted**.
-`demoReviewedReleaseEnabled` in `src/demo-release.ts` remains `false` while the
-reviewer is away. No Workflow parameter or project environment can enable it.
+It is **armed for the owned test branch, but not yet live-release-accepted**.
+Eric explicitly authorized browser-delegated test approvals while away. These
+must be recorded as delegated tests, not independent human review.
+`demoReviewedReleaseEnabled` in `src/demo-release.ts` is now `true`.
+No Workflow parameter or project environment can enable it.
 Remote runs remain quiet and never start review. Signed GitHub check-suite events
 for the selected installation/repository and `refs/heads/demo/live` now select
 `DemoCIWorkflow`, with maintained Slack build status. Other branches retain the
 normal workflow. GitHub's check-suite event follows a real push; a raw unsigned
-push payload cannot select a workflow. The live review gate remains independent.
+push payload cannot select a workflow. The host enrollment remains independent.
 
 ```sh
 # In a clean demo checkout after the hosted configuration is deployed:
@@ -19,7 +21,8 @@ git push origin HEAD:refs/heads/demo/live
 
 This is a normal fast-forward push, never a force push. Existing branch history
 must be preserved. It builds the exact pushed commit, publishes its checked site
-and prepares its candidate, but cannot promote traffic while the gate is false.
+and prepares its candidate. With the host gate armed, the same card requests each
+phase decision before the controller can commit the owned test target.
 The App remains installed only on its existing selected repositories; no
 account-wide installation setting is changed.
 
@@ -120,10 +123,11 @@ not prove native traffic promotion, native graphs or real human approval.
 
 ## Activation, permissions and cleanup
 
-Keep the host gate false until Eric is present and the authenticated push policy
-is integrated. Activation requires an explicit host source change, merged build,
+The owned test gate was explicitly authorized by Eric for browser-delegated
+approvals. Activation requires an explicit host source change, merged build,
 fresh current-resource/security/review preflight and one guarded deployment; do
-not start a review merely to test the gate. Use the existing broker's fixed
+not bypass any decision or claim delegated tests are independent human approval.
+Use the existing broker's fixed
 account/target and token, existing Slack app/channel/reviewer and private services.
 No new account permission, secret, paid model/provider or deployment authority is
 introduced. Real Workflow, storage, health requests, rendering and uploads incur
@@ -132,4 +136,5 @@ their ordinary service costs; no inference is involved.
 To disable new review starts, restore the host gate to false and deploy verified
 merged source. Do not delete active journals, pending decisions, original versions
 or historical receipts. Let the owner/broker recover an active release before
-changing its controller or target. Never self-approve a native human review.
+changing its controller or target. Browser approvals here require Eric's explicit
+delegation; the historical human-only review evidence remains unchanged.
