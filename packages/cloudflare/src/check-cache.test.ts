@@ -39,7 +39,7 @@ const harness = (note: string | undefined, expected: HostedCheckIdentity | undef
   const cache = hostedCheckCache({
     identify: async () => expected, enrollments,
     reader: { repository: "owner/fixture", request: async (url, init) => {
-      calls.push(url); assert.equal(init.method, "GET"); assert.equal(init.redirect, "error")
+      calls.push(url); assert.equal(init.method, "GET"); assert.equal(init.redirect, "manual")
       return new Response(JSON.stringify(note === undefined ? {} : replies[calls.length - 1]),
         { status: note === undefined ? 404 : 200 })
     } },

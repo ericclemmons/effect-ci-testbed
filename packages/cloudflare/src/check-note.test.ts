@@ -19,7 +19,7 @@ const reader = (replies: unknown[], status = 200) => {
   const calls: string[] = []
   const request = async (url: string, init: RequestInit) => {
     calls.push(url)
-    assert.equal(init.method, "GET"); assert.equal(init.redirect, "error")
+    assert.equal(init.method, "GET"); assert.equal(init.redirect, "manual")
     assert.equal(new URL(url).origin, "https://api.github.com")
     assert.ok(url.startsWith("https://api.github.com/repos/owner/fixture/git/"))
     assert.ok(init.signal instanceof AbortSignal)
@@ -45,7 +45,7 @@ test("unknown revisions, unsafe repositories and missing/auth failures return mi
   assert.equal(await readGitHubCheckNote({ ...options, repository: "owner/fixture/../../other" }, revision), undefined)
   assert.equal(await readGitHubCheckNote({ ...options, repository: "../.." }, revision), undefined)
   assert.equal(calls.length, 0)
-  for (const status of [401, 403, 404, 503]) {
+  for (const status of [301, 302, 307, 308, 401, 403, 404, 503]) {
     const r = reader(fixture(), status)
     assert.equal(await readGitHubCheckNote(r.options, revision), undefined)
     assert.equal(r.calls.length, 1)
