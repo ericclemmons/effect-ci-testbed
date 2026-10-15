@@ -230,6 +230,7 @@ export const workflowEntrypoint = <A>(
           slackMessageTs,
           presentation.blocks,
           discordMessageId,
+          { privateImageValidation: required },
         )
         const result = required
           ? await step.do(`notification:${key}`, { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" }, deliver)

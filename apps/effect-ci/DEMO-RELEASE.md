@@ -67,6 +67,16 @@ cohorts, not WOBS ingestion completeness or production SLO proof. The generated
 candidate redirects to this same immutable Vite build; this is not Workers Static
 Assets upload or a new build.
 
+For a known maintained card with a private image, an explicit Slack
+`invalid_blocks` rejection permits only three delayed retries (500/1000/2000 ms)
+of the identical serialized update. Root posts, HTTP/transport failures,
+malformed or lost acknowledgements and other API errors stop immediately; the
+Workflow checkpoint itself still has zero retries and a twenty-second timeout.
+Exhaustion fails closed. Native receipts retain only a bounded failure category
+and validation-retry count, never upstream text. Ordinary notifications are
+unchanged. This uses the historical review host's validation-only exception,
+not a retry of an ambiguous update or replacement root card.
+
 ## Human decision boundary
 
 `HmdApprovals.registerDemo` pins the private destination to `DemoCIWorkflow`;

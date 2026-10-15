@@ -17,6 +17,9 @@ export interface NotificationResult {
   readonly failed: number
   readonly slackMessageTs?: string
   readonly discordMessageId?: string
+  /** Host-only bounded metadata, never upstream error text. */
+  readonly slackFailure?: "invalid_blocks" | "rejected" | "http" | "transport" | "invalid-ack"
+  readonly slackImageValidationRetries?: number
 }
 
 /** Deliberately excludes command output, payloads, credentials, and error bodies. */
@@ -47,6 +50,7 @@ export const sendNotification = async (
   slackMessageTs?: string,
   blocks?: ReadonlyArray<SlackBlock>,
   discordMessageId?: string,
+  options: { readonly privateImageValidation?: boolean; readonly wait?: (milliseconds: number) => Promise<void> } = {},
 ): Promise<NotificationResult> => {
   const slackBot = Boolean(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)
   const endpoints = [
@@ -58,6 +62,8 @@ export const sendNotification = async (
   ] as const
   let messageTs: string | undefined
   let messageId: string | undefined
+  let slackFailure: NotificationResult["slackFailure"]
+  let imageRetries = 0
   const results = await Promise.all(endpoints.filter((entry) => entry.url).map(async (entry) => {
     try {
       const url = new URL(entry.url!)
@@ -67,7 +73,7 @@ export const sendNotification = async (
         else url.searchParams.set("wait", "true")
       }
 
-      const response = await transport(url, {
+      const request = {
         method: entry.provider === "discord" && discordMessageId ? "PATCH" : "POST",
         headers: {
           "content-type": "application/json",
@@ -75,7 +81,6 @@ export const sendNotification = async (
             ? { authorization: `Bearer ${channels.SLACK_BOT_TOKEN}` }
             : {}),
         },
-        signal: AbortSignal.timeout(10_000),
         body: JSON.stringify(entry.provider === "discord"
           ? { content: text.slice(0, 2000), allowed_mentions: { parse: [] } }
           : {
@@ -89,11 +94,32 @@ export const sendNotification = async (
             } : {}),
             blocks: blocks ?? [{ type: "section", text: { type: "plain_text", text: text.slice(0, 3000) } }],
           }),
-      })
+      }
+      // Only definite invalid_blocks rejection of a known message's private
+      // image frame permits retry. The serialized body stays byte-identical.
+      // Never retry a root post, HTTP/network error, lost ACK or other API error.
+      const imageUpdate = options.privateImageValidation && entry.provider === "slack-bot" && Boolean(slackMessageTs) &&
+        blocks?.some(block => block.type === "image" && block.slack_file)
+      let response: Response
+      let slackBody: { ok?: boolean; ts?: string; error?: string } | undefined
+      for (let attempt = 0; ; attempt++) {
+        response = await transport(url, { ...request, signal: AbortSignal.timeout(10_000) })
+        if (entry.provider !== "slack-bot") break
+        if (!response.ok) { await response.body?.cancel(); slackFailure = "http"; return false }
+        slackBody = await response.json()
+        if (slackBody?.ok === false && slackBody.error === "invalid_blocks" && imageUpdate && attempt < 3) {
+          imageRetries++
+          await (options.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms))))(500 * 2 ** attempt)
+          continue
+        }
+        break
+      }
       if (entry.provider === "slack-bot") {
-        const body = await response.json() as { ok?: boolean; ts?: string }
-        if (!response.ok || body.ok !== true || typeof body.ts !== "string") return false
-        messageTs = body.ts
+        if (slackBody?.ok !== true || typeof slackBody.ts !== "string") {
+          slackFailure = slackBody?.ok === false ? slackBody.error === "invalid_blocks" ? "invalid_blocks" : "rejected" : "invalid-ack"
+          return false
+        }
+        messageTs = slackBody.ts
 
         return true
       }
@@ -109,6 +135,7 @@ export const sendNotification = async (
       return response.ok
     } catch {
       // Do not log transport errors: they may contain the secret webhook URL.
+      if (entry.provider === "slack-bot") slackFailure = "transport"
       return false
     }
   }))
@@ -118,5 +145,7 @@ export const sendNotification = async (
     failed: results.filter((ok) => !ok).length,
     ...(messageTs ? { slackMessageTs: messageTs } : {}),
     ...(messageId ? { discordMessageId: messageId } : {}),
+    ...(options.privateImageValidation && slackFailure ? { slackFailure } : {}),
+    ...(imageRetries ? { slackImageValidationRetries: imageRetries } : {}),
   }
 }

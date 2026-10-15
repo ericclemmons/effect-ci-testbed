@@ -74,3 +74,36 @@ test("Discord creates then patches the same message and keeps mentions disabled"
   assert.match(requests[1]!.url, /\/messages\/discord-message$/)
   assert.deepEqual(requests[1]!.body.allowed_mentions, { parse: [] })
 })
+
+test("opt-in known-message private image validation may retry only the identical rejected update", async () => {
+  const bodies: string[] = [], waits: number[] = []
+  const result = await sendNotification({ SLACK_BOT_TOKEN: "test-token", SLACK_CHANNEL_ID: "C123" }, "review", async (url, init) => {
+    assert.equal(String(url), "https://slack.com/api/chat.update")
+    bodies.push(String(init?.body))
+    return bodies.length === 1 ? Response.json({ ok: false, error: "invalid_blocks" }) : Response.json({ ok: true, ts: "123.456" })
+  }, "123.456", [{ type: "image", slack_file: { id: "F123" }, alt_text: "graph" }], undefined,
+  { privateImageValidation: true, wait: async ms => { waits.push(ms) } })
+  assert.equal(result.delivered, 1)
+  assert.equal(result.slackMessageTs, "123.456")
+  assert.equal(result.slackImageValidationRetries, 1)
+  assert.deepEqual(waits, [500])
+  assert.equal(bodies.length, 2)
+  assert.equal(bodies[0], bodies[1])
+})
+
+test("image validation exhaustion is bounded; ambiguous delivery, non-image updates and initial posts never retry", async () => {
+  for (const mode of ["exhausted", "lost-ack", "http", "malformed", "rejected", "no-image", "initial", "default"]) {
+    let calls = 0
+    const result = await sendNotification({ SLACK_BOT_TOKEN: "test-token", SLACK_CHANNEL_ID: "C123" }, "review", async () => {
+      calls++
+      if (mode === "lost-ack") throw Error("secret transport")
+      if (mode === "http") return new Response(null, { status: 503 })
+      if (mode === "malformed") return Response.json({ ok: true })
+      return Response.json({ ok: false, error: mode === "rejected" ? "secret untrusted message" : "invalid_blocks" })
+    }, mode === "initial" ? undefined : "123.456", mode === "no-image" ? [] : [{ type: "image", slack_file: { id: "F123" }, alt_text: "graph" }], undefined,
+    { privateImageValidation: mode !== "default", wait: async () => {} })
+    assert.equal(result.failed, 1, mode)
+    assert.equal(calls, mode === "exhausted" ? 4 : 1, mode)
+    assert.ok(!JSON.stringify(result).includes("secret"))
+  }
+})
