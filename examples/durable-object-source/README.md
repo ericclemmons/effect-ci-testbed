@@ -61,7 +61,7 @@ node packages/cli/src/bin.ts run --workflow examples/durable-object-source/.clou
 
 The local CLI uses filesystem bytes, not DO storage. The local integration test
 uses actual Workflow/SQLite RPC bindings for bounds, replay, reload and corruption;
-it does not run a native container. Fresh standalone native evidence is pending.
+it does not run a native container. Fresh standalone native evidence is below.
 
 Before deployment, confirm `effect-ci-durable-source`, both Workflow names below,
 and container application `effect-ci-durable-source-workspace` are absent; stop on
@@ -99,6 +99,48 @@ In Cloudflare's dashboard remove only these two owned Workflows, the owned Worke
 its three SQLite namespaces (workspace, source, isolated corruption), container
 application and snapshots. Never delete shared example storage or old histories
 to hide failures. No deletion/reset operation is part of the normal recipe.
+
+### Fresh standalone native proof
+
+Exact merged source `3401b3c8820f96810ee94e9d7e15b7991a695248` deployed Worker
+`ddced780-6e9d-4403-bfb8-53b5c9227a7e`, five owned exports, no environment
+bindings/secrets or public URLs, and runnable container image
+`sha256:33bf1e72342987c991bd0aa0ade227e70b0d1e9135d68577fe1b6deeddc4a9fd`.
+The existing demo's committed release and all shared example histories were untouched.
+
+`coverage-owned-do-first-20261015-1` and `coverage-owned-do-replay-20261015-1`
+both completed on Workflow version `3fa07039-ff94-4757-b384-338dc63d7986`.
+Each had six native steps, each one attempt, including the actual fixed Node verifier.
+The first seed returned `created:true`; the second returned `false` for the exact
+same immutable revision. Both downstream commands read 27 bytes with SHA-256
+`b87a3e3edf1d9c3dc8f24a2450b03131caa72452434477a17ad947f3b8ac2d1a`,
+exit 0, and the known credential names absent. The first checkout snapshot was
+`b5973ee4-ffc9-4703-97ff-15c3f57c3cea`; the replay created a different workspace
+snapshot from the same persisted source. This is not generic secret scanning.
+
+The first run queued for 3,262 ms and executed for 22,842 ms (26,104 ms total).
+This one cold orchestration sample includes container/snapshot/API overhead, not
+a benchmark. Seed/read/command retry limits were zero; snapshot transport kept
+limit five but every actual step ran once.
+
+`coverage-owned-do-boundaries-20261015-1`, Workflow version
+`4cba0ea0-3839-47b3-a971-49a913b4fc7c`, completed two explicit verification
+steps once with zero retries. Its separate capacity object retained 32 revisions,
+rejected conflicting content and overflow, preserved the original bytes, and
+allowed replay at capacity. The isolated corruption object rejected its deliberately
+damaged SQLite record with `Source digest mismatch`. No container was materialized
+for these checks. These expected rejection assertions are not a repaired source
+or a successful business operation on corrupted data.
+
+`coverage-owned-do-foreign-20261015-1` remains **ERRORED**, with no steps: fixed
+source selection rejected it before a write/materialization. No negative history
+was reset or reclassified as success.
+
+Read the original histories and recorded Worker version only:
+
+```sh
+LIVE_OWNED_DO_SOURCE=1 CF_BIN=cf node --test examples/durable-object-source/src/live.test.ts
+```
 
 ## Historical shared-host proof
 
