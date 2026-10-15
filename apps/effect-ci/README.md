@@ -1151,6 +1151,46 @@ enrollment, conventional GitHub evidence parity or completion of every #144
 negative cell. A fresh source-change run and conventional GitHub composition
 remain separate evidence requirements; local verifier tests are not relabelled native.
 
+### Same-app Vite build handoff
+
+The demo adds ordinary `publish build` and `verify artifact` actions after its
+real Vite build. The producer computes SHA-256 and byte size for the actual
+`dist/index.html`, `dist/app.js` and `dist/message.js`, writes a generated manifest,
+and calls `CI.Artifact.publish`. The consumer restores that checkpoint into its
+own action container and verifies the raw file bytes against the manifest.
+Neither action is eligible for signed-check reuse.
+
+The project-owned `examples/demo/.cloudflare/ci/artifact.ts` has no network or
+deployment capability. It accepts only those three regular files, rejects
+symlinks/foreign metadata, limits each file to 2 MiB and all files to 4 MiB, and
+atomically replaces only its recognized generated metadata under
+`.effect-ci/artifacts/demo-build.json`. This is ordinary build metadata, not a
+signature or permission to skip execution. No new secret, binding, provider or
+repository permission is needed; the existing container and snapshot costs apply.
+
+The Cloudflare runner must materialize a publishing action's dependency snapshot
+even when no command ran first, and return the restored artifact revision to all
+subsequent reads/commands. A workerd/RPC regression reproduces both failures and
+tests their fixes, including rejection of another run's workspace. Its container
+is a fake; it does not substitute for the native handoff acceptance run.
+
+`CI.Artifact` currently transports the full immutable workspace snapshot; its
+path list describes the build output, not a path-only public artifact export.
+The default local runner verifies files in its worktree and is not evidence of
+native container transport. No website or GitHub Artifacts upload is implied.
+
+```sh
+node --test apps/effect-ci/src/artifact-revision-runtime.test.ts \
+  apps/effect-ci/src/demo-filesystem-runtime.test.ts \
+  examples/demo/verification/artifact.test.ts
+```
+
+After deploying this exact merged host through the documented preflight, a clean
+pushed commit containing the artifact helper can run the ten-node suite using
+`cf-ci run --remote`. Retain the producer manifest, actual artifact snapshot ID,
+consumer restore and successful raw-byte verification together before recording
+native acceptance. Do not dispatch an older source revision lacking that helper.
+
 ### 5. Run the first Workflow
 
 First exercise the same deployed service directly from the checkout:

@@ -242,10 +242,13 @@ zero-config packages.
 +import * as CI from "@effect-ci-testbed/ci";
 +import * as actions from "./actions.ts";
 +
-+export { lint, build, syntax } from "./actions.ts";
++export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
 +
 +export default CI.workflow("cf-ci-demo", function* () {
 +  yield* actions.lint();
++  yield* actions.check();
++  yield* actions.typecheck();
++  yield* actions.test();
 +  return yield* actions.build();
 +});
 ```
@@ -257,9 +260,8 @@ cf-ci run lint
 cf-ci run
 ```
 
-The explicit workflow takes precedence over the empty marker. This minimal example
-intentionally selects lint then build; add test/check/typecheck explicitly if they
-belong in the whole workflow. Exported actions become runnable commands.
+The explicit workflow takes precedence over the empty marker. Exported actions
+become runnable commands.
 [Complete package-manager composition](../node-npm) and
 [exported targets](../exported-actions).
 
@@ -277,14 +279,9 @@ belong in the whole workflow. Exported actions become runnable commands.
 +      return yield* pm.install();
 @@
        const workspace = yield* install();
--      return yield* workspace.exec("npm run lint");
+-      return yield* workspace.exec(`npm run ${name}`);
 +      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.run("lint");
-@@
-       const workspace = yield* install();
--      return yield* workspace.exec("npm run build");
-+      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.run("build");
++      return yield* pm.run(name);
 ```
 
 ```sh
@@ -386,27 +383,43 @@ This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 must issue new commit-bound evidence; copying a signature onto a merge/squash/rebase
 SHA does not make it valid.
 
-## 9. Carry real build output across jobs
+## 9. Publish and restore the real Vite build
 
-After the build action, publish the actual output:
+> Carry the built HTML and JavaScript into another action; verify their file hashes.
 
-```ts
-const built = yield * actions.build();
-const artifact =
-  yield *
-  CI.Artifact.publish(built, {
-    name: "demo-build",
-    paths: ["dist/message.js"],
-  });
-const restored = yield * CI.Artifact.restore(artifact);
-yield * restored.exec("test -s dist/message.js");
+```diff
+--- a/.cloudflare/ci/workflow.ts
++++ b/.cloudflare/ci/workflow.ts
+@@
+-export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
++export { lint, check, typecheck, test, build, syntax, artifact } from "./actions.ts";
+@@
+   yield* actions.test();
+-  return yield* actions.build();
++  return yield* actions.artifact();
 ```
 
-Add this inside an explicit workflow and inspect `cf-ci plan --format=mermaid`,
-then `cf-ci run`. The receiver restores the recorded workspace rather than
-assuming another machine has the same local path.
-[Portable artifacts](../portable-artifacts) documents the actual hosted transport
-fixture. Wiring this Vite output through the hosted demo remains to verify.
+```sh
+cf-ci plan --format=mermaid
+cf-ci run artifact
+git add .cloudflare/ci
+git commit -m "Verify the restored Vite build"
+git push
+cf-ci run --remote
+```
+
+[`actions.ts`](./.cloudflare/ci/actions.ts) publishes all three built assets plus
+the generated SHA-256 manifest using `CI.Artifact.publish`; a separate action
+calls `CI.Artifact.restore` and [`artifact.ts verify`](./.cloudflare/ci/artifact.ts).
+Cloudflare transports an immutable workspace snapshot between action containers;
+the path list labels its contents, not a path-only public download. Local feedback
+checks the same files but is not proof of Cloudflare snapshot transport.
+
+```sh
+rm dist/message.js
+node .cloudflare/ci/artifact.ts verify  # expected failure: missing output
+cf-ci run artifact
+```
 
 ## 10. Assert the built application in a browser
 

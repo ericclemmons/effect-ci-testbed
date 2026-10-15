@@ -13,10 +13,37 @@ const syntax = CI.check(
     },
   { reuse: { scope: "commit" } },
 );
+const publishBuild = CI.action<CI.WorkspaceArtifact>(
+  "publish build",
+  () =>
+    function* () {
+      const workspace = yield* inferred.actions.build!();
+      const prepared = yield* workspace.exec("node .cloudflare/ci/artifact.ts create");
+      return yield* CI.Artifact.publish(prepared, {
+        name: "demo-build",
+        paths: [
+          "dist/index.html",
+          "dist/app.js",
+          "dist/message.js",
+          ".effect-ci/artifacts/demo-build.json",
+        ],
+      });
+    },
+);
+const verifyArtifact = CI.action(
+  "verify artifact",
+  () =>
+    function* () {
+      const published = yield* publishBuild();
+      const restored = yield* CI.Artifact.restore(published);
+      return yield* restored.exec("node .cloudflare/ci/artifact.ts verify");
+    },
+);
 export const demoProgram = {
   ...inferred,
   workflow: CI.workflow(manifest.name, function* () {
     yield* syntax();
-    return yield* inferred.workflow.effect;
+    yield* inferred.workflow.effect;
+    return yield* verifyArtifact();
   }),
 };

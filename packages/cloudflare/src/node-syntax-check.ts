@@ -16,6 +16,8 @@ export const syntaxPaths = ["package.json", "package-lock.json", "src/message.ts
 const parseOnly = `const fs=require('node:fs');const text=new TextDecoder('utf-8',{fatal:true}).decode(fs.readFileSync('src/message.ts'));const js=require('node:module').stripTypeScriptTypes(text,{mode:'strip'});new(require('node:vm').SourceTextModule)(js);`;
 const shellQuote = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
 export const syntaxCommand = `env -i PATH=/usr/local/bin:/usr/bin:/bin /usr/local/bin/node --no-warnings --experimental-vm-modules --input-type=commonjs -e ${shellQuote(parseOnly)}`;
+/** Local feedback only: resolve installed Node without claiming the enrolled Linux toolchain. */
+export const syntaxLocalCommand = `env -i PATH="$PATH" node --no-warnings --experimental-vm-modules --input-type=commonjs -e ${shellQuote(parseOnly)}`;
 
 // Trusted runner code, not a project command. No source imports or execution.
 const inspector = `const fs=require('node:fs'),p=require('node:path'),c=require('node:crypto');

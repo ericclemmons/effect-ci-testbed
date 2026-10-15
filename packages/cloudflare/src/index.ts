@@ -785,10 +785,19 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
           }
 
+          if (workspace.revision && workspace.revision.provider !== "cloudflare-container") {
+            throw new Error(`Cannot materialize ${workspace.revision.provider} with Cloudflare`)
+          }
           const container = containerFor(stepId, workspace)
           const checkpointId = name.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
-          const snapshot = await bodyOperation(stepId, `${stepId}:checkpoint-${checkpointId}`, () =>
-            container.checkpoint(name))
+          const snapshot = await bodyOperation(stepId, `${stepId}:checkpoint-${checkpointId}`, async () => {
+            // A publishing action may not have executed a command/read yet.
+            // Materialize its dependency revision before capturing this snapshot.
+            const exists = await container.exists(".", workspace.cwd, stepId,
+              workspace.revision?.value as ContainerSnapshotValue | undefined, options.container)
+            if (!exists) throw new Error("Cannot checkpoint a missing workspace")
+            return container.checkpoint(name)
+          })
 
           return {
             provider: "cloudflare-container",
@@ -799,6 +808,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
       restore: ({ checkpoint, stepId }) => Effect.tryPromise({
         try: async () => {
+          if (checkpoint.workspace.kind !== "remote" || checkpoint.workspace.id !== options.workspaceId) {
+            throw new Error("Checkpoint workspace does not belong to this run")
+          }
           if (checkpoint.handle.provider !== "cloudflare-container") {
             throw new Error(`Cannot restore ${checkpoint.handle.provider} with Cloudflare`)
           }
@@ -810,7 +822,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               options.container,
             ))
 
-          return checkpoint.workspace
+          // Subsequent reads/commands must keep this restored snapshot, not
+          // rematerialize the older revision carried by the publishing workspace.
+          return checkpoint.workspace.withRevision(checkpoint.handle)
         },
         catch: (error) => error,
       }),
