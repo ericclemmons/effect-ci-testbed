@@ -1,0 +1,11 @@
+{
+  "name": "effect-ci-static-assets-public-target",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
+    "vite": "^7.1.12",
+    "cf": "1.0.0-beta.12"
+  }
+}

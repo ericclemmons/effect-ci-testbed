@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "ESNext", "module": "ESNext", "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true, "strict": true, "noEmit": true,
+    "skipLibCheck": true, "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": ["src/**/*.ts", ".cloudflare/ci/**/*.ts", "target/worker.ts"]
+}
