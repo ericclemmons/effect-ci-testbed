@@ -262,9 +262,11 @@ dispatch, status and event-stream routes, without changing the existing root
 workflow. Host policy permits only this repository, a full commit SHA and the
 whole suite. It does not accept an incoming module or deployment target.
 
-**Live verification pending:** deploy the merged host integration and verify an
-actual `cf-ci run --remote` on this same app before counting this step complete.
-The root service's older build receipt is not evidence for this new workflow.
+**Live verification pending:** the first actual CLI run authenticated and reached
+this workflow, but failed package-manager discovery because the host wrapper did
+not supply the remote filesystem. The fix wires the existing runner filesystem;
+a corrected native run must still pass before counting this step complete. The
+root service's older build receipt is not evidence for this new workflow.
 [GitHub-to-Cloudflare composition](../github-cloudflare-ci).
 
 ## 8. Attest a pure check, then let hosted CI verify reuse

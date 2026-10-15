@@ -964,8 +964,19 @@ To inspect an interrupted run, use its returned status URL or the existing
 command. Do not dispatch a replacement just because streaming disconnected.
 Do not delete Workflow histories, existing namespaces or snapshots for cleanup.
 To disable new demo dispatch, remove the `/demo` route in a separately reviewed
-host update; preserve completed evidence. Live deployment and same-app remote
-verification remain pending for this integration.
+host update; preserve completed evidence.
+
+The merged enrollment at `e34254d` was deployed with all existing bindings
+preserved. The first real `cf-ci run --remote`, through Access with automatic
+agent JSON and no format/agent flag, reached `effect-ci-demo` but failed before
+install: package-manager discovery was using the host filesystem rather than the
+container filesystem. This is a real integration failure, not a successful demo
+or infrastructure retry. The shared wrapper now supplies `runner.fileSystem`;
+its workerd/Workflow/RPC regression reproduces the old error, passes the normal
+package suite after the fix, and still rejects a missing lockfile before executing.
+The test container is a fixture, not native execution proof. A merged/deployed
+fix and a new actual same-app CLI run are still required before marking this
+step verified. The original failed history and CLI output remain retained.
 
 ### 5. Run the first Workflow
 
