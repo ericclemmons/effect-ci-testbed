@@ -9,9 +9,9 @@ import type { HealthChartRenderer } from "./health-renderer.ts";
 import type { PrivateSlackImages } from "./private-images.ts";
 import { hmdCardObserver } from "./hmd-card.ts";
 
-// Explicit host enrollment. Keep false until Eric is present for the real review.
+// Explicit owned-test enrollment. Eric authorized browser-delegated test approvals.
 // Not a project environment variable, Workflow payload field or remote CLI flag.
-export const demoReviewedReleaseEnabled: boolean = false;
+export const demoReviewedReleaseEnabled: boolean = true;
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const;
 export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
   const { step, card, instanceId: owner } = context;
@@ -66,7 +66,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
           requestId: observation.snapshot,
           approval: {
             title: `Progress past ${observation.phase}%?`,
-            summary: `${observation.decision.reason}. Progress accepts this snapshot's risk; timeout restores the prior allocation. No automatic acceptance.`,
+            summary: `${observation.decision.reason}. Owned test rollout; browser-delegated approvals are authorized, not independent human review. Progress accepts this snapshot's risk; timeout restores the prior allocation. No automatic acceptance.`,
           },
           timestamp: timestamp(),
         });
