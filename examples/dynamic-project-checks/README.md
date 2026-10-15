@@ -90,7 +90,36 @@ not Container runtime. No new account permission or paid provider is needed.
 Optional cleanup requires explicit owner authorization and retained evidence first.
 Use Cloudflare's dashboard to remove only these two owned Workflows and this Worker;
 there is no Container or SQLite namespace to remove. Preserve shared example
-resources and original histories. Fresh standalone native proof is pending.
+resources and original histories.
+
+### Fresh standalone native proof
+
+Exact merged source `e154edb5040bc0ea199e2acbda09f8cd21709097` deployed Worker
+`abb69881-68f0-42d7-b34a-de5ced629a7f` with only `LOADER`, two Workflow exports,
+no environment secrets, Containers, storage exports or public URLs.
+`coverage-owned-isolate-project-20261015-1`, Workflow version
+`287f8698-c6f6-4e65-975d-56618bfbe3f5`, completed three checkpoints once with zero
+retries: two raw module reads and actual isolated multi-module execution. All four
+host assertions passed. Both CI nodes completed without commands or snapshots.
+
+`coverage-owned-isolate-boundaries-20261015-1`, Workflow version
+`a9e59f5a-be15-4ba1-9fbf-9653d112617f`, completed seven probes once with zero
+retries: HTTPS/TCP denied, empty bindings, fresh globals, host filesystem blocked,
+wrong/oversized bodies rejected, and loop rejection after the exact module passed
+its preflight. The recorded parent-clock loop interval was 9 ms under the configured
+50 ms CPU policy; this is **not measured CPU usage**, a memory quota or a timing SLA.
+`coverage-owned-isolate-project-extra-20261015-1` remains errored before any step.
+
+The normal project run queued for 1,835 ms and executed for 469 ms (2,304 ms total);
+the boundary run queued for 2,924 ms and executed for 1,253 ms (4,177 ms total).
+These are single cold orchestration samples, not benchmarks. No native Container
+was installed or invoked for either complete path.
+
+Read original records only, without executing hostile modules again:
+
+```sh
+LIVE_OWNED_PROJECT=1 CF_BIN=cf node --test examples/dynamic-project-checks/src/live.test.ts
+```
 
 ## Historical shared-host setup
 

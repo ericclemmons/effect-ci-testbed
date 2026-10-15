@@ -88,8 +88,31 @@ provider, GitHub App, Slack or AI integration is needed.
 Optional cleanup requires explicit owner authorization and retained evidence.
 In Cloudflare's dashboard remove only this owned Workflow and Worker. No bucket,
 Container or SQLite namespace is created. Never reset negative histories or remove
-the shared example host to hide failures. Fresh standalone native proof is pending;
-the older shared-host runs below are not relabeled.
+the shared example host to hide failures. The older shared-host runs below are not relabeled.
+
+### Fresh standalone native proof
+
+Exact merged source `e154edb5040bc0ea199e2acbda09f8cd21709097` deployed Worker
+`a104511a-1174-4389-89fd-0f4966d31787`: one Workflow export, only `LOADER`,
+no Container/storage exports, environment secrets or public URLs.
+`coverage-owned-isolate-formatted-20261015-1` completed on Workflow version
+`5d2e54e3-c420-4763-9e84-9bce839cca15`, two checkpoints once with zero retries.
+The real WorkerLoader RPC returned `runtime:"dynamic-worker"` and unchanged formatted
+text; both CI nodes completed with no commands, secrets or snapshots.
+
+`coverage-owned-isolate-unformatted-20261015-1` remains **ERRORED** after the
+same real formatter successfully returned different, corrected text. This is an
+expected CI check failure, not a failed tool RPC relabeled as success.
+`coverage-owned-isolate-formatter-extra-20261015-1` rejected extra actor source
+before any step. No history was reset or replayed.
+
+The positive queued for 2,106 ms and executed for 4,604 ms (6,710 ms total), one
+cold orchestration sample including bundler/RPC work, not a benchmark or SLA.
+Read these retained records without formatting again:
+
+```sh
+LIVE_OWNED_FORMATTER=1 CF_BIN=cf node --test examples/dynamic-worker-checks/src/live.test.ts
+```
 
 ## Historical shared-host proof
 
