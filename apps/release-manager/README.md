@@ -105,6 +105,29 @@ or traffic promotion occurred. The original native history remains failed and
 the original candidate claim remains pending until explicit reconciliation.
 Local GET-only reconciliation tests are not native reconciliation evidence.
 
+The App exports private `DemoCandidateRecoveryWorkflow`
+(`effect-ci-demo-candidate-recovery`) using its existing `RELEASE_MANAGER`
+binding. It accepts **only** `{ "mode": "reconcile-original" }`; the original
+revision, digest, module digest and version above are pinned in host code.
+Extra fields, getters and caller-selected identities are rejected. Its one
+checkpoint has zero retries and a one-minute timeout. It is separate recovery
+history, not a retry or rewrite of the failed build history.
+
+```sh
+node --test apps/effect-ci/src/demo-candidate-recovery-runtime.test.ts
+# After building/deploying the exact merged broker and App sources as above,
+# inspecting current bindings/secrets/Access and confirming no active HMD review:
+cf workflows instances create effect-ci-demo-candidate-recovery --body '{"instance_id":"coverage-demo-candidate-reconcile-20261015-1","params":{"mode":"reconcile-original"}}'
+```
+
+This authenticated operator command completes the original pending journal only;
+it does not start a build, upload a version, start human review or promote traffic.
+Save a private create-only intent first and inspect that same instance on an
+ambiguous response. Do not dispatch another instance to manufacture success.
+Normal Workers/Workflow/storage request costs apply; no model call or additional
+credential is required. Remove the recovery Workflow export/configuration to
+disable future invocations; retain its history and the original candidate record.
+
 ```sh
 # From the repository root:
 pnpm install --frozen-lockfile

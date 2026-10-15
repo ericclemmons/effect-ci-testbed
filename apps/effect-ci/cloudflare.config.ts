@@ -20,6 +20,7 @@ export default defineConfig({
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
+      DemoCandidateRecoveryWorkflow: exports.workflow({ name: "effect-ci-demo-candidate-recovery" }),
       GitCheckoutOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),
