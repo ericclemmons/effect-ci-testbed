@@ -3,7 +3,7 @@
 `workflowEntrypoint(definition, { finalize })` supports a trusted host continuation
 after successful CI actions. The callback receives the actual workflow result as
 `value`, the existing `RunCard`, host `environment`, canonical run `parameters`,
-`instanceId`, native `step`, and `publish(key, presentation?)`.
+`instanceId`, native `step`, host-owned `exports`, and `publish(key, presentation?)`.
 
 This is host code configured at deployment, not uploaded repository code or a
 remote Workflow parameter. Validate the result's identity before granting any

@@ -6,6 +6,7 @@ import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
 import { demoCheckCache } from "./demo-check-cache.ts";
 import { withDemoEvidenceRead } from "./demo-evidence-reader.ts";
+import { demoReviewedReleaseEnabled, finalizeDemoRelease } from "./demo-release.ts";
 
 // The host enrolls this package and task names at deployment. Its pushed source
 // and package scripts still execute in the native workspace, never in the host.
@@ -42,7 +43,8 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     // Signed input identification must start from the owned immutable image.
     cache: false,
     container: { image: "workspace", instance: "standard-1" },
-    notificationChannels: () => ({}),
+    notificationChannels: (environment) => demoReviewedReleaseEnabled ? environment : {},
+    finalize: (context) => demoReviewedReleaseEnabled ? finalizeDemoRelease(context).then(() => undefined) : Promise.resolve(),
     checkCache: (environment, { runner }) =>
       demoCheckCache(runner, (operation) =>
         withDemoEvidenceRead(
