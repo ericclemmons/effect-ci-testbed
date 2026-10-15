@@ -1165,9 +1165,25 @@ a dependency workspace without running a command. A workerd regression rejected 
 old empty-container snapshot and now preserves the dependency revision. Same-step
 materialization preserves writes already made by the action.
 
-The following retained runs describe the **earlier explicit artifact API**, not the
-current adoption API. Their histories remain unchanged; the automatic handoff path
-requires its own native acceptance after the merged deployment.
+Native instance `0f5761d7-f156-4a8c-bba7-d2452ac54523` completed on exact merged
+source `5798f262c54cba2a66fd95ef8c8f4f5a2cfb0d2f`, hosted by Worker version
+`9c90faa0-6235-45bb-b312-1c9d9faaf55b`. All nine actions and nine real commands
+completed once; command retry limits were zero. The Vite build's automatically
+committed revision reached `verify build`, which read the actual HTML/JavaScript
+outputs (523/1520/103 bytes) and their SHA-256 identities. No explicit artifact
+publish/restore step ran. Queue1922ms/execution87076ms/total88998ms is one native
+orchestration sample, not an isolated build benchmark. This is not website
+publication, browser verification, or a new signed-reuse proof. No inference ran.
+
+```sh
+LIVE_DEMO_HANDOFF=1 CF_BIN=apps/effect-ci/node_modules/.bin/cf \
+  node --test apps/effect-ci/src/live-demo-handoff.test.ts
+```
+
+This opt-in test reads only that retained history; ordinary CI skips it. Private
+full CLI/history/deployment receipts are retained. The following runs describe
+the **earlier explicit artifact API**, not the current adoption API. Their
+histories remain unchanged.
 
 The demo adds ordinary `publish build` and `verify artifact` actions after its
 real Vite build. The producer computes SHA-256 and byte size for the actual
