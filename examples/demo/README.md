@@ -44,8 +44,9 @@ Start with an existing Vite/Vite+ package with a lockfile and ordinary
 `lint`, `test`, and `build` scripts. This checked-in fixture is a small Vite+
 web application: HTML entrypoint, TypeScript source, lint, types, tests and build.
 The build also retains an exported message module for the existing verification
-harness. Making every hosted stage below operate on this same application remains
-work to finish—not a reason to substitute unrelated historical runs.
+harness. Hosted build, serving and reviewed release below now use this same
+application. Portable Cloudflare onboarding and automatic repair remain unfinished;
+unrelated historical runs do not substitute for them.
 
 The CLI and libraries are currently private workspace packages, not a published
 npm onboarding path. In this testbed, from the repository root:
@@ -321,11 +322,12 @@ For the owned testbed's enrolled `demo/live` branch, push a new source change:
 git push origin HEAD:refs/heads/demo/live
 ```
 
-Open **#effect-ci** in Slack. The same build card changes from Running to Passed
-as the native checks finish, including publishing the checked site and preparing
-its candidate. This enrollment is specific to the owned host, not standalone
-Cloudflare onboarding. The human-release gate remains off; a passed build does
-not mean traffic was promoted. [Host enrollment](../../apps/effect-ci/DEMO-RELEASE.md).
+Open **#effect-ci** in Slack. The same card shows the build, then the enrolled
+GitHub flow waits for the release decisions in [step 11](#11-release-the-checked-build-with-a-decision).
+It reaches Passed only after the release commits. Remote CLI runs remain quiet,
+build-only runs: they publish/prepare but never shift traffic. This enrollment is
+specific to the owned host, not standalone Cloudflare onboarding.
+[Host enrollment and actual evidence](../../apps/effect-ci/DEMO-RELEASE.md).
 
 **Live verified:** `cf-ci run --remote` from clean commit
 `2c8a27600b168655c2fd989e4abb200d60f3ffb8` completed all seven nodes in native
@@ -448,22 +450,55 @@ The enrolled demo host publishes through a private capability; project code gets
 no deployment token. This URL is the verified commit above, not a mutable latest
 alias or an HMD rollout. [Owned host setup](../../apps/demo-site/README.md).
 
-## 11. Add controlled release, human decisions, and repair
+## 11. Release the checked build with a decision
 
-Next integrations, each with its own genuine execution requirement:
+> Watch one build card. Inspect the actual candidate's graph. Decide what ships.
 
-- [Health-mediated rollout](../health-mediated-release): upload a candidate,
-  shift traffic, observe each cohort, roll back the exact prior allocation on failure.
-- [Human approval](../health-mediated-approval): request a real decision, bind it to
-  the exact release phase, and resume only after the authorized human responds.
-- [Incident repair host](../../apps/effect-ci/README.md): authentic Worker Issue →
-  bounded proposal → exact-commit native Node verification → proposed PR.
+**Owned testbed enrollment only**, from a clean checkout at `examples/demo`; new standalone repos
+still need the unfinished portable Cloudflare onboarding. Preserve the enrolled
+branch's history before making a new source change:
 
-These have separate hosted ingredient proofs, not one verified end-to-end
-brownfield onboarding run. The existing incident PR was an authenticated operator
-continuation; automatic webhook activation remains unfinished. Never self-approve
-a human gate or merge/deploy a proposed repair to manufacture a complete demo.
-No new failure or paid model call is needed just to replay old evidence.
+```sh
+git fetch origin
+git switch demo/live
+git merge --ff-only origin/demo/live
+```
+
+In `src/message.ts`:
+
+```diff
+-export const message = "Check my work before I push";
++export const message = "Ship the checked build";
+```
+
+```sh
+git add src/message.ts
+git commit -m "Change the demo message"
+git push origin HEAD:refs/heads/demo/live
+```
+
+Open **#effect-ci** in Slack. The same card builds and checks the app, then shows
+the actual prepared candidate's graph. Inspect each snapshot and choose **Progress**
+or **Reject** at 10%, 25%, 75% and 100%. Sparse data stays uncertain; Progress is
+explicit risk acceptance, not a fabricated health pass. Each phase has a fixed
+two-minute settling interval before its cohort, then a five-minute decision window.
+Reject or timeout restores the allocation captured at that run's start. The final
+100% Progress commits it; success does not restore an older baseline.
+
+Open the [live release](https://effect-ci-hmd-demo.ericclemmons.workers.dev/) and
+click **Show message**. It redirects to the same checked immutable Vite build,
+not a second build or Workers Static Assets upload.
+
+**Live verified:** a genuine source push completed this full path with four
+explicitly authorized browser-delegated **test** decisions, four real graphs and
+one maintained card, then left its candidate committed at 100%. This is not an
+independent human-review claim or general standalone onboarding proof.
+[Actual run, limits and read-only regression](../../apps/effect-ci/DEMO-RELEASE.md).
+
+Automatic public HTTP 500 → WOBS alert → bounded repair → verified proposed PR
+remains unfinished. The [incident host](../../apps/effect-ci/README.md) has separate
+ingredient proofs; its earlier operator continuation is not automatic activation.
+Never merge/deploy a proposed repair or replay a paid inference to manufacture a demo.
 
 ## 12. Let your agent migrate the next project
 
