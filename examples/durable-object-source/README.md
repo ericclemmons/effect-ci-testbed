@@ -25,7 +25,84 @@ persisted storage corruption. A transaction bounds each object to 32 revisions.
 The shared manifest validator rejects traversal, links, conflicting paths,
 noncanonical base64, and manifests over 96 KiB encoded / 64 KiB decoded / 1,000 files.
 
-The administrative demo Workflow seeds only a fixed, tiny source manifest into
+## Owned private deployment
+
+This directory owns [config](./cloudflare.config.ts), [native wrappers](./src/worker.ts),
+[fixed fixture](./src/fixture.ts), [minimal image](./Dockerfile), and
+[standalone actions](./.cloudflare/ci/standalone.ts). It imports the public
+`@effect-ci-testbed/cloudflare/durable-source` package, not another app's implementation.
+The SQLite namespaces are private Worker exports selected by host code via
+`ctx.exports`, never container environment bindings.
+
+The normal Workflow accepts exactly the fixed repository `owned-source` and
+revision `c79e699009991bf593f593ae81b03241c6de16447d4598ba66bee96d8b2eeed9`.
+It seeds those host-authored bytes, copies a plain write receipt before checkpointing,
+then reads and validates the stored bytes before materialization. Downstream actions
+automatically restore the checkout snapshot and run a fixed Node byte/hash check.
+Both actions return their workspaces to commit and release the containers.
+This is a **container-backed source materializer**, not containerless build/deploy.
+
+A second authenticated Workflow accepts only `{ "mode": "verify-owned-boundaries" }`.
+It fills a separate fixed capacity-fixture object to 32 revisions, verifies replay
+still works and rejects mismatched content/overflow. A **different SQLite class and
+object** intentionally corrupts its own fixed record once and verifies read rejection.
+That isolated corruption fixture has no caller-selected key, bytes, target or reset;
+the normal immutable source class has no corruption method. No public writer exists.
+These are explicit verification fixtures, not claims that damaged source is healthy.
+
+Local checks (workspace packages are still private/unpublished):
+
+```sh
+CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
+node --test examples/durable-object-source/src/runtime.test.ts
+examples/durable-object-source/node_modules/.bin/tsc -p examples/durable-object-source/tsconfig.json
+node packages/cli/src/bin.ts run --workflow examples/durable-object-source/.cloudflare/ci/standalone.ts --format=json
+```
+
+The local CLI uses filesystem bytes, not DO storage. The local integration test
+uses actual Workflow/SQLite RPC bindings for bounds, replay, reload and corruption;
+it does not run a native container. Fresh standalone native evidence is pending.
+
+Before deployment, confirm `effect-ci-durable-source`, both Workflow names below,
+and container application `effect-ci-durable-source-workspace` are absent; stop on
+existing resources. Build/deploy exact committed source with authenticated `cf`:
+
+```sh
+cf workers deployments list --worker effect-ci-durable-source --per-page 1
+cf containers applications list --name effect-ci-durable-source-workspace
+cd examples/durable-object-source
+cf build
+cf deploy --prebuilt
+cf workflows instances create effect-ci-durable-source-checks --body '{"instance_id":"my-owned-do-source-first","params":{"repository":"owned-source","revision":"c79e699009991bf593f593ae81b03241c6de16447d4598ba66bee96d8b2eeed9"}}'
+cf workflows instances get my-owned-do-source-first --workflow-name effect-ci-durable-source-checks
+cf workflows instances create effect-ci-durable-source-checks --body '{"instance_id":"my-owned-do-source-replay","params":{"repository":"owned-source","revision":"c79e699009991bf593f593ae81b03241c6de16447d4598ba66bee96d8b2eeed9"}}'
+cf workflows instances create effect-ci-durable-source-boundaries --body '{"instance_id":"my-owned-do-source-boundaries","params":{"mode":"verify-owned-boundaries"}}'
+cf workflows instances get my-owned-do-source-boundaries --workflow-name effect-ci-durable-source-boundaries
+```
+
+The first normal run should return `seed.created:true`, the replay `false`, with
+the same digest and downstream byte hash. Source seed/read, boundary checks and
+commands have retry limit zero; ordinary snapshot transport retains its policy.
+After an ambiguous ACK inspect the existing resource/history; never blindly retry
+creation or reset immutable state to repeat a first-write claim.
+
+The operator needs existing account authorization for Workers, Workflows, SQLite
+Durable Objects and Containers; no new account scope, credentials, GitHub App,
+AI or Slack integration is needed. The private Worker has no environment secrets,
+public workers.dev/preview URL, execution route or writable HTTP source endpoint.
+Costs include Workflow steps, SQLite storage/operations, snapshots, image storage
+and short-lived `standard-1` container runtime. The two-action wrapper releases
+each container; it is not a promise of free execution.
+
+Optional cleanup requires explicit owner approval and retained evidence first.
+In Cloudflare's dashboard remove only these two owned Workflows, the owned Worker,
+its three SQLite namespaces (workspace, source, isolated corruption), container
+application and snapshots. Never delete shared example storage or old histories
+to hide failures. No deletion/reset operation is part of the normal recipe.
+
+## Historical shared-host proof
+
+The administrative shared demo Workflow seeds only a fixed, tiny source manifest into
 object `demo-source`; unknown object IDs or revisions fail before seeding.
 General producers can use the RPC writer from trusted host code, not untrusted
 container/project code. This is source storage, not arbitrary filesystem checkout.
