@@ -18,7 +18,7 @@ test(
     ) => {
       const run = JSON.parse(
         execFileSync(
-          process.env.CF_BIN ?? "/Users/eric/Library/pnpm/bin/cf",
+        process.env.CF_BIN ?? "cf",
           ["workflows", "instances", "get", id, "--workflow-name", workflow],
           { encoding: "utf8", timeout: 30_000, maxBuffer: 1024 * 1024 },
         ),

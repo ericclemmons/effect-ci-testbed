@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PUBLIC_ERROR_MESSAGE, publicFaultFetch } from "./public-fault.ts";
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { PUBLIC_ERROR_MESSAGE, PUBLIC_FIXTURE_DIGEST, publicFaultFetch } from "./public-fault.ts";
+
+test("served fixture uses the exact bounded broken JavaScript source bytes", async () => {
+  const bytes = await readFile(new URL("../fixtures/public-health.js", import.meta.url));
+  assert.equal(bytes.toString(), "export function healthStatus() { return 500; }\n");
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), PUBLIC_FIXTURE_DIGEST);
+});
 
 test("only intentional exact GET reaches the fixed HTTP exception", async () => {
   let calls = 0;

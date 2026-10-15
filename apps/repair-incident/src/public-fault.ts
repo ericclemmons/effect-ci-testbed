@@ -1,4 +1,4 @@
-import { healthStatus } from "./fault.ts";
+import { healthStatus } from "../fixtures/public-health.js";
 
 /** Host-authored public TEST source. Never accepts an error, prompt or identity
  * from the request. Deployment and automatic admission must be enrolled before
@@ -7,6 +7,10 @@ import { healthStatus } from "./fault.ts";
 export const PUBLIC_EMISSION_ID = "owned-public-health-500-v1";
 export const PUBLIC_ERROR_MESSAGE =
   "Effect CI owned public health fixture returned 500 (owned-public-health-500-v1)";
+// Actual fixed fixture bytes are checked by the local regression and pinned
+// together with the exact deployed version/source by the host enrollment.
+export const PUBLIC_FIXTURE_DIGEST =
+  "6e3a3627b9fd217104ff0b7d73aba6968d2422558539af3aac2f5f2625ef6dd6";
 export interface PublicFaultClaim {
   /** A durable claim MUST precede the exception. Lost ACKs fail closed. */
   claim(): Promise<boolean>;

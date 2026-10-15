@@ -4,6 +4,7 @@ export {
   OwnedFaultSource,
   OwnedFaultOnce,
   PublicFailureClaim,
+  PublicIncidentEvidence,
   OwnedIncidentWorkflow,
 } from "../src/worker.ts";
 /** LOCAL test adapter only. Production HTTP remains 404. */

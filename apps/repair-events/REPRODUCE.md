@@ -37,7 +37,7 @@ Create a DISABLED policy with the actual owned destination ID:
 
 ```sh
 cf alerting policies create --body '{"name":"my-owned-issue-policy","alert_type":"workers_observability_real_time_issue","enabled":false,"mechanisms":{"webhooks":[{"id":"REPLACE_WITH_OWNED_WEBHOOK_ID"}]}}'
-cf o11y issues automations create --body '{"name":"my-owned-500","policyId":"REPLACE_WITH_OWNED_POLICY_ID","service":"effect-ci-repair-incident","afterOccurrences":1,"enabled":false}'
+cf observability issues automations create --body '{"name":"my-owned-500","policyId":"REPLACE_WITH_OWNED_POLICY_ID","service":"effect-ci-repair-incident","afterOccurrences":1,"enabled":false}'
 ```
 
 Read the actual policy and automation back. Require `scope:service`, exact `service:effect-ci-repair-incident`, threshold1, intended policy, and **webhook-only** mechanism. No email/Slack/PagerDuty or account-wide automation. Service scope belongs to the Issue automation, not invented Notifications filters. Enable the same automation first, then policy, preserving their full fields with their documented update commands; independently read both back before emission. See [Issues automations](https://developers.cloudflare.com/workers/observability/issues/automations/). Automation success means accepted for delivery; receiver persistence must be independently proved.
@@ -49,12 +49,12 @@ Read the actual policy and automation back. Require `scope:service`, exact `serv
 ```sh
 cf workflows instances create effect-ci-owned-incident --body '{"instance_id":"my-owned-emission-1","params":{"mode":"emit-once"}}'
 cf workflows instances get my-owned-emission-1 --workflow-name effect-ci-owned-incident
-cf o11y issues list --service effect-ci-repair-incident --per-page 10
+cf observability issues list --service effect-ci-repair-incident --per-page 10
 ```
 
 Reconcile the SAME instance if acknowledgement is ambiguous. Do not re-emit/replay/reset on delayed ingestion. Retain all checkpoint outputs: our actual checkpoint contains status500 while outer RPC output serialized status as `unknown`. Do not rewrite that discrepancy. The real occurrence is handled structured-error logging from `OwnedFaultOnce` over private jsrpc, not an uncaught exception or public failing site.
 
-Use `cf o11y issues get ISSUE_ID` and `cf o11y issues occurrences ISSUE_ID --per-page 10` to independently verify service, exact producer version, owned error, timestamps, fingerprint and delivery activity. Create a new private inventory Workflow, then read its single digest with `{mode:"read",digest:"ACTUAL_SHA256"}` through the same inspection Workflow API. Keep raw body/history PRIVATE, not in Git, public releases, prompts or logs. Hash the actual bytes and match Issue ID/service/policy/correlation/timestamps against the independent APIs. The observed `data.issue` envelope omits scriptVersion; the occurrence API supplies it. Authentication or arbitrary notification text alone is not source/version authority.
+Use `cf observability issues get ISSUE_ID` and `cf observability issues occurrences ISSUE_ID --per-page 10` to independently verify service, exact producer version, owned error, timestamps, fingerprint and delivery activity. Create a new private inventory Workflow, then read its single digest with `{mode:"read",digest:"ACTUAL_SHA256"}` through the same inspection Workflow API. Keep raw body/history PRIVATE, not in Git, public releases, prompts or logs. Hash the actual bytes and match Issue ID/service/policy/correlation/timestamps against the independent APIs. The observed `data.issue` envelope omits scriptVersion; the occurrence API supplies it. Authentication or arbitrary notification text alone is not source/version authority.
 
 ## 4. Enroll a deliberately bounded policy, then deduplicate
 
