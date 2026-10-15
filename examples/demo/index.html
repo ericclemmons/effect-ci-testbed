@@ -11,11 +11,6 @@
       <button id="show" type="button">Show message</button>
       <p id="message" role="status" aria-live="polite"></p>
     </main>
-    <script type="module">
-      import { message } from "./src/message.js";
-      document.querySelector("#show").addEventListener("click", () => {
-        document.querySelector("#message").textContent = message;
-      });
-    </script>
+    <script type="module" src="/src/app.ts"></script>
   </body>
 </html>
