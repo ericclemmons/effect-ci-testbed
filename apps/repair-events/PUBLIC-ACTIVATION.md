@@ -8,6 +8,30 @@ The private downstream services are deployed; the source is still unarmed and
 native `/failure` returned409 without consuming the test. Existing old
 capture, semantic admission, model and writer records are unchanged.
 
+## Actual public test: stopped before paid dispatch
+
+On October15 the authenticated arming Workflow completed once, then one normal
+built-in-browser GET produced a genuine uncaught fetch exception (Cloudflare1101).
+Actual Issue `a077ace1-d3b3-4c70-83eb-7e2178164871` has one occurrence
+`01M50DJ8EW0000000000000006`, exact producer version above, `fetch` invocation and
+`exception` mechanism. Its normal authenticated notification was captured about
+29seconds later. This is public HTTP/Issue/authenticated-capture proof, **not a
+completed automatic repair**: no public proposal or repair Workflow started.
+
+The native title masks the identifier as literal `<token>`. The initial exact
+title policy expected its original spelling and rejected admission before paid
+dispatch. A regression reproduces that failure and now pins only the exact
+observed masked title; `<token>` is not a regex/wildcard or source proof. Private
+version/fixture corroboration, timestamp ordering, five-minute freshness, one
+occurrence, outbox and spending fences are unchanged. Expired delivery is not
+re-admitted to make this run green. The original event/claim/capture are retained;
+never replay the error or invent a replacement identity for evidence.
+
+Authenticated inspection now also accepts exact `{mode:"public-source"}` to
+read the SAME fixed private source claim. It cannot admit, dispatch, mutate/reset
+the source or infer, and has no public HTTP endpoint. Use it to investigate native
+clock/protocol differences; never fabricate a producer receipt from a timestamp.
+
 ## The boundary
 
 After normal shared-secret authentication and bounded immutable capture, an

@@ -168,6 +168,9 @@ test(
       assert.equal(single.result.quarantined, true);
       assert.equal(single.result.incidentDedupeVerified, false);
       assert.deepEqual(single.steps, ["notification:read"]);
+      assert.equal((await runtime.dispatchFetch("https://owned.invalid/local-inspection", {
+        method: "POST", body: JSON.stringify({ mode: "public-source" }),
+      })).status, 400); // Missing private capability cannot read or fabricate a claim.
       await runtime.setOptions({
         workers: [
           { config: real(code + "\n// local reload\n") },

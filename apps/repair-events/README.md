@@ -5,8 +5,11 @@ now has descriptor-safe source corroboration and a durable single-slot outbox,
 with actual local workerd/SQLite lost-ACK and reload tests. Its HOST enrollment
 pins the independently deployed public producer version/source and fixture bytes.
 The downstream private proposal/native-verification/proposed-PR/Slack services
-are deployed, but the public source remains unarmed. Actual native end-to-end
-execution is still pending; no new error or inference has been emitted.
+are deployed. One real public exception reached WOBS and authenticated capture,
+but exact title admission rejected before any public proposal Workflow started.
+The observed token-masking regression and read-only diagnostics are documented
+in that guide. Automatic end-to-end repair remains incomplete; the original
+event is retained, never replayed or relabeled as success.
 This is not a completed live automatic repair.
 
 See [reproduction, permissions, costs and safe cleanup](REPRODUCE.md). The bounded admission policy reads the pinned authentic capture and maps only the developer-enrolled owned source/version/Issue to a fixed private fixture base. It persists one semantic identity independently of transport-byte captures, with no inference or repair authority. Local SQLite concurrency/reload proof is separate from the completed native admission proof below.

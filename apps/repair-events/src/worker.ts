@@ -33,7 +33,8 @@ type Capture = {
   quarantined: true;
   incidentDedupeVerified: false;
 };
-type Environment = { NOTIFICATIONS_SECRET: string };
+type SourceInspection = { PUBLIC_SOURCE?: { readPublicClaim(): Promise<unknown> } };
+type Environment = { NOTIFICATIONS_SECRET: string } & SourceInspection;
 const OWNER = "owned-issue-capture-v1";
 const ADMISSION_KEY = "owned-semantic-incident-v1";
 type Admission = { version: 1; identity: OwnedIncident; admittedAt: number };
@@ -273,7 +274,7 @@ export class OwnedIncidentAdmissionWorkflow extends WorkflowEntrypoint<
 }
 /** Authenticated Workflow API ONLY. Public HTTP never dispatches this reader. */
 export class NotificationInspectionWorkflow extends WorkflowEntrypoint<
-  {},
+  SourceInspection,
   unknown
 > {
   async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
@@ -283,6 +284,19 @@ export class NotificationInspectionWorkflow extends WorkflowEntrypoint<
         `notification:${request.mode}`,
         { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
         async () => {
+          if (request.mode === "public-source") {
+            // Read the SAME fixed private claim after a failed admission. No
+            // event replay, outbox mutation, new identity or paid dispatch.
+            if (!this.env.PUBLIC_SOURCE) throw new Error("Private source not configured");
+            const r = await this.env.PUBLIC_SOURCE.readPublicClaim() as Record<string, unknown>;
+            if (r.state === "absent") return { state: "absent", readOnly: true };
+            if (typeof r.emission !== "string" || typeof r.version !== "string" ||
+                typeof r.currentVersion !== "string" || typeof r.fixtureDigest !== "string" ||
+                !Number.isSafeInteger(r.claimedAt)) throw new Error("Private source receipt unavailable");
+            return { producer: { emission: r.emission, version: r.version,
+              currentVersion: r.currentVersion, fixtureDigest: r.fixtureDigest,
+              claimedAt: r.claimedAt as number }, readOnly: true, inferenceCalled: false };
+          }
           const evidence = (
             this.ctx.exports as unknown as {
               NotificationEvidence: (props: {}) => Service<NotificationEvidence>;
