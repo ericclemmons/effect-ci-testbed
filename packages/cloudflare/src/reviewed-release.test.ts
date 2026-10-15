@@ -223,6 +223,26 @@ test("foreign prepared evidence fails before claim; ambiguous commit never retri
   assert.equal(h.state().writes, 4);
   assert.ok(!h.names.includes("vite-release:restore"));
 });
+test("one closed cohort uses 100 distinct predetermined routing keys, never version overrides", async () => {
+  const keys = new Set<string>();
+  const result = await probeRelease("owned-10", [previous, version], async (input, init) => {
+    const headers = new Headers(init?.headers);
+    const key = headers.get("Cloudflare-Workers-Version-Key");
+    assert.ok(key, "each synthetic client needs an explicit independent routing identity");
+    assert.equal(headers.get("Cloudflare-Workers-Version-Overrides"), null);
+    assert.equal(headers.get("authorization"), null);
+    assert.ok(!keys.has(key), "never repeat a routing key within the cohort");
+    keys.add(key);
+    const ordinal = Number(new URL(String(input)).searchParams.get("probe")!.split("-").at(-1));
+    assert.equal(key, `effect-ci-cohort:owned-10:${ordinal}`);
+    // Models a shared request-level default route. This is a routing contract
+    // regression, not proof of Cloudflare's undisclosed internal implementation.
+    return Response.json({ version: key && ordinal < 10 ? version : previous, healthy: true });
+  });
+  assert.equal(keys.size, 100);
+  assert.equal(result.unknown, 0);
+  assert.equal(result.outcomes.filter(o => o.version === version).length, 10);
+});
 test("owned health probes reject redirects, oversized bodies, foreign versions and status/health contradictions", async () => {
   for (const response of [
     () => new Response(null, { status: 302, headers: { location: "https://foreign.invalid" } }),
