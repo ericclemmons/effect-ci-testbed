@@ -15,16 +15,17 @@ export default defineConfig({
   },
   lint: {
     ignorePatterns: ["dist/**", ".cloudflare/**"],
+    overrides: [{ files: ["src/app.ts"], env: { browser: true } }],
     rules: {
       "no-undef": "error",
     },
   },
   test: {
-    include: ["src/**/*.test.js"],
+    include: ["src/**/*.test.ts"],
   },
   build: {
     rolldownOptions: {
-      input: { app: "index.html", message: "src/message.js" },
+      input: { app: "index.html", message: "src/message.ts" },
       preserveEntrySignatures: "strict",
       output: { entryFileNames: "[name].js" },
     },

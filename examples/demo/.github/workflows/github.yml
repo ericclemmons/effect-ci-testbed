@@ -13,16 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: voidzero-dev/setup-vp@v1.21.2
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - uses: actions/cache@v5
-        with:
-          path: node_modules/.vite/task-cache
-          key: demo-vite-task-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          cache: true
+          run-install: true
       - run: npm run lint
       - run: npm run check
+      - run: npm run typecheck
       - run: npm run test
       - run: npm run build

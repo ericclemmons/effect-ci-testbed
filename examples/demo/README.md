@@ -6,9 +6,43 @@ This is a hands-on adoption guide, not a presentation script. Each step adds a
 capability: make the change, run the command, inspect the result. Stop or skip
 wherever you want. There is no three-minute schedule or prescribed narration.
 
+## 0. Start with a standalone Vite repo and ordinary GitHub Actions
+
+> Start with working CI. Adopt Effect CI without rewriting the application.
+
+```sh
+npx --yes tiged ericclemmons/effect-ci-testbed/examples/demo cf-ci-demo
+cd cf-ci-demo
+npm ci
+npm run lint
+npm run check
+npm run typecheck
+npm test
+npm run build
+git init -b main
+git add .
+git commit -m "Start with a Vite app and conventional GitHub Actions"
+gh repo create ericclemmons/cf-ci-demo --private --source=. --push
+gh run list
+```
+
+Open <https://github.com/ericclemmons/cf-ci-demo/actions> in the browser.
+
+Open <https://github.com/settings/installations/165265172> in the browser. For
+**Effect CI**, select **All repositories**, then **Save**. This extends the App's
+existing Contents/PR/Checks permissions to all repositories; it does not authorize
+automatic merging or deployment.
+
+[tiged subdirectory copying](https://github.com/tiged/tiged#specify-a-subdirectory) ·
+[GitHub repo creation](https://cli.github.com/manual/gh_repo_create) ·
+[Baseline workflow](./.github/workflows/github.yml)
+
+**Not live yet:** the portable one-`uses:` Cloudflare action. The current reusable
+workflow is monorepo-specific; installing the App alone does not enroll new repos.
+
 Start with an existing Vite/Vite+ package with a lockfile and ordinary
 `lint`, `test`, and `build` scripts. This checked-in fixture is a small Vite+
-web application: HTML entrypoint, JavaScript source, lint, types, tests and build.
+web application: HTML entrypoint, TypeScript source, lint, types, tests and build.
 The build also retains an exported message module for the existing verification
 harness. Making every hosted stage below operate on this same application remains
 work to finish—not a reason to substitute unrelated historical runs.
@@ -52,6 +86,8 @@ Discovery uses conventional package scripts and their lifecycle hooks.
 
 ## 2. Run the existing scripts before pushing
 
+> Instead of running ad-hoc npm scripts, agents run the same CI workflows (or actions) as the cloud.
+
 ```sh
 cf-ci run lint
 cf-ci run test
@@ -59,22 +95,41 @@ cf-ci run build
 cf-ci run
 ```
 
-The last command runs the whole inferred workflow. A selected target runs only its
-own setup and lifecycle prerequisites, not every check. Here build includes
-`prebuild` (types and lint); test includes `pretest` (types).
-The first explicit local run creates an empty ignored
-`.cloudflare/ci/ci.ts` marker; it does not replace the package scripts.
-
-Change the exported string in [src/message.js](./src/message.js), then:
+```diff
+--- a/src/message.ts
++++ b/src/message.ts
+-export const message = "Check my work before I push";
++export const message = "Checked locally, ready for CI";
+```
 
 ```sh
 cf-ci run build
 cat dist/message.js
 ```
 
-Add a bare `asdf` line to that source file and run `cf-ci run lint`.
-Expect an undefined-variable diagnostic and a nonzero exit. Remove the line and
-rerun. Do not edit generated output to fix a source failure.
+```diff
+--- a/src/message.ts
++++ b/src/message.ts
+ export const message = "Checked locally, ready for CI";
++asdf;
+```
+
+```sh
+cf-ci run lint
+# Expected: undefined-variable diagnostic; nonzero exit.
+```
+
+```diff
+--- a/src/message.ts
++++ b/src/message.ts
+ export const message = "Checked locally, ready for CI";
+-asdf;
+```
+
+```sh
+cf-ci run lint
+# Expected: exit 0.
+```
 
 ## 3. Use the same commands as an agent
 
@@ -92,9 +147,10 @@ Human terminals default to text; agent environments default to JSON.
 No `--agent` flag is required. To inspect that interface from a human terminal:
 
 ```sh
-AI_AGENT=demo cf-ci list
-AI_AGENT=demo cf-ci plan lint
-AI_AGENT=demo cf-ci run lint
+export AI_AGENT=true
+cf-ci list
+cf-ci plan lint
+cf-ci run lint
 ```
 
 JSON list includes both target names and exact runnable commands. Explicit
@@ -112,10 +168,15 @@ time cf-ci run build
 time cf-ci run build
 ```
 
-Inspect Vite+'s cache-hit/miss output. Change the string in `src/message.js` and
+Inspect Vite+'s cache-hit/miss output. Change the string in `src/message.ts` and
 repeat: the changed input must invalidate the task; an immediate repeat can hit.
-Delete only the generated `dist/message.js` and repeat to inspect output
-restoration. A README-only edit should not invalidate a task that does not read it.
+
+```sh
+rm dist/message.js
+cf-ci run build
+```
+
+A README-only edit should not invalidate a task that does not read it.
 
 Optional task-cache-cold comparison, **only in a disposable checkout**:
 
@@ -135,7 +196,7 @@ inferred invocation. A tiny cached task need not be faster than executing it.
 Keep the existing workflow and package scripts first. Compare these checked-in files:
 
 - [Conventional GitHub Actions](./.github/workflows/github.yml): runs the scripts directly.
-- [Effect on GitHub](./.github/workflows/effect-on-github.yml): selects `examples/demo`
+- [Effect on GitHub reference](./verification/effect-on-github.example.yml): selects `examples/demo`
   in the repository's [reusable runner](../../.github/workflows/effect-ci.yml).
 
 For this monorepo, the essential job change is:
@@ -150,12 +211,15 @@ jobs:
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: examples/demo
-      cache-key: demo-vite-task
-      cache-key-files: examples/demo/package-lock.json
-      cache-path: |
-        node_modules/.vite/task-cache
-        examples/demo/node_modules/.vite/task-cache
     secrets: inherit
+```
+
+> Caching is on by default. No cache keys or paths to configure.
+
+```diff
+     with:
+       workflow: examples/demo
++      cache: false
 ```
 
 This is repository-specific setup, **not** a self-contained snippet to paste into

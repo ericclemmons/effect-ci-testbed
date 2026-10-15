@@ -144,6 +144,8 @@ jobs:
       - run: pnpm install
       - name: Discover explicitly exported actions
         run: pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts list --format=text
+      - name: Verify automatic cache defaults and opt-out
+        run: node --test scripts/github-cache.test.ts
       - name: Plan one action as structured output
         run: |
           output=$(pnpm --silent cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts plan check --format=json)
@@ -312,11 +314,6 @@ jobs:
           - example: demo
             workflow: examples/demo
             runs-on: '["ubuntu-latest"]'
-            cache-key: demo-vite-task
-            cache-key-files: examples/demo/package-lock.json
-            cache-path: |
-              node_modules/.vite/task-cache
-              examples/demo/node_modules/.vite/task-cache
           - example: deploy-hook
             workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'

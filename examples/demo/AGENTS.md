@@ -14,10 +14,9 @@ is a failure. If JSON only names the failed command, rerun that target with
 lint uses plain `vp lint`, with `no-undef` set to `error` in `vite.config.ts`:
 undefined identifiers such as `asdf` are errors. `check` is formatting and lint
 only. `typecheck` invokes the TypeScript checker through Vite+'s lint driver with
-lint rules disabled; `tsconfig.json` checks JavaScript source and tests with
-`allowJs` and `checkJs`.
+lint rules disabled; `tsconfig.json` checks TypeScript source and tests.
 
-Make source changes in `src/message.js`. Do not edit generated `dist/message.js`.
+Make source changes in `src/message.ts`. Do not edit generated `dist/message.js`.
 The `pretest` hook runs `vpr typecheck` before the test task. The `prebuild` hook
 runs `vpr typecheck` and `vpr lint` before the build task bundles the exported
 message as an ES module. Task commands and `cache: true` live in `vite.config.ts`.

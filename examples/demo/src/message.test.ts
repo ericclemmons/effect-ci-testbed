@@ -1,5 +1,5 @@
 import { expect, it } from "vite-plus/test";
-import { message } from "./message.js";
+import { message } from "./message";
 
 it("exports a non-empty message", () => {
   expect(typeof message).toBe("string");
