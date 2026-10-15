@@ -157,9 +157,10 @@ JSON list includes both target names and exact runnable commands. Explicit
 `--format=text` or `--format=json` overrides detection. Detection changes output,
 not trust, permissions, execution location, or whether a check passed.
 
-**Current wrinkle:** JSON failures name the failed command but do not yet include
-the complete tool diagnostic. Use `cf-ci run lint --format=text` to inspect it.
-That is an ergonomics gap to fix, not the intended final agent workflow.
+Local command failures include `error.details.output.stdout` and `.stderr` from
+that same attempt. Each retains its last 32K characters; `truncated` explicitly
+marks clipping. No text-mode rerun is needed. Adapters with an existing combined
+diagnostic expose it as `output.text`; remote native history remains separate.
 
 ## 4. Reuse task output, then invalidate it
 
