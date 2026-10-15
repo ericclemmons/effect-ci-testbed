@@ -2,6 +2,11 @@
 
 > How do I keep source and pull requests on GitHub while every CI run is a native Cloudflare Workflow instance?
 
+The [owned public incident repair implementation](PUBLIC-REPAIR.md) now connects
+admission, a fresh bounded proposal, native verification and a proposed-PR Slack
+card in host source. Native end-to-end acceptance is still pending; both source
+and enrollment remain disabled and repair proposals remain unmerged.
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]

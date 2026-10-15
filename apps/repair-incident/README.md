@@ -18,12 +18,23 @@ a test source, not an authentication or approval endpoint.
 
 The new private read-only `PublicIncidentEvidence.readPublicClaim()` returns the
 claimed version/time/fixture digest plus the current native `WORKER_METADATA`
-version. It cannot emit or reset. Deployment adds only the native version-metadata
-binding, not an API token. The consumer must pin the exact deployed version to
+version. It cannot emit or reset. Deployment adds native version metadata and a
+narrow private read-only App readiness binding, not an API token. The consumer must pin the exact deployed version to
 independently retained source evidence and reject version drift. This trusted
 source corroboration is **not** an Issues occurrence-API read or source attestation.
 The local regression supplies clearly fake metadata; only native deployment
 readback can establish the actual version. No new deployment has happened yet.
+
+The new authenticated `PublicIncidentArmWorkflow` accepts only
+`{mode:"arm-public-once"}` and emits no error/inference. The source DO obtains
+readiness itself from that fixed private App capability; a payload cannot supply
+a fake approval. It pins the durable arm to the actual source version and holds
+on version drift. Until armed, even an enabled `/failure` returns409 without
+consuming its claim. Arm only the final version after exact receiver enrollment
+and real budget/price/resource preflight; there is no reset or automatic re-arm.
+The local workerd test exercises the actual arming Workflow, denied readiness,
+unarmed requests, idempotent arm, claimed-version preservation and current-version
+drift with clearly fake readiness/metadata. See [the full setup boundary](../effect-ci/PUBLIC-REPAIR.md).
 
 This route is **host-disabled** (`publicFailureEnabled=false`) and workers.dev
 remains disabled. No native HTTP exception, Issue, inference or repair has been
@@ -40,9 +51,10 @@ Then use exact merged-source build, fresh resource/secret/controller preflight,
 create-only intent and independent deployment readback before exposing workers.dev
 and deliberately loading `/failure` once. No error/Issue identity may select a
 repository, prompt, model, paid slot or writer destination. Proposed repairs remain
-unmerged and undeployed. Necessary resources are the one additional SQLite class
-on this existing owned Worker; no new secret, outbound service or account scope.
-Costs are ordinary Worker/SQLite/Issues operations; this preparation makes no AI
+unmerged and undeployed. Necessary resources are one additional SQLite class,
+the arming Workflow, native metadata and the read-only readiness binding on this
+existing owned Worker; no new secret, paid dispatcher authority or account scope.
+Costs are ordinary Worker/Workflow/RPC/SQLite/Issues operations; this preparation makes no AI
 call. Safe stop is to keep the source gate and workers.dev disabled, retaining the
 claim and all evidence rather than resetting/deleting it for rehearsal.
 

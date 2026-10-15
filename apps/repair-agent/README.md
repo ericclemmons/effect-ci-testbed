@@ -1,8 +1,15 @@
 # Run a private Flue proposal agent on Cloudflare
 
+The new [owned public-incident flow](../effect-ci/PUBLIC-REPAIR.md) adds a private
+proposal Workflow/driver backed by read-only receiver admission. It uses the same
+generated agent, fixed model/prompt and existing lifetime ledger/host limit, not
+a new budget. Its generated-agent/local native Workflow tests include duplicate
+start/reload and invalid-budget rejection before inference. It is not deployed
+or proved as a native automatic repair yet; producer/enrollment remain disabled.
+
 This host uses the real pinned Flue generator, its Agents SDK Durable Object,
 and account-authenticated Workflows. Its external capabilities are the
-private `REPAIR_AI` service and host-only `OWNED_INCIDENT` admission service bindings. No raw AI, GitHub credential, sandbox, shell,
+private `REPAIR_AI` service and host-only `OWNED_INCIDENT`/`PUBLIC_ADMISSION` admission service bindings. No raw AI, GitHub credential, sandbox, shell,
 tool, public route, automatic merge or deployment capability is given to the agent.
 
 Only `inspect` or `proposal` administrative modes are accepted. The owned fixture

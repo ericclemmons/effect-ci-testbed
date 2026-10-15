@@ -48,8 +48,10 @@ fail-closed, not a claim of guaranteed delivery under crashes.
 Private read-only `PublicIncidentAdmission.readPublicAdmission(instance)` gives
 the started Workflow the validated immutable admission, including while its create
 ACK is in flight. It cannot admit, dispatch, change a fixture or infer. The
-downstream Workflow and bounded model/native verifier/proposed-PR/Slack stages
-are **not connected yet**. No local dispatcher result is a native Workflow proof.
+downstream Workflow and bounded model/native verifier/proposed-PR/Slack stages are
+now [connected in host source](../effect-ci/PUBLIC-REPAIR.md), with separate local
+generated-agent and App Workflow compositions. They have **not been deployed or
+proved native end to end**. No local dispatcher result is a native Workflow proof.
 
 ## Verification
 

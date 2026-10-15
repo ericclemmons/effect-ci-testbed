@@ -6,7 +6,8 @@ export default defineConfig({
     compatibilityDate: "2026-10-07",
     workersDev: false,
     previewUrls: false,
-    env: { WORKER_METADATA: bindings.versionMetadata() },
+    env: { WORKER_METADATA: bindings.versionMetadata(),
+      PUBLIC_READINESS: bindings.worker({ worker: "effect-ci-github-cloudflare", exportName: "PublicPipelineReadiness" }) },
     observability: {
       enabled: true,
       headSamplingRate: 1,
@@ -17,6 +18,7 @@ export default defineConfig({
       OwnedFaultOnce: exports.durableObject({ storage: "sqlite" }),
       PublicFailureClaim: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentEvidence: exports.worker(),
+      PublicIncidentArmWorkflow: exports.workflow({ name: "effect-ci-public-incident-arm" }),
       OwnedIncidentWorkflow: exports.workflow({
         name: "effect-ci-owned-incident",
       }),

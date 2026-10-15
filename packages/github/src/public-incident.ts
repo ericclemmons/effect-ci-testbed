@@ -116,7 +116,7 @@ export interface PublicIncidentOutboxStore {
   acknowledge(digest: string): Promise<void>;
 }
 const admissionKeys = ["policy", "issue", "correlation", "service", "source", "version", "emission", "fixtureDigest", "claimedAt", "observedAt"];
-async function identity(admission: PublicIncidentAdmission) {
+export async function publicIncidentIdentity(admission: PublicIncidentAdmission) {
   const v = exact(admission, admissionKeys);
   if (!identifier(v.policy) || !uuid(v.issue) || !uuid(v.correlation) || !identifier(v.service) ||
       !sha(v.source, 40) || !uuid(v.version) || !identifier(v.emission) || !sha(v.fixtureDigest, 64) ||
@@ -135,7 +135,7 @@ async function identity(admission: PublicIncidentAdmission) {
 export async function readPublicIncidentOutbox(raw: unknown): Promise<PublicIncidentOutbox> {
   const r = exact(raw, ["version", "state", "digest", "instance", "admission"]);
   if (r.version !== 1 || !["dispatching", "dispatched"].includes(r.state as string)) throw rejected();
-  const expected = await identity(r.admission as PublicIncidentAdmission);
+  const expected = await publicIncidentIdentity(r.admission as PublicIncidentAdmission);
   if (r.digest !== expected.digest || r.instance !== expected.instance) throw rejected();
   return { version: 1, state: r.state as PublicIncidentOutbox["state"], ...expected };
 }
@@ -149,7 +149,7 @@ export async function dispatchPublicIncident(
   admitted: PublicIncidentAdmission,
   dispatch: (instance: string) => Promise<{ id: string }>,
 ) {
-  const expected = await identity(admitted);
+  const expected = await publicIncidentIdentity(admitted);
   const replay = (raw: unknown) => {
     const r = exact(raw, ["version", "state", "digest", "instance", "admission"]);
     const saved = exact(r.admission, admissionKeys);

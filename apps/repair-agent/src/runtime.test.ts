@@ -72,6 +72,7 @@ test(
       assert.deepEqual(Object.keys(config.env).sort(), [
         "FLUE_OWNED_REPAIR_PROPOSAL_AGENT",
         "OWNED_INCIDENT",
+        "PUBLIC_ADMISSION",
         "REPAIR_AI",
       ]);
       assert.equal(config.exports.ProposalProbeWorkflow.type, "workflow");
@@ -124,13 +125,13 @@ test(
       const fakeAdmissionConfig = {
         name: "effect-ci-repair-events",
         compatibilityDate: "2026-10-07",
-        exports: { OwnedIncidentAdmission: { type: "worker" } },
+        exports: { OwnedIncidentAdmission: { type: "worker" }, PublicIncidentAdmission: { type: "worker" } },
         manifest: {
           mainModule: "index.js",
           modules: {
             "index.js": {
               type: "esm",
-              contents: `import {WorkerEntrypoint} from 'cloudflare:workers';let invalid=false;export class OwnedIncidentAdmission extends WorkerEntrypoint {inspect(){return invalid?{state:'absent'}:${JSON.stringify({ state: "admitted", identity: INCIDENT_IDENTITY, admittedAt: INCIDENT_ADMITTED_AT })}} invalidate(){invalid=true} fetch(){return new Response('Not found',{status:404})} } export default {fetch(){return new Response('Not found',{status:404})}}`,
+              contents: `import {WorkerEntrypoint} from 'cloudflare:workers';let invalid=false;export class PublicIncidentAdmission extends WorkerEntrypoint {readPublicAdmission(){throw new Error('Public admission disabled in legacy local fixture')}} export class OwnedIncidentAdmission extends WorkerEntrypoint {inspect(){return invalid?{state:'absent'}:${JSON.stringify({ state: "admitted", identity: INCIDENT_IDENTITY, admittedAt: INCIDENT_ADMITTED_AT })}} invalidate(){invalid=true} fetch(){return new Response('Not found',{status:404})} } export default {fetch(){return new Response('Not found',{status:404})}}`,
             },
           },
         },
