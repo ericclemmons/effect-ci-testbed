@@ -125,9 +125,40 @@ cf r2 objects delete source/88ffc89ebd9c67ee49ae021e14e4e4e7e4663def3523634da12f
 cf r2 buckets delete effect-ci-r2-source-input
 ```
 
-The owned wrapper currently has local verification and a local Worker/image build;
-fresh native deployment and acceptance are still pending. Do not confuse that with
-the older shared-host proof below.
+### Fresh standalone native proof
+
+Exact merged source `fb740d7f490dd1b523c581d14708aeac2442dfb9` deployed Worker
+`41539d8a-2f86-4934-9052-b892ac0e7246` with only `SOURCE_BUCKET`, two owned
+exports, no public URL, and runnable image
+`sha256:33bf1e72342987c991bd0aa0ade227e70b0d1e9135d68577fe1b6deeddc4a9fd`.
+The new private bucket's managed public access was independently disabled/read back.
+Both fixture uploads were absent first and independently matched exact raw bytes
+afterward. Shared example resources and the committed demo release were unchanged.
+
+`coverage-owned-r2-valid-20261015-1` completed on native Workflow version
+`531ad0b6-25ae-4ae9-8321-7d27db9ff741`: five steps, each one attempt. The binding
+read verified the 97-byte manifest, checkout created snapshot
+`f1182bd5-39a3-479d-b7cb-ec3a525843fe`, and the downstream action restored and
+read `source from r2`. Its **actual native Node command** returned 15 bytes, SHA-256
+`de72ee64a002cd0c9d99b35ec1e79a009a0fd73602831346f477d5837041c04f`,
+exit 0 and `storageCredentialsPresent:false`. The consumer committed snapshot
+`03e83964-6fa7-4e78-bfe4-e1ec1804ee27`, releasing its container too.
+This checks the known credential names above; it is not a generic secret-scanning claim.
+
+Queue time was 3,101 ms, execution 17,558 ms, total 20,659 ms (one cold orchestration
+sample including container/snapshot/API work, not a benchmark). Source and command
+retry limits were zero; snapshot/read transport retained limit five, with no actual retry.
+
+The three original negative histories `coverage-owned-r2-{wrong-digest,missing,unsafe}-20261015-1`
+remain **ERRORED**. Each contains only the one failed `source:r2` step, zero retries,
+and no checkout commit or downstream command. These are fresh native denials,
+separate from the fake-container local test and older shared-host evidence.
+
+Read those retained histories and the recorded Worker version without redispatching:
+
+```sh
+LIVE_OWNED_R2_SOURCE=1 CF_BIN=cf node --test examples/r2-source/src/live.test.ts
+```
 
 ## Historical shared-host proof
 
