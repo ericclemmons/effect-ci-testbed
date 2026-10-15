@@ -93,8 +93,32 @@ Use Cloudflare's dashboard to remove only this owned Workflow, Worker, workspace
 SQLite namespace, container application and snapshots. Never remove the shared
 example host or old histories to hide failures. No deletion/reset is part of use.
 
-The independent wrapper currently has local tests/build only; fresh native clone
-evidence is pending and must not be confused with the historical run below.
+### Fresh standalone native proof
+
+Exact merged source `b3ede7b150250f8d71cc576efe2c3bfc5f278011` deployed Worker
+`18a11254-debf-41e6-a6a4-f0e3dcbc7d39` with only its owned Workflow/workspace
+exports, no environment bindings or public URLs, and runnable image
+`sha256:7b2ede4459d6738f1465db630f3fe3794fd9c9ba28f8b5a9dffc3900b8df9924`.
+The existing committed demo release and shared source histories were unchanged.
+
+`coverage-owned-gitlab-pinned-20261015-1`, native Workflow version
+`bab3fab3-7dd6-46c8-939e-8b6af8ff4755`, completed a real public HTTPS GitLab clone,
+checkout snapshot `4a3c9ebe-63e8-4608-b8ef-7c12f702250c`, downstream restore,
+the exact-HEAD command (exit 0), `VERSION` read `6.7.0.pre`, and consumer snapshot
+`63f16af7-f04a-439d-b64d-2cdff27c4f69`. All five steps ran once.
+The command retry limit was zero; checkout/snapshot/read transport retained limit
+five, with no actual retry. No token or project code was used.
+
+Queue time was 3,114 ms, execution 19,396 ms, total 22,510 ms (one cold orchestration
+sample including public network, container and snapshot work, not a benchmark).
+`coverage-owned-gitlab-mutable-20261015-1` remains **ERRORED** with zero steps:
+`master` was rejected before checkout. Neither original history is replayed or reset.
+
+Read the original histories and recorded version without cloning again:
+
+```sh
+LIVE_OWNED_GITLAB_SOURCE=1 CF_BIN=cf node --test examples/gitlab-source/src/live.test.ts
+```
 
 ## Historical shared-host proof
 
