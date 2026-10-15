@@ -58,6 +58,39 @@ only wakes the controller: it must then read the matching consumed decision from
 the private SQLite review object. An actor string or arbitrary event is not
 authority. No test-only decision path is deployed.
 
+## Actual push/build acceptance — October 15
+
+A normal fast-forward push of genuine diagnostic changes, revision
+`198726b4de236d5eff6c74d0a099a28001b01b82`, to `demo/live` generated signed
+GitHub delivery/native instance `6bac9850-c89d-11f1-97b9-f8c7e1b07668`.
+The deployed host was merged source `34f2311`; no operator Workflow dispatch,
+forged delivery or check-suite retry was used. All 11 actions and nine real
+commands completed once; command/publication/preparation retry limits were zero.
+The summary plus 11 native GitHub checks independently read back successful.
+
+All 35 notification checkpoints acknowledged the same Slack message
+`1792071393.501679`. The built-in browser observed that card change from Running
+to Passed, then loaded the newly published immutable Vite URL and clicked Show
+message successfully. A read-only test verifies its three raw file hashes against
+the native verifier, candidate annotations/bindings and preview health:
+
+```sh
+LIVE_DEMO_PUSH=1 CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-push.test.ts
+```
+
+Candidate `658a71c7-4dab-4bc1-82a6-503cb20b44e8` identifies that exact source
+and checked asset digest. Its root redirects to the immutable Vite publication;
+it is not a second build or Workers Static Assets upload. The production target
+retained its prior 100% allocation. No HMD window, human decision, graph upload,
+traffic promotion, release commit, repair or model inference occurred.
+Queue/execution/total were 2.699/142.924/145.623 seconds, one orchestration sample,
+not a benchmark. The earlier branch creation at an already-checked SHA produced
+no new suite; that negative evidence remains preserved, not relabeled a pass.
+
+PR260's redacted diagnostics were locally verified and subsequently deployed
+from merged `6f16b29`; this successful native build did not exercise a broker error.
+
 ## Reproduce the local verification
 
 ```sh
