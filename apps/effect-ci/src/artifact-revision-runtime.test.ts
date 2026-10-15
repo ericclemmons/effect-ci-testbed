@@ -34,6 +34,7 @@ test("restored artifact reads retain the artifact revision, not its ancestor wor
         const workspace=CI.Workspace.remote(foreign?'another-run':'artifact-probe','/workspace/repository',{provider:'cloudflare-container',value:{id:'ancestor',size:1}});
         const checkpoint=new CI.WorkspaceCheckpoint('artifact:build',workspace,{provider:'cloudflare-container',value:{id:'artifact',size:2}});
         if(new URL(request.url).searchParams.has('publish'))return Response.json(await Effect.runPromise(runner.persistence.checkpoint({stepId:'publish',workspace,name:'artifact:build'})));
+        if(new URL(request.url).searchParams.has('commit'))return Response.json((await Effect.runPromise(runner.persistence.commit({stepId:'pass-through',workspace}))).revision);
         let restored;
         try{restored=await Effect.runPromise(runner.persistence.restore({stepId:'consume',checkpoint}));}
         catch{return Response.json({rejected:true,lookups},{status:409});}
@@ -78,6 +79,9 @@ test("restored artifact reads retain the artifact revision, not its ancestor wor
     const published = await runtime.dispatchFetch("https://probe.invalid/?publish");
     assert.equal(published.status, 200);
     assert.equal((await published.json()).value.id, "published-ancestor");
+    const committed = await runtime.dispatchFetch("https://probe.invalid/?commit");
+    assert.equal(committed.status, 200);
+    assert.equal((await committed.json()).value.id, "published-ancestor");
   } finally {
     await runtime.dispose();
   }

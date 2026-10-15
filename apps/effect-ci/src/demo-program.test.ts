@@ -18,7 +18,17 @@ test("native demo enrollment selects the same package suite as local discovery, 
   assert.equal(result.plan.workflowId, "cf-ci-demo");
   assert.deepEqual(
     result.plan.nodes.map((node) => node.id),
-    ["checkout", "install", "syntax", "lint", "check", "typecheck", "test", "build"],
+    [
+      "checkout",
+      "install",
+      "syntax",
+      "lint",
+      "check",
+      "typecheck",
+      "test",
+      "build",
+      "verify build",
+    ],
   );
   assert.deepEqual(
     result.plan.nodes.flatMap((node) => node.commands.map((command) => command.command)),
@@ -30,6 +40,7 @@ test("native demo enrollment selects the same package suite as local discovery, 
       'npm run "typecheck"',
       'npm run "test"',
       'npm run "build"',
+      "node .cloudflare/ci/verify-build.ts",
     ],
   );
   assert.ok(result.plan.nodes.every((node) => !node.approval));

@@ -383,67 +383,45 @@ This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 must issue new commit-bound evidence; copying a signature onto a merge/squash/rebase
 SHA does not make it valid.
 
-## 9. Publish and restore the real Vite build
+## 9. Use the build output in another action
 
-> Carry the built HTML and JavaScript into another action; verify their file hashes.
+> Return a workspace. The next action gets its files automatically—no cache, publish, or restore calls.
 
 ```diff
 --- a/.cloudflare/ci/workflow.ts
 +++ b/.cloudflare/ci/workflow.ts
 @@
 -export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
-+export { lint, check, typecheck, test, build, syntax, artifact } from "./actions.ts";
++export { lint, check, typecheck, test, build, syntax, verify } from "./actions.ts";
 @@
    yield* actions.test();
 -  return yield* actions.build();
-+  return yield* actions.artifact();
++  return yield* actions.verify();
+```
+
+[`actions.ts`](./.cloudflare/ci/actions.ts):
+
+```ts
+export const verify = CI.action(
+  "verify build",
+  () =>
+    function* () {
+      const workspace = yield* build();
+      return yield* workspace.exec("node .cloudflare/ci/verify-build.ts");
+    },
+);
 ```
 
 ```sh
 cf-ci plan --format=mermaid
-cf-ci run artifact
+cf-ci run verify
 git add .cloudflare/ci
-git commit -m "Verify the restored Vite build"
+git commit -m "Use the build output in another action"
 git push
 cf-ci run --remote
 ```
 
-[`actions.ts`](./.cloudflare/ci/actions.ts) publishes all three built assets plus
-the generated SHA-256 manifest using `CI.Artifact.publish`; a separate action
-calls `CI.Artifact.restore` and [`artifact.ts verify`](./.cloudflare/ci/artifact.ts).
-Cloudflare transports an immutable workspace snapshot between action containers;
-the path list labels its contents, not a path-only public download. Local feedback
-checks the same files but is not proof of Cloudflare snapshot transport.
-
-**Live verified:** both the unsigned and signed runs completed all ten nodes.
-Signed reuse omitted only the pure syntax parser; the Vite build and both artifact
-commands still ran. [Read the retained native results](../../apps/effect-ci/README.md#same-app-vite-build-handoff).
-
-```sh
-rm dist/message.js
-node .cloudflare/ci/artifact.ts verify  # expected failure: missing output
-cf-ci run artifact
-```
-
-## 10. Assert the built application in a browser
-
-```sh
-npm run verify:browser
-npm run verify:browser -- --negative
-```
-
-The first runs a real build and local browser assertion. The second deliberately
-expects the wrong result and must retain failed footage. These are verification
-commands, not inferred default CI targets. Retain actual output, revision, outcome,
-and timing; review recordings before publication. See the proof section below.
-
-For a containerless build/serve increment, start with the
-[containerless site](../containerless-site). Its native build and browser proof
-are real but belong to a separate portable-JavaScript fixture, not a Vite/npm build
-silently running inside an isolate. Moving this project's build there is a
-separate compatibility step.
-
-## 11. Add controlled release, human decisions, and repair
+## 10. Add controlled release, human decisions, and repair
 
 Next integrations, each with its own genuine execution requirement:
 
@@ -460,124 +438,18 @@ continuation; automatic webhook activation remains unfinished. Never self-approv
 a human gate or merge/deploy a proposed repair to manufacture a complete demo.
 No new failure or paid model call is needed just to replay old evidence.
 
-## 12. Let an agent onboard the next project
+## 11. Let your agent migrate the next project
 
-First work through these increments by hand and fix the ergonomics. Then use this
-bounded onboarding prompt against a fresh, comparable brownfield project:
+> Agent-first adoption: tell your agent what you want.
 
-> Inspect this project's scripts and existing CI. Run cf-ci --help to discover the
-> installed interface. Preserve current build/test behavior. Propose the smallest
-> incremental adoption: local discovery and plans, local checks, then GitHub CI.
-> Execute each supported step and show its real result before proceeding. Explain
-> setup and scoped permissions before remote execution, signing, publication or
-> release. Do not claim a capability works from a mock or historical receipt.
-> Do not invent commands or infer permission to push, deploy, sign, spend money,
-> approve a human gate, or merge a repair. Report unsupported steps with the exact
-> missing integration. Once local/GitHub behavior matches, propose remote execution,
-> pure-check attestation, artifacts, browser assertions and controlled release one
-> increment at a time.
-
-This prompt is provisional until the same sequence works by hand. It is not an
-acceptance substitute. The goal is one real application accumulating capabilities,
-not a tour that jumps between unrelated successes.
-
-Historical captures keep their original `developer-loop` recipe name, source
-paths, release tags and digests after the rename to `examples/demo`.
+```text
+Migrate this project to use cf-ci.
+```
 
 ## Verification proof
 
-### Record the local user journey
+Maintainer evidence, not an adoption step: [recording notes](./verification/README.md).
 
-After installing dependencies, **commit the recipe first**, then run:
-
-```sh
-npm run verify:browser
-npm run verify:browser -- --negative
-```
-
-The recipe owns its preview, browser config and test fixtures. The first command
-runs the real `cf-ci run build`, opens its built application in a fresh local
-Chromium context, clicks **Show message**, and asserts a nonempty visible result.
-The second deliberately uses a wrong expectation: it must retain a failed E2E
-outcome and failed-run video. The verification wrapper succeeds only when that
-expected negative outcome is preserved; it does not relabel the application test.
-No agent steps/model calls or signed-in account pages are involved.
-
-Both retain separate, uniquely named ignored `.e2e/` recordings/traces (reruns do
-not replace prior media) and a create-only `.verification/`
-manifest: exact commit, scenario, expected/actual outcome, real browser/runner,
-independently timed build/browser processes, observed warm-input conditions and
-media SHA256. Source changes during the run fail verification. The preview binds
-only loopback and refuses to reuse an unrelated existing server. First use may
-download the framework's official Chromium binary.
-
-These are **local, quarantined outputs**, not hosted Cloudflare proof, signed
-attestation or an automatic public upload. The framework marks videos as
-redaction-incomplete; review captured content and validate playback before
-publication. Timing is one observed sample, not a benchmark or assumed cache hit.
-Kitesurf remains a separate compatibility probe, not a silent fallback.
-
-To review an existing capture without rerunning CI or the browser:
-
-```sh
-npm run proof:preview -- <recorded-run-UUID>
-```
-
-This validates the report's actual assertions, outcome, timing and video digest,
-then creates `.verification/<run-UUID>.md` with the selected command's generated
-plan, same-run video/transcript links and raw timings. It refuses to overwrite an
-existing review. Failed tests stay labelled failed; unknown queue/wait times stay
-unknown. Open that Markdown file locally to inspect the footage and transcript.
-It neither uploads media nor edits this README, and it does not certify redaction,
-playback or signed trust. Publish only after those separate reviews.
-
-**Video:** [Local browser recording + original manifest and assertion transcript](https://github.com/ericclemmons/effect-ci-testbed/releases/tag/proof-developer-loop-4ebc193).
-The WebM shows the actual generated build preview, click and visible assertion;
-it does not show the CLI or a hosted deployment. Footage is unedited and was
-played through to completion and reviewed before publication. It is deliberately
-small: a proof of interaction, not a polished Friday demo recording.
-
-**Measured results:** [Published capture receipt](./verification/published/local-4ebc193.json),
-historical source [`4ebc193`](https://github.com/ericclemmons/effect-ci-testbed/commit/4ebc193aba8b828b87bff44b6328e860583d8dea),
-recorded October 13, 2026 — **not a latest-HEAD badge**.
-
-Recorded command's plan (from that same-run manifest, not the full inferred suite):
-
-```mermaid
-flowchart LR
-  step_checkout["checkout"]
-  step_install["install"]
-  step_build["build"]
-  step_checkout --> step_install
-  step_install --> step_build
-```
-
-| Environment                  | This recorded result                                    | Observed timing                                                               |
-| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Effect CI Local              | Build + browser assertion passed                        | Build process 1286 ms; browser process 1436 ms; total recorder window 2860 ms |
-| GitHub Actions               | Historical checks linked above; no browser capture here | Not measured by this recording                                                |
-| Effect CI GitHub             | Historical checks linked above; no browser capture here | Not measured by this recording                                                |
-| Hosted Cloudflare / Kitesurf | Not verified by this capture                            | Unknown                                                                       |
-
-One sample on Node 26.8.2 / darwin arm64, e2e 0.19.0 / web 0.14.0,
-Chromium 153.0.8010.12. Dependencies and a prior build artifact were present;
-cache hits were not independently measured. Queue and decision waits are unknown,
-not zero. Timing includes process startup/cleanup and is not a speedup benchmark.
-
-The original manifest retains recording-time quarantine/redaction-incomplete
-labels; the separate receipt documents the capture-specific agent content review.
-The positive video is public. The intentional negative capture stays local with
-its actual failed assertion and is not falsely presented as a successful test.
-Assets have pinned SHA256 values; GitHub release immutability is **not** enabled,
-so the links alone do not guarantee the files cannot be replaced. This is unsigned
-explanatory evidence, not attestation or permission to skip CI.
-
-Run `npm run proof:verify-published` to check the public tag/source, release asset
-metadata, downloaded bytes/digests and original manifest against the receipt.
-This is an explicit read-only network check; normal unit tests do not fetch media
-or dispatch CI. Missing/replaced media and source drift fail verification rather
-than silently refreshing the proof. It does not recertify playback or privacy.
-
-Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
-assertions, video/transcript, outcome and cold/warm timings. See the
-[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
+**Video:** [Historical local recording](https://github.com/ericclemmons/effect-ci-testbed/releases/tag/proof-developer-loop-4ebc193).
+**Measured results:** [Historical capture receipt](./verification/published/local-4ebc193.json).
+[Proof-page contract](../PROOF-PAGES.md).
