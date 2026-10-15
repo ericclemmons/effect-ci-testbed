@@ -759,11 +759,21 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const snapshot = await bodyOperation(stepId, `${stepId}:commit`, () =>
-            container.checkpoint(
+          if (workspace.revision && workspace.revision.provider !== "cloudflare-container") {
+            throw new Error(`Cannot materialize ${workspace.revision.provider} with Cloudflare`)
+          }
+          const snapshot = await bodyOperation(stepId, `${stepId}:commit`, async () => {
+            // Returning a dependency workspace is enough: even a pass-through
+            // action with no commands must commit that revision, not an empty container.
+            // The same-step materializer preserves any writes this action already made.
+            const exists = await container.exists(".", workspace.cwd, stepId,
+              workspace.revision?.value as ContainerSnapshotValue | undefined, options.container)
+            if (!exists) throw new Error("Cannot commit a missing workspace")
+            return container.checkpoint(
               `${stepId}-workspace`,
               options.reuseWorkspace === false,
-            ))
+            )
+          })
 
           if (cache) {
             await bodyOperation(stepId, `${stepId}:cache`, () =>

@@ -1153,6 +1153,22 @@ remain separate evidence requirements; local verifier tests are not relabelled n
 
 ### Same-app Vite build handoff
 
+The current demo uses ordinary workspace dependencies instead of explicit artifact
+management: `verify build` calls the build action and reads the returned workspace.
+The runner commits/materializes the revision automatically. No manifest publication,
+path list, cache selection or explicit restore belongs in the user workflow.
+The project-owned `verify-build.ts` only reads the three bounded output files and
+reports their sizes/SHA-256; it creates no metadata or external upload.
+
+The automatic commit path also materializes pass-through actions that simply return
+a dependency workspace without running a command. A workerd regression rejected the
+old empty-container snapshot and now preserves the dependency revision. Same-step
+materialization preserves writes already made by the action.
+
+The following retained runs describe the **earlier explicit artifact API**, not the
+current adoption API. Their histories remain unchanged; the automatic handoff path
+requires its own native acceptance after the merged deployment.
+
 The demo adds ordinary `publish build` and `verify artifact` actions after its
 real Vite build. The producer computes SHA-256 and byte size for the actual
 `dist/index.html`, `dist/app.js` and `dist/message.js`, writes a generated manifest,

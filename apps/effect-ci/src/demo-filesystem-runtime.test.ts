@@ -46,7 +46,7 @@ test(
         }
         async execute(command,root,_step,revision){
           if(root!==cwd)throw new Error("Wrong command root");
-          if(command.endsWith('artifact.ts verify')&&revision?.id!=='fixture-artifact:demo-build')throw Error('Artifact read reverted to an ancestor revision');
+          if(command.endsWith('verify-build.ts')&&revision?.id!=='fixture-build-workspace')throw Error('Consumer did not inherit the completed build revision');
           commands.push(command);return {exitCode:0,stdout:"fixture execution",stderr:""};
         }
       }
@@ -128,12 +128,13 @@ test(
         'npm run "typecheck"',
         'npm run "test"',
         'npm run "build"',
-        "node .cloudflare/ci/artifact.ts create",
-        "node .cloudflare/ci/artifact.ts verify",
+        "node .cloudflare/ci/verify-build.ts",
       ]);
-      assert.equal(output.nodes.length, 10);
-      assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "artifact:demo-build"));
-      assert.ok(state.restores.includes("fixture-artifact:demo-build"));
+      assert.equal(output.nodes.length, 9);
+      assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "build-workspace"));
+      assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "verify build-workspace"));
+      assert.equal(state.restores.length, 0, "normal dependencies need no explicit restore");
+      assert.ok(output.nodes.every((node: any) => node.artifacts.length === 0));
       assert.ok(output.nodes.every((node: { status: string }) => node.status === "complete"));
       await runtime.dispatchFetch("https://probe.invalid/missing");
       let failed: any;
@@ -151,7 +152,7 @@ test(
       const after = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
       assert.equal(
         after.commands.length,
-        12,
+        11,
         "missing lockfile must fail before any extra package command",
       );
     } finally {
