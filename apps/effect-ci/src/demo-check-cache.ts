@@ -15,11 +15,17 @@ import * as Effect from "effect/Effect";
 
 // Approved demo-only enrollment. The private key never enters this application.
 
-export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
+export const demoCheckCache = (
+  runner: Runner,
+  readEvidence: (operation: (request: typeof fetch) => Promise<boolean>) => Promise<boolean> = (
+    operation,
+  ) => operation(fetch),
+): CI.CheckCache => ({
   lookup: (request) =>
     Effect.promise(async () => {
       const transport: Array<{ status: number; endpoint: string }> = [];
       let missReason: string | undefined;
+      let evidenceFetch: typeof fetch = fetch;
       if (
         request.workflowId !== syntaxWorkflow ||
         request.stepId !== "syntax" ||
@@ -59,7 +65,7 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
           // Public, fixed GET endpoints only. Rate limits are misses, never bypass.
           request: async (url, init) => {
             transport.push({ status: 0, endpoint: "request-start" });
-            const response = await fetch(url, {
+            const response = await evidenceFetch(url, {
               ...init,
               headers: {
                 ...Object.fromEntries(new Headers(init.headers)),
@@ -97,15 +103,26 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
         stepId: "syntax:evidence-observation",
         options: { retries: { limit: 0, delay: 0, backoff: "constant" } },
         run: () =>
-          Effect.promise(async () => ({
-            value: {
-              verified: await Effect.runPromise(cache.lookup(request)),
-              identified: true,
-              missReason: missReason ?? null,
-              transport,
-            },
-            commands: [],
-          })),
+          Effect.promise(async () => {
+            let verified = false;
+            try {
+              verified = await readEvidence(async (transport) => {
+                evidenceFetch = transport;
+                return Effect.runPromise(cache.lookup(request));
+              });
+            } catch {
+              missReason = "credential-unavailable";
+            }
+            return {
+              value: {
+                verified,
+                identified: true,
+                missReason: missReason ?? null,
+                transport,
+              },
+              commands: [],
+            };
+          }),
       });
       // This runner callback is closed over plain data, with no service requirements.
       const result = await Effect.runPromise(

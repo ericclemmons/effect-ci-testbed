@@ -1065,8 +1065,16 @@ git push origin refs/notes/effect-ci-hosted-checks-v1
 cf-ci run --remote
 ```
 
-The host inspects actual prepared files/runtime before reading the fixed public
-GitHub notes ref. Missing, invalid, unknown-key, policy/toolchain/source mismatch,
+The host inspects actual prepared files/runtime before reading the fixed GitHub
+notes ref. It uses the existing App installation `165265172` to mint a token for
+only `effect-ci-testbed` with **Contents read** (plus mandatory metadata read),
+checks returned permissions, permits only the four fixed note GET endpoint
+shapes, and revokes the token in `finally` before the verification step completes.
+No Checks/Contents-write/PR permissions or token reach the check adapter, source
+code or container. This avoids relying on unauthenticated shared-edge API limits;
+it requires no additional App permission or secret beyond the existing host setup.
+The reader uses manual redirects because workerd rejects `redirect: "error"`;
+3xx responses are misses and never followed. Missing, invalid, unknown-key, policy/toolchain/source mismatch,
 revocation or network failure leaves ordinary execution intact. Builds and other
 actions cannot hit this cache. Removing the enrolled public key/check revokes
 reuse without deleting historical notes. Unsigned/advisory refs never authorize
