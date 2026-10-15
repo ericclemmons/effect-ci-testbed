@@ -7,6 +7,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
 import { demoRouteAllowed, demoRunAllowed, demoGitHubAllowed } from "./demo-policy.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
+export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicIncidentRepairWorkflow, PublicPipelineReadiness } from "./public-incident-repair.ts";
 export { DemoCandidateRecoveryWorkflow } from "./demo-candidate-recovery.ts";
 export { DemoRoutingDiagnosticWorkflow } from "./demo-routing-diagnostic-workflow.ts";
 

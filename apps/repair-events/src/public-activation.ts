@@ -70,6 +70,12 @@ export class PublicIncidentActivations extends DurableObject<PublicActivationEnv
  * admit raw evidence, choose a fixture, reset an operation or call a model.
  */
 export class PublicIncidentAdmission extends WorkerEntrypoint {
+  async publicEnrollmentReadiness(version: string) {
+    const p = publicIncidentEnrollment;
+    if (!p || p.version !== version) throw rejected();
+    return { policy: p.policy, service: p.service, source: p.source, version: p.version,
+      emission: p.emission, fixtureDigest: p.fixtureDigest };
+  }
   async readPublicAdmission(instance: string) {
     const namespace = (
       this.ctx.exports as unknown as {

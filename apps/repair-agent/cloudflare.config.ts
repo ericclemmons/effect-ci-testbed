@@ -12,6 +12,10 @@ export default defineConfig({
         worker: "effect-ci-repair-events",
         exportName: "OwnedIncidentAdmission",
       }),
+      PUBLIC_ADMISSION: bindings.worker({
+        worker: "effect-ci-repair-events",
+        exportName: "PublicIncidentAdmission",
+      }),
     },
     exports: {
       ProposalProbeWorkflow: exports.workflow({
@@ -25,6 +29,10 @@ export default defineConfig({
       IncidentProposalWorkflow: exports.workflow({
         name: "effect-ci-owned-incident-proposal",
       }),
+      PublicIncidentProposalWorkflow: exports.workflow({
+        name: "effect-ci-public-incident-proposal",
+      }),
+      PublicProposalDriver: exports.worker(),
     },
   },
 });

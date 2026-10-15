@@ -24,10 +24,12 @@ export async function runProposal(
   payload: unknown,
   step: ProposalSteps,
   budget: BudgetInspection,
+  validateBeforeInference?: (status: BudgetStatus) => void,
 ) {
   const mode = probeMode(instance, payload);
   const before = await step.do("proposal:budget-before", options, () => budget.status());
   if (mode === "inspect") return { before, inferenceCalled: false };
+  validateBeforeInference?.(before);
   const handle = init(OwnedRepairProposal, { id: `owned_${instance}` });
   const receipt = await step.do("proposal:admit", options, () =>
     handle.dispatch("Return only the corrected owned healthStatus function. No tools or Markdown."),
