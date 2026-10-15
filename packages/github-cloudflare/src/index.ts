@@ -107,7 +107,7 @@ const isGitHubRun = (
 ): parameters is GitHubWorkflowParameters => parameters.trigger === "github"
 
 export const workflowEntrypoint = <A>(
-  workflow: CI.Workflow<A>,
+  workflow: CI.Workflow<A> | ((environment: Environment, parameters: WorkflowParameters) => CI.Workflow<A>),
   options: WorkflowEntrypointOptions = {},
 ) => class GitHubCloudflareWorkflow extends WorkflowEntrypoint<
   Environment,
@@ -117,6 +117,8 @@ export const workflowEntrypoint = <A>(
     event: Readonly<WorkflowEvent<WorkflowParameters>>,
     step: WorkflowStep,
   ) {
+    // Factories are trusted host code, never source uploaded by a remote caller.
+    const definition = typeof workflow === "function" ? workflow(this.env, event.payload) : workflow
     const binding = this.env.Workspace ??
       (this.ctx.exports as unknown as {
         readonly WorkspaceContainer?: DurableObjectNamespace
@@ -222,7 +224,7 @@ export const workflowEntrypoint = <A>(
     }
 
     try {
-      const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(workflow, {
+      const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(definition, {
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
             card.setReviewUrl(url)
@@ -264,7 +266,7 @@ export const workflowEntrypoint = <A>(
           ? { checkCache: options.checkCache(this.env, { runner }) }
           : {}),
         workspacePersistence: runner.persistence,
-      }), { workflow: workflow.id, instance: event.instanceId }, this.env))
+      }), { workflow: definition.id, instance: event.instanceId }, this.env))
 
       return result.plan
     } catch (error) {

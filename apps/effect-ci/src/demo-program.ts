@@ -1,6 +1,14 @@
 import * as CI from "@effect-ci-testbed/ci";
 import manifest from "../../../examples/demo/package.json" with { type: "json" };
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
+import * as Effect from "effect/Effect";
+import {
+  demoAssetNames,
+  demoAssets,
+  demoSite,
+  demoSiteUrl,
+  type DemoAssets,
+} from "@effect-ci-testbed/cloudflare/demo-site";
 
 /** Host-selected manifest data; no project module executes inside the host. */
 const inferred = CI.fromPackageJson(manifest);
@@ -21,11 +29,44 @@ const verifyBuild = CI.action(
       return yield* workspace.exec("node .cloudflare/ci/verify-build.ts");
     },
 );
-export const demoProgram = {
-  ...inferred,
-  workflow: CI.workflow(manifest.name, function* () {
-    yield* syntax();
-    yield* inferred.workflow.effect;
-    return yield* verifyBuild();
-  }),
-};
+export function makeDemoProgram(publisher?: {
+  revision: string;
+  publish: (assets: DemoAssets) => Promise<{ revision: string; digest: string; url: string }>;
+}) {
+  const publish = CI.action<{ revision: string; digest: string; url: string }>(
+    "publish site",
+    function* () {
+      const workspace = yield* verifyBuild();
+      return function* () {
+        const assets = {} as DemoAssets;
+        for (const name of demoAssetNames) {
+          const value = yield* workspace.readFile(`dist/${name}`);
+          if (value === undefined) return yield* Effect.fail(Error("Missing built asset"));
+          assets[name] = value;
+        }
+        const bounded = demoAssets(assets);
+        return yield* Effect.tryPromise(async () => {
+          const expected = await demoSite(publisher!.revision, bounded);
+          const receipt = await publisher!.publish(bounded);
+          if (
+            receipt.revision !== expected.revision ||
+            receipt.digest !== expected.digest ||
+            receipt.url !== demoSiteUrl(expected)
+          )
+            throw Error("Publication identity mismatch");
+          return { revision: receipt.revision, digest: receipt.digest, url: receipt.url };
+        });
+      };
+    },
+    { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
+  );
+  return {
+    ...inferred,
+    workflow: CI.workflow(manifest.name, function* () {
+      yield* syntax();
+      yield* inferred.workflow.effect;
+      return publisher ? yield* publish() : yield* verifyBuild();
+    }),
+  };
+}
+export const demoProgram = makeDemoProgram();

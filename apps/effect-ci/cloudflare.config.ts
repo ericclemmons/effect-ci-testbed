@@ -45,7 +45,14 @@ export default defineConfig({
       }),
     },
     env: {
-      INCIDENT_EVIDENCE: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "IncidentProposalEvidence" }),
+      DEMO_SITE: bindings.worker({
+        worker: "effect-ci-demo-site",
+        exportName: "DemoSitePublisher",
+      }),
+      INCIDENT_EVIDENCE: bindings.worker({
+        worker: "effect-ci-repair-agent",
+        exportName: "IncidentProposalEvidence",
+      }),
       REPAIR_EVIDENCE: bindings.worker({
         worker: "effect-ci-repair-agent",
         exportName: "RecordedProposalEvidence",
