@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { prepareCandidate, type CandidateRecord } from "./candidate.ts";
+import { prepareCandidate, reconcileCandidate, type CandidateRecord } from "./candidate.ts";
 import { demoSite, demoSiteUrl } from "@effect-ci-testbed/cloudflare/demo-site";
 import {
   demoCandidateModule,
@@ -80,7 +80,8 @@ test("owned public bytes -> one fixed-target version upload, readback, unchanged
       success: true,
       result: {
         id: version,
-        metadata: { annotations: metadata.annotations },
+        metadata: { source: "api" },
+        annotations: metadata.annotations,
         resources: { bindings: metadata.bindings },
       },
     });
@@ -115,6 +116,70 @@ test("owned public bytes -> one fixed-target version upload, readback, unchanged
     /reconciliation/,
   );
   assert.equal(posts, 1);
+  // The real native upload returned annotations at the top level, not in metadata.
+  // Reconcile its pending claim using GETs only; neither claim nor upload may run.
+  record = {
+    revision,
+    digest: site.digest,
+    moduleDigest: receipt.moduleDigest,
+    policy: receipt.policy,
+    status: "pending",
+  };
+  const readOnly: typeof fetch = async (input, init) => {
+    assert.notEqual(init?.method, "POST", "reconciliation must never upload or deploy");
+    return transport(input, init);
+  };
+  const mismatch: typeof fetch = async (input, init) => {
+    const response = await readOnly(input, init);
+    if (!String(input).endsWith("/versions/" + version)) return response;
+    const data: any = await response.json();
+    data.result.annotations["workers/commit_sha"] = "b".repeat(40);
+    return Response.json(data);
+  };
+  await assert.rejects(
+    reconcileCandidate(store, revision, site.digest, version, () => "fake-owned-token", mismatch),
+    /identity mismatch/,
+  );
+  assert.equal(record!.status, "pending");
+  assert.deepEqual(
+    await reconcileCandidate(
+      store,
+      revision,
+      site.digest,
+      version,
+      () => "fake-owned-token",
+      readOnly,
+    ),
+    receipt,
+  );
+  assert.equal(record!.status, "complete");
+  assert.equal(posts, 1);
+  assert.deepEqual(
+    await reconcileCandidate(
+      store,
+      revision,
+      site.digest,
+      version,
+      () => {
+        throw Error("No token on completed replay");
+      },
+      async () => {
+        throw Error("No reads on completed replay");
+      },
+    ),
+    receipt,
+  );
+  await assert.rejects(
+    reconcileCandidate(
+      store,
+      revision,
+      site.digest,
+      "44444444-4444-4444-8444-444444444444",
+      () => "",
+      readOnly,
+    ),
+    /version conflict/,
+  );
 });
 test("ambiguous upload retains pending; second request cannot allocate another version", async () => {
   let record: CandidateRecord | undefined,

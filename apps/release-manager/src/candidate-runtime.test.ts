@@ -33,10 +33,10 @@ test(
   if(new Headers(init.headers).get('authorization')!=='Bearer fake-token')throw Error('Wrong token');
   if(url.includes('/deployments')){if(init.method==='POST')throw Error('Must never deploy');return Response.json({success:true,result:{deployments:[{id:'22222222-2222-4222-8222-222222222222',versions:[{version_id:'33333333-3333-4333-8333-333333333333',percentage:100}]}]}});}
   if(init.method==='POST'){posts++;metadata=JSON.parse(await init.body.get('metadata').text());return Response.json({success:true,result:{id:'11111111-1111-4111-8111-111111111111'}});}
-  return Response.json({success:true,result:{id:'11111111-1111-4111-8111-111111111111',metadata:{annotations:metadata.annotations},resources:{bindings:metadata.bindings}}});
+  return Response.json({success:true,result:{id:'11111111-1111-4111-8111-111111111111',metadata:{source:'api'},annotations:metadata.annotations,resources:{bindings:metadata.bindings}}});
  };
- export class Journal extends ReleaseJournalObject{async seed(){await this.ctx.storage.put('release',{status:'active'});}async inspect(){return {index:await this.ctx.storage.get('candidate-index-v1'),record:await this.ctx.storage.get('candidate:${revision}'),posts};}}
- export default{async fetch(request,env){const p=await request.json();const j=env.JOURNAL.getByName(RELEASE_SCRIPT);try{if(p.op==='seed'){await j.seed();return Response.json({ok:true});}if(p.op==='inspect')return Response.json(await j.inspect());return Response.json(await j.prepareCandidate(p.revision,p.digest));}catch(e){return Response.json({error:e.message},{status:422});}}};
+ export class Journal extends ReleaseJournalObject{async pending(){const r=await this.ctx.storage.get('candidate:${revision}');await this.ctx.storage.put('candidate:${revision}',{...r,status:'pending',receipt:undefined});}async seed(){await this.ctx.storage.put('release',{status:'active'});}async inspect(){return {index:await this.ctx.storage.get('candidate-index-v1'),record:await this.ctx.storage.get('candidate:${revision}'),posts};}}
+ export default{async fetch(request,env){const p=await request.json();const j=env.JOURNAL.getByName(RELEASE_SCRIPT);try{if(p.op==='pending'){await j.pending();return Response.json({ok:true});}if(p.op==='reconcile')return Response.json(await j.reconcileCandidate(p.revision,p.digest,'11111111-1111-4111-8111-111111111111'));if(p.op==='seed'){await j.seed();return Response.json({ok:true});}if(p.op==='inspect')return Response.json(await j.inspect());return Response.json(await j.prepareCandidate(p.revision,p.digest));}catch(e){return Response.json({error:e.message},{status:422});}}};
  `,
       },
       bundle: true,
@@ -75,6 +75,16 @@ test(
       let state = await (await call({ op: "inspect" })).json();
       assert.equal(state.posts, 1);
       assert.deepEqual(state.index, [revision]);
+      assert.equal(state.record.status, "complete");
+      await call({ op: "pending" });
+      assert.equal(
+        (await call({ revision, digest: site.digest })).status,
+        422,
+        "pending prepare must hold",
+      );
+      assert.equal((await call({ op: "reconcile", revision, digest: site.digest })).status, 200);
+      state = await (await call({ op: "inspect" })).json();
+      assert.equal(state.posts, 1, "reconciliation must not upload again");
       assert.equal(state.record.status, "complete");
       await runtime.setOptions({ workers: [{ config }] });
       assert.equal((await call({ revision, digest: site.digest })).status, 200);
