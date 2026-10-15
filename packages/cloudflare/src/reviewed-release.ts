@@ -248,6 +248,10 @@ export async function runReviewedRelease(options: {
       await step.do(`vite-release:promote-${phase}`, once, async () =>
         view(await broker.promote(owner, phase)),
       );
+      // Control-plane readback is not a data-plane readiness signal. Give the
+      // allocation a fixed bounded settling interval, then measure ONE cohort.
+      // This does not turn missing attribution into approval or retry a write.
+      await step.sleep(`vite-release:settle-${phase}`, "10 seconds");
       const start = await step.do(`vite-release:start-${phase}`, once, async () =>
         Math.max(baseline.to + 1, history.at(-1)?.candidate.to ?? 0, Date.now()),
       );
