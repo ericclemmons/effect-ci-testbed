@@ -8,6 +8,7 @@ import * as Exit from "effect/Exit"
 import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
+export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
 
 export type WorkflowDuration =
   | number

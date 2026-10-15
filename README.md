@@ -32,6 +32,10 @@ Use a package-manager declaration or lockfile so installation can be resolved.
 Human terminals default to text; detected direct agents default to JSON.
 Detection uses `@vercel/detect-agent`, including the `AI_AGENT` convention; no
 agent flag is needed. Explicit `--format` remains available as an override.
+Local JSON command failures retain bounded stdout/stderr from the same attempt.
+Updated native hosts also preserve both streams across failed checkpoints;
+remote JSON exposes them at `error.details.diagnostics`, with explicit truncation.
+These diagnostics do not retry a command or authorize execution/reuse.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the

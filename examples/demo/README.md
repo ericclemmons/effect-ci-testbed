@@ -161,7 +161,16 @@ not trust, permissions, execution location, or whether a check passed.
 Local command failures include `error.details.output.stdout` and `.stderr` from
 that same attempt. Each retains its last 32K characters; `truncated` explicitly
 marks clipping. No text-mode rerun is needed. Adapters with an existing combined
-diagnostic expose it as `output.text`; remote native history remains separate.
+diagnostic expose it as `output.text`.
+
+With the updated native host, remote failures include
+`error.details.diagnostics`: step, command, directory, exit code and both output
+tails. Native tails are at most8K characters per stream and may shrink further
+to keep the entire error transport within32KiB UTF-8; `truncated` marks either
+limit. The failed checkpoint still throws and configured retries are unchanged.
+See [verification boundaries](verification/README.md#native-command-diagnostics)
+for the currently tested environment; older deployed hosts may have only a
+combined error message, not invented separate streams.
 
 ## 4. Reuse task output, then invalidate it
 

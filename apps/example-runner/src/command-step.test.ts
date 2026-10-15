@@ -106,3 +106,24 @@ test("exhausted retries preserve the final command failure", async () => {
   }), (error) => error instanceof CI.CommandError && error.exitCode === 7 && error.details === "failure 3")
   assert.equal(attempts, 3)
 })
+
+test("native error serialization preserves BOTH bounded output streams without rerunning", async () => {
+  let executions = 0
+  const step = {
+    async do(_name: string, options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+      assert.equal(options.retries?.limit, 0)
+      try { return await callback() }
+      catch (error) { throw new Error((error as Error).message) } // Native message-only boundary.
+    },
+  } as unknown as Pick<WorkflowStep, "do">
+  await assert.rejects(executeCommandStep(step, { ...request, options: {} }, async () => {
+    executions++
+    return { exitCode: 7, stdout: "compiler context\n", stderr: "missing export\n" }
+  }), error => {
+    assert.ok(error instanceof CI.CommandError)
+    assert.equal(error.exitCode, 7)
+    assert.deepEqual(error.output, { stdout: "compiler context\n", stderr: "missing export\n", truncated: false })
+    return true
+  })
+  assert.equal(executions, 1)
+})

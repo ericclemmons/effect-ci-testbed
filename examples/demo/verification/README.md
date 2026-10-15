@@ -95,6 +95,33 @@ This is an explicit read-only network check; normal unit tests do not fetch medi
 or dispatch CI. Missing/replaced media and source drift fail verification rather
 than silently refreshing the proof. It does not recertify playback or privacy.
 
+## Native command diagnostics
+
+The diagnostics implementation has actual LOCAL workerd Workflow tests for both
+command and policy-bearing action checkpoints. A test-only outer catcher exposes
+the failed checkpoint error for inspection; production CI does not catch it into
+a successful Workflow. Both output streams and exit7 survive message-only error
+serialization with one command execution. Pure retry, rollback and timeout
+regressions remain separate. The actual CLI also consumes a fake authenticated
+remote NDJSON stream and emits one JSON diagnostic for duplicated step/terminal
+errors, without a second dispatch or text-mode rerun.
+
+The versioned transport includes only known command metadata and bounded output,
+never arbitrary host causes. Its total UTF-8 error message is limited to32KiB;
+streams are tail-clipped, initially at8K characters each, and carry an explicit
+truncation flag. Malformed, oversized, context-mismatched and unknown frames are
+not promoted to structured command evidence. Output is descriptive untrusted data,
+not a command to execute, check-cache proof, retry permission or release approval.
+
+This local composition is not yet a fresh deployed command-failure/remote-CLI
+acceptance. Do not replay old native failures, upload an old candidate or reset a
+public incident to claim that missing proof.
+
+```sh
+node --test packages/ci/src/command-diagnostics.test.ts packages/cli/src/remote-diagnostics.test.ts
+node --test packages/cli/src/remote-cli.test.ts apps/example-runner/src/command-diagnostics-runtime.test.ts
+```
+
 Use the [proof-page contract](../../PROOF-PAGES.md) for exact revision/environment,
 assertions, video/transcript, outcome and cold/warm timings. See the
 [coverage matrix](../../../README.md#recipes-by-feature) for current backend support.

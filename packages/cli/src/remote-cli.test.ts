@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
+import { encodeCommandDiagnostics } from "../../ci/src/command-diagnostics.ts"
 
 test("remote CLI authenticates dispatch and tails logs; dirty input cannot silently become HEAD", async () => {
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-remote-"))
@@ -16,6 +17,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let disconnectOnce = false
   let resumed = 0
   let failWorkflow = false
+  let diagnosticFailure = false
   let routePrefix = ""
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
@@ -58,6 +60,13 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
           response.write(JSON.stringify({ eventId: 1, type: "workflow_errored", error: { message: "fixture failure" } }) + "\n")
           return
         }
+        if (diagnosticFailure) {
+          const message = encodeCommandDiagnostics({ version: 1, stepId: "compile", command: "node check.mjs", cwd: "/workspace", exitCode: 7,
+            output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } })!
+          response.write(JSON.stringify({ eventId: 1, type: "step_errored", stepName: 'action:"compile"', error: { message } }) + "\n")
+          response.write(JSON.stringify({ eventId: 2, type: "workflow_errored", error: { message } }) + "\n")
+          return
+        }
         response.write(JSON.stringify({ eventId: 1, type: "step_completed", stepName: "lint", output: JSON.stringify({ stdout: "lint passed" }) }) + "\n")
         if (disconnectOnce) {
           disconnectOnce = false
@@ -68,8 +77,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
+    const run = (userToken = "", explicit = true, format = "text") => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [bin, "run", "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
         env: { ...process.env, EFFECT_CI_REMOTE_URL: origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
@@ -96,6 +105,15 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(failed.code, 1)
     assert.match(failed.output, /Workflow failed: fixture failure/)
     failWorkflow = false
+    diagnosticFailure = true
+    const agentFailure = await run("fixture-user-token", true, "json")
+    assert.equal(agentFailure.code, 1, agentFailure.output)
+    const envelope = JSON.parse(agentFailure.output)
+    assert.equal(envelope.error.code, "CI_WORKFLOW_FAILED")
+    assert.deepEqual(envelope.error.details.diagnostics, [{ stepId: "compile", command: "node check.mjs", cwd: "/workspace", exitCode: 7,
+      output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } }])
+    assert.doesNotMatch(envelope.error.message, /effect-ci-command-error-v1/)
+    diagnosticFailure = false
     // Removing the only workflow proves root dispatch does not import a local program.
     execFileSync("git", ["rm", "ci.ts"], { cwd: directory })
     execFileSync("git", ["commit", "-qm", "hosted-only checkout"], { cwd: directory })
@@ -110,7 +128,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 6)
+    assert.equal(dispatches, 7)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

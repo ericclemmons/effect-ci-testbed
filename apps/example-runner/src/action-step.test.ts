@@ -2,9 +2,32 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import * as Cause from "effect/Cause"
+import * as Exit from "effect/Exit"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts"
 import rollbackWorkflow from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
+
+test("failed action checkpoint stays failed while restoring both command streams", async () => {
+  let calls = 0, failed = 0
+  const step = { async do(_name: string, options: WorkflowStepConfig, callback: (context: { attempt: number }) => Promise<unknown>) {
+    assert.equal(options.retries?.limit, 0)
+    try { return await callback({ attempt: 1 }) }
+    catch (error) { failed++; throw new Error((error as Error).message) }
+  } } as unknown as Pick<WorkflowStep, "do">
+  const output = { stdout: "compiler context\n", stderr: "missing export\n", truncated: false }
+  const executor = makeActionExecutor(step, new Set())
+  const exit = await Effect.runPromiseExit(executor.execute({ stepId: "compile", options: {}, run: () => {
+    calls++
+    return Effect.fail(new CI.CommandError("compile", "node check.mjs", "/workspace", 7, output.stderr, output))
+  } }) as Effect.Effect<CI.ActionExecutionResult, unknown>)
+  assert.equal(Exit.isFailure(exit), true)
+  if (Exit.isFailure(exit)) {
+    const error = Cause.squash(exit.cause)
+    assert.ok(error instanceof CI.CommandError); assert.deepEqual(error.output, output)
+  }
+  assert.equal(calls, 1); assert.equal(failed, 1)
+})
 
 const native = () => {
   const cache = new Map<string, unknown>()

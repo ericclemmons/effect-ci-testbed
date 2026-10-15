@@ -9,6 +9,7 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
+import { commandFailure } from "./command-error.ts"
 import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
@@ -687,7 +688,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             { command, ...(commandIndex === undefined ? {} : { commandIndex }), stepId, workspace, options: stepOptions },
             execute,
           )
-          if (result.exitCode !== 0) throw new CI.CommandError(stepId, command, workspace.cwd, result.exitCode, result.stderr || result.stdout)
+          if (result.exitCode !== 0) throw commandFailure({ stepId, command, workspace }, result)
 
           if (result.stdout) onOutput("stdout", result.stdout)
           if (result.stderr) onOutput("stderr", result.stderr)
