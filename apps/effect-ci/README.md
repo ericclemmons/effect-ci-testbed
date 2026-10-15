@@ -1091,21 +1091,25 @@ cross-run transport for this host. No new provider or inference cost is involved
 Docker, container, snapshot/storage and GitHub API costs remain ordinary runtime
 costs.
 
-**Actual native acceptance, October 15:** all three runs used source
+**Actual native acceptance, October 15:** all seven runs used source
 `b22f6cfc30b7feb480cb25e30a86576a431276cb`. The signed hit and signature negative
 used host source `a90da85175a66931379e4e5ff5836ef3b54b2490`, App version
 `b189f522-7836-4115-b1e7-efa1ecb1fdb7`, and the unchanged immutable Linux image.
 
-| Evidence              | Native instance                        | Syntax   | Actual commands | Total wall time |
-| --------------------- | -------------------------------------- | -------- | --------------- | --------------- |
-| Missing               | `fc3d18a9-cf20-479a-a7c0-c5d67a913443` | Executed | 8               | 95.601 s        |
-| Valid signature       | `ce9f3370-2e68-43f4-9a30-7e92b89903cb` | Verified | 7               | 72.118 s        |
-| Signature-only tamper | `56b4f5c0-eefe-4d8a-adfe-728662c767eb` | Executed | 8               | 84.143 s        |
+| Evidence                       | Native instance                        | Syntax   | Actual commands | Total wall time |
+| ------------------------------ | -------------------------------------- | -------- | --------------- | --------------- |
+| Missing                        | `fc3d18a9-cf20-479a-a7c0-c5d67a913443` | Executed | 8               | 95.601 s        |
+| Valid signature                | `ce9f3370-2e68-43f4-9a30-7e92b89903cb` | Verified | 7               | 72.118 s        |
+| Signature-only tamper          | `56b4f5c0-eefe-4d8a-adfe-728662c767eb` | Executed | 8               | 84.143 s        |
+| Wrong commit in note           | `ceeff4ab-0810-45a3-940f-34dd2dcd19e9` | Executed | 8               | 84.575 s        |
+| Prepared-input digest mismatch | `3bd07a31-e01a-4479-bc33-b269b0f4ad0a` | Executed | 8               | 82.737 s        |
+| Policy digest mismatch         | `b9f855ba-d484-45b8-8353-7536d001031c` | Executed | 8               | 80.837 s        |
+| Unknown key identifier         | `e1888545-1b8c-4e0b-8a17-4c781d0d19b9` | Executed | 8               | 70.825 s        |
 
 All eight nodes completed or were verified, and every actual command ran once
 with zero retries. The inspector executes in every run; the pure parser is the
 only omitted command on a hit. All six ordinary package commands execute in all
-three cases. Signed and invalid-note reads each returned four HTTP 200s; the
+seven cases. Signed and invalid-note reads each returned four HTTP 200s; the
 negative's reason was signature rejection, not a network miss. The host's token
 was revoked before its accepted verification checkpoint completed. Full private
 CLI streams preserve complete command outputs; native history previews can be
@@ -1118,7 +1122,7 @@ LIVE_DEMO_SIGNED_CHECKS=1 CF_BIN="$(pwd)/node_modules/.bin/cf" \
   node --test src/live-demo-signed-check.test.ts
 ```
 
-This reads the three existing histories only: no dispatch, signing, note push,
+This reads the seven existing histories only: no dispatch, signing, note push,
 model call, source write or deployment. The original valid note was restored by
 an ordinary descendant notes commit after the signature negative; no history was
 force-pushed or deleted.
@@ -1133,11 +1137,19 @@ exposed and its requested authority was only public-testbed Contents read. The
 independent local diagnostic token was revoked, and the accepted native runs
 complete the helper's `finally` revocation before returning a verdict.
 
-This establishes native execute/valid-reuse/invalid-signature fallback for the
+The four additional negatives changed exactly one field in the owned proof:
+commit, prepared-input digest, policy digest or key identifier. Each had the
+same actual prepared source, command and toolchain, four authenticated HTTP 200
+reads, rejected reuse, and successful ordinary execution. The original valid
+note was restored after every experiment, through descendant commits and normal
+pushes; no other note was modified. These are proof-field mismatches, not a
+claim that a new source commit or host policy was deployed in those runs.
+
+This establishes native execute/valid-reuse/invalid-proof fallback for the
 enrolled check, not hardware attestation, cross-merge reuse, arbitrary repository
 enrollment, conventional GitHub evidence parity or completion of every #144
-negative cell. Wrong-commit, changed-input/policy and unknown-trust hosted cells
-remain to audit separately; their local verifier tests are not relabelled native.
+negative cell. A fresh source-change run and conventional GitHub composition
+remain separate evidence requirements; local verifier tests are not relabelled native.
 
 ### 5. Run the first Workflow
 
