@@ -27,6 +27,25 @@ occurrence, outbox and spending fences are unchanged. Expired delivery is not
 re-admitted to make this run green. The original event/claim/capture are retained;
 never replay the error or invent a replacement identity for evidence.
 
+The actual private claim was timestamped37ms before the occurrence; authenticated
+capture arrived about29seconds later, inside the unchanged five-minute limit.
+A pure read-only comparison of the ACTUAL retained receipt at its original
+delivery time rejects the old title and accepts the corrected literal with all
+other fences intact. Validation at the current expired time still rejects.
+This comparison never changes a native clock or writes admission/outbox state.
+Post-failure native budget inspection confirmed the exact same five reservations,
+50cents reserved/650cents authorization left and zero new calls. PRs1–3 remain
+open/unmerged; no PR4 or repair deployment was created by this test.
+
+Read-only native regression (ordinary CI skips):
+
+```sh
+LIVE_PUBLIC_INCIDENT_STOP=1 CF_BIN=path/to/installed/cf node --test apps/repair-events/src/live-public-stop.test.ts
+```
+
+It reads the original arming/claim/capture/Issue/occurrence and before/after budget
+histories only. It cannot emit, activate, reset, spend, write a PR or redispatch.
+
 Authenticated inspection now also accepts exact `{mode:"public-source"}` to
 read the SAME fixed private source claim. It cannot admit, dispatch, mutate/reset
 the source or infer, and has no public HTTP endpoint. Use it to investigate native
