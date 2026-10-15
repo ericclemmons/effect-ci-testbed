@@ -120,7 +120,11 @@ export async function publishStaticAssets(journal: Journal, revision: string, to
   if (JSON.stringify(await latest(request)) !== JSON.stringify(before)) throw Error("Static target deployment drift; no traffic write")
   const deploymentMessage = `effect-ci-static:${revision}:${prepared.assetDigest}`
   await journal.intent(revision, "deployment")
-  const deployed = allocation((await request(`${script}/deployments`, "POST", JSON.stringify({ strategy: "percentage", versions: [{ version_id: version, percentage: 100 }], annotations: { "workers/message": deploymentMessage } }))).value, version)
+  await request(`${script}/deployments`, "POST", JSON.stringify({ strategy: "percentage", versions: [{ version_id: version, percentage: 100 }], annotations: { "workers/message": deploymentMessage } }))
+  // A successful write ACK is not the authoritative deployment shape. Keep the
+  // intent pending until a separate read proves the unique version/allocation.
+  // A failed or delayed read is reconciled later, never another POST.
+  const deployed = allocation(await latest(request), version)
   if (deployed.annotations?.["workers/message"] !== deploymentMessage) throw Error("Static deployment acknowledgement identity mismatch")
   await journal.acknowledge(revision, "deployment", deployed.id)
   return { revision, manifestDigest: prepared.manifestDigest, assetDigest: prepared.assetDigest, version, deployment: deployed.id, target: staticAssetsTarget, historicalReplay: false }

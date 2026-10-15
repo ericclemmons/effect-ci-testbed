@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
-import { StaticAssets } from "@effect-ci-testbed/cloudflare/static-assets-service";
+import { StaticAssets, staticAssetHostError } from "@effect-ci-testbed/cloudflare/static-assets-service";
 import { StaticAssetRevisions } from "@effect-ci-testbed/cloudflare/static-assets-journal";
 import { prepareStaticAssets } from "@effect-ci-testbed/cloudflare/static-assets-source";
 import { publishStaticAssets, verifyStaticAssets, reconcileStaticAssets } from "@effect-ci-testbed/cloudflare/static-assets-publish";
@@ -27,20 +27,20 @@ export class StaticAssetsWorkflow extends WorkflowEntrypoint<Environment, unknow
       });
     }
     const result = await CI.runPromise({ ...workflow, effect: workflow.effect.pipe(Effect.provideService(StaticAssets, {
-      capture: () => Effect.tryPromise(() => step.do("source:capture-immutable", policy, async () => {
+      capture: () => Effect.tryPromise({ try: () => step.do("source:capture-immutable", policy, async () => {
         const source = await this.env.SOURCE_READER.read(input.revision);
         if (source.revision !== input.revision) throw Error("Static source reader identity mismatch");
         await prepareStaticAssets(input.revision, source.bytes, source.manifestDigest);
         const r = await storage.put(input.revision, source.manifestDigest, source.bytes);
         if (r.revision !== input.revision || r.manifestDigest !== source.manifestDigest) throw Error("Static source journal identity mismatch");
         return input.revision;
-      })),
-      publish: revision => Effect.tryPromise(() => step.do("assets:upload-and-deploy", policy, async () => {
+      }), catch: staticAssetHostError }),
+      publish: revision => Effect.tryPromise({ try: () => step.do("assets:upload-and-deploy", policy, async () => {
         const r = await publishStaticAssets(storage, revision, credential);
         if (r.revision !== revision || r.target !== "effect-ci-static-assets-demo") throw Error("Static publication receipt mismatch");
         return revision;
-      })),
-      verify: revision => Effect.tryPromise(async () => {
+      }), catch: staticAssetHostError }),
+      verify: revision => Effect.tryPromise({ try: async () => {
         // One fixed convergence interval, not probe-until-green or an API retry.
         await step.sleep("assets:fixed-convergence", "30 seconds");
         return step.do("assets:verify-served-bytes", policy, async () => {
@@ -48,7 +48,7 @@ export class StaticAssetsWorkflow extends WorkflowEntrypoint<Environment, unknow
           return { revision: r.revision, manifestDigest: r.manifestDigest, assetDigest: r.assetDigest,
             version: r.version, deployment: r.deployment, target: r.target, policy: r.policy };
         });
-      }),
+      }, catch: staticAssetHostError }),
     })) }, { ci: true, env: "cloudflare", output: "silent",
       executor: { execute: () => Effect.die(new Error("Static publication has no Container capability")) } });
     return { plan: result.plan, receipt: result.value, containers: 0 };
