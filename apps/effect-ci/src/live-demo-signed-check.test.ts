@@ -22,6 +22,30 @@ const cases = [
     hit: false,
     observed: true,
   },
+  {
+    name: "wrong commit identity executes normally",
+    id: "ceeff4ab-0810-45a3-940f-34dd2dcd19e9",
+    hit: false,
+    observed: true,
+  },
+  {
+    name: "prepared-input digest mismatch executes normally",
+    id: "3bd07a31-e01a-4479-bc33-b269b0f4ad0a",
+    hit: false,
+    observed: true,
+  },
+  {
+    name: "policy digest mismatch executes normally",
+    id: "b9f855ba-d484-45b8-8353-7536d001031c",
+    hit: false,
+    observed: true,
+  },
+  {
+    name: "unknown key identifier executes normally",
+    id: "e1888545-1b8c-4e0b-8a17-4c781d0d19b9",
+    hit: false,
+    observed: true,
+  },
 ] as const;
 
 for (const entry of cases) {

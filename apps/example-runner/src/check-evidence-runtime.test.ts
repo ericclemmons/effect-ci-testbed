@@ -44,7 +44,7 @@ test("actual workerd verifies host-pinned inputs with only a public key", { time
       catch(error){return Response.json({error:error.message},{status:500});}
       if(input.readStoredNote){
         const observation=await readGitHubCheckNote({repository:'example/fixture',request:async(url,init)=>{
-          if(init.method!=='GET'||init.redirect!=='error')throw new Error('Unexpected request');
+          if(init.method!=='GET'||init.redirect!=='manual')throw new Error('Unexpected request');
           return Response.json(env.REPLIES[url.split('/git/')[1]]);
         }},env.EXPECTED.revision);
         const accepted=await verifyHostedCheckEvidence(observation?.text,env.EXPECTED,new Map([['lab-only',publicKey]]));
