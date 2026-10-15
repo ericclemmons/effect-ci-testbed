@@ -7,7 +7,7 @@ import type { StaticAssetRevisions } from "./static-assets-journal.ts"
 const revision = "a".repeat(40), version = "00000000-0000-0000-0000-000000000001", deployment = "00000000-0000-0000-0000-000000000002"
 const oldDeployment = "00000000-0000-0000-0000-000000000003", oldVersion = "00000000-0000-0000-0000-000000000004"
 const token = "private-account-token", uploadJwt = "private-session-token", completionJwt = "private-completion-token"
-async function harness(options: { lost?: string; corrupt?: boolean; foreignBucket?: boolean; drift?: boolean; cached?: boolean } = {}) {
+async function harness(options: { lost?: string; corrupt?: boolean; foreignBucket?: boolean; drift?: boolean; cached?: boolean; minimalDeploymentAck?: boolean } = {}) {
   const bytes = new TextEncoder().encode(JSON.stringify({ version: 1, files: ["app.js", "index.html", "style.css"].map(name => ({ path: "site/" + name, base64: btoa(name), executable: false })) }))
   const manifestDigest = createHash("sha256").update(bytes).digest("hex"), prepared = await prepareStaticAssets(revision, bytes, manifestDigest)
   let claimed = false, pending: string | null = null, complete: any = null, metadata: any = null, active: any = { id: oldDeployment, versions: [{ version_id: oldVersion, percentage: 100 }] }, reads = 0
@@ -67,7 +67,7 @@ async function harness(options: { lost?: string; corrupt?: boolean; foreignBucke
       const body = JSON.parse(String(init.body)); assert.deepEqual(body.versions, [{ version_id: version, percentage: 100 }])
       active = { id: deployment, versions: body.versions, annotations: body.annotations }
       if (options.lost === "deployment") throw Error(token + " response lost")
-      return result(active)
+      return result(options.minimalDeploymentAck ? { id: deployment } : active)
     }
     assert.fail("Unexpected API request")
   }
@@ -115,4 +115,12 @@ test("already-uploaded assets require no redundant upload POST", async () => {
   await publishStaticAssets(h.journal, revision, () => token, h.transport)
   await verifyStaticAssets(h.journal, revision, () => token, h.transport)
   assert.equal(h.calls.filter(c => c.url.includes("/assets/upload?")).length, 0)
+})
+
+test("deployment write acknowledgement is not a full allocation readback", async () => {
+  const h = await harness({ minimalDeploymentAck: true })
+  const result = await publishStaticAssets(h.journal, revision, () => token, h.transport)
+  assert.equal(result.deployment, deployment)
+  assert.equal(h.calls.filter(c => c.url.endsWith("/deployments") && c.method === "POST").length, 1)
+  assert.equal((await verifyStaticAssets(h.journal, revision, () => token, h.transport)).deployment, deployment)
 })

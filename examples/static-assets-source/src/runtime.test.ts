@@ -29,12 +29,12 @@ test("actual local Workflow/SQLite/private RPC composition publishes once with f
       }});
     }}
     const revision='${"a".repeat(40)}',version='00000000-0000-0000-0000-000000000001',deployment='00000000-0000-0000-0000-000000000002';
-    let reads=0,writes=0,metadata,moduleText,served={},identity,active={id:'00000000-0000-0000-0000-000000000003',versions:[{version_id:'00000000-0000-0000-0000-000000000004',percentage:100}]};
+    let rejectApi=false,reads=0,writes=0,metadata,moduleText,served={},identity,active={id:'00000000-0000-0000-0000-000000000003',versions:[{version_id:'00000000-0000-0000-0000-000000000004',percentage:100}]};
     export class SourceReader extends WorkerEntrypoint{async read(rev){
-      if(rev!==revision)throw Error('Foreign source');reads++;
+      if(![revision,'${"c".repeat(40)}'].includes(rev))throw Error('Foreign source');reads++;
       const bytes=new TextEncoder().encode(JSON.stringify({version:1,files:['app.js','index.html','style.css'].map(name=>({path:'site/'+name,base64:btoa(name),executable:false}))}));
       const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
-      return {revision,manifestDigest:digest,bytes};
+      return {revision:rev,manifestDigest:digest,bytes};
     }}
     globalThis.fetch=async(input,init={})=>{
       const url=String(input),method=init.method??'GET',auth=new Headers(init.headers).get('authorization');
@@ -46,6 +46,7 @@ test("actual local Workflow/SQLite/private RPC composition publishes once with f
       }
       if(method==='POST')writes++;
       if(url.endsWith('/assets-upload-session')){
+        if(rejectApi)return new Response('private reflected fake-private-token',{status:403});
         if(auth!=='Bearer fake-private-token')throw Error('Wrong account credential');
         const manifest=JSON.parse(init.body).manifest;return result({jwt:'fake-session',buckets:[Object.values(manifest).map(v=>v.hash)]});
       }
@@ -66,6 +67,7 @@ test("actual local Workflow/SQLite/private RPC composition publishes once with f
       throw Error('Unexpected test request');
     };
     export default class extends WorkerEntrypoint{async fetch(request){const p=await request.json();
+      if(p.mode==='reject-api'){rejectApi=true;return Response.json({configured:true});}
       if(p.mode==='start'){await this.ctx.exports.StaticAssetsWorkflow.create({id:p.id,params:p.params});return Response.json({started:true});}
       if(p.mode==='status')return Response.json(await(await this.ctx.exports.StaticAssetsWorkflow.get(p.id)).status());
       return Response.json({reads,writes,active,moduleHasCredential:!!moduleText&&moduleText.includes('fake-private-token')});
@@ -97,6 +99,11 @@ test("actual local Workflow/SQLite/private RPC composition publishes once with f
     assert.equal((await call({ mode: "stats" })).writes, 4);
     const invalid = await run("invalid", { revision, mode: "publish", target: "foreign" });
     assert.equal(invalid.status, "errored"); assert.equal((await call({ mode: "stats" })).reads, 1);
+    await call({ mode: "reject-api" });
+    const rejected = await run("api-rejected", { revision: "c".repeat(40), mode: "publish" });
+    assert.equal(rejected.status, "errored");
+    assert.match(rejected.error.message, /Static Assets API unavailable \(HTTP 403\)/);
+    assert.doesNotMatch(rejected.error.message, /UnknownError|fake-private-token|reflected/);
   } finally { await runtime.dispose(); }
 });
 
