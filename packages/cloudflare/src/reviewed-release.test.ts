@@ -53,7 +53,7 @@ function harness() {
   );
   const names: string[] = [];
   const step = {
-    sleep: async (name: string, duration: string) => { names.push(name); assert.equal(duration, "10 seconds"); },
+    sleep: async (name: string, duration: string) => { names.push(name); assert.equal(duration, "2 minutes"); },
     do: async (name: string, config: any, body: () => Promise<any>) => {
       names.push(name);
       assert.equal(config.retries.limit, 0);
@@ -124,7 +124,7 @@ test("phase observation waits for a bounded data-plane settling interval, withou
   let settled = false, waits = 0;
   const promote = h.broker.promote;
   h.broker.promote = async (owner, percentage) => { settled = false; return promote(owner, percentage); };
-  h.step.sleep = async (_name, duration) => { assert.equal(duration, "10 seconds"); settled = true; waits++; };
+  h.step.sleep = async (_name, duration) => { assert.equal(duration, "2 minutes"); settled = true; waits++; };
   const result = await runReviewedRelease({
     owner: "settling-demo", candidate, broker: h.broker, step: h.step,
     probe: async (identity, allowed) => identity.endsWith("baseline") || settled

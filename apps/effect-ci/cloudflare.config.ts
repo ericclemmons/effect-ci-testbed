@@ -21,6 +21,7 @@ export default defineConfig({
     exports: {
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       DemoCandidateRecoveryWorkflow: exports.workflow({ name: "effect-ci-demo-candidate-recovery" }),
+      DemoRoutingDiagnosticWorkflow: exports.workflow({ name: "effect-ci-demo-routing-diagnostic" }),
       GitCheckoutOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),
