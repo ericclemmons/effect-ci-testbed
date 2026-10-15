@@ -149,6 +149,50 @@ not prove native traffic promotion, native graphs or real human approval.
 
 ## Activation, permissions and cleanup
 
+### Bounded routing diagnostic (private operator only)
+
+`DemoRoutingDiagnosticWorkflow` / `effect-ci-demo-routing-diagnostic` is a
+separate private native history, not a retry of any failed build. Its sole exact
+payload is `{ "mode": "observe-fixed-candidate" }`; extra fields, accessors and
+caller-selected identities are rejected. Host source pins the already-completed
+`cedd7e6` candidate `454d68b9-f3cb-4ffd-9dd7-6d8d8a6cca58` and full receipt.
+It revalidates that receipt, captures the existing baseline, acquires the normal
+broker lease, promotes only to 10%, and always restores the full prior allocation.
+It never uploads, builds, approves or commits a release, and does not alter the
+original recovery Workflow's strict `reconcile-original` contract.
+
+Three fixed observations at scheduled 0/30/120 seconds each issue exactly 100
+unkeyed and 100 keyed requests, preceded by 100 baseline requests: 700 total,
+under the host's default subrequest allowance with broker headroom. Actual start
+and end timestamps are retained; cohort/API latency extends the schedule.
+No outcome selects another cohort, sleep, key or traffic write. Same-phase broker
+readbacks enforce ownership without rewriting the allocation. Every action has
+zero retries; the broker recovery lease remains independent.
+
+Reproduce the local fake-service contract:
+
+```sh
+node --test apps/effect-ci/src/demo-routing-diagnostic.test.ts apps/effect-ci/src/demo-routing-diagnostic-runtime.test.ts
+```
+
+After a merged host build/deploy and fresh idle-controller/allocation/security
+preflight, the authenticated operator may create ONE uniquely named instance:
+
+```sh
+cf workflows instances create effect-ci-demo-routing-diagnostic \
+  --body '{"instance_id":"YOUR-NEW-DIAGNOSTIC-ID","params":{"mode":"observe-fixed-candidate"}}'
+```
+
+Preserve a private create-only intent first, then inspect the same instance and
+untruncated step outputs; do not repeat creation or overwrite historical receipts.
+This adds one Workflow resource on the existing App and reuses its existing
+private broker binding/token scope—no public route, credential, account permission,
+Slack message or inference. Ordinary Workflow/700 health-request costs apply.
+To disable new diagnostic starts, remove this export/configuration in a verified
+deployment after the owner restores baseline; never delete its histories or
+journal to simulate cleanup. This diagnostic has local fake-service proof only
+until its native receipt is independently verified.
+
 The owned test gate was explicitly authorized by Eric for browser-delegated
 approvals. Activation requires an explicit host source change, merged build,
 fresh current-resource/security/review preflight and one guarded deployment; do
