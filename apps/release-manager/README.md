@@ -21,10 +21,10 @@ the checked-in template, shell arguments or personal OAuth/refresh credentials.
 The controller binds the deployed Worker as `RELEASE_MANAGER`, then calls:
 
 ```ts
-await env.RELEASE_MANAGER.begin(instanceId, candidateVersion)
-await env.RELEASE_MANAGER.promote(instanceId, 10)
+await env.RELEASE_MANAGER.begin(instanceId, candidateVersion);
+await env.RELEASE_MANAGER.promote(instanceId, 10);
 // Controller obtains complete, version/window-bound health evidence before advancing.
-await env.RELEASE_MANAGER.promote(instanceId, 25)
+await env.RELEASE_MANAGER.promote(instanceId, 25);
 // ... 75%, 100%, final health gate, then complete(instanceId).
 // On regression or exhausted uncertainty: rollback(instanceId).
 ```
@@ -52,6 +52,66 @@ Legacy active journals without a deadline still require operator recovery.
 This is the mutation boundary, **not** the HMD controller. Health decisions,
 telemetry completeness, immutable observation history and live confidence charts
 remain controller responsibilities.
+
+## Prepare the actual checked Vite build as a candidate
+
+The existing private broker now also accepts
+`prepareCandidate(fullRevision, assetDigest)` from its already-authorized host
+binding. Account and target remain fixed to the same `effect-ci-hmd-demo` Worker.
+No new repository-selected URL, script/module, token, deployment target, binding,
+or caller pool is accepted. The operator's existing Workers Scripts Edit authority
+is used for **version upload only**, not traffic promotion.
+
+The broker independently GETs exactly the three public assets from the owned
+immutable demo origin, with redirects denied, strict UTF-8/size limits, response
+identity and recomputed byte-digest checks. It generates a credential-free release
+pointer Worker: `/health` returns its actual version plus build identity, and `/`
+redirects to the unchanged immutable Vite build. This avoids mixing HTML/JavaScript
+from different Worker versions during percentage routing. It is not a second build,
+Workers Static Assets upload, or project JavaScript executing inside this broker.
+
+A separate create-only candidate record is persisted in the SAME singleton SQLite
+object **before** the version-upload POST. Existing release journals, owners,
+alarms and historical receipts are not reset. Active/pending release ownership
+blocks preparation. The candidate index has a32-revision lifetime capacity, with
+no eviction or reset endpoint. A completed identical identity replays its receipt
+without network/token access; changed policy/bytes, corrupt, failed or pending
+identities fail closed. Uncertain uploads are never automatically retried; inspect
+the original commit/digest/module hash and version annotations instead of inventing
+a new identity. A validated upload acknowledgement is followed by an independent
+version GET and unchanged active-allocation readback before completion.
+
+```sh
+# From the repository root:
+pnpm install --frozen-lockfile
+node --test apps/release-manager/src/*.test.ts packages/cloudflare/src/demo-candidate.test.ts
+pnpm --filter @effect-ci-testbed/release-manager check
+cd apps/release-manager
+cf build
+# Inspect current private broker configuration and absence of active reviews first.
+# Reuse its EXISTING secret binding; do not generate/print/upload a new token:
+cf deploy --prebuilt
+cd ../effect-ci
+cf build
+# Preserve all current bindings, secrets, Access and existing Workflow/DO state:
+cf deploy --prebuilt
+cd ../../examples/demo
+cf-ci run --remote
+```
+
+The enrolled demo adds `prepare release` after its actual build/verification/site
+publication. Both external-effect actions are durable, zero-retry and bounded-time;
+only the private broker owns `HMD_DEPLOY_TOKEN`. Version/Worker requests, build
+containers, and storage remain metered; no inference is used. This does **not**
+begin a release, shift traffic, create a human-review window, call Progress, or
+declare health/commit. Those require the separate real rollout/controller flow.
+Cleanup: remove the host's candidate-preparation call to stop new uploads, retaining
+all candidate/release records and versions; deleting them needs a deliberate
+operator decision. Never clean old candidates to manufacture another retry.
+
+Tests include real local workerd/RPC/SQLite concurrent claim/reload with a FAKE
+Cloudflare API, upload readback and lost-ack pending denial. They are not native
+candidate upload or rollout evidence. Record native acceptance separately.
 
 ## Verified execution
 
