@@ -19,6 +19,7 @@ export default defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       GitCheckoutOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),

@@ -804,17 +804,17 @@ For an organization-owned App, use the organization's **Developer settings** ins
 
 Configure:
 
-| Field | Value |
-| --- | --- |
-| GitHub App name | A unique name such as `Eric's Effect CI` |
-| Homepage URL | `$EFFECT_CI_PUBLIC_URL` |
-| Webhook URL | `$EFFECT_CI_PUBLIC_URL/webhooks/github` |
-| Webhook secret | A new high-entropy value; save it for the next step |
-| SSL verification | Enabled |
-| Checks permission | Read and write |
-| Contents permission | Read-only |
-| Subscribe to events | Check suite |
-| Where can this App be installed? | Only on this account for this prototype |
+| Field                            | Value                                               |
+| -------------------------------- | --------------------------------------------------- |
+| GitHub App name                  | A unique name such as `Eric's Effect CI`            |
+| Homepage URL                     | `$EFFECT_CI_PUBLIC_URL`                             |
+| Webhook URL                      | `$EFFECT_CI_PUBLIC_URL/webhooks/github`             |
+| Webhook secret                   | A new high-entropy value; save it for the next step |
+| SSL verification                 | Enabled                                             |
+| Checks permission                | Read and write                                      |
+| Contents permission              | Read-only                                           |
+| Subscribe to events              | Check suite                                         |
+| Where can this App be installed? | Only on this account for this prototype             |
 
 OAuth callbacks, user authorization, and device flow are not needed. After creating the
 App:
@@ -853,11 +853,11 @@ creates a new Worker version with all secrets atomically; no Wrangler command is
 
 The service deliberately uses two independent trust boundaries:
 
-| Route | Caller | Authentication |
-| --- | --- | --- |
-| `/webhooks/github` | GitHub | GitHub HMAC signature |
-| `/webhooks/slack` (opt-in) | Slack | Slack HMAC, fresh timestamp, app/team/channel checks, reviewer allow-list, run-bound capability |
-| All other paths, including `/` and `/runs/*` | `cf-ci` and human reviewers | Cloudflare Access plus the Worker API token or a scoped approval token for execution |
+| Route                                        | Caller                      | Authentication                                                                                  |
+| -------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `/webhooks/github`                           | GitHub                      | GitHub HMAC signature                                                                           |
+| `/webhooks/slack` (opt-in)                   | Slack                       | Slack HMAC, fresh timestamp, app/team/channel checks, reviewer allow-list, run-bound capability |
+| All other paths, including `/` and `/runs/*` | `cf-ci` and human reviewers | Cloudflare Access plus the Worker API token or a scoped approval token for execution            |
 
 The checked-in [`access.config.ts`](./access.config.ts) defines two Access application
 request bodies: a protected application covering the entire hostname, and a more
@@ -916,6 +916,56 @@ export CF_ACCESS_CLIENT_SECRET='<access-client-secret>'
 
 The Worker still checks `EFFECT_CI_API_TOKEN` after Access succeeds. That defense in
 depth prevents an accidentally unprotected route from becoming a public execution API.
+
+### Demo package on the same host
+
+The separately enrolled `DemoCIWorkflow` (`effect-ci-demo`) executes the
+ordinary scripts from `examples/demo/package.json`, using `CI.fromPackageJson`
+and a native container rooted at `examples/demo`. It is mounted at `/demo` on
+the existing Access-protected host; `/runs`, GitHub and Slack callbacks and all
+existing Workflow/DO namespaces keep their original behavior.
+
+Deploy this integration only after its exact-head CI passes and it is merged.
+Use the existing host build/deploy setup, preserve all existing secrets and
+bindings, and rebuild from that exact merged revision. No extra secret, App
+installation, provider, public execution endpoint without authentication or
+human approval is required. The new export creates one Workflow resource;
+native runs use ordinary container, snapshot, storage and npm network costs,
+not Workers AI or another paid inference service.
+
+From a clean, committed, pushed checkout with the existing local Access and API
+credentials configured:
+
+```sh
+export PATH="$PWD/node_modules/.bin:$PATH"
+export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL/demo"
+export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
+cd examples/demo
+cf-ci plan --format=mermaid
+cf-ci run --remote
+```
+
+The same authentication protects `/demo/runs`, `/demo/runs/:id` and
+`/demo/runs/:id/events`. Foreign repositories, mutable revisions and
+actor-selected targets are rejected before dispatch; native execution checks
+the enrollment again. Only the whole lint/check/typecheck/test/build suite is
+enrolled. It has no release, approval, error emission, model, repair writer or
+deployment action. Routine runs do not post Slack notifications. Host-held App
+and Access credentials are not forwarded into the project container.
+
+This is host-selected manifest data, not importing or evaluating project
+TypeScript in the host. A later task-name change requires rebuilding the host's
+enrollment; script bodies still come from the selected pushed commit. Existing
+GitHub checks continue to use their original workflow. This integration is not
+yet a maintained arbitrary-package remote loader or hosted signed reuse.
+
+To inspect an interrupted run, use its returned status URL or the existing
+`cf workflows instances get <instance-id> --workflow-name effect-ci-demo` read
+command. Do not dispatch a replacement just because streaming disconnected.
+Do not delete Workflow histories, existing namespaces or snapshots for cleanup.
+To disable new demo dispatch, remove the `/demo` route in a separately reviewed
+host update; preserve completed evidence. Live deployment and same-app remote
+verification remain pending for this integration.
 
 ### 5. Run the first Workflow
 
@@ -987,6 +1037,7 @@ idempotent.
   LIVE_GITHUB_CHECKOUT_REVISION=4d32bc9357a0d63123cbdddbb29d5006556f65a5 \
   node --test apps/effect-ci/src/live-github-checkout.test.ts
   ```
+
 - **`cf-ci --remote` redirects to login:** the Access application needs a
   **Service Auth** policy containing the service token—not only a human Allow policy.
 - **`cf-ci --remote` returns 401 after Access:** `EFFECT_CI_REMOTE_TOKEN` does not match
@@ -999,16 +1050,16 @@ starting duplicate CI.
 The complete userland Worker is deliberately this small:
 
 ```ts
-import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare"
+import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
-import workflow from "./workflow.ts"
+import workflow from "./workflow.ts";
 
-export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare"
+export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 
-export default GitHubCloudflare.worker()
+export default GitHubCloudflare.worker();
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {
   root: "examples/github-cloudflare-ci",
-})
+});
 ```
 
 The repository's integration test injects fake GitHub APIs and a fake Workflow
