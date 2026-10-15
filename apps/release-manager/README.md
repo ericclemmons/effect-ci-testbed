@@ -102,8 +102,8 @@ Independent preview `/health` returned that exact version, source and asset dige
 `e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23`.
 Production remained on its previous allocation; no review, Progress, inference
 or traffic promotion occurred. The original native history remains failed and
-the original candidate claim remains pending until explicit reconciliation.
-Local GET-only reconciliation tests are not native reconciliation evidence.
+the original candidate claim remained pending until the explicit reconciliation
+below. The failed build history was not retried or rewritten.
 
 The App exports private `DemoCandidateRecoveryWorkflow`
 (`effect-ci-demo-candidate-recovery`) using its existing `RELEASE_MANAGER`
@@ -127,6 +127,28 @@ ambiguous response. Do not dispatch another instance to manufacture success.
 Normal Workers/Workflow/storage request costs apply; no model call or additional
 credential is required. Remove the recovery Workflow export/configuration to
 disable future invocations; retain its history and the original candidate record.
+
+### Verified native reconciliation
+
+`coverage-demo-candidate-reconcile-20261015-1` completed at
+2026-10-15 09:39:07 UTC, using exact merged source
+`e851d70e694ed634a1f4294d9584b5d08bb9497a` in the App and broker. Its only
+checkpoint, `candidate:reconcile-original-1`, ran once with zero retries and
+returned the **same** version `d91c0765-1994-4aad-8aad-f359374c2f45`, source,
+asset digest and module digest above. The existing pending journal was completed
+without a new build, publication, upload or traffic deployment.
+
+Independent version/preview-health readback matched, and production remained at
+deployment `7b22d002-d5fb-4d1a-a0e1-662420697c5f`, previous version
+`09593237-23b2-4873-bd04-88c8e8488840` at 100%. No human-review window, Slack
+decision or inference occurred. This is operator recovery, **not** a completed
+push-to-Slack/human-reviewed rollout. Native timestamps give queue 3559 ms,
+execution 940 ms and total 4499 ms (one orchestration sample, not a benchmark).
+
+```sh
+# Reads the two retained histories, version identity and public preview only:
+LIVE_DEMO_CANDIDATE_RECOVERY=1 CF_BIN=cf node --test apps/effect-ci/src/live-demo-candidate-recovery.test.ts
+```
 
 ```sh
 # From the repository root:
