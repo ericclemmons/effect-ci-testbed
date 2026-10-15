@@ -145,7 +145,14 @@ export async function probeRelease(
             {
               redirect: "manual",
               signal: AbortSignal.timeout(10000),
-              headers: { "cache-control": "no-cache" },
+              headers: {
+                "cache-control": "no-cache",
+                // Each request represents a distinct synthetic client. The
+                // platform hashes these fixed keys against the allocation;
+                // none names or forces a candidate version. Never select or
+                // retry keys based on their observed routing outcome.
+                "Cloudflare-Workers-Version-Key": `effect-ci-cohort:${encodeURIComponent(identity)}:${group * 10 + offset}`,
+              },
             },
           );
           if (response.status !== 200 && response.status !== 503) {

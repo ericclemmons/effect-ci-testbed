@@ -41,6 +41,16 @@ ready. This is a bounded settling interval, not a readiness guarantee: missing
 candidate observations, foreign attribution or regression still fail closed;
 there is no probe-until-green loop or automatic decision.
 
+Each of the 100 requests has a distinct, predetermined
+`Cloudflare-Workers-Version-Key` synthetic-client identity ([platform contract](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/version-affinity/)). Cloudflare hashes
+these keys against the deployment percentages; keys never name a version and
+are not chosen or retried based on results. No version-override header, preview
+endpoint, quota filling or candidate-only fallback is used. The previous
+unkeyed native cohorts returned zero candidate observations both immediately
+and after ten seconds, and both correctly restored the baseline. Shared routing
+affinity is a hypothesis, not a claimed platform root cause; the keyed cohort's
+native acceptance must be measured independently.
+
 Every stage requires real authenticated human Progress, even when health looks
 good. Sparse observations remain uncertain, never a fabricated health pass.
 Missing attribution or conclusive regression cannot be overridden. Reject,
