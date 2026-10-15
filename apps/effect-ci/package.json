@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cloudflare": "workspace:*",
     "@effect-ci-testbed/github-cloudflare": "workspace:*",
     "@resvg/resvg-wasm": "2.6.2"
   },

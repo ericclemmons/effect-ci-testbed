@@ -2,10 +2,6 @@
   "name": "effect-ci-testbed",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
-  "packageManager": "pnpm@12.8.1",
   "scripts": {
     "build": "pnpm --filter @effect-ci-testbed/ci build",
     "check": "pnpm --filter './packages/*' --filter './apps/*' check && node scripts/check-examples.ts && node scripts/check-example-plans.ts && node --test scripts/check-recipe-docs.test.ts",
@@ -21,9 +17,14 @@
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
     "@effect-ci-testbed/cli": "workspace:*",
+    "@effect-ci-testbed/cloudflare": "workspace:*",
     "@effect-ci-testbed/local-container": "workspace:*",
     "@types/node": "^26.6.3",
     "effect": "4.0.0-beta.19",
     "typescript": "^7.0.2"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.8.1"
 }

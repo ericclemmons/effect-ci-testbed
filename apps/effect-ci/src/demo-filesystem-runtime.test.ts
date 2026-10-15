@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import test from "node:test";
+import {
+  syntaxCommand,
+  syntaxInspectCommand,
+} from "@effect-ci-testbed/cloudflare/node-syntax-check";
 
 const require = createRequire(import.meta.url);
 const pluginPath = await realpath(
@@ -23,12 +27,12 @@ test(
       import {DurableObject} from "cloudflare:workers";
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[];let missingLock=false;
+      const reads=[],exists=[],commands=[];let missingLock=false,cacheReads=0;
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
         async checkout(){}
         async restore(){}
-        async getCachedSnapshot(){return undefined}
+        async getCachedSnapshot(){cacheReads++;return undefined}
         async putCachedSnapshot(){}
         async checkpoint(name){return {id:"fixture-"+name,name,size:1}}
         async readFile(path,root){
@@ -57,7 +61,7 @@ test(
           return Response.json({started:true});
         }
         if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
-        return Response.json({reads,exists,commands});
+        return Response.json({reads,exists,commands,cacheReads});
       }};
     `,
       },
@@ -102,6 +106,11 @@ test(
       }
       assert.equal(output?.workflowId, "cf-ci-demo");
       const state = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
+      assert.equal(
+        state.cacheReads,
+        0,
+        "attested source must not restore a project-modified image snapshot",
+      );
       assert.ok(
         state.reads.some(
           (read: { path: string; root: string }) =>
@@ -110,6 +119,8 @@ test(
       );
       assert.ok(state.exists.includes("package-lock.json"));
       assert.deepEqual(state.commands, [
+        syntaxInspectCommand,
+        syntaxCommand,
         "npm_config_cache=.effect-ci/cache/npm npm ci",
         'npm run "lint"',
         'npm run "check"',
@@ -132,7 +143,11 @@ test(
       }
       assert.match(failed?.error?.message ?? "", /Could not detect a JavaScript package manager/);
       const after = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
-      assert.equal(after.commands.length, 6, "missing lockfile must fail before any extra command");
+      assert.equal(
+        after.commands.length,
+        10,
+        "missing lockfile must fail before any extra package command",
+      );
     } finally {
       await runtime.dispose();
     }

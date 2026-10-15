@@ -242,9 +242,9 @@ zero-config packages.
 +import * as CI from "@effect-ci-testbed/ci";
 +import * as actions from "./actions.ts";
 +
-+export { lint, build } from "./actions.ts";
++export { lint, build, syntax } from "./actions.ts";
 +
-+export default CI.workflow("demo", function* () {
++export default CI.workflow("cf-ci-demo", function* () {
 +  yield* actions.lint();
 +  return yield* actions.build();
 +});
@@ -334,22 +334,44 @@ verification, artifact publication or deployment of this Vite app.
 
 ## 8. Attest a pure check, then let hosted CI verify reuse
 
-The intended next increment is: commit → execute exact inputs → sign evidence →
-push commit and notes → hosted verification → skip only the eligible pure check.
-Build artifacts, deploys, migrations, and releases must still execute.
+> Sign a clean committed check. Hosted CI verifies its exact inputs; ordinary actions still run.
 
-The [verification-evidence recipe](../verification-evidence) has real local
-Ed25519/Git-note execution and verification. The hosted reader and enrolled-key
-verifier also exist. **The complete native execute → signed reuse → invalid-proof
-fallback path is not finished.** There is no `cf-ci attest` command to paste here.
+```diff
+--- a/.cloudflare/ci/workflow.ts
++++ b/.cloudflare/ci/workflow.ts
+@@
+ export default CI.workflow("cf-ci-demo", function* () {
++  yield* actions.syntax();
+   yield* actions.lint();
+```
 
-Required live acceptance before this becomes a runnable step:
+```sh
+git add src .cloudflare/ci
+git commit -m "Add a reusable syntax check"
+git push
+cf-ci run --remote
+node .cloudflare/ci/attest.ts
+git push origin refs/notes/effect-ci-hosted-checks-v1
+cf-ci run --remote
+```
 
-- Derive source, dependencies, toolchain, command and policy from actual trusted inputs.
-- Keep the approved demo-restricted private signing key local; enroll only its public key.
-- Execute a clean committed pure check, then prove native reuse without executing it again.
-- Tamper with evidence and change inputs/key/policy; each case must execute normally.
-- Keep ordinary actions executing even when a pure check hits.
+The signer executes the fixed parse-only TypeScript check in the host's immutable
+Linux Node image, with networking disabled and only committed inputs mounted.
+It never links or evaluates source. The enrolled demo key remains local; Docker
+and the hosted runner receive no private key. Evidence binds repository, full
+commit, check, command, policy, actual file bytes and exact Node executable/runtime.
+Missing, invalid, unknown-key or changed-input evidence is a miss, not permission
+to skip execution. Builds and other ordinary actions still execute.
+
+**Native acceptance in progress:** the wired host and real Docker positive/negative
+checks are being verified together. Do not count this step complete until the
+retained native execute, verified-hit and invalid-signature fallback runs pass.
+
+The attested host starts from a fresh image, not a previous whole-container cache
+snapshot that could contain project-modified system files. Vite+ still validates
+task outputs; restoring native cache files without restoring executable system
+state is a separate transport requirement. The GitHub runner's automatic cache
+defaults are unchanged.
 
 This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 [Cross-merge reuse](https://github.com/ericclemmons/effect-ci-testbed/issues/229)

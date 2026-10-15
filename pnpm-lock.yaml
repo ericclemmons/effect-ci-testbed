@@ -172,6 +172,9 @@ importers:
       '@effect-ci-testbed/cli':
         specifier: workspace:*
         version: link:packages/cli
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:packages/cloudflare
       '@effect-ci-testbed/local-container':
         specifier: workspace:*
         version: link:packages/local-container
@@ -190,6 +193,9 @@ importers:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
       '@effect-ci-testbed/github-cloudflare':
         specifier: workspace:*
         version: link:../../packages/github-cloudflare

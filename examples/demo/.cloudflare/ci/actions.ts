@@ -1,4 +1,5 @@
 import * as CI from "@effect-ci-testbed/ci";
+import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 
 const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source;
@@ -30,4 +31,14 @@ export const build = CI.action(
       const workspace = yield* install();
       return yield* workspace.exec("npm run build");
     },
+);
+
+export const syntax = CI.check(
+  "syntax",
+  () =>
+    function* () {
+      const workspace = yield* checkout();
+      yield* workspace.exec(syntaxCommand);
+    },
+  { reuse: { scope: "commit" } },
 );

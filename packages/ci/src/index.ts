@@ -2577,6 +2577,8 @@ export const fromPackageJson = (manifest: {
 
   return {
     actions,
+    /** Shared preparation for trusted runner-added checks; not a CLI target. */
+    checkout,
     workflow: workflow(manifest.name ?? "ci", function* () {
       let workspace: Workspace | undefined
       for (const name of names) workspace = yield* actions[name]!()
