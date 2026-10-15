@@ -3,6 +3,7 @@ import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import { demoRunAllowed } from "./demo-policy.ts";
 import { demoProgram } from "./demo-program.ts";
 import { demoCheckCache } from "./demo-check-cache.ts";
+import { withDemoEvidenceRead } from "./demo-evidence-reader.ts";
 
 // The host enrolls this package and task names at deployment. Its pushed source
 // and package scripts still execute in the native workspace, never in the host.
@@ -13,7 +14,16 @@ const Base = GitHubCloudflare.workflowEntrypoint(demoProgram.workflow, {
   cache: false,
   container: { image: "workspace", instance: "standard-1" },
   notificationChannels: () => ({}),
-  checkCache: (_environment, { runner }) => demoCheckCache(runner),
+  checkCache: (environment, { runner }) =>
+    demoCheckCache(runner, (operation) =>
+      withDemoEvidenceRead(
+        {
+          appId: environment.GITHUB_APP_ID,
+          privateKey: environment.GITHUB_PRIVATE_KEY,
+        },
+        operation,
+      ),
+    ),
 });
 
 export class DemoCIWorkflow extends Base {
