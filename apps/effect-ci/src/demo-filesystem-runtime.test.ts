@@ -27,14 +27,14 @@ test(
       import {DurableObject} from "cloudflare:workers";
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[];let missingLock=false,cacheReads=0;
+      const reads=[],exists=[],commands=[],snapshots=[],restores=[];let missingLock=false,cacheReads=0;
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
         async checkout(){}
-        async restore(){}
+        async restore(snapshot){restores.push(snapshot.id);}
         async getCachedSnapshot(){cacheReads++;return undefined}
         async putCachedSnapshot(){}
-        async checkpoint(name){return {id:"fixture-"+name,name,size:1}}
+        async checkpoint(name){const value={id:"fixture-"+name,name,size:1};snapshots.push(value);return value;}
         async readFile(path,root){
           if(root!==cwd&&root!=="/workspace/repository")throw new Error("Wrong remote root: "+root);
           reads.push({path,root});
@@ -42,10 +42,11 @@ test(
         }
         async exists(path,root){
           if(root!==cwd)throw new Error("Wrong package root");
-          exists.push(path);return !missingLock&&path==="package-lock.json";
+          exists.push(path);return path==='.'||(!missingLock&&path==="package-lock.json");
         }
-        async execute(command,root){
+        async execute(command,root,_step,revision){
           if(root!==cwd)throw new Error("Wrong command root");
+          if(command.endsWith('artifact.ts verify')&&revision?.id!=='fixture-artifact:demo-build')throw Error('Artifact read reverted to an ancestor revision');
           commands.push(command);return {exitCode:0,stdout:"fixture execution",stderr:""};
         }
       }
@@ -61,7 +62,7 @@ test(
           return Response.json({started:true});
         }
         if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
-        return Response.json({reads,exists,commands,cacheReads});
+        return Response.json({reads,exists,commands,cacheReads,snapshots,restores});
       }};
     `,
       },
@@ -127,7 +128,12 @@ test(
         'npm run "typecheck"',
         'npm run "test"',
         'npm run "build"',
+        "node .cloudflare/ci/artifact.ts create",
+        "node .cloudflare/ci/artifact.ts verify",
       ]);
+      assert.equal(output.nodes.length, 10);
+      assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "artifact:demo-build"));
+      assert.ok(state.restores.includes("fixture-artifact:demo-build"));
       assert.ok(output.nodes.every((node: { status: string }) => node.status === "complete"));
       await runtime.dispatchFetch("https://probe.invalid/missing");
       let failed: any;
@@ -145,7 +151,7 @@ test(
       const after = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
       assert.equal(
         after.commands.length,
-        10,
+        12,
         "missing lockfile must fail before any extra package command",
       );
     } finally {

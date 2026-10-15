@@ -386,27 +386,43 @@ This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 must issue new commit-bound evidence; copying a signature onto a merge/squash/rebase
 SHA does not make it valid.
 
-## 9. Carry real build output across jobs
+## 9. Publish and restore the real Vite build
 
-After the build action, publish the actual output:
+> Carry the built HTML and JavaScript into another action; verify their file hashes.
 
-```ts
-const built = yield * actions.build();
-const artifact =
-  yield *
-  CI.Artifact.publish(built, {
-    name: "demo-build",
-    paths: ["dist/message.js"],
-  });
-const restored = yield * CI.Artifact.restore(artifact);
-yield * restored.exec("test -s dist/message.js");
+```diff
+--- a/.cloudflare/ci/workflow.ts
++++ b/.cloudflare/ci/workflow.ts
+@@
+-export { lint, build, syntax } from "./actions.ts";
++export { lint, build, syntax, artifact } from "./actions.ts";
+@@
+   yield* actions.lint();
+-  return yield* actions.build();
++  return yield* actions.artifact();
 ```
 
-Add this inside an explicit workflow and inspect `cf-ci plan --format=mermaid`,
-then `cf-ci run`. The receiver restores the recorded workspace rather than
-assuming another machine has the same local path.
-[Portable artifacts](../portable-artifacts) documents the actual hosted transport
-fixture. Wiring this Vite output through the hosted demo remains to verify.
+```sh
+cf-ci plan --format=mermaid
+cf-ci run artifact
+git add .cloudflare/ci
+git commit -m "Verify the restored Vite build"
+git push
+cf-ci run --remote
+```
+
+[`actions.ts`](./.cloudflare/ci/actions.ts) publishes all three built assets plus
+the generated SHA-256 manifest using `CI.Artifact.publish`; a separate action
+calls `CI.Artifact.restore` and [`artifact.ts verify`](./.cloudflare/ci/artifact.ts).
+Cloudflare transports an immutable workspace snapshot between action containers;
+the path list labels its contents, not a path-only public download. Local feedback
+checks the same files but is not proof of Cloudflare snapshot transport.
+
+```sh
+rm dist/message.js
+node .cloudflare/ci/artifact.ts verify  # expected failure: missing output
+cf-ci run artifact
+```
 
 ## 10. Assert the built application in a browser
 
