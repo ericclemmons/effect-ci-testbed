@@ -158,6 +158,7 @@ export const workflowEntrypoint = <A>(
     )
     const reporter = github && token ? new GitHub.Reporter(
       {
+        executionEnvironment: "Cloudflare",
         token: "",
         repository: github.repositoryName,
         sha: event.payload.revision,
