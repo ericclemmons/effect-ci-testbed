@@ -2,7 +2,16 @@
 
 Standalone deterministic failure source for the Friday incident loop. Its historical private RPC path remains separate from the new one-shot public test below. No secrets, AI, GitHub, repair writer, arbitrary prompt or deployment binding reaches the source. The historical authenticated Workflow/SQLite emission is preserved unchanged; never replay it to stand in for a new public incident.
 
-## Public HTTP source preparation (unarmed)
+## Public HTTP one-shot (native attempt retained)
+
+The source below was deployed, privately armed once and loaded once in the
+built-in browser on October15. It produced a genuine uncaught fetch exception,
+Issue `a077ace1-d3b3-4c70-83eb-7e2178164871` and authenticated notification capture.
+Admission stopped on the actual WOBS title's token masking before any model or
+repair Workflow. The exact-title regression is fixed; the original event is
+expired and is not replayed. Its permanent claim remains consumed. See the
+[retained failure boundary and read-only native regression](../repair-events/PUBLIC-ACTIVATION.md).
+This is not native automatic-repair completion and not a resettable rehearsal URL.
 
 The next end-to-end test needs a genuine public fetch exception, not another replay
 of that completed private RPC. `src/public-fault.ts` implements an owned `/failure`
@@ -23,7 +32,7 @@ narrow private read-only App readiness binding, not an API token. The consumer m
 independently retained source evidence and reject version drift. This trusted
 source corroboration is **not** an Issues occurrence-API read or source attestation.
 The local regression supplies clearly fake metadata; only native deployment
-readback can establish the actual version. No new deployment has happened yet.
+readback establishes the actual version pinned in the receiver guide.
 
 The new authenticated `PublicIncidentArmWorkflow` accepts only
 `{mode:"arm-public-once"}` and emits no error/inference. The source DO obtains
@@ -36,11 +45,11 @@ The local workerd test exercises the actual arming Workflow, denied readiness,
 unarmed requests, idempotent arm, claimed-version preservation and current-version
 drift with clearly fake readiness/metadata. See [the full setup boundary](../effect-ci/PUBLIC-REPAIR.md).
 
-The host route and workers.dev are enabled in source, but the separate durable
-arm remains absent: `/failure` returns409 and cannot consume its claim. The
-receiver's exact-version enrollment must be deployed before arming. No native
-public HTTP exception, Issue, inference or repair has been
-triggered by this preparation. The existing emission/journal is not read/reset
+The host route and workers.dev are enabled in source. Before the native attempt,
+the absent durable arm made `/failure` return409 without consuming its claim.
+The exact-version enrollment and private readiness were checked before arming.
+The retained native attempt above then consumed the separate claim. No inference
+or repair was triggered. The existing historical RPC emission/journal is not read/reset
 by the new record. Actual local workerd tests exercise eight concurrent GETs
 (one500/seven410), module reload (still410), the unchanged old RPC record and the
 production unarmed409 and consumed410 gates. They do not prove native WOBS delivery or automatic repair.
