@@ -2,6 +2,40 @@
 
 Private, standalone deterministic failure source for the Friday incident loop. No public URL, secrets, AI, GitHub, repair writer, arbitrary prompt, or deployment binding. An authenticated native Workflow may inspect or emit ONE owned error. A SQLite claim precedes `console.error(new Error(...))`; completed calls replay the same 500 receipt without logging again. Pending/uncertain state fails closed and has no reset API. The private RPC returns an actual 500 Response; ordinary HTTP remains 404.
 
+## Public HTTP source preparation (not activated)
+
+The next end-to-end test needs a genuine public fetch exception, not another replay
+of that completed private RPC. `src/public-fault.ts` implements an owned `/failure`
+GET using the same fixed `healthStatus()` fixture. A separate `PublicFailureClaim`
+SQLite object durably claims the attempt **before** the uncaught HTTP exception.
+Concurrent/later GETs return410 without logging or returning a cached500. Claim or
+acknowledgement uncertainty returns409 and never retries; a claim is NOT proof the
+exception occurred or an Issue was delivered. There is no reset endpoint. Root,
+queries, other methods and declared prefetch requests do not consume the claim.
+An ordinary deliberate browser GET can consume it once after activation; this is
+a test source, not an authentication or approval endpoint.
+
+This route is **host-disabled** (`publicFailureEnabled=false`) and workers.dev
+remains disabled. No native HTTP exception, Issue, inference or repair has been
+triggered by this preparation. The existing emission/journal is not read/reset
+by the new record. Actual local workerd tests exercise eight concurrent GETs
+(one500/seven410), module reload (still410), the unchanged old RPC record and the
+production404 gate. They do not prove native WOBS delivery or automatic repair.
+
+Do not enable/deploy the public test merely to collect an error. First finish the
+authenticated receiver's bounded automatic activation/outbox and independently
+enroll the exact producer version/source, private fixture base/path/bytes and
+existing budget policy. Preserve the old capture/admission/proposal records.
+Then use exact merged-source build, fresh resource/secret/controller preflight,
+create-only intent and independent deployment readback before exposing workers.dev
+and deliberately loading `/failure` once. No error/Issue identity may select a
+repository, prompt, model, paid slot or writer destination. Proposed repairs remain
+unmerged and undeployed. Necessary resources are the one additional SQLite class
+on this existing owned Worker; no new secret, outbound service or account scope.
+Costs are ordinary Worker/SQLite/Issues operations; this preparation makes no AI
+call. Safe stop is to keep the source gate and workers.dev disabled, retaining the
+claim and all evidence rather than resetting/deleting it for rehearsal.
+
 `observability.issues.enabled` is explicitly configured. [Cloudflare Issues](https://developers.cloudflare.com/workers/observability/issues/) documents handled error logging and 5xx detection. A completed emission is NOT proof that an Issue was ingested, that a Notification was delivered, or that a repair happened. `issueVerified:false` remains explicit until independent native evidence exists.
 
 This app owns its fixture; it does not import private repository code or claim source parity with its repair target. The fixed safe message contains no incoming request or account context. Full source/version-to-private-base enrollment is still required before any paid event-triggered repair.

@@ -14,6 +14,7 @@ export default defineConfig({
     exports: {
       OwnedFaultSource: exports.worker(),
       OwnedFaultOnce: exports.durableObject({ storage: "sqlite" }),
+      PublicFailureClaim: exports.durableObject({ storage: "sqlite" }),
       OwnedIncidentWorkflow: exports.workflow({
         name: "effect-ci-owned-incident",
       }),

@@ -34,6 +34,7 @@ test(
       exports: {
         OwnedFaultSource: { type: "worker" },
         OwnedFaultOnce: { type: "durable-object", storage: "sqlite" },
+        PublicFailureClaim: { type: "durable-object", storage: "sqlite" },
         OwnedIncidentWorkflow: {
           type: "workflow",
           name: "effect-ci-owned-incident",
@@ -89,6 +90,32 @@ test(
         body: '{"mode":"emit-once","message":"untrusted"}',
       });
       assert.equal(denied.status, 400);
+      // A local-only HTTP host exercises the actual new SQLite claim and uncaught
+      // fetch exception. This is NOT a native WOBS Issue/delivery/repair proof.
+      const publicLocal = await bundle("fixtures/public-local.ts");
+      await runtime.setOptions({ workers: [{ config: config(publicLocal) }] });
+      const httpReplies = await Promise.all(
+        Array.from({ length: 8 }, () =>
+          runtime.dispatchFetch("https://owned.invalid/failure"),
+        ),
+      );
+      assert.equal(httpReplies.filter((r) => r.status === 500).length, 1);
+      assert.equal(httpReplies.filter((r) => r.status === 410).length, 7);
+      await runtime.setOptions({
+        workers: [{ config: config(publicLocal + "\n// public claim reload\n") }],
+      });
+      assert.equal(
+        (await runtime.dispatchFetch("https://owned.invalid/failure")).status,
+        410,
+      );
+      // The separately claimed historic RPC source remains complete, not reset.
+      await runtime.setOptions({ workers: [{ config: config(local) }] });
+      assert.equal((await send("inspect")).result.state, "complete");
+      await runtime.setOptions({ workers: [{ config: config(production) }] });
+      assert.equal(
+        (await runtime.dispatchFetch("https://owned.invalid/failure")).status,
+        404,
+      );
       const authored = await readFile(
         join(pkg, "cloudflare.config.ts"),
         "utf8",
@@ -96,6 +123,10 @@ test(
       assert.match(authored, /issues: \{ enabled: true \}/);
       assert.match(authored, /workersDev: false/);
       assert.match(authored, /previewUrls: false/);
+      assert.match(
+        await readFile(join(pkg, "src/worker.ts"), "utf8"),
+        /const publicFailureEnabled: boolean = false/,
+      );
     } finally {
       await runtime.dispose();
     }

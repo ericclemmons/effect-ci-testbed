@@ -7,6 +7,36 @@ import {
 } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import { EMISSION_ID, ERROR_MESSAGE, healthStatus, mode } from "./fault.ts";
+import { PUBLIC_EMISSION_ID, publicFaultFetch } from "./public-fault.ts";
+// HOST SOURCE gate, not a caller/env flag. Keep false until the authenticated
+// automatic pipeline and source/version/private-fixture enrollment are ready.
+const publicFailureEnabled: boolean = false;
+
+/** Separate durable record; never reads, resets or reuses the old RPC emission. */
+export class PublicFailureClaim extends DurableObject {
+  async claim(): Promise<boolean> {
+    return this.ctx.storage.transaction(async (storage) => {
+      const stored = await storage.get<{ version: 1; claimed: true }>(
+        "public-http-emission-v1",
+      );
+      if (stored !== undefined) {
+        if (stored.version !== 1 || stored.claimed !== true)
+          throw new Error("Owned public claim unavailable");
+        return false;
+      }
+      // Claimed means possibly emitted, NOT confirmed Issue delivery. A crash or
+      // lost ACK between this write and the exception cannot authorize a retry.
+      await storage.put("public-http-emission-v1", {
+        version: 1,
+        claimed: true,
+      });
+      return true;
+    });
+  }
+  override fetch() {
+    return new Response("Not found", { status: 404 });
+  }
+}
 type Receipt = {
   emissionId: typeof EMISSION_ID;
   status: 500;
@@ -135,7 +165,14 @@ export class OwnedIncidentWorkflow extends WorkflowEntrypoint<
   }
 }
 export default class PrivateIncidentWorker extends WorkerEntrypoint {
-  override fetch() {
-    return new Response("Not found", { status: 404 });
+  override fetch(request: Request) {
+    if (!publicFailureEnabled)
+      return new Response("Not found", { status: 404 });
+    const namespace = (
+      this.ctx.exports as unknown as {
+        PublicFailureClaim: DurableObjectNamespace<PublicFailureClaim>;
+      }
+    ).PublicFailureClaim;
+    return publicFaultFetch(request, namespace.getByName(PUBLIC_EMISSION_ID));
   }
 }
