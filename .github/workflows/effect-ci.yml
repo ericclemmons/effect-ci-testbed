@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       workflow:
-        description: Path to the Effect CI entry point
+        description: Path to an Effect CI entry point or marker-free package directory
         required: true
         type: string
       runs-on:

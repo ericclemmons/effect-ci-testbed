@@ -40,6 +40,47 @@ test("plan, list, remote and explicit paths never initialize", () => fixture(roo
   }
 }))
 
+test("bare CLI and --help describe commands without initializing or executing an unconfigured package", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  for (const args of [[], ["--help"]]) {
+    const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /cf-ci plan --format=mermaid/)
+    assert.match(result.stdout, /Actions:\n  lint/)
+    assert.equal(existsSync(join(root, ".cloudflare")), false)
+    assert.equal(existsSync(join(root, "checked.txt")), false)
+  }
+}))
+
+test("marker-free package supports list and full Mermaid planning without writing or executing", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.deepEqual(JSON.parse(listed.stdout).targets, ["lint"])
+  const planned = spawnSync(process.execPath, [bin, "plan", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(planned.status, 0, planned.stderr)
+  assert.match(planned.stdout, /step_checkout --> step_install/)
+  assert.match(planned.stdout, /step_install --> step_lint/)
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+  assert.equal(existsSync(join(root, "checked.txt")), false)
+}))
+
+test("explicit marker-free directory works for GitHub runners without generating CI config", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const plan = spawnSync(process.execPath, [bin, "--workflow", root, "plan", "--format=mermaid"], {
+    cwd: tmpdir(), encoding: "utf8",
+  })
+  assert.equal(plan.status, 0, plan.stderr)
+  assert.match(plan.stdout, /step_install --> step_lint/)
+  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "--agent"], {
+    cwd: tmpdir(), encoding: "utf8", timeout: 30_000,
+  })
+  assert.equal(run.status, 0, run.stderr)
+  assert.equal(JSON.parse(run.stdout).ok, true)
+  assert.equal(readFileSync(join(root, "checked.txt"), "utf8"), "ok")
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+}))
+
 test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
   assert.throws(() => initializeJavaScriptProject(["run", "unknown"], root), /Unknown action target/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)

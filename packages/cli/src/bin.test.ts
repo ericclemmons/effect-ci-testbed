@@ -14,6 +14,50 @@ const run = (args: ReadonlyArray<string>, cwd: string = repository) =>
     encoding: "utf8",
   })
 
+test("bare cf-ci shows help, Mermaid usage and project targets just like --help", () => {
+  const bare = run([], example)
+  const explicit = run(["--help"], example)
+  assert.equal(bare.status, 0, bare.stderr)
+  assert.equal(bare.stdout, explicit.stdout)
+  assert.match(bare.stdout, /cf-ci run\s+Execute the whole default workflow/)
+  assert.match(bare.stdout, /cf-ci plan --format=mermaid/)
+  assert.match(bare.stdout, /Actions:\n  check/)
+  assert.doesNotMatch(bare.stdout, /CI execution summary/)
+})
+
+test("run without a target still executes the default workflow", () => {
+  const result = run(["run", "--format=json"], example)
+  assert.equal(result.status, 0, result.stderr)
+  const output = JSON.parse(result.stdout)
+  assert.equal(output.ok, true)
+  assert.equal(output.workflow, "exported-actions")
+  assert.ok(output.plan.nodes.some((node: { id: string }) => node.id === "check"))
+})
+
+test("explicit agent mode prints JSON while explicit format takes precedence", () => {
+  const agent = run(["run", "--agent"], example)
+  assert.equal(agent.status, 0, agent.stderr)
+  assert.equal(JSON.parse(agent.stdout).ok, true)
+  assert.doesNotMatch(agent.stdout, /CI execution summary/)
+  const human = run(["list", "--agent", "--format=text"], example)
+  assert.equal(human.status, 0, human.stderr)
+  assert.match(human.stdout, /^Workflow: exported-actions/m)
+})
+
+test("human defaults to text and direct-agent environment detection defaults to JSON without format flags", () => {
+  const humanEnvironment = { PATH: process.env.PATH ?? "" }
+  const human = spawnSync(process.execPath, [bin, "list"], {
+    cwd: example, encoding: "utf8", env: humanEnvironment,
+  })
+  assert.equal(human.status, 0, human.stderr)
+  assert.match(human.stdout, /^Workflow: exported-actions/m)
+  const agent = spawnSync(process.execPath, [bin, "list"], {
+    cwd: example, encoding: "utf8", env: { ...humanEnvironment, CODEX_THREAD_ID: "local-heuristic-test" },
+  })
+  assert.equal(agent.status, 0, agent.stderr)
+  assert.equal(JSON.parse(agent.stdout).workflow, "exported-actions")
+})
+
 test("discovers workflow.ts and actions.ts from the current project", () => {
   const result = run(["list", "--format=json"], example)
 

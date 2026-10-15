@@ -28,7 +28,7 @@ existing hosted evidence is preserved, not silently relabeled as standalone proo
 
 Start with explicit checkout/install/check/build actions. Zero config asks how to
 infer those actions; exported actions asks which commands to expose deliberately.
-[Developer loop](./developer-loop) combines discovery with
+[Developer loop](./demo) combines discovery with
 [Vite+ task caching](./vite-plus-cache) for local human/agent feedback. It is a
 composition recipe, not another task-inference implementation. For reusable proof,
 continue to [commit-bound verification](./verification-evidence): commit, check that

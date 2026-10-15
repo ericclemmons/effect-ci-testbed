@@ -16,22 +16,26 @@ Use Node 24.11+ or Node 26+ and the repository's pnpm version. From a clone:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
-cf-ci list --format=text
+cd examples/demo
+cf-ci
+cf-ci list
 cf-ci plan --format=mermaid
-cf-ci run lint --format=text
-cf-ci run build --format=text
+cf-ci run
+cf-ci run build --agent
 ```
 
-The example already contains an empty workflow marker. In a package without a
-discovered workflow, an explicit local `cf-ci run` now creates an empty
+The demo starts without a CI marker. Help, list and plan infer normal package
+scripts without creating files. An explicit local `cf-ci run` creates an empty
 `.cloudflare/ci/ci.ts` and discovers conventional package scripts. Existing
 workflows take precedence; `plan`, `list`, and remote dispatch do not create files.
 Use a package-manager declaration or lockfile so installation can be resolved.
+Human terminals default to text; detected direct agents default to JSON.
+`--agent` explicitly shows the same JSON interface for a presenter without having
+to forge detection signals. Explicit `--format` remains available as an override.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the
-[developer walkthrough](./examples/developer-loop/TALKING-SCRIPT.md) for expected
+[developer walkthrough](./examples/demo/TALKING-SCRIPT.md) for expected
 results and intentional failures.
 
 Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
@@ -101,7 +105,7 @@ Each focused example separates the program from its tests and its platform adapt
 .github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
 ```
 
-Tests never launch CI. Locally, a developer or agent runs `cf-ci`; the CLI discovers
+Tests never launch CI. Locally, a developer or agent runs `cf-ci run`; the CLI discovers
 `.cloudflare/ci/workflow.ts` by walking up from the current directory. On GitHub, the
 thin Effect caller passes that same module to the reusable runner. The
 conventional YAML is intentionally independent so every example shows the native
@@ -129,7 +133,9 @@ Workflows and exported actions serve different entrypoints:
   re-exports them. `cf-ci list` shows that narrow public surface and `cf-ci run check`
   invokes a target with all of its prerequisites. Internal checkout, install, and
   deployment actions stay private by default.
-- Running `cf-ci` with no target executes the default workflow using the local event
+- Bare `cf-ci` prints help, including list/plan/Mermaid usage and configured project
+  targets, without executing or initializing a project.
+- Running `cf-ci run` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.
 
@@ -162,7 +168,7 @@ Start with a conventional pipeline, then choose explicit actions or task discove
 | [Run CI with pnpm](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
 | [Discover checks automatically](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Run a single check from the CLI](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
-| [Check changes before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
+| [Check changes before pushing](./examples/demo) | ✅ | ✅ | ✅ | 🔜 |
 
 ### Checkout and build artifacts
 

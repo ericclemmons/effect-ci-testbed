@@ -15,7 +15,7 @@ export function validatePage(manifest, run) {
   );
   if (
     manifest.schemaVersion !== 1 ||
-    manifest.recipe !== "developer-loop" ||
+    !["demo", "developer-loop"].includes(manifest.recipe) ||
     manifest.environment !== "Effect CI Local" ||
     !uuid.test(manifest.runId) ||
     manifest.runId !== run.id ||

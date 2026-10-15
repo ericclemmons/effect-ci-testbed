@@ -90,7 +90,7 @@ if (git("rev-parse", "HEAD") !== sourceRevision)
 mkdirSync(resolve(root, ".verification"), { recursive: true });
 const manifest = {
   schemaVersion: 1,
-  recipe: "developer-loop",
+  recipe: "demo",
   repository: repositoryUrl.href,
   environment: "Effect CI Local",
   sourceRevision,

@@ -12,13 +12,15 @@ Use Node 24.11+ or Node 26+. Start at the testbed repository root:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
+cd examples/demo
 DEMO_SOURCE="$(mktemp /tmp/effect-ci-demo-source.XXXXXX)"
 cp src/message.js "$DEMO_SOURCE"
 ```
 
-Keep `package.json`, `vite.config.ts`, `.cloudflare/ci/ci.ts`, and `src/message.js`
-open in the editor. The CI marker is empty. Package scripts expose the targets
+Keep `package.json`, `vite.config.ts`, and `src/message.js`
+open in the editor. The initial demo has no CI marker; help/list/plan infer its
+package scripts without writing files. The first explicit run creates an ignored,
+empty marker. Package scripts expose the targets
 and `pretest`/`prebuild` prerequisites; Vite config supplies cached task bodies
 using Vite+'s built-in tools. `check` is formatting and
 lint. `test` runs type checking before Vitest; `build` runs type checking and
@@ -29,8 +31,12 @@ so `check` remains formatting and lint only. The Vite config makes `no-undef` an
 and excludes generated output and the empty CI marker from linting. JavaScript
 source and tests are type-checked through `allowJs` and `checkJs` in `tsconfig.json`.
 If you rehearsed in this checkout, its first run may already be cached. Call it
-the first run of this presentation, not a cold run. Use a fresh demo checkout to
-show a cold run; do not clear a shared repository cache during the presentation.
+the first run of this presentation, not a cold run. For a deliberate task-cache
+miss, use a disposable demo checkout and, after setup but before the first measured
+run, run `vp cache clean` once from `examples/demo`. This removes Vite
+task results in that disposable checkout, not installation/package-manager caches; call it
+task-cache-cold, not a completely cold machine. Do not clear a shared repository
+cache. Do not clean between the first run and the repeat that demonstrates reuse.
 
 ## Human walkthrough and narration
 
@@ -39,20 +45,25 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   wc -c .cloudflare/ci/ci.ts
+   test ! -e .cloudflare/ci/ci.ts && echo "No CI config"
    cat package.json
-   cf-ci list --format=text
+   cf-ci
+   cf-ci list
    cf-ci plan lint --format=mermaid
    ```
 
-   Look for: an empty CI marker, the `lint` and `build` targets, and the lint
+   Look for: no initial CI marker, the `lint` and `build` targets, and the lint
    plan's checkout/install prerequisites. No `--workflow` argument is supplied.
+
+   Bare `cf-ci` prints help and the project's targets. `cf-ci run` with no target
+   executes the full default workflow; `cf-ci run build` below selects just build
+   and its prerequisites. `cf-ci plan --format=mermaid` prints the full suite graph.
 
    Say:
 
    > I don't want to remember whether this repo wants `pnpm run`, `vp run`, or
    > something else. Once I've set up the CLI, I want to ask the repo what I can
-   > run. Here the CI file is empty. The tasks come from ordinary package scripts,
+   > run. Here there's no CI file. The tasks come from ordinary package scripts,
    > and I can inspect the plan before running anything.
 
 2. **Run the checks where I'm already working.**
@@ -60,9 +71,9 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   cf-ci run lint --format=text
-   cf-ci run test --format=text
-   time cf-ci run build --format=text
+   cf-ci run lint
+   cf-ci run test
+   time cf-ci run build
    cat dist/message.js
    ```
 
@@ -83,7 +94,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
    Run:
 
    ```sh
-   time cf-ci run build --format=text
+   time cf-ci run build
    ```
 
    Look for: Vite+'s `cache hit, replaying` message. The replayed build output
@@ -101,7 +112,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
 
    ```sh
    node --input-type=module -e 'import { rmSync } from "node:fs"; rmSync("dist/message.js", { force: true })'
-   cf-ci run build --format=text
+   cf-ci run build
    cat dist/message.js
    ```
 
@@ -119,7 +130,7 @@ show a cold run; do not clear a shared repository cache during the presentation.
    ```sh
    DEMO_NOTE="$(mktemp ./demo-note.XXXXXX)"
    printf 'An unrelated edit.\n' > "$DEMO_NOTE"
-   cf-ci run build --format=text
+   cf-ci run build
    ```
 
    Look for: the build remains a cache hit because it does not read this note.
@@ -136,10 +147,10 @@ show a cold run; do not clear a shared repository cache during the presentation.
 
    ```sh
    printf 'export const message = "Checked before pushing"\n' > src/message.js
-   cf-ci run lint --format=text
-   cf-ci run build --format=text
+   cf-ci run lint
+   cf-ci run build
    cat dist/message.js
-   cf-ci run build --format=text
+   cf-ci run build
    ```
 
    Look for: the source edit invalidates the lint/build tasks; the artifact has
@@ -159,15 +170,15 @@ show a cold run; do not clear a shared repository cache during the presentation.
 
    ```sh
    printf 'export const message = "Checked before pushing"\nasdf\n' > src/message.js
-   if cf-ci run lint --format=json; then
+   if cf-ci run lint --agent; then
      printf 'Unexpected pass: inspect the result before continuing.\n'
    else
      printf 'Lint exit code: %s\n' "$?"
    fi
-   cf-ci run lint --format=text
+   cf-ci run lint
    printf 'export const message = "Checked before pushing"\n' > src/message.js
-   cf-ci run lint --format=json
-   cf-ci run build --format=json
+   cf-ci run lint --agent
+   cf-ci run build --agent
    ```
 
    Look for: `ok: false`, exit code 1, the text-mode `no-undef` diagnostic, then
@@ -182,9 +193,16 @@ show a cold run; do not clear a shared repository cache during the presentation.
    > diagnostic, so I rerun in text mode to read it. After the repair, I can check
    > the same working files again.
 
-## Hand the same loop to an agent
+## Show the agent-friendly interface
 
-Open the agent in `examples/developer-loop` with `cf-ci` on its PATH. Give it
+In a human terminal, compare `cf-ci list` with `cf-ci list --agent`, then
+`cf-ci run build` with `cf-ci run build --agent`. The flag deterministically selects
+JSON; it is not a separate fake execution engine. Both paths run the same workflow.
+The default heuristic uses am-i-vibing's direct-agent environment detection with
+process scanning disabled. Explicit --format takes precedence when diagnostics are
+needed. Do not set fake agent/account credentials to demonstrate output mode.
+
+Open the agent in `examples/demo` with `cf-ci` on its PATH. Give it
 this prompt; choose a different message if you already used this one in rehearsal:
 
 > Change the exported message in `src/message.js` to "Checked by my agent".
@@ -226,8 +244,8 @@ After the agent has finished, run in the original terminal session:
 
 ```sh
 cp "$DEMO_SOURCE" src/message.js
-cf-ci run lint --format=text
-cf-ci run build --format=text
+cf-ci run lint
+cf-ci run build
 rm -- "$DEMO_NOTE" "$DEMO_SOURCE"
 git status --short
 ```

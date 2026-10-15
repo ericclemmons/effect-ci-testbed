@@ -1,4 +1,8 @@
-# Check changes before pushing
+# Demo: check changes before pushing
+
+This example was renamed from `examples/developer-loop` to `examples/demo`.
+Historical recordings and immutable receipts retain their original recipe name,
+source paths, release tags and digests; the rename does not recreate those proofs.
 
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?
@@ -28,8 +32,12 @@ For copyable commands, expected output, and spoken narration, use the
 suite's execution order, not a declaration of Vite task prerequisites. Direct
 `cf-ci run build` runs build's setup and package lifecycle hooks, not the whole suite.
 
-The empty [`.cloudflare/ci/ci.ts`](./.cloudflare/ci/ci.ts) opts into task inference.
-There is no custom Effect workflow, input glob, or output manifest. Vite configuration
+The demo starts without a CI marker or custom Effect workflow. Bare `cf-ci`
+shows help and inferred targets. `cf-ci list` and `cf-ci plan --format=mermaid`
+inspect ordinary package scripts without creating files. The first explicit
+`cf-ci run` creates an empty, ignored `.cloudflare/ci/ci.ts` marker and executes
+the whole inferred workflow; `cf-ci run build` selects only the build target.
+There is no input glob or output manifest. Vite configuration
 selects the library entrypoint, lint rules, and cached task bodies.
 Ordinary package scripts expose those tasks and their lifecycle hooks; Effect CI discovers
 `check`, `lint`, `typecheck`, `test`, and `build`, installs dependencies, and
@@ -110,20 +118,22 @@ Use Node 24.11+ or Node 26+. From the testbed repository root:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
-cf-ci list --format=text
+cd examples/demo
+cf-ci
+cf-ci list
 cf-ci plan --format=mermaid
 ```
 
-No `--workflow` flag is needed. Discovery walks up from the current directory;
-it also works inside `src/`. The PATH setup exposes the workspace's CLI once;
+No `--workflow` flag is needed. Start in this package directory for marker-free
+inference. After the first explicit run creates the marker, discovery walks up
+and also works inside `src/`. The PATH setup exposes the workspace's CLI once;
 there is no package-manager prefix on subsequent CI commands.
 The product command is `cf-ci`, not yet `cf ci`.
 
 ## Human demo
 
-1. Run `cf-ci run lint --format=text`, `cf-ci run test --format=text`, then
-   `cf-ci run build --format=text`. The first build primes the cache.
+1. Run `cf-ci run` for the full workflow, or `cf-ci run build` for just the build
+   target and prerequisites. Human terminals default to readable text.
 2. Run the build again. Look for Vite+'s `cache hit` output. Do not use replayed
    build output as proof that the build executed again.
 3. Delete only the generated `dist/message.js` and rerun the build. Vite+ should
@@ -133,7 +143,7 @@ The product command is `cf-ci`, not yet `cf ci`.
 5. Change the string in `src/message.js`, without committing or pushing. Rerun
    lint and build. The changed source should invalidate both tasks; inspect
    `dist/message.js` to see the new string. An immediate repeat should hit.
-6. Add a bare `asdf` line to `src/message.js`. Run lint with `--format=json`:
+6. Add a bare `asdf` line to `src/message.js`. Run lint with `--agent`:
    it must return `ok: false` and a nonzero exit code. Rerun with `--format=text`
    to see the undefined-variable diagnostic, remove that line, and rerun.
 
@@ -148,6 +158,11 @@ not a `CI.check` signed-evidence hit. Environment, network, time, and other inpu
 that filesystem observation cannot capture need a separate tracking policy.
 
 ## Agent demo
+
+Compare `cf-ci list` with `cf-ci list --agent`, or `cf-ci run build` with
+`cf-ci run build --agent`. These execute the same workflow; the flag deterministically
+selects machine-readable JSON. Otherwise am-i-vibing detects direct-agent environment
+signals, with process scanning disabled. Explicit `--format` overrides either mode.
 
 Give the agent this task:
 
