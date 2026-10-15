@@ -42,7 +42,7 @@ test(
     };
     const build=CI.action('build',()=>function*(){return receipt;});
     // TEST ONLY clock: keep the real Workflow/RPC/approval composition, skip elapsed settling time.
-    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,finalize:ctx=>finalizeDemoRelease({...ctx,step:{do:(...args)=>ctx.step.do(...args),waitForEvent:(...args)=>ctx.step.waitForEvent(...args),sleep:async(name,duration)=>{if(!name.startsWith('vite-release:settle-')||duration!=='10 seconds')throw Error('Unexpected test clock sleep');}}})});
+    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,finalize:ctx=>finalizeDemoRelease({...ctx,step:{do:(...args)=>ctx.step.do(...args),waitForEvent:(...args)=>ctx.step.waitForEvent(...args),sleep:async(name,duration)=>{if(!name.startsWith('vite-release:settle-')||duration!=='2 minutes')throw Error('Unexpected test clock sleep');}}})});
     export default{async fetch(request,env,ctx){const p=await request.json();
       if(p.op==='start'){messages=[];rejectedPhases=new Set();commits=rollbacks=images=renders=requests=0;await ctx.exports.DemoCIWorkflow.create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:receipt.revision}});return Response.json({started:true});}
       if(p.op==='status')return Response.json(await(await ctx.exports.DemoCIWorkflow.get(p.id)).status());

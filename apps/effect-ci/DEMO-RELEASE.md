@@ -35,7 +35,7 @@ then runs 10%, 25%, 75% and 100% stages. The health comparison currently require
 a single-version 100% baseline; unsupported mixed baselines fail closed and the
 broker restores their full captured allocation.
 
-After each allocation write, a native ten-second sleep precedes the single
+After each allocation write, a native two-minute sleep precedes the single
 100-request cohort. API allocation readback is not proof that the data plane is
 ready. This is a bounded settling interval, not a readiness guarantee: missing
 candidate observations, foreign attribution or regression still fail closed;
@@ -48,8 +48,10 @@ are not chosen or retried based on results. No version-override header, preview
 endpoint, quota filling or candidate-only fallback is used. The previous
 unkeyed native cohorts returned zero candidate observations both immediately
 and after ten seconds, and both correctly restored the baseline. Shared routing
-affinity is a hypothesis, not a claimed platform root cause; the keyed cohort's
-native acceptance must be measured independently.
+affinity was a hypothesis, not a claimed platform root cause. The fixed native
+diagnostic below observed delayed convergence with both keyed and unkeyed
+traffic. Two minutes is a conservative measured test policy, not a platform SLA;
+every release still measures its own actual cohort and fails closed on missing data.
 
 Every stage requires real authenticated human Progress, even when health looks
 good. Sparse observations remain uncertain, never a fabricated health pass.
@@ -190,8 +192,36 @@ private broker binding/token scope—no public route, credential, account permis
 Slack message or inference. Ordinary Workflow/700 health-request costs apply.
 To disable new diagnostic starts, remove this export/configuration in a verified
 deployment after the owner restores baseline; never delete its histories or
-journal to simulate cleanup. This diagnostic has local fake-service proof only
-until its native receipt is independently verified.
+journal to simulate cleanup. Local tests use fake services; the native evidence
+below is a separate execution and readback.
+
+Actual retained diagnostic `coverage-demo-routing-diagnostic-20261015-1`
+completed on October 15 using merged host `93ec917`, with the same already-built
+`cedd7e6` candidate—no rebuild or upload. The native candidate counts were:
+
+| Scheduled observation | Unkeyed candidate / 100 | Keyed candidate / 100 |
+| --- | ---: | ---: |
+| 0 seconds | 0 | 0 |
+| 30 seconds | 5 | 9 |
+| 120 seconds | 12 | 4 |
+
+All seven cohorts (including baseline) had zero unknown outcomes and zero
+observed failures. This supports delayed data-plane convergence, not an affinity
+bug or a guaranteed readiness deadline. Exactly two target allocation writes
+were independently read back: 10% promotion and restoration. Baseline
+`09593237-23b2-4873-bd04-88c8e8488840` was restored at deployment
+`28046f81-3b35-47f7-9a19-02491e2bc5e1`; the original failed build remained
+errored. All thirteen action checkpoints ran once with zero retry limits.
+No review, approval, Slack message, release commit or inference occurred.
+An independent external GET-only observer also saw both versions; its samples
+are not substituted for the native controller's evidence. One read-only full
+step-output API fetch hit HTTP 429; complete compact JSON summaries were then
+read from the normal history endpoint. No native action was retried.
+
+```sh
+LIVE_DEMO_ROUTING_DIAGNOSTIC=1 CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-routing-diagnostic.test.ts
+```
 
 The owned test gate was explicitly authorized by Eric for browser-delegated
 approvals. Activation requires an explicit host source change, merged build,
