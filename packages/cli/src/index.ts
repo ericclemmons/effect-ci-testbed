@@ -6,6 +6,8 @@ import { parseArgs } from "node:util"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/project-service"
+import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
@@ -671,6 +673,7 @@ const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
 
 const classifyFailure = (error: unknown): CliFailure => {
   if (error instanceof CliFailure) return error
+  if (error instanceof LocalIsolateUnavailable) return new CliFailure(error.code, ExitCode.providerUnavailable, error.message)
 
   if (error instanceof CI.ApprovalError) {
     return new CliFailure(
@@ -826,9 +829,11 @@ export const main = async (
       ? program.local({ root: projectRoot(workflowPath), workflowPath })
       : program.local ?? {}
     const configured: CI.RunConfiguration = { ...defaults, ...overrides }
+    const isolate = makeLocalProjectChecks()
+    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(Effect.provideService(ProjectChecks, isolate.service)) }
     const result = await (async () => {
       try {
-        return await CI.runPromise(workflow, {
+        return await CI.runPromise(localWorkflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
           ...(format === "json" || format === "mermaid"
@@ -838,7 +843,7 @@ export const main = async (
             : {}),
         })
       } finally {
-        await configured.dispose?.()
+        try { await isolate.dispose() } finally { await configured.dispose?.() }
       }
     })()
 

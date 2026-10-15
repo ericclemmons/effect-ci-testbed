@@ -60,8 +60,8 @@ examples/dynamic-project-checks/node_modules/.bin/tsc -p examples/dynamic-projec
 ```
 
 The real local workerd test exercises the reusable isolation service, not this
-new native deployment or hosted CPU enforcement. Plain local CLI execution still
-does not silently substitute Node for the ProjectChecks service.
+new native deployment or hosted CPU enforcement. The normal local CLI now supplies
+that capability directly; it never substitutes Node execution for project modules.
 
 Before creating anything, confirm Worker `effect-ci-project-checks` and both
 Workflow names below are absent; stop on an existing resource. With existing
@@ -121,6 +121,52 @@ Read original records only, without executing hostile modules again:
 LIVE_OWNED_PROJECT=1 CF_BIN=cf node --test examples/dynamic-project-checks/src/live.test.ts
 ```
 
+## Run the unchanged workflow locally
+
+From this monorepo after the frozen install above:
+
+```sh
+node packages/cli/src/bin.ts run --workflow examples/dynamic-project-checks/.cloudflare/ci/workflow.ts --format=json
+node packages/cli/src/bin.ts plan --workflow examples/dynamic-project-checks/.cloudflare/ci/workflow.ts --format=json
+node --test packages/cli/src/local-project.test.ts packages/cloudflare-dynamic-worker/src/local.test.ts
+```
+
+With this workspace CLI on PATH, the ordinary command from this recipe directory
+is just `cf-ci run`. No isolate flag, custom local wrapper, Cloudflare credential,
+Docker or provider account is required. Human and agent invocation use the same
+entrypoint; `AI_AGENT=true` selects normal agent JSON automatically.
+
+The CLI lazily starts a scoped Miniflare/workerd bridge only when `ProjectChecks`
+is actually used. It bundles **trusted bridge/library code only** in Node. Validated
+project module strings travel as JSON to real workerd and execute only in fresh
+WorkerLoader children. The existing 16-module/64-KiB source, 16-assertion, 4-KiB
+response, empty-binding and denied-outbound policies remain in force. Trusted
+workflow configuration still runs in the host as before; it must read project
+modules as data rather than importing them into Node.
+
+The five-second check deadline is backed by an independent six-second per-check
+Node watchdog, which disposes the private local workerd process if it stops
+responding. All runtime processes close on success/failure. This is local process
+cleanup, not a Cloudflare isolate kill API, a measured 50-ms CPU guarantee or an
+independent memory quota. No hosted Worker, Container, state journal or paid
+resource is created by local execution.
+
+Real normal-CLI tests pass the unchanged two-module recipe, fresh globals, empty
+bindings, denied HTTPS/TCP, inaccessible host filesystem, wrong/oversized output,
+hanging responses and a preflight-guarded loop. A Node-filesystem side-effect
+fixture cannot create its marker. Untrusted console messages and exception bodies
+are withheld from stdout/stderr and cannot corrupt agent JSON. The console test
+first caught a real SDK default-logging leak; the runtime log boundary now drops
+those events explicitly, without interpreting them as host instructions.
+
+Planning succeeds even with the module file absent and without runtime/loopback
+access: it does not read or execute project code or start workerd. Unsupported
+execution fails closed with exit 3 / `CI_LOCAL_ISOLATE_UNAVAILABLE`, explaining
+the locked dependency and loopback requirements; it never falls back to Node.
+Local capability tests also cover lazy startup, single disposal, invalid proofs,
+and the independent watchdog. This real Local execution is the basis for the
+updated coverage cell; it is not relabeled hosted or mock-only evidence.
+
 ## Historical shared-host setup
 
 Deploy [the example host](../../apps/example-runner), then create an
@@ -136,10 +182,9 @@ node --test apps/example-runner/src/dynamic-project-runtime.test.ts
 
 These execute actual child modules, HTTPS/TCP denial, parent-binding isolation,
 locally unsupported Node filesystem imports, oversized output and failing behavior. They
-are not evidence of hosted CPU enforcement. Plain `cf-ci run` has no implicit Node
-fallback for this service; use the example host (or its local `cf dev` explorer).
-The local matrix cell remains pending a native local Workflow run, not merely the
-workerd test harness.
+are not evidence of hosted CPU enforcement. These older shared-host setup commands
+are retained for historical context; normal `cf-ci run` now supplies real local
+workerd as described above, without an implicit Node fallback.
 
 The hosted runtime may resolve a Node built-in even without requested Node flags;
 import rejection is not a portable security promise. The administrative hosted
