@@ -19,6 +19,7 @@ export default defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       PublicIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentDispatcher: exports.worker(),

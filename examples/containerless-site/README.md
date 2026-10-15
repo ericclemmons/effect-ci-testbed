@@ -74,7 +74,9 @@ The build is a small portable JavaScript template transform. It does **not**
 prove Vite/npm/native binary/plugin compatibility. Local tests do not prove hosted
 CPU enforcement. Publishing a Dynamic Worker-backed revision is not a Workers
 Static Assets upload, a new deployment API call per build, or evidence that the
-`cf` CLI runs inside a DO. The separate direct-assets upload recipe remains pending.
+`cf` CLI runs inside a DO. The separate direct-assets upload recipe remains pending;
+its [specific target and credential proposal](../static-assets-source/PROPOSAL.md)
+records the approval boundary, not a deployed recipe.
 The operator uses `cf` locally; no OAuth or deployment secret is stored here.
 
 ## Verification proof
