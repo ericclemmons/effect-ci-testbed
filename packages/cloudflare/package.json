@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./artifacts-source": "./src/artifacts-source.ts",
+    "./r2-source": "./src/r2-source.ts",
     "./check-cache": "./src/check-cache.ts",
     "./check-evidence": "./src/check-evidence.ts",
     "./demo-site": "./src/demo-site.ts",

@@ -35,8 +35,105 @@ Adapter tests:
 node --test packages/cloudflare/src/r2-source.test.ts
 ```
 
-The host adapter is in [r2-source.ts](../../apps/example-runner/src/r2-source.ts).
-The bucket is private and the example host has no public HTTP execution endpoint.
+## Owned Cloudflare deployment
+
+This directory now owns its [Worker wrapper](./src/worker.ts),
+[configuration](./cloudflare.config.ts), [minimal image](./Dockerfile), and
+[standalone workflow](./.cloudflare/ci/standalone.ts). The wrapper imports the
+public `@effect-ci-testbed/cloudflare/r2-source` reader, not another app's
+implementation. It needs no Git checkout or storage SDK inside the container.
+
+The standalone workflow has two actions: checkout, then verify restored R2 bytes.
+Returning each workspace automatically checkpoints it; a separate downstream
+container restores the checkout and a fixed Node command verifies the raw 15-byte
+file and checks that known storage-credential environment variables are absent.
+This is automatic workspace handoff, not explicit artifact publication.
+
+From this repository (the workspace packages are not published onboarding):
+
+```sh
+CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
+node packages/cli/src/bin.ts run --workflow examples/r2-source/.cloudflare/ci/standalone.ts --format=json
+node --test examples/r2-source/src/*.test.ts packages/cloudflare/src/r2-source.test.ts
+examples/r2-source/node_modules/.bin/tsc -p examples/r2-source/tsconfig.json
+```
+
+Local CLI execution uses the included filesystem fixture, not R2. The integration
+test uses actual local R2, Workflow and SQLite RPC bindings with a **fake container**;
+it proves the boundary and separate snapshot restoration, not native Docker execution.
+Wrong digest, missing object, unsafe path and extra parameters fail before materialization.
+
+For a new deployment, first confirm the following owned names are unused. Do not
+overwrite an existing bucket, object, Worker or Workflow. With an authenticated
+`cf` CLI authorized for Workers, Workflows, Containers and R2 in your account:
+
+```sh
+cf r2 buckets get effect-ci-r2-source-input
+cf workers deployments list --worker effect-ci-r2-source --per-page 1
+cf r2 buckets create --name effect-ci-r2-source-input
+cf r2 buckets domains managed list --bucket-name effect-ci-r2-source-input
+```
+
+The initial reads should report not found; stop if they find existing resources.
+Verify managed `r2.dev` access is disabled and do not attach a public/custom domain.
+Upload the unchanged manifest once, independently read it back and verify SHA-256:
+
+```sh
+cf r2 objects put source/6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd.json \
+  --bucket-name effect-ci-r2-source-input --file examples/r2-source/source.json --content-type application/json
+cf r2 objects get source/6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd.json \
+  --bucket-name effect-ci-r2-source-input
+cd examples/r2-source
+cf build
+cf deploy --prebuilt
+cf workflows instances create effect-ci-r2-source-checks --body '{"instance_id":"my-owned-r2-source-run","params":{"repository":"source/6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd.json","revision":"6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd"}}'
+cf workflows instances get my-owned-r2-source-run --workflow-name effect-ci-r2-source-checks
+```
+
+Use a new instance ID for genuine new work. On an ambiguous create/deploy ACK,
+read the existing resource/history instead of blindly retrying. The Worker is
+private (`workersDev` and preview URLs disabled), has exactly the R2 binding and
+its own container/Workflow exports, and has no HTTP execution or writer endpoint.
+The source key is restricted to `source/<64 lowercase hex>.json`; `revision` pins
+the exact raw SHA-256 independently of the key spelling. Source validation and
+commands have zero retries; ordinary snapshot transport retains its runner policy.
+
+For native negative cases, use a wrong digest against the existing object, a
+nonexistent content-addressed key, and the owned
+[`fixtures/unsafe.json`](./fixtures/unsafe.json) uploaded under its own SHA-256
+(`88ffc89ebd9c67ee49ae021e14e4e4e7e4663def3523634da12f281242ecf635`).
+Each should error before source materialization. Do not execute uploaded project
+scripts as validation or give storage credentials to the container.
+
+Permissions stay at the host: the Worker receives a private R2 binding, not an
+account token. The operator needs create/read/deploy permissions for these owned
+resources; no GitHub App, AI, Slack, release or additional account scope is needed.
+Costs are R2 object storage/operations, Workflow steps, SQLite snapshots and
+short-lived `standard-1` container runtime/image storage. Both actions commit and
+release their containers; do not leave a verifier VM running. These are real billed
+services, not a promise of free execution.
+
+Cleanup is optional and only after explicitly authorizing removal of these exact
+owned resources and retaining required evidence. In the Cloudflare dashboard,
+remove this recipe's Workflow, Worker, container application and snapshots; never
+delete shared example resources. Then delete the two known objects (if uploaded)
+and the now-empty owned bucket:
+
+```sh
+cf r2 objects delete source/6759fef7f59ccbd363fb8c42062fb4903d98070d08da56c6ae873d9a75ea41cd.json --bucket-name effect-ci-r2-source-input
+cf r2 objects delete source/88ffc89ebd9c67ee49ae021e14e4e4e7e4663def3523634da12f281242ecf635.json --bucket-name effect-ci-r2-source-input
+cf r2 buckets delete effect-ci-r2-source-input
+```
+
+The owned wrapper currently has local verification and a local Worker/image build;
+fresh native deployment and acceptance are still pending. Do not confuse that with
+the older shared-host proof below.
+
+## Historical shared-host proof
+
+The old host adapter remains in [r2-source.ts](../../apps/example-runner/src/r2-source.ts).
+It and its bucket/history are unchanged. These commands describe that older host,
+not the owned deployment above.
 
 After deploying the [example host](../../apps/example-runner), upload the exact
 manifest bytes and create the native Workflow:
