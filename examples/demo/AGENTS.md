@@ -6,9 +6,9 @@ not on PATH. Do not pass `--workflow`. The initial demo has no CI marker:
 help/list/plan infer package scripts without writing files; explicit run creates
 the ignored empty `.cloudflare/ci/ci.ts` marker. No target means the full workflow.
 
-Use `--agent` for deterministic agent-friendly JSON in a human terminal; automatic
-direct-agent environment detection also selects JSON. Explicit `--format` overrides
-both. Human terminals default to readable text without a format flag. A nonzero exit code
+Agent detection uses `@vercel/detect-agent`, including `AI_AGENT` and tool-specific
+environment signals; no `--agent` flag is needed. Explicit `--format` overrides
+detection. Human terminals default to readable text without a format flag. A nonzero exit code
 is a failure. If JSON only names the failed command, rerun that target with
 `--format=text` to read its diagnostics, then fix the source and rerun. The demo's
 lint uses plain `vp lint`, with `no-undef` set to `error` in `vite.config.ts`:

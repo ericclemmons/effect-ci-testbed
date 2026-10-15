@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vp dev",
+    "preview": "vp preview",
     "check": "vpr check:source",
     "lint": "vpr lint:source",
     "typecheck": "vpr typecheck:source",

@@ -46,7 +46,7 @@ test("bare CLI and --help describe commands without initializing or executing an
     const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /cf-ci plan --format=mermaid/)
-    assert.match(result.stdout, /Actions:\n  lint/)
+    assert.match(result.stdout, /cf-ci run lint/)
     assert.equal(existsSync(join(root, ".cloudflare")), false)
     assert.equal(existsSync(join(root, "checked.txt")), false)
   }

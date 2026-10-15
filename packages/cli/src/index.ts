@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
-import { detectAgenticEnvironment } from "am-i-vibing"
+import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
@@ -74,14 +74,11 @@ const actionTargets = (actions: Program["actions"]): Readonly<Record<string, Act
     ),
   )
 
+const agentEnvironment = await determineAgent().catch(() => ({ isAgent: false }))
+
 const detectedFormat = (): OutputFormat => {
   try {
-    const environment = detectAgenticEnvironment({
-      checkProcesses: false,
-      processAncestry: [],
-    })
-
-    return environment.type === "agent" ? "json" : "text"
+    return agentEnvironment.isAgent ? "json" : "text"
   } catch {
     return "text"
   }
@@ -401,21 +398,21 @@ Usage:
 Commands:
   run     Execute the default workflow, or one exported action when a target is given
   plan    Resolve the graph without executing commands
-  list    List the default workflow and exported action targets
+  list    List runnable commands for this project
 
 Examples:
   cf-ci run                     Execute the whole default workflow
   cf-ci plan                    Inspect the whole workflow without executing
   cf-ci plan --format=mermaid    Print its Mermaid graph
-  cf-ci list                    Discover exported action targets
-  cf-ci run --agent              Show the agent-friendly JSON result
+  cf-ci list                    Discover exact commands to run
+  AI_AGENT=demo cf-ci list       Preview automatic agent-friendly JSON
 
 Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
 a project; an explicit local run can initialize supported package scripts.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
-Detection uses am-i-vibing environment signals (not process scanning).
---agent explicitly selects JSON for demos; an explicit --format always wins.`
+Detection uses @vercel/detect-agent, including AI_AGENT and tool-specific signals.
+No agent flag is needed. An explicit --format always wins.`
 
 const workflowNames = [
   "workflow.ts",
@@ -743,13 +740,15 @@ const list = (program: Program, format: OutputFormat): void => {
       command: "list",
       workflow: program.workflow.id,
       targets,
+      commands: ["cf-ci run", ...targets.map((target) => `cf-ci run ${target}`)],
     })
     return
   }
 
   console.log(`Workflow: ${program.workflow.id}`)
-  console.log("Actions:")
-  for (const target of targets) console.log(`  ${target}`)
+  console.log("Run commands:")
+  console.log("  cf-ci run  (whole workflow)")
+  for (const target of targets) console.log(`  cf-ci run ${target}`)
 }
 
 export const main = async (

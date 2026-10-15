@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Effect CI demo</title>
+  </head>
+  <body>
+    <main>
+      <h1>A Vite app, before CI</h1>
+      <button id="show" type="button">Show message</button>
+      <p id="message" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module">
+      import { message } from "./src/message.js";
+      document.querySelector("#show").addEventListener("click", () => {
+        document.querySelector("#message").textContent = message;
+      });
+    </script>
+  </body>
+</html>
