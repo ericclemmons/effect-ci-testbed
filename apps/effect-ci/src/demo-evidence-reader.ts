@@ -56,7 +56,9 @@ export const withDemoEvidenceRead = async (
     offset += chunk.length;
   }
   const result = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  if (typeof result.token !== "string" || !/^[A-Za-z0-9_]{1,1024}$/.test(result.token))
+  // Installation tokens are opaque, not necessarily legacy ghs_ alphanumerics.
+  // Bound size and reject header controls/whitespace, not valid punctuation.
+  if (typeof result.token !== "string" || !/^[\x21-\x7e]{1,1024}$/.test(result.token))
     throw unavailable();
   const token = result.token;
   try {

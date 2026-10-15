@@ -21,9 +21,12 @@ const harness = (permissions: Record<string, string> = { contents: "read", metad
         repositories: ["effect-ci-testbed"],
         permissions: { contents: "read" },
       });
-      return Response.json({ token: "fixture_token", permissions });
+      return Response.json({ token: "fixture.token-with-hyphens", permissions });
     }
-    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer fixture_token");
+    assert.equal(
+      new Headers(init?.headers).get("authorization"),
+      "Bearer fixture.token-with-hyphens",
+    );
     if (String(input).endsWith("/installation/token")) {
       assert.equal(init?.method, "DELETE");
       revoked++;
