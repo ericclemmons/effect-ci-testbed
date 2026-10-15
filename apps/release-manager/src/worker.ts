@@ -1,5 +1,6 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers"
 import { ReleaseManager, deploymentAPI, RELEASE_SCRIPT, type ReleaseJournal } from "./release-manager.ts"
+import { prepareCandidate, type CandidateRecord, type CandidateReceipt } from "./candidate.ts"
 
 interface Environment { HMD_DEPLOY_TOKEN: string }
 
@@ -24,6 +25,27 @@ export class ReleaseJournalObject extends DurableObject<Environment> {
     return result
   }
   begin(owner: string, candidate: string, leaseSeconds?: number) { return this.run((manager) => manager.begin(owner, candidate, leaseSeconds)) }
+  prepareCandidate(revision: string, digest: string): Promise<CandidateReceipt> {
+    return this.run(async () => {
+      const release=await this.ctx.storage.get<ReleaseJournal>("release")
+      if(release?.status==="active"||release?.pending) throw new Error("A release owns the target; preparation is blocked")
+      return prepareCandidate({
+        read:(revision)=>this.ctx.storage.get<CandidateRecord>(`candidate:${revision}`),
+        claim:(record)=>this.ctx.storage.transaction(async storage=>{
+          if(await storage.get(`candidate:${record.revision}`))throw new Error("Candidate already claimed")
+          const index=await storage.get<string[]>("candidate-index-v1")??[]
+          if(index.length>=32)throw new Error("Candidate capacity reached")
+          await storage.put(`candidate:${record.revision}`,record)
+          await storage.put("candidate-index-v1",[...index,record.revision])
+        }),
+        complete:(record)=>this.ctx.storage.transaction(async storage=>{
+          const previous=await storage.get<CandidateRecord>(`candidate:${record.revision}`)
+          if(previous?.status!=="pending"||previous.digest!==record.digest||previous.moduleDigest!==record.moduleDigest||previous.policy!==record.policy)throw new Error("Candidate completion conflict")
+          await storage.put(`candidate:${record.revision}`,record)
+        }),
+      },revision,digest,()=>this.env.HMD_DEPLOY_TOKEN)
+    })
+  }
   renew(owner: string) { return this.run((manager) => manager.renew(owner)) }
   override async alarm() {
     await this.run(async (manager) => {
@@ -54,6 +76,7 @@ export default class ReleaseManagerWorker extends WorkerEntrypoint<Environment> 
     return binding.getByName(RELEASE_SCRIPT)
   }
   begin(owner: string, candidate: string, leaseSeconds?: number) { return this.journal().begin(owner, candidate, leaseSeconds) }
+  prepareCandidate(revision: string, digest: string): Promise<CandidateReceipt> { return this.journal().prepareCandidate(revision,digest) }
   renew(owner: string) { return this.journal().renew(owner) }
   promote(owner: string, percentage: number) { return this.journal().promote(owner, percentage) }
   rollback(owner: string) { return this.journal().rollback(owner) }

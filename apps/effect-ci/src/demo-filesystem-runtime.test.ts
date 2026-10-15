@@ -26,12 +26,14 @@ test(
         contents: `
       import {DurableObject,WorkerEntrypoint} from "cloudflare:workers";
       import {demoSite,demoSiteUrl} from '@effect-ci-testbed/cloudflare/demo-site';
+      import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
       const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0;
       const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
       export class Publisher extends WorkerEntrypoint {
         async publish(revision,files){publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
+        async prepareCandidate(revision,digest){return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
       }
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
@@ -96,6 +98,11 @@ test(
               Publisher: { type: "worker" },
             },
             env: {
+              RELEASE_MANAGER: {
+                type: "worker",
+                worker: "demo-filesystem-probe",
+                exportName: "Publisher",
+              },
               DEMO_SITE: {
                 type: "worker",
                 worker: "demo-filesystem-probe",
@@ -143,10 +150,10 @@ test(
         'npm run "build"',
         "node .cloudflare/ci/verify-build.ts",
       ]);
-      assert.equal(output.nodes.length, 10);
+      assert.equal(output.nodes.length, 11);
       assert.equal(state.publications.length, 1);
       assert.equal(state.publications[0].revision, "a".repeat(40));
-      assert.equal(output.nodes.at(-1).id, "publish site");
+      assert.equal(output.nodes.at(-1).id, "prepare release");
       assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "build-workspace"));
       assert.ok(
         state.snapshots.some((snapshot: any) => snapshot.name === "verify build-workspace"),

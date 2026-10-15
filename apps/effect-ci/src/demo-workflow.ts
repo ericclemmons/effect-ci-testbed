@@ -3,6 +3,7 @@ import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import { demoRunAllowed } from "./demo-policy.ts";
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
+import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
 import { demoCheckCache } from "./demo-check-cache.ts";
 import { withDemoEvidenceRead } from "./demo-evidence-reader.ts";
 
@@ -21,9 +22,18 @@ const Base = GitHubCloudflare.workflowEntrypoint(
       }
     ).DEMO_SITE;
     if (!publisher) throw Error("Owned demo site publisher is not configured");
+    const release = (
+      environment as unknown as {
+        RELEASE_MANAGER?: {
+          prepareCandidate: (revision: string, digest: string) => Promise<DemoCandidateReceipt>;
+        };
+      }
+    ).RELEASE_MANAGER;
+    if (!release) throw Error("Owned release manager is not configured");
     return makeDemoProgram({
       revision: parameters.revision,
       publish: (assets) => publisher.publish(parameters.revision, assets),
+      prepare: (revision, digest) => release.prepareCandidate(revision, digest),
     }).workflow;
   },
   {

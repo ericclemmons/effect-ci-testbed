@@ -9,6 +9,7 @@
     "./check-cache": "./src/check-cache.ts",
     "./check-evidence": "./src/check-evidence.ts",
     "./demo-site": "./src/demo-site.ts",
+    "./demo-candidate": "./src/demo-candidate.ts",
     "./node-syntax-check": "./src/node-syntax-check.ts",
     "./node-syntax-signer": "./src/node-syntax-signer.ts"
   },

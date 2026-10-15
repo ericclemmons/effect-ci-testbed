@@ -3,6 +3,10 @@ import manifest from "../../../examples/demo/package.json" with { type: "json" }
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import * as Effect from "effect/Effect";
 import {
+  demoCandidatePolicy,
+  type DemoCandidateReceipt,
+} from "@effect-ci-testbed/cloudflare/demo-candidate";
+import {
   demoAssetNames,
   demoAssets,
   demoSite,
@@ -32,6 +36,7 @@ const verifyBuild = CI.action(
 export function makeDemoProgram(publisher?: {
   revision: string;
   publish: (assets: DemoAssets) => Promise<{ revision: string; digest: string; url: string }>;
+  prepare?: (revision: string, digest: string) => Promise<DemoCandidateReceipt>;
 }) {
   const publish = CI.action<{ revision: string; digest: string; url: string }>(
     "publish site",
@@ -60,12 +65,44 @@ export function makeDemoProgram(publisher?: {
     },
     { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
   );
+  const prepare = CI.action<DemoCandidateReceipt>(
+    "prepare release",
+    function* () {
+      const published = yield* publish();
+      return () =>
+        Effect.tryPromise(async () => {
+          const receipt = await publisher!.prepare!(published.revision, published.digest);
+          if (
+            receipt.revision !== published.revision ||
+            receipt.digest !== published.digest ||
+            receipt.policy !== demoCandidatePolicy ||
+            receipt.script !== "effect-ci-hmd-demo" ||
+            !/^[a-f0-9]{64}$/.test(receipt.moduleDigest) ||
+            !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(receipt.version)
+          )
+            throw Error("Prepared release identity mismatch");
+          return {
+            revision: receipt.revision,
+            digest: receipt.digest,
+            moduleDigest: receipt.moduleDigest,
+            policy: receipt.policy,
+            script: receipt.script,
+            version: receipt.version,
+          };
+        });
+    },
+    { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" },
+  );
   return {
     ...inferred,
     workflow: CI.workflow(manifest.name, function* () {
       yield* syntax();
       yield* inferred.workflow.effect;
-      return publisher ? yield* publish() : yield* verifyBuild();
+      return publisher?.prepare
+        ? yield* prepare()
+        : publisher
+          ? yield* publish()
+          : yield* verifyBuild();
     }),
   };
 }
