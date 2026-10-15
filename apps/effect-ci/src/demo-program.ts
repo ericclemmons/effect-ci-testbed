@@ -2,6 +2,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import manifest from "../../../examples/demo/package.json" with { type: "json" };
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import * as Effect from "effect/Effect";
+import { demoReleaseError, demoPublicationError } from "./demo-release-error.ts";
 import {
   demoCandidatePolicy,
   type DemoCandidateReceipt,
@@ -50,7 +51,7 @@ export function makeDemoProgram(publisher?: {
           assets[name] = value;
         }
         const bounded = demoAssets(assets);
-        return yield* Effect.tryPromise(async () => {
+        return yield* Effect.tryPromise({ try: async () => {
           const expected = await demoSite(publisher!.revision, bounded);
           const receipt = await publisher!.publish(bounded);
           if (
@@ -60,7 +61,7 @@ export function makeDemoProgram(publisher?: {
           )
             throw Error("Publication identity mismatch");
           return { revision: receipt.revision, digest: receipt.digest, url: receipt.url };
-        });
+        }, catch: demoPublicationError });
       };
     },
     { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" },
@@ -70,7 +71,7 @@ export function makeDemoProgram(publisher?: {
     function* () {
       const published = yield* publish();
       return () =>
-        Effect.tryPromise(async () => {
+        Effect.tryPromise({ try: async () => {
           const receipt = await publisher!.prepare!(published.revision, published.digest);
           if (
             receipt.revision !== published.revision ||
@@ -89,7 +90,7 @@ export function makeDemoProgram(publisher?: {
             script: receipt.script,
             version: receipt.version,
           };
-        });
+        }, catch: demoReleaseError });
     },
     { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" },
   );
