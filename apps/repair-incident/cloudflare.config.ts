@@ -4,7 +4,7 @@ export default defineConfig({
     name: "effect-ci-repair-incident",
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
-    workersDev: false,
+    workersDev: true,
     previewUrls: false,
     env: { WORKER_METADATA: bindings.versionMetadata(),
       PUBLIC_READINESS: bindings.worker({ worker: "effect-ci-github-cloudflare", exportName: "PublicPipelineReadiness" }) },

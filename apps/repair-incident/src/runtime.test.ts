@@ -60,6 +60,10 @@ test(
       workers: [{ config: config(production) }, { config: ready() }],
     });
     try {
+      // Production routing is enabled but an unarmed source cannot emit, even
+      // with a ready private consumer. Only the authenticated arming Workflow
+      // can persist the version-pinned arm.
+      assert.equal((await runtime.dispatchFetch("https://owned.invalid/failure")).status, 409);
       assert.equal(
         (
           await runtime.dispatchFetch("https://owned.invalid/", {
@@ -154,18 +158,18 @@ test(
       await runtime.setOptions({ workers: [{ config: config(production) }, { config: ready() }] });
       assert.equal(
         (await runtime.dispatchFetch("https://owned.invalid/failure")).status,
-        404,
+        410,
       );
       const authored = await readFile(
         join(pkg, "cloudflare.config.ts"),
         "utf8",
       );
       assert.match(authored, /issues: \{ enabled: true \}/);
-      assert.match(authored, /workersDev: false/);
+      assert.match(authored, /workersDev: true/);
       assert.match(authored, /previewUrls: false/);
       assert.match(
         await readFile(join(pkg, "src/worker.ts"), "utf8"),
-        /const publicFailureEnabled: boolean = false/,
+        /const publicFailureEnabled: boolean = true/,
       );
     } finally {
       await runtime.dispose();
