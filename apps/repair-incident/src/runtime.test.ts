@@ -118,6 +118,13 @@ test(
         410,
       );
       assert.deepEqual(await evidence(), claimProof);
+      const drifted = config(publicLocal + "\n// local version drift");
+      drifted.env.WORKER_METADATA.value.id = "22222222-2222-2222-2222-222222222222";
+      await runtime.setOptions({ workers: [{ config: drifted }] });
+      assert.deepEqual(await evidence(), {
+        ...claimProof, currentVersion: "22222222-2222-2222-2222-222222222222",
+      });
+      assert.equal((await runtime.dispatchFetch("https://owned.invalid/failure")).status, 410);
       // The separately claimed historic RPC source remains complete, not reset.
       await runtime.setOptions({ workers: [{ config: config(local) }] });
       assert.equal((await send("inspect")).result.state, "complete");
