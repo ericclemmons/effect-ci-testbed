@@ -29,11 +29,11 @@ test(
       import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0;
+      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false;
       const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
       export class Publisher extends WorkerEntrypoint {
         async publish(revision,files){publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
-        async prepareCandidate(revision,digest){return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
+        async prepareCandidate(revision,digest){if(prepareFailure)throw Error('Candidate upload uncertain or rejected (identity, HTTP 200, version 11111111-1111-4111-8111-111111111111); reconcile the pending identity, never retry automatically');return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
       }
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
@@ -68,7 +68,12 @@ test(
           await ctx.exports.DemoCIWorkflow.create({id:"demo-missing-lock",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
           return Response.json({started:true});
         }
-        if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
+        if(path==="/prepare-failure"){
+          missingLock=false;prepareFailure=true;
+          await ctx.exports.DemoCIWorkflow.create({id:"demo-prepare-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
+          return Response.json({started:true});
+        }
+        if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("prepare")?"demo-prepare-failure":new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
         return Response.json({reads,exists,commands,cacheReads,snapshots,restores,publications});
       }};
     `,
@@ -180,6 +185,16 @@ test(
         11,
         "missing lockfile must fail before any extra package command",
       );
+      await runtime.dispatchFetch("https://probe.invalid/prepare-failure");
+      let prepareFailed: any;
+      for (let i = 0; i < 200; i++) {
+        const status = await (await runtime.dispatchFetch("https://probe.invalid/status?prepare=1")).json();
+        if (status.status === "errored") { prepareFailed = status; break; }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.match(prepareFailed?.error?.message ?? "", /stage=identity/);
+      assert.match(prepareFailed.error.message, /HTTP 200/);
+      assert.match(prepareFailed.error.message, /never retry automatically/);
     } finally {
       await runtime.dispose();
     }

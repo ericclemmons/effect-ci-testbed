@@ -63,10 +63,18 @@ authority. No test-only decision path is deployed.
 ```sh
 node --test packages/cloudflare/src/reviewed-release.test.ts
 node --test apps/effect-ci/src/demo-release-runtime.test.ts apps/effect-ci/src/hmd-approval-runtime.test.ts
+node --test apps/effect-ci/src/demo-release-error.test.ts apps/effect-ci/src/demo-filesystem-runtime.test.ts
 pnpm --filter @effect-ci-testbed/cloudflare check
 pnpm --filter @effect-ci-testbed/github-cloudflare check
 pnpm --filter @effect-ci-testbed/app check
 ```
+
+Release preparation failures retain only the fixed broker protocol's stage,
+HTTP status and known version ID. Unknown RPC errors are redacted, with a reminder
+to inspect the retained run and reconcile pending state rather than retry an upload.
+The hosted-wrapper regression reproduces the original `Effect.tryPromise`
+`UnknownError` before the explicit error mapping; it uses a fake broker, not a
+new native upload or a rewrite of the original failed history.
 
 The composition test runs the actual local Workflow/finalizer/private SQLite/RPC
 path with **fake** health, deployment API, Slack, PNG renderer/upload and human
