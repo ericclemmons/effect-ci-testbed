@@ -8,13 +8,17 @@
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cloudflare-dynamic-worker": "workspace:*",
     "@effect-ci-testbed/source-tools": "workspace:*",
     "effect": "4.0.0-beta.19",
     "prettier": "3.6.2"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@cloudflare/workers-types": "5.20261001.1",
     "@types/node": "^26.6.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "cf": "1.0.0-beta.12",
+    "vite": "^7.1.12"
   }
 }
