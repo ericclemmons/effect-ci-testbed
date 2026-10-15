@@ -17,17 +17,21 @@ Use Node 24.11+ or Node 26+ and the repository's pnpm version. From a clone:
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
 cd examples/developer-loop
-cf-ci list --format=text
+cf-ci
+cf-ci list
 cf-ci plan --format=mermaid
-cf-ci run lint --format=text
-cf-ci run build --format=text
+cf-ci run
+cf-ci run build --agent
 ```
 
-The example already contains an empty workflow marker. In a package without a
-discovered workflow, an explicit local `cf-ci run` now creates an empty
+The demo starts without a CI marker. Help, list and plan infer normal package
+scripts without creating files. An explicit local `cf-ci run` creates an empty
 `.cloudflare/ci/ci.ts` and discovers conventional package scripts. Existing
 workflows take precedence; `plan`, `list`, and remote dispatch do not create files.
 Use a package-manager declaration or lockfile so installation can be resolved.
+Human terminals default to text; detected direct agents default to JSON.
+`--agent` explicitly shows the same JSON interface for a presenter without having
+to forge detection signals. Explicit `--format` remains available as an override.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the

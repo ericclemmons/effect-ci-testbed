@@ -320,6 +320,7 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
       allowPositionals: true,
       options: {
         format: { short: "f", type: "string" },
+        agent: { type: "boolean" },
         help: { short: "h", type: "boolean" },
         local: { type: "boolean" },
         remote: { type: "boolean" },
@@ -334,7 +335,7 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
     )
   }
 
-  const format = parsed.values.format ?? detectedFormat()
+  const format = parsed.values.format ?? (parsed.values.agent ? "json" : detectedFormat())
 
   if (format !== "json" && format !== "mermaid" && format !== "text") {
     throw new CliFailure(
@@ -406,12 +407,14 @@ Examples:
   cf-ci plan                    Inspect the whole workflow without executing
   cf-ci plan --format=mermaid    Print its Mermaid graph
   cf-ci list                    Discover exported action targets
+  cf-ci run --agent              Show the agent-friendly JSON result
 
 Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
 a project; an explicit local run can initialize supported package scripts.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
-An explicit --format always wins.`
+Detection uses am-i-vibing environment signals (not process scanning).
+--agent explicitly selects JSON for demos; an explicit --format always wins.`
 
 const workflowNames = [
   "workflow.ts",
@@ -590,7 +593,7 @@ export const initializeJavaScriptProject = (
     arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg)
   )) return undefined
   const invocation = parseInvocation(args)
-  if (invocation.command !== "run" || invocation.location !== "local") return undefined
+  if (invocation.help || invocation.command !== "run" || invocation.location !== "local") return undefined
   // Validate scripts and the requested target before writing anything or running scripts.
   const program = inferJavaScriptProgram(resolve(cwd))
   selectedWorkflow(program, invocation.target)
@@ -871,14 +874,24 @@ export const runCli = async (
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
     if (!explicit && !findWorkflow(cwd)) {
       const invocation = parseInvocation(args)
-      if (invocation.help) {
-        console.log(help("no workflow selected"))
-        process.exitCode = ExitCode.success
-        return
-      }
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
+        return
+      }
+      if (invocation.location === "local" && (invocation.help || invocation.command !== "run")) {
+        let program: Program
+        try { program = inferJavaScriptProgram(resolve(cwd)) }
+        catch (error) {
+          if (invocation.help && error instanceof CliFailure &&
+              ["CI_ZERO_CONFIG_UNSUPPORTED", "CI_ZERO_CONFIG_NO_TASKS"].includes(error.code)) {
+            console.log(help("no workflow selected"))
+            process.exitCode = ExitCode.success
+            return
+          }
+          throw error
+        }
+        process.exitCode = await main(program, args, resolve(cwd, ".cloudflare/ci/ci.ts"))
         return
       }
     }

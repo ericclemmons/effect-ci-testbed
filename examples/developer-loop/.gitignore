@@ -3,3 +3,5 @@ node_modules/
 .effect-ci/
 .e2e/
 .verification/
+# Created by an explicit cf-ci run; absent in the initial zero-config demo.
+.cloudflare/ci/ci.ts

@@ -17,8 +17,10 @@ DEMO_SOURCE="$(mktemp /tmp/effect-ci-demo-source.XXXXXX)"
 cp src/message.js "$DEMO_SOURCE"
 ```
 
-Keep `package.json`, `vite.config.ts`, `.cloudflare/ci/ci.ts`, and `src/message.js`
-open in the editor. The CI marker is empty. Package scripts expose the targets
+Keep `package.json`, `vite.config.ts`, and `src/message.js`
+open in the editor. The initial demo has no CI marker; help/list/plan infer its
+package scripts without writing files. The first explicit run creates an ignored,
+empty marker. Package scripts expose the targets
 and `pretest`/`prebuild` prerequisites; Vite config supplies cached task bodies
 using Vite+'s built-in tools. `check` is formatting and
 lint. `test` runs type checking before Vitest; `build` runs type checking and
@@ -43,14 +45,14 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
    Run:
 
    ```sh
-   wc -c .cloudflare/ci/ci.ts
+   test ! -e .cloudflare/ci/ci.ts && echo "No CI config"
    cat package.json
    cf-ci
-   cf-ci list --format=text
+   cf-ci list
    cf-ci plan lint --format=mermaid
    ```
 
-   Look for: an empty CI marker, the `lint` and `build` targets, and the lint
+   Look for: no initial CI marker, the `lint` and `build` targets, and the lint
    plan's checkout/install prerequisites. No `--workflow` argument is supplied.
 
    Bare `cf-ci` prints help and the project's targets. `cf-ci run` with no target
@@ -61,7 +63,7 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
 
    > I don't want to remember whether this repo wants `pnpm run`, `vp run`, or
    > something else. Once I've set up the CLI, I want to ask the repo what I can
-   > run. Here the CI file is empty. The tasks come from ordinary package scripts,
+   > run. Here there's no CI file. The tasks come from ordinary package scripts,
    > and I can inspect the plan before running anything.
 
 2. **Run the checks where I'm already working.**
@@ -69,9 +71,9 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
    Run:
 
    ```sh
-   cf-ci run lint --format=text
-   cf-ci run test --format=text
-   time cf-ci run build --format=text
+   cf-ci run lint
+   cf-ci run test
+   time cf-ci run build
    cat dist/message.js
    ```
 
@@ -92,7 +94,7 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
    Run:
 
    ```sh
-   time cf-ci run build --format=text
+   time cf-ci run build
    ```
 
    Look for: Vite+'s `cache hit, replaying` message. The replayed build output
@@ -110,7 +112,7 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
 
    ```sh
    node --input-type=module -e 'import { rmSync } from "node:fs"; rmSync("dist/message.js", { force: true })'
-   cf-ci run build --format=text
+   cf-ci run build
    cat dist/message.js
    ```
 
@@ -128,7 +130,7 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
    ```sh
    DEMO_NOTE="$(mktemp ./demo-note.XXXXXX)"
    printf 'An unrelated edit.\n' > "$DEMO_NOTE"
-   cf-ci run build --format=text
+   cf-ci run build
    ```
 
    Look for: the build remains a cache hit because it does not read this note.
@@ -145,10 +147,10 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
 
    ```sh
    printf 'export const message = "Checked before pushing"\n' > src/message.js
-   cf-ci run lint --format=text
-   cf-ci run build --format=text
+   cf-ci run lint
+   cf-ci run build
    cat dist/message.js
-   cf-ci run build --format=text
+   cf-ci run build
    ```
 
    Look for: the source edit invalidates the lint/build tasks; the artifact has
@@ -168,15 +170,15 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
 
    ```sh
    printf 'export const message = "Checked before pushing"\nasdf\n' > src/message.js
-   if cf-ci run lint --format=json; then
+   if cf-ci run lint --agent; then
      printf 'Unexpected pass: inspect the result before continuing.\n'
    else
      printf 'Lint exit code: %s\n' "$?"
    fi
-   cf-ci run lint --format=text
+   cf-ci run lint
    printf 'export const message = "Checked before pushing"\n' > src/message.js
-   cf-ci run lint --format=json
-   cf-ci run build --format=json
+   cf-ci run lint --agent
+   cf-ci run build --agent
    ```
 
    Look for: `ok: false`, exit code 1, the text-mode `no-undef` diagnostic, then
@@ -191,7 +193,14 @@ cache. Do not clean between the first run and the repeat that demonstrates reuse
    > diagnostic, so I rerun in text mode to read it. After the repair, I can check
    > the same working files again.
 
-## Hand the same loop to an agent
+## Show the agent-friendly interface
+
+In a human terminal, compare `cf-ci list` with `cf-ci list --agent`, then
+`cf-ci run build` with `cf-ci run build --agent`. The flag deterministically selects
+JSON; it is not a separate fake execution engine. Both paths run the same workflow.
+The default heuristic uses am-i-vibing's direct-agent environment detection with
+process scanning disabled. Explicit --format takes precedence when diagnostics are
+needed. Do not set fake agent/account credentials to demonstrate output mode.
 
 Open the agent in `examples/developer-loop` with `cf-ci` on its PATH. Give it
 this prompt; choose a different message if you already used this one in rehearsal:
@@ -235,8 +244,8 @@ After the agent has finished, run in the original terminal session:
 
 ```sh
 cp "$DEMO_SOURCE" src/message.js
-cf-ci run lint --format=text
-cf-ci run build --format=text
+cf-ci run lint
+cf-ci run build
 rm -- "$DEMO_NOTE" "$DEMO_SOURCE"
 git status --short
 ```

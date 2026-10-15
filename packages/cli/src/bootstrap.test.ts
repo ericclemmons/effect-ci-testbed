@@ -46,9 +46,23 @@ test("bare CLI and --help describe commands without initializing or executing an
     const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /cf-ci plan --format=mermaid/)
+    assert.match(result.stdout, /Actions:\n  lint/)
     assert.equal(existsSync(join(root, ".cloudflare")), false)
     assert.equal(existsSync(join(root, "checked.txt")), false)
   }
+}))
+
+test("marker-free package supports list and full Mermaid planning without writing or executing", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.deepEqual(JSON.parse(listed.stdout).targets, ["lint"])
+  const planned = spawnSync(process.execPath, [bin, "plan", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(planned.status, 0, planned.stderr)
+  assert.match(planned.stdout, /step_checkout --> step_install/)
+  assert.match(planned.stdout, /step_install --> step_lint/)
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+  assert.equal(existsSync(join(root, "checked.txt")), false)
 }))
 
 test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
