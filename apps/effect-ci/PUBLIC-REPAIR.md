@@ -1,7 +1,7 @@
 # Owned public failure to proposed repair
 
 This is connected host source, **not yet native end-to-end proof**. The receiver
-enrollment and public source remain disabled. No new error or paid inference was
+enrollment remains disabled and the public source is unarmed. No new error or paid inference was
 emitted; historical operator-driven repairs remain unchanged and unmerged.
 
 ## Authority and ordering

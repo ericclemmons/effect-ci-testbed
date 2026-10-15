@@ -8,9 +8,9 @@ import {
 import { NonRetryableError } from "cloudflare:workflows";
 import { EMISSION_ID, ERROR_MESSAGE, healthStatus, mode } from "./fault.ts";
 import { PUBLIC_EMISSION_ID, PUBLIC_FIXTURE_DIGEST, publicFaultFetch } from "./public-fault.ts";
-// HOST SOURCE gate, not a caller/env flag. Keep false until the authenticated
-// automatic pipeline and source/version/private-fixture enrollment are ready.
-const publicFailureEnabled: boolean = false;
+// HOST SOURCE gate, not a caller/env flag. The public route remains unable to
+// emit until a separate durable arm verifies this exact version's enrollment.
+const publicFailureEnabled: boolean = true;
 
 /** Separate durable record; never reads, resets or reuses the old RPC emission. */
 interface PublicEnvironment {
