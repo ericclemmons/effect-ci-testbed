@@ -72,6 +72,7 @@ pnpm --filter @effect-ci-testbed/app check
 Release preparation failures retain only the fixed broker protocol's stage,
 HTTP status and known version ID. Unknown RPC errors are redacted, with a reminder
 to inspect the retained run and reconcile pending state rather than retry an upload.
+Publication failures similarly identify `stage=publication` without forwarding RPC text.
 The hosted-wrapper regression reproduces the original `Effect.tryPromise`
 `UnknownError` before the explicit error mapping; it uses a fake broker, not a
 new native upload or a rewrite of the original failed history.

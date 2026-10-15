@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoReleaseError } from "./demo-release-error.ts";
+import { demoReleaseError, demoPublicationError } from "./demo-release-error.ts";
 
 test("release diagnostics preserve only the fixed broker protocol, without arbitrary cause text", () => {
   for (const stage of ["upload", "readback", "identity", "allocation"]) {
@@ -18,4 +18,5 @@ test("release diagnostics preserve only the fixed broker protocol, without arbit
   demoReleaseError({ get message() { accessed = true; throw Error(hostile); } });
   assert.equal(accessed, false);
   assert.match(demoReleaseError(Error("Prepared release identity mismatch")).message, /stage=receipt/);
+  assert.match(demoPublicationError().message, /stage=publication/);
 });

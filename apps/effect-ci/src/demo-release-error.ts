@@ -8,3 +8,8 @@ export function demoReleaseError(cause: unknown): Error {
   const stage = match?.[1] ?? (message === "Prepared release identity mismatch" ? "receipt" : "broker");
   return new Error(`Release preparation failed (stage=${stage}${match?.[2] ? `, HTTP ${match[2]}` : ""}${match?.[3] ? `, version ${match[3]}` : ""}); inspect the retained run and reconcile any pending candidate; never retry automatically`);
 }
+
+/** Publication has no upload-version protocol to expose; keep its failure boundary explicit. */
+export function demoPublicationError(): Error {
+  return new Error("Demo publication failed (stage=publication); inspect the retained run and immutable publication before retrying; RPC details redacted");
+}

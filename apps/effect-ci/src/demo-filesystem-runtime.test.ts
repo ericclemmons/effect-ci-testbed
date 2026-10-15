@@ -29,10 +29,10 @@ test(
       import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false;
+      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false,publicationFailure=false;
       const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
       export class Publisher extends WorkerEntrypoint {
-        async publish(revision,files){publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
+        async publish(revision,files){if(publicationFailure)throw Error('Bearer fake-publication-secret');publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
         async prepareCandidate(revision,digest){if(prepareFailure)throw Error('Candidate upload uncertain or rejected (identity, HTTP 200, version 11111111-1111-4111-8111-111111111111); reconcile the pending identity, never retry automatically');return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
       }
       const cwd="/workspace/repository/examples/demo";
@@ -73,7 +73,12 @@ test(
           await ctx.exports.DemoCIWorkflow.create({id:"demo-prepare-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
           return Response.json({started:true});
         }
-        if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("prepare")?"demo-prepare-failure":new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
+        if(path==="/publication-failure"){
+          missingLock=false;publicationFailure=true;
+          await ctx.exports.DemoCIWorkflow.create({id:"demo-publication-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
+          return Response.json({started:true});
+        }
+        if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("publication")?"demo-publication-failure":new URL(request.url).searchParams.has("prepare")?"demo-prepare-failure":new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
         return Response.json({reads,exists,commands,cacheReads,snapshots,restores,publications});
       }};
     `,
@@ -195,6 +200,15 @@ test(
       assert.match(prepareFailed?.error?.message ?? "", /stage=identity/);
       assert.match(prepareFailed.error.message, /HTTP 200/);
       assert.match(prepareFailed.error.message, /never retry automatically/);
+      await runtime.dispatchFetch("https://probe.invalid/publication-failure");
+      let publicationFailed: any;
+      for (let i = 0; i < 200; i++) {
+        const status = await (await runtime.dispatchFetch("https://probe.invalid/status?publication=1")).json();
+        if (status.status === "errored") { publicationFailed = status; break; }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.match(publicationFailed?.error?.message ?? "", /stage=publication/);
+      assert.doesNotMatch(JSON.stringify(publicationFailed), /fake-publication-secret/);
     } finally {
       await runtime.dispose();
     }
