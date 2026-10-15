@@ -1089,8 +1089,55 @@ Vite's own task validation remain distinct. Native caching must restore declared
 cache files without restoring project-modified system state before re-enabling
 cross-run transport for this host. No new provider or inference cost is involved;
 Docker, container, snapshot/storage and GitHub API costs remain ordinary runtime
-costs. Native execute/reuse/invalid-proof acceptance is still pending this build;
-local tests are not presented as native evidence.
+costs.
+
+**Actual native acceptance, October 15:** all three runs used source
+`b22f6cfc30b7feb480cb25e30a86576a431276cb`. The signed hit and signature negative
+used host source `a90da85175a66931379e4e5ff5836ef3b54b2490`, App version
+`b189f522-7836-4115-b1e7-efa1ecb1fdb7`, and the unchanged immutable Linux image.
+
+| Evidence              | Native instance                        | Syntax   | Actual commands | Total wall time |
+| --------------------- | -------------------------------------- | -------- | --------------- | --------------- |
+| Missing               | `fc3d18a9-cf20-479a-a7c0-c5d67a913443` | Executed | 8               | 95.601 s        |
+| Valid signature       | `ce9f3370-2e68-43f4-9a30-7e92b89903cb` | Verified | 7               | 72.118 s        |
+| Signature-only tamper | `56b4f5c0-eefe-4d8a-adfe-728662c767eb` | Executed | 8               | 84.143 s        |
+
+All eight nodes completed or were verified, and every actual command ran once
+with zero retries. The inspector executes in every run; the pure parser is the
+only omitted command on a hit. All six ordinary package commands execute in all
+three cases. Signed and invalid-note reads each returned four HTTP 200s; the
+negative's reason was signature rejection, not a network miss. The host's token
+was revoked before its accepted verification checkpoint completed. Full private
+CLI streams preserve complete command outputs; native history previews can be
+truncated. These are single orchestration observations including APIs, container
+and snapshots, not isolated check timings or a performance comparison. The
+missing-note baseline used the earlier host deployment, not the final reader.
+
+```sh
+LIVE_DEMO_SIGNED_CHECKS=1 CF_BIN="$(pwd)/node_modules/.bin/cf" \
+  node --test src/live-demo-signed-check.test.ts
+```
+
+This reads the three existing histories only: no dispatch, signing, note push,
+model call, source write or deployment. The original valid note was restored by
+an ordinary descendant notes commit after the signature negative; no history was
+force-pushed or deleted.
+
+The original native misses are retained separately. Real workerd exposed an
+unsupported `redirect: "error"` mode; manual mode still refuses redirects. The
+next run exposed unauthenticated HTTP 403, followed by a legacy token-format
+assumption that rejected a real opaque token. Actual workerd and token-shape
+regressions cover both fixes. The failed token-shape run's individual token
+revocation was not confirmed and is not claimed; its value was never captured or
+exposed and its requested authority was only public-testbed Contents read. The
+independent local diagnostic token was revoked, and the accepted native runs
+complete the helper's `finally` revocation before returning a verdict.
+
+This establishes native execute/valid-reuse/invalid-signature fallback for the
+enrolled check, not hardware attestation, cross-merge reuse, arbitrary repository
+enrollment, conventional GitHub evidence parity or completion of every #144
+negative cell. Wrong-commit, changed-input/policy and unknown-trust hosted cells
+remain to audit separately; their local verifier tests are not relabelled native.
 
 ### 5. Run the first Workflow
 
