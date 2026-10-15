@@ -1191,6 +1191,32 @@ pushed commit containing the artifact helper can run the ten-node suite using
 consumer restore and successful raw-byte verification together before recording
 native acceptance. Do not dispatch an older source revision lacking that helper.
 
+**Actual native acceptance, October 15:** merged source
+`7a64ae82ac7b4a24496b58b36412968a0d4e1f72`, host Worker
+`4d579704-d315-4cc2-ad36-d360af2fcc94`, unchanged pinned Linux image:
+
+| Existing native instance               | Syntax                       | Ordinary build and artifact actions |
+| -------------------------------------- | ---------------------------- | ----------------------------------- |
+| `cd92c09c-9f8a-421b-8609-0195bea5889a` | Executed; no signed evidence | All completed                       |
+| `3559464e-1234-4787-b093-8a1498b3232c` | Verified signed evidence     | All completed                       |
+
+Both ran ten nodes; unsigned execution ran ten commands, signed execution nine.
+Only the enrolled parser was omitted. Producer and restored consumer independently
+reported identical SHA-256 identities for HTML (523 bytes), app JavaScript (1,520)
+and message JavaScript (103), and the consumer returned `verified: true`. Actual
+snapshot publication and restore completed on their first attempts (their ordinary
+transport policy permits retries; commands have retries disabled). Private full
+histories, CLI events and receipts are retained; no raw credential or diagnostic
+capture is published here. This proves native artifact handoff, not website
+deployment, browser verification or a general performance claim.
+
+Read these existing histories without executing another build:
+
+```sh
+LIVE_DEMO_ARTIFACT=1 CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-artifact.test.ts
+```
+
 ### 5. Run the first Workflow
 
 First exercise the same deployed service directly from the checkout:

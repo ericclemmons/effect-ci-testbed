@@ -415,6 +415,10 @@ Cloudflare transports an immutable workspace snapshot between action containers;
 the path list labels its contents, not a path-only public download. Local feedback
 checks the same files but is not proof of Cloudflare snapshot transport.
 
+**Live verified:** both the unsigned and signed runs completed all ten nodes.
+Signed reuse omitted only the pure syntax parser; the Vite build and both artifact
+commands still ran. [Read the retained native results](../../apps/effect-ci/README.md#same-app-vite-build-handoff).
+
 ```sh
 rm dist/message.js
 node .cloudflare/ci/artifact.ts verify  # expected failure: missing output
