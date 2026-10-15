@@ -7,6 +7,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
 import { demoRouteAllowed, demoRunAllowed } from "./demo-policy.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
+export { DemoCandidateRecoveryWorkflow } from "./demo-candidate-recovery.ts";
 
 export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 export { HealthChartRenderer } from "./health-renderer.ts";
