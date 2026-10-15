@@ -1,9 +1,11 @@
-# Automatic public-incident activation (disabled preparation)
+# Automatic public-incident activation (version-pinned preparation)
 
 This is the receiver side of the next **owned test**, not a live automatic repair
-claim. Production `src/public-enrollment.ts` exports `undefined`; notification
-handling remains capture-only. No new service bindings are configured, deployed
-or given credentials. The public producer is also disabled. Existing old
+claim. Production `src/public-enrollment.ts` pins producer version
+`cd91c304-a8a1-48f5-97cf-ad60b7edb285` to exact deployed source
+`23bdde6b7bd4924d13cb34666c484e3f6888e21b` and the fixed fixture digest.
+The private downstream services are deployed; the source is still unarmed and
+native `/failure` returned409 without consuming the test. Existing old
 capture, semantic admission, model and writer records are unchanged.
 
 ## The boundary
@@ -50,7 +52,7 @@ the started Workflow the validated immutable admission, including while its crea
 ACK is in flight. It cannot admit, dispatch, change a fixture or infer. The
 downstream Workflow and bounded model/native verifier/proposed-PR/Slack stages are
 now [connected in host source](../effect-ci/PUBLIC-REPAIR.md), with separate local
-generated-agent and App Workflow compositions. They have **not been deployed or
+generated-agent and App Workflow compositions. They are deployed but **not
 proved native end to end**. No local dispatcher result is a native Workflow proof.
 
 ## Verification
@@ -65,7 +67,8 @@ node --test apps/repair-incident/src/*.test.ts
 
 The local workerd test compiles a clearly synthetic, test-only host enrollment
 and fake private producer/dispatcher services. It proves authentication precedes
-source reads; production stays capture-only even with those fake bindings;
+source reads in the actual enrolled host; a distinct historical capture-only
+host fixture remains capture-only even with fake bindings;
 concurrent valid deliveries dispatch once; normalized identity is privately
 readable; formatting changes and module reload preserve the same record; foreign
 Issues reject; and a dispatcher which creates then loses its ACK is never called
@@ -87,14 +90,14 @@ the existing cumulative ledger and host call limit. Never give personal OAuth,
 the Notifications secret, GitHub key or a deployment token to a project/model.
 
 This preparation declares one additional SQLite class and one private read-only
-export on the existing receiver, without new outbound bindings or secrets. Future
-bindings require explicit fixed owned service identities and documented fresh
-preflight. Exact merged-source build, private create-only intent, one deployment
+export on the existing receiver. Enrollment enables only the fixed private
+producer-evidence and App-dispatcher bindings, not a new secret or account scope.
+Exact merged-source build, private create-only intent, one deployment
 and independent security/resource readback still apply. Do not deploy controllers
 during an active release or change the committed demo allocation.
 
 Costs are ordinary Worker/RPC/SQLite operations; no inference is spent by these
-tests or this disabled preparation. Do not reinterpret the lifetime AI authority
+tests or this unarmed preparation. Do not reinterpret the lifetime AI authority
 as per-run credit. Keep the source/enrollment disabled to stop safely; preserve
 all claims/captures/outboxes/budget histories. Never merge or deploy a proposed
 repair, delete a journal or replay the old incident to make the demo look green.

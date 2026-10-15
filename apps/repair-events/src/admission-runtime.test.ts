@@ -27,6 +27,12 @@ test(
       format: "esm",
       platform: "neutral",
       external: ["cloudflare:workers", "cloudflare:workflows"],
+      // Historical operator admission remains capture-only. Do not let the new
+      // production enrollment turn this old fixture into an automatic event.
+      plugins: [{ name: "local-historical-capture-host", setup(builder: any) {
+        builder.onLoad({ filter: /public-enrollment\.ts$/ }, () => ({ loader: "ts",
+          contents: "export const publicIncidentEnrollment = undefined;" }));
+      } }],
     });
     const code = bundle.outputFiles[0].text;
     const config = (contents: string) => ({

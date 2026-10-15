@@ -1,8 +1,16 @@
 # Owned public failure to proposed repair
 
 This is connected host source, **not yet native end-to-end proof**. The receiver
-enrollment remains disabled and the public source is unarmed. No new error or paid inference was
+enrollment is now version-pinned and the public source is unarmed. No new error or paid inference was
 emitted; historical operator-driven repairs remain unchanged and unmerged.
+
+Private bootstrap deployments from exact merged `b1a91ee07650c9b3f1d2e21e584d5620619f09a6`
+were independently verified: receiver `092e6d05-131e-428a-9c1e-707fb34af1c7`, agent
+`bade956c-d460-4d45-ae30-0a7b0ef0b1c1`, App `67f2e868-1736-4dcd-ab80-47522cb56a6c`.
+All previous binding identities/secrets/exports and the committed demo allocation
+were preserved. The final source version and enrollment are documented in the
+[receiver guide](../repair-events/PUBLIC-ACTIVATION.md). These deployments alone
+are not automatic incident/proposal evidence.
 
 ## Authority and ordering
 

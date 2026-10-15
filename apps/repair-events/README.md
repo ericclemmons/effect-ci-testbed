@@ -3,9 +3,10 @@
 The separate [public-incident automatic activation preparation](PUBLIC-ACTIVATION.md)
 now has descriptor-safe source corroboration and a durable single-slot outbox,
 with actual local workerd/SQLite lost-ACK and reload tests. Its HOST enrollment
-is still undefined and no new bindings/deployment are active. The downstream
-fresh proposal/native verification/PR/Slack chain is now connected in host source
-and separately locally tested, not yet deployed or proved native end to end.
+pins the independently deployed public producer version/source and fixture bytes.
+The downstream private proposal/native-verification/proposed-PR/Slack services
+are deployed, but the public source remains unarmed. Actual native end-to-end
+execution is still pending; no new error or inference has been emitted.
 This is not a completed live automatic repair.
 
 See [reproduction, permissions, costs and safe cleanup](REPRODUCE.md). The bounded admission policy reads the pinned authentic capture and maps only the developer-enrolled owned source/version/Issue to a fixed private fixture base. It persists one semantic identity independently of transport-byte captures, with no inference or repair authority. Local SQLite concurrency/reload proof is separate from the completed native admission proof below.
