@@ -389,19 +389,27 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
-  cf-ci [run] [target] [--local|--remote] [--format=text|json]
+  cf-ci                         Show this help and project targets
+  cf-ci run [target] [--local|--remote] [--format=text|json]
   cf-ci plan [target] [--local|--remote] [--format=text|json|mermaid]
   cf-ci list [--format=text|json]
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
 
 Commands:
-  run     Execute the default workflow or one exported action (default)
+  run     Execute the default workflow, or one exported action when a target is given
   plan    Resolve the graph without executing commands
   list    List the default workflow and exported action targets
 
-Without an explicit path, cf-ci finds .cloudflare/ci/workflow.ts from the current
-directory or one of its parents.
+Examples:
+  cf-ci run                     Execute the whole default workflow
+  cf-ci plan                    Inspect the whole workflow without executing
+  cf-ci plan --format=mermaid    Print its Mermaid graph
+  cf-ci list                    Discover exported action targets
+
+Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
+ci.ts marker from the current directory or one of its parents. Help never initializes
+a project; an explicit local run can initialize supported package scripts.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 An explicit --format always wins.`
 
@@ -747,6 +755,8 @@ export const main = async (
 
     if (invocation.help) {
       console.log(help(program.workflow.id))
+      console.log("")
+      list(program, "text")
       return ExitCode.success
     }
 
@@ -852,12 +862,20 @@ export const runCli = async (
   args: ReadonlyArray<string> = process.argv.slice(2),
   cwd: string = process.cwd(),
 ): Promise<void> => {
+  // Discovery/help must never run the workflow or initialize a project.
+  // Explicit `run` remains the entrypoint for executing the default workflow.
+  if (args.length === 0) args = ["--help"]
   try {
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
     if (!explicit && !findWorkflow(cwd)) {
       const invocation = parseInvocation(args)
+      if (invocation.help) {
+        console.log(help("no workflow selected"))
+        process.exitCode = ExitCode.success
+        return
+      }
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))

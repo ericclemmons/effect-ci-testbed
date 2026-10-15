@@ -101,7 +101,7 @@ Each focused example separates the program from its tests and its platform adapt
 .github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
 ```
 
-Tests never launch CI. Locally, a developer or agent runs `cf-ci`; the CLI discovers
+Tests never launch CI. Locally, a developer or agent runs `cf-ci run`; the CLI discovers
 `.cloudflare/ci/workflow.ts` by walking up from the current directory. On GitHub, the
 thin Effect caller passes that same module to the reusable runner. The
 conventional YAML is intentionally independent so every example shows the native
@@ -129,7 +129,9 @@ Workflows and exported actions serve different entrypoints:
   re-exports them. `cf-ci list` shows that narrow public surface and `cf-ci run check`
   invokes a target with all of its prerequisites. Internal checkout, install, and
   deployment actions stay private by default.
-- Running `cf-ci` with no target executes the default workflow using the local event
+- Bare `cf-ci` prints help, including list/plan/Mermaid usage and configured project
+  targets, without executing or initializing a project.
+- Running `cf-ci run` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.
 

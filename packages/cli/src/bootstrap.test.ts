@@ -40,6 +40,17 @@ test("plan, list, remote and explicit paths never initialize", () => fixture(roo
   }
 }))
 
+test("bare CLI and --help describe commands without initializing or executing an unconfigured package", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  for (const args of [[], ["--help"]]) {
+    const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /cf-ci plan --format=mermaid/)
+    assert.equal(existsSync(join(root, ".cloudflare")), false)
+    assert.equal(existsSync(join(root, "checked.txt")), false)
+  }
+}))
+
 test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
   assert.throws(() => initializeJavaScriptProject(["run", "unknown"], root), /Unknown action target/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)

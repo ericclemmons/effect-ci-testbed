@@ -29,8 +29,12 @@ so `check` remains formatting and lint only. The Vite config makes `no-undef` an
 and excludes generated output and the empty CI marker from linting. JavaScript
 source and tests are type-checked through `allowJs` and `checkJs` in `tsconfig.json`.
 If you rehearsed in this checkout, its first run may already be cached. Call it
-the first run of this presentation, not a cold run. Use a fresh demo checkout to
-show a cold run; do not clear a shared repository cache during the presentation.
+the first run of this presentation, not a cold run. For a deliberate task-cache
+miss, use a disposable demo checkout and, after setup but before the first measured
+run, run `vp cache clean` once from `examples/developer-loop`. This removes Vite
+task results in that disposable checkout, not installation/package-manager caches; call it
+task-cache-cold, not a completely cold machine. Do not clear a shared repository
+cache. Do not clean between the first run and the repeat that demonstrates reuse.
 
 ## Human walkthrough and narration
 
@@ -41,12 +45,17 @@ show a cold run; do not clear a shared repository cache during the presentation.
    ```sh
    wc -c .cloudflare/ci/ci.ts
    cat package.json
+   cf-ci
    cf-ci list --format=text
    cf-ci plan lint --format=mermaid
    ```
 
    Look for: an empty CI marker, the `lint` and `build` targets, and the lint
    plan's checkout/install prerequisites. No `--workflow` argument is supplied.
+
+   Bare `cf-ci` prints help and the project's targets. `cf-ci run` with no target
+   executes the full default workflow; `cf-ci run build` below selects just build
+   and its prerequisites. `cf-ci plan --format=mermaid` prints the full suite graph.
 
    Say:
 

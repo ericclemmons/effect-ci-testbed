@@ -14,6 +14,26 @@ const run = (args: ReadonlyArray<string>, cwd: string = repository) =>
     encoding: "utf8",
   })
 
+test("bare cf-ci shows help, Mermaid usage and project targets just like --help", () => {
+  const bare = run([], example)
+  const explicit = run(["--help"], example)
+  assert.equal(bare.status, 0, bare.stderr)
+  assert.equal(bare.stdout, explicit.stdout)
+  assert.match(bare.stdout, /cf-ci run\s+Execute the whole default workflow/)
+  assert.match(bare.stdout, /cf-ci plan --format=mermaid/)
+  assert.match(bare.stdout, /Actions:\n  check/)
+  assert.doesNotMatch(bare.stdout, /CI execution summary/)
+})
+
+test("run without a target still executes the default workflow", () => {
+  const result = run(["run", "--format=json"], example)
+  assert.equal(result.status, 0, result.stderr)
+  const output = JSON.parse(result.stdout)
+  assert.equal(output.ok, true)
+  assert.equal(output.workflow, "exported-actions")
+  assert.ok(output.plan.nodes.some((node: { id: string }) => node.id === "check"))
+})
+
 test("discovers workflow.ts and actions.ts from the current project", () => {
   const result = run(["list", "--format=json"], example)
 

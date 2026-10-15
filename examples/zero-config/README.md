@@ -41,10 +41,14 @@ every inferred script is a node, and each script becomes an intentional direct t
 pnpm exec cf-ci list
 pnpm exec cf-ci plan --format=mermaid
 pnpm exec cf-ci run lint
-pnpm exec cf-ci
+pnpm exec cf-ci run
 ```
 
 Adding an explicit default workflow later replaces CLI inference completely.
+
+Bare `cf-ci` (or `cf-ci --help`) prints usage, including list/plan/Mermaid
+commands and the configured project's targets; it does not execute or initialize.
+`cf-ci run` without a target executes the whole default workflow.
 
 Inference currently uses a conservative serial script order. This is not proof
 of automatic dependency-driven parallelism or of Vite/Node execution in an isolate.
