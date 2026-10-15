@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vp dev",
     "preview": "vp preview",
-    "check": "vpr check:source",
+    "check": "node verification/native-command-failure.mjs",
     "lint": "vpr lint:source",
     "typecheck": "vpr typecheck:source",
     "pretest": "vpr typecheck",
