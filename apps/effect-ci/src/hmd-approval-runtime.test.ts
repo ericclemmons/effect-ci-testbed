@@ -11,6 +11,9 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     import {WorkerEntrypoint,RpcTarget} from "cloudflare:workers";
     export {HmdApprovals} from "./hmd-approval.ts";
     const events=[];let renewals=0;let verified=0;
+    // Test-only expiry clock: CI scheduling must not consume the 50ms fixture window.
+    const wallNow=Date.now.bind(Date);let expiryNow=null;
+    Date.now=()=>expiryNow===null?wallNow():expiryNow;
     class Instance extends RpcTarget {
       constructor(owner){super();this.owner=owner}
       status(){return {status:"waiting"}}
@@ -21,9 +24,13 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     export default {async fetch(req,env){
       const p=await req.json();const stub=env.REVIEWS.getByName(p.owner??"run");
       if(p.operation==="register") {
-        const cap=await stub.register(p.owner??"run",p.phase??10,p.snapshot??"a".repeat(64),Date.now()+(p.ttl??300000));
+        if(p.owner==="expired")expiryNow=wallNow();
+        const deadline=Date.now()+(p.ttl??300000);
+        if(p.owner==="expired")await new Promise(resolve=>setTimeout(resolve,75));
+        const cap=await stub.register(p.owner??"run",p.phase??10,p.snapshot??"a".repeat(64),deadline);
         return Response.json({owner:cap.owner,phase:cap.phase,snapshot:cap.snapshot,token:cap.token});
       }
+      if(p.operation==="advance-expiry"){expiryNow+=p.ms;return Response.json({advanced:true})}
       if(p.operation==="submit")return Response.json(await Promise.all([stub.submit(p.cap,p.decision??"approved","Test-only rationale","slack:T1:U1"),stub.submit(p.cap,p.decision??"approved","Test-only rationale","slack:T1:U1")]));
       if(p.operation==="inspect")return Response.json(await stub.inspect(p.cap));
       if(p.operation==="close"){await stub.close(p.owner??"run");return Response.json({closed:true})}
@@ -77,7 +84,8 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     await new Promise((resolve) => setTimeout(resolve, 30))
     assert.deepEqual(await send({ operation: "submit", owner: "lost", cap: lost }), [false, false])
     const expired = await send({ operation: "register", owner: "expired", ttl: 50 })
-    await new Promise((resolve) => setTimeout(resolve, 75))
+    assert.equal(await send({ operation: "inspect", owner: "expired", cap: expired }), true)
+    await send({ operation: "advance-expiry", ms: 50 })
     assert.equal(await send({ operation: "inspect", owner: "expired", cap: expired }), false)
     assert.deepEqual(await send({ operation: "submit", owner: "expired", cap: expired }), [false, false])
     const final = await send({ operation: "state" })
