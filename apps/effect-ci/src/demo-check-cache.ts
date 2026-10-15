@@ -19,6 +19,7 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
   lookup: (request) =>
     Effect.promise(async () => {
       const transport: Array<{ status: number; endpoint: string }> = [];
+      let missReason: string | undefined;
       if (
         request.workflowId !== syntaxWorkflow ||
         request.stepId !== "syntax" ||
@@ -50,10 +51,14 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
         "verify",
       ]);
       const cache = hostedCheckCache({
+        onMiss: (reason) => {
+          missReason = reason;
+        },
         reader: {
           repository: "ericclemmons/effect-ci-testbed",
           // Public, fixed GET endpoints only. Rate limits are misses, never bypass.
           request: async (url, init) => {
+            transport.push({ status: 0, endpoint: "request-start" });
             const response = await fetch(url, {
               ...init,
               headers: {
@@ -96,6 +101,7 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
             value: {
               verified: await Effect.runPromise(cache.lookup(request)),
               identified: true,
+              missReason: missReason ?? null,
               transport,
             },
             commands: [],
