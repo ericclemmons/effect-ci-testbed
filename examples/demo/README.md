@@ -363,9 +363,17 @@ commit, check, command, policy, actual file bytes and exact Node executable/runt
 Missing, invalid, unknown-key or changed-input evidence is a miss, not permission
 to skip execution. Builds and other ordinary actions still execute.
 
-**Native acceptance in progress:** the wired host and real Docker positive/negative
-checks are being verified together. Do not count this step complete until the
-retained native execute, verified-hit and invalid-signature fallback runs pass.
+**Live verified on Cloudflare**, using clean commit
+[`b22f6cf`](https://github.com/ericclemmons/effect-ci-testbed/tree/b22f6cfc30b7feb480cb25e30a86576a431276cb):
+
+| Evidence                      | Syntax check             | Six ordinary package commands |
+| ----------------------------- | ------------------------ | ----------------------------- |
+| Missing note                  | Executed                 | Executed                      |
+| Valid signed exact-input note | Verified; parser skipped | Executed                      |
+| Signature-only tamper         | Rejected; executed       | Executed                      |
+
+The original valid note was restored after the negative run; its Git history and
+the failed proof are preserved. [Read-only native regression](../../apps/effect-ci/src/live-demo-signed-check.test.ts).
 
 The attested host starts from a fresh image, not a previous whole-container cache
 snapshot that could contain project-modified system files. Vite+ still validates

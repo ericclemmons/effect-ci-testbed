@@ -25,3 +25,18 @@ Vite+ caches the configured tasks separately. A failed prerequisite
 stops its dependent command. Build does not depend on formatting or tests.
 Do not commit or push unless the user asks. These results do not provide signed
 dirty-worktree evidence, authorize a commit, or justify a verification trailer.
+
+Reusable evidence is commit-first, not dirty-tree feedback. In a clean enrolled
+checkout, after the authorized commit has been pushed:
+
+```sh
+node .cloudflare/ci/attest.ts
+git push origin refs/notes/effect-ci-hosted-checks-v1
+cf-ci run --remote
+```
+
+The local signer executes the exact committed pure syntax check in the pinned
+Linux image before signing. Keep its private key outside containers and project
+code. Existing exact-commit notes are create-only: inspect conflicts, do not force
+an overwrite. Only the enrolled check may be verified; builds and other actions
+still execute. Advisory `refs/notes/effect-ci-verification` is not reuse authority.
