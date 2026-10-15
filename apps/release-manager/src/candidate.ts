@@ -109,6 +109,85 @@ async function boundedJson(response: Response): Promise<any> {
   if (result.success !== true) throw Error("Candidate API rejected");
   return result.result;
 }
+
+/** Read-only API reconciliation of an existing pending upload; never allocates a version. */
+export async function reconcileCandidate(
+  store: CandidateStore,
+  revision: string,
+  digest: string,
+  version: string,
+  token: () => string,
+  transport: typeof fetch = fetch,
+): Promise<CandidateReceipt> {
+  siteRevision(revision);
+  if (!/^[a-f0-9]{64}$/.test(digest) || !uuid(version))
+    throw Error("Invalid candidate reconciliation");
+  const previous = await store.read(revision);
+  if (
+    !previous ||
+    previous.revision !== revision ||
+    previous.digest !== digest ||
+    previous.policy !== CANDIDATE_POLICY
+  )
+    throw Error("No matching candidate claim");
+  if (previous.status === "complete") {
+    const receipt = await prepareCandidate(store, revision, digest, token, transport);
+    if (receipt.version !== version) throw Error("Candidate reconciliation version conflict");
+    return receipt;
+  }
+  if (previous.status !== "pending") throw Error("Invalid candidate state");
+  const built = await demoCandidateModule(await readPublishedDemo(revision, digest, transport));
+  if (built.moduleDigest !== previous.moduleDigest)
+    throw Error("Candidate module identity mismatch");
+  const api = deploymentAPI(token, transport);
+  const before = await api.latest();
+  const credential = token();
+  if (!/^[A-Za-z0-9_-]+$/.test(credential)) throw Error("Invalid candidate credential");
+  const response = await transport(
+    `https://api.cloudflare.com/client/v4/accounts/${RELEASE_ACCOUNT}/workers/scripts/${RELEASE_SCRIPT}/versions/${version}`,
+    {
+      headers: { authorization: `Bearer ${credential}` },
+      redirect: "manual",
+      signal: AbortSignal.timeout(15000),
+    },
+  );
+  const checked = await boundedJson(response);
+  assertCandidateVersion(checked, previous, version);
+  if (JSON.stringify(await api.latest()) !== JSON.stringify(before))
+    throw Error("Allocation changed during reconciliation");
+  const receipt: CandidateReceipt = {
+    revision,
+    digest,
+    moduleDigest: built.moduleDigest,
+    policy: CANDIDATE_POLICY,
+    version,
+    script: RELEASE_SCRIPT,
+  };
+  await store.complete({ ...previous, status: "complete", receipt });
+  return receipt;
+}
+
+function assertCandidateVersion(checked: any, identity: CandidateIdentity, version: string) {
+  const message = `effect-ci-vite:${identity.digest}:${identity.moduleDigest}`;
+  if (
+    checked.id !== version ||
+    checked.annotations?.["workers/commit_sha"] !== identity.revision ||
+    checked.annotations?.["workers/message"] !== message ||
+    checked.annotations?.["workers/repository_url"] !==
+      "https://github.com/ericclemmons/effect-ci-testbed"
+  )
+    throw Error("Candidate readback identity mismatch");
+  const bindings = checked.resources?.bindings;
+  if (
+    !Array.isArray(bindings) ||
+    bindings.length !== 2 ||
+    !bindings.some((b: any) => b.name === "WORKER_METADATA" && b.type === "version_metadata") ||
+    !bindings.some(
+      (b: any) => b.name === "FAILURE_RATE" && b.type === "plain_text" && b.text === "0",
+    )
+  )
+    throw Error("Candidate binding mismatch");
+}
 /** Same existing account/script/credential boundary. No deployment, arbitrary module or URL input. */
 export async function uploadCandidate(
   identity: CandidateIdentity,
@@ -167,22 +246,7 @@ export async function uploadCandidate(
     status = checkedResponse.status;
     const checked = await boundedJson(checkedResponse);
     stage = "identity";
-    if (
-      checked.id !== uploaded.id ||
-      checked.metadata?.annotations?.["workers/commit_sha"] !== identity.revision ||
-      checked.metadata?.annotations?.["workers/message"] !== message
-    )
-      throw Error("Candidate readback identity mismatch");
-    const bindings = checked.resources?.bindings;
-    if (
-      !Array.isArray(bindings) ||
-      bindings.length !== 2 ||
-      !bindings.some((b: any) => b.name === "WORKER_METADATA" && b.type === "version_metadata") ||
-      !bindings.some(
-        (b: any) => b.name === "FAILURE_RATE" && b.type === "plain_text" && b.text === "0",
-      )
-    )
-      throw Error("Candidate binding mismatch");
+    assertCandidateVersion(checked, identity, uploaded.id);
     stage = "allocation";
     const after = await api.latest();
     if (JSON.stringify(after) !== JSON.stringify(before))

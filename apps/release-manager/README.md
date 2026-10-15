@@ -81,6 +81,30 @@ the original commit/digest/module hash and version annotations instead of invent
 a new identity. A validated upload acknowledgement is followed by an independent
 version GET and unchanged active-allocation readback before completion.
 
+An authenticated existing host can call
+`reconcileCandidate(fullRevision, assetDigest, existingVersionId)` for a pending
+claim. It rechecks the immutable public bytes, generated module identity, actual
+version annotations/bindings and unchanged allocation using GETs only, then
+completes the original record. It cannot create a claim, upload another version,
+deploy traffic, or bypass an active release. Wrong identities remain pending.
+
+### Native upload/readback failure retained
+
+Native instance `d6ac9135-68be-41a8-8e04-42a50049b4ad`, source
+`f4860ce5532c3d724db41bed511a787c114971e8`, built and published the actual Vite
+assets, then uploaded version `d91c0765-1994-4aad-8aad-f359374c2f45` once.
+Its prepare action **failed** because the version API returns `annotations` at
+the top level, whereas the original implementation and fake fixture expected
+`metadata.annotations`. The corrected real response shape first reproduced the
+failure locally, then passed after the parser fix. No upload was retried.
+
+Independent preview `/health` returned that exact version, source and asset digest
+`e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23`.
+Production remained on its previous allocation; no review, Progress, inference
+or traffic promotion occurred. The original native history remains failed and
+the original candidate claim remains pending until explicit reconciliation.
+Local GET-only reconciliation tests are not native reconciliation evidence.
+
 ```sh
 # From the repository root:
 pnpm install --frozen-lockfile
