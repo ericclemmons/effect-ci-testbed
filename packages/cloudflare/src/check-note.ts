@@ -56,7 +56,9 @@ export const readGitHubCheckNote = async (
   const read = async <T>(path: string, limit = 16_384): Promise<T> => {
     if (controller.signal.aborted) throw new Error("Evidence read timed out")
     const url = `${base}/${path}`
-    const response = await options.request(url, { method: "GET", redirect: "error", signal: controller.signal,
+    // workerd rejects redirect:"error" before making any request. Manual mode
+    // never follows redirects; the bounded reader rejects all non-2xx responses.
+    const response = await options.request(url, { method: "GET", redirect: "manual", signal: controller.signal,
       headers: { accept: "application/vnd.github+json", "x-github-api-version": "2026-03-10" } })
     if (controller.signal.aborted) {
       await response.body?.cancel().catch(() => {})
