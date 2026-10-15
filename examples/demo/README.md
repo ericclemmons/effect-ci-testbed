@@ -421,7 +421,21 @@ git push
 cf-ci run --remote
 ```
 
-## 10. Add controlled release, human decisions, and repair
+## 10. Serve the checked build
+
+> Build in a container. Serve those same bytes without one.
+
+```sh
+cf-ci run --remote
+```
+
+Open the [live Vite build](https://effect-ci-demo-site.ericclemmons.workers.dev/r/b302e8cb0965cdbc7da2ab455d696385e782abf7/e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23/index.html) in the browser. Click **Show message**.
+
+The enrolled demo host publishes through a private capability; project code gets
+no deployment token. This URL is the verified commit above, not a mutable latest
+alias or an HMD rollout. [Owned host setup](../../apps/demo-site/README.md).
+
+## 11. Add controlled release, human decisions, and repair
 
 Next integrations, each with its own genuine execution requirement:
 
@@ -438,7 +452,7 @@ continuation; automatic webhook activation remains unfinished. Never self-approv
 a human gate or merge/deploy a proposed repair to manufacture a complete demo.
 No new failure or paid model call is needed just to replay old evidence.
 
-## 11. Let your agent migrate the next project
+## 12. Let your agent migrate the next project
 
 > Agent-first adoption: tell your agent what you want.
 

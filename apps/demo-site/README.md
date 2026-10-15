@@ -74,5 +74,27 @@ operator cleanup decision; no automatic destructive cleanup is provided.
 Local tests use real workerd/SQLite/RPC and fake small assets to cover concurrent
 publication, same-revision conflict, persisted reload, method/path/digest rejection
 and response bytes. They are not native Vite-build or live-browser evidence.
-Native same-build publication and browser acceptance must be recorded separately;
-no live completion is claimed by these local tests.
+
+Native instance `14c8ceb0-840f-4f39-a565-a97cc9b76c71` completed on source
+`b302e8cb0965cdbc7da2ab455d696385e782abf7`: all ten actions passed, nine real
+commands and one durable publication body, each once with zero configured retries.
+Independent HTTP reads matched all three native build byte hashes/sizes
+(HTML525B/app1520B/message103B). The published URL binds this commit and asset digest
+`e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23`.
+An isolated real browser loaded that URL and clicking **Show message** displayed
+**Check my work before I push**; its screenshot was visually reviewed. The public
+POST negative returns405 and a wrong asset digest returns404. No replacement
+publication or model request was needed. Local video encoding failed; no successful
+clip or public media publication is claimed.
+
+```sh
+LIVE_DEMO_SITE=1 CF_BIN=apps/effect-ci/node_modules/.bin/cf \
+  node --test apps/demo-site/src/live-site.test.ts
+```
+
+Run this from the repository root: it only reads the retained Workflow and public
+site. Ordinary CI skips it. Site Worker version `dd2f2784-0f16-4833-a27a-02c06ad90cad`
+has no secret/outbound binding; the CI host version is
+`03ee2394-d9e6-4d70-b3c1-44dbd7b1a6c9`. Private create-only deployment, native
+CLI/history, independent HTTP and browser receipts are retained. Queue1743ms /
+execution82223ms / total83966ms is one orchestration sample, not a build benchmark.
