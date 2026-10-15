@@ -10,6 +10,8 @@ export interface GitHubWorkflowParameters {
   readonly ref?: string
   readonly revision: string
   readonly summaryCheckId: number
+  /** Trusted host-selected dashboard link, never copied from webhook content. */
+  readonly detailsUrl?: string
 }
 
 export interface RemoteWorkflowParameters {
@@ -49,6 +51,9 @@ export interface WorkerOptions {
   /** Optional trusted host enrollment, checked after authentication and before creation. */
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   readonly github?: GitHubClient
+  /** Trusted routing AFTER signature, App ownership and canonical webhook parsing. */
+  readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
+    { readonly workflow: Workflow<WorkflowParameters>; readonly detailsUrl?: string } | undefined
   readonly workflow?: (
     environment: WorkerEnvironment,
     context: ExecutionContext | undefined,
@@ -448,7 +453,20 @@ export const worker = (options: WorkerOptions = {}) => {
 
       if (!deliveryId) return new Response("Missing X-GitHub-Delivery", { status: 400 })
 
-      if (await existingInstance(workflow, deliveryId)) {
+      const identity = Object.freeze({
+        trigger: "github" as const, deliveryId, installationId: payload.installation.id,
+        repository: payload.repository.clone_url, repositoryName: payload.repository.full_name,
+        ...(payload.check_suite.head_branch ? { ref: `refs/heads/${payload.check_suite.head_branch}` } : {}),
+        revision: payload.check_suite.head_sha,
+      })
+      const selection = options.githubRun?.(identity, environment, context)
+      const selectedWorkflow = selection?.workflow ?? workflow
+      const checkDetailsUrl = selection?.detailsUrl ?? detailsUrl(environment.EFFECT_CI_DETAILS_URL, deliveryId)
+      if (checkDetailsUrl) {
+        const url = new URL(checkDetailsUrl)
+        if (url.protocol !== "https:" || url.username || url.password) throw new Error("Invalid host workflow details URL")
+      }
+      if (await existingInstance(selectedWorkflow, deliveryId)) {
         return Response.json({ accepted: true, duplicate: true, instanceId: deliveryId }, { status: 202 })
       }
 
@@ -456,7 +474,6 @@ export const worker = (options: WorkerOptions = {}) => {
         credentials(environment),
         payload.installation.id,
       )
-      const checkDetailsUrl = detailsUrl(environment.EFFECT_CI_DETAILS_URL, deliveryId)
       const check = await github.createCheck({
         token,
         repository: payload.repository.full_name,
@@ -470,18 +487,11 @@ export const worker = (options: WorkerOptions = {}) => {
       })
 
       try {
-        await workflow.create({
+        await selectedWorkflow.create({
           id: deliveryId,
           params: {
-            trigger: "github",
-            deliveryId,
-            installationId: payload.installation.id,
-            repository: payload.repository.clone_url,
-            repositoryName: payload.repository.full_name,
-            ...(payload.check_suite.head_branch
-              ? { ref: `refs/heads/${payload.check_suite.head_branch}` }
-              : {}),
-            revision: payload.check_suite.head_sha,
+            ...identity,
+            ...(selection?.detailsUrl ? { detailsUrl: selection.detailsUrl } : {}),
             summaryCheckId: check.id,
           },
         })

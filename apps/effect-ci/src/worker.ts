@@ -5,7 +5,7 @@ import { notificationChannels } from "./notification-policy.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
-import { demoRouteAllowed, demoRunAllowed } from "./demo-policy.ts";
+import { demoRouteAllowed, demoRunAllowed, demoGitHubAllowed } from "./demo-policy.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
 export { DemoCandidateRecoveryWorkflow } from "./demo-candidate-recovery.ts";
 
@@ -23,7 +23,14 @@ export {
   OwnedRepairProposalWorkflow,
 } from "./repair-writer.ts";
 
-const ci = GitHubCloudflare.worker();
+const ci = GitHubCloudflare.worker({
+  githubRun: (identity, _environment, context) => {
+    if (!demoGitHubAllowed(identity)) return undefined;
+    const workflow = (context?.exports as unknown as { DemoCIWorkflow?: Workflow<GitHubCloudflare.WorkflowParameters> } | undefined)?.DemoCIWorkflow;
+    if (!workflow) throw Error("DemoCIWorkflow is not exported");
+    return { workflow, detailsUrl: `https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-demo/instance/${encodeURIComponent(identity.deliveryId)}` };
+  },
+});
 const demo = GitHubCloudflare.worker({
   routePrefix: "/demo",
   remoteRunAllowed: demoRunAllowed,

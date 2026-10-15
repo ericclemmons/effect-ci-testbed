@@ -6,8 +6,22 @@ broker, private review records, graph renderer and the maintained build card.
 It is **implemented and locally verified, but not armed or live-accepted**.
 `demoReviewedReleaseEnabled` in `src/demo-release.ts` remains `false` while the
 reviewer is away. No Workflow parameter or project environment can enable it.
-The existing remote-only demo policy is unchanged; GitHub push routing still
-needs its separate authenticated enrollment integration.
+Remote runs remain quiet and never start review. Signed GitHub check-suite events
+for the selected installation/repository and `refs/heads/demo/live` now select
+`DemoCIWorkflow`, with maintained Slack build status. Other branches retain the
+normal workflow. GitHub's check-suite event follows a real push; a raw unsigned
+push payload cannot select a workflow. The live review gate remains independent.
+
+```sh
+# In a clean demo checkout after the hosted configuration is deployed:
+git push origin HEAD:refs/heads/demo/live
+```
+
+This is a normal fast-forward push, never a force push. Existing branch history
+must be preserved. It builds the exact pushed commit, publishes its checked site
+and prepares its candidate, but cannot promote traffic while the gate is false.
+The App remains installed only on its existing selected repositories; no
+account-wide installation setting is changed.
 
 Unlike the historical review lab, this controller uses the prepared candidate
 returned by this build, not the lab's fixed healthy/failing versions. Before
