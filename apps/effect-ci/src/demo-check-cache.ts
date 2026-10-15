@@ -20,21 +20,32 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
     Effect.promise(async () => {
       const transport: Array<{ status: number; endpoint: string }> = [];
       if (
-        request.workflowId !== syntaxWorkflow || request.stepId !== "syntax" ||
-        request.command !== syntaxCommand || request.workspace.kind !== "remote" ||
+        request.workflowId !== syntaxWorkflow ||
+        request.stepId !== "syntax" ||
+        request.command !== syntaxCommand ||
+        request.workspace.kind !== "remote" ||
         request.workspace.cwd !== "/workspace/repository/examples/demo"
-      ) return false;
+      )
+        return false;
       // Inspect in its own native command checkpoint, before the evidence step.
       // A command checkpoint must never be nested inside another Workflow step.
       let identity;
       try {
-        const result = await Effect.runPromise(runner.executor.execute({
-          workflowId: request.workflowId, stepId: request.stepId, commandIndex: 0,
-          command: syntaxInspectCommand, workspace: request.workspace,
-          options: {}, onOutput: () => {},
-        }));
+        const result = await Effect.runPromise(
+          runner.executor.execute({
+            workflowId: request.workflowId,
+            stepId: request.stepId,
+            commandIndex: 0,
+            command: syntaxInspectCommand,
+            workspace: request.workspace,
+            options: {},
+            onOutput: () => {},
+          }),
+        );
         identity = await syntaxIdentity(request.event.revision!, result.stdout);
-      } catch { return false; }
+      } catch {
+        return false;
+      }
       const key = await crypto.subtle.importKey("jwk", syntaxPublicKey, "Ed25519", false, [
         "verify",
       ]);
@@ -80,13 +91,20 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
       const observation = runner.actionExecutor.execute({
         stepId: "syntax:evidence-observation",
         options: { retries: { limit: 0, delay: 0, backoff: "constant" } },
-        run: () => Effect.promise(async () => ({
-          value: { verified: await Effect.runPromise(cache.lookup(request)), identified: true, transport },
-          commands: [],
-        })),
+        run: () =>
+          Effect.promise(async () => ({
+            value: {
+              verified: await Effect.runPromise(cache.lookup(request)),
+              identified: true,
+              transport,
+            },
+            commands: [],
+          })),
       });
       // This runner callback is closed over plain data, with no service requirements.
-      const result = await Effect.runPromise(observation as Effect.Effect<CI.ActionExecutionResult, unknown>);
+      const result = await Effect.runPromise(
+        observation as Effect.Effect<CI.ActionExecutionResult, unknown>,
+      );
       return (result.value as { verified: boolean }).verified === true;
     }),
   record: () => Effect.void,
