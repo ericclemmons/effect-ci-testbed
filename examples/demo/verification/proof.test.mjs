@@ -109,6 +109,8 @@ test("review pages preserve failure, actual command plan and unknown timings", (
   for (const negative of [false, true]) {
     const { manifest, run } = pageFixture(negative);
     validatePage(manifest, run);
+    validatePage({ ...manifest, recipe: "demo" }, run);
+    assert.throws(() => validatePage({ ...manifest, recipe: "unrelated" }, run));
     const page = renderPage(manifest, "trace.md");
     assert.match(page, /quarantined local preview/);
     assert.match(page, /Unknown \/ unknown/);

@@ -1,5 +1,9 @@
 # Demo: check changes before pushing
 
+This example was renamed from `examples/developer-loop` to `examples/demo`.
+Historical recordings and immutable receipts retain their original recipe name,
+source paths, release tags and digests; the rename does not recreate those proofs.
+
 > Can a human and an agent use one CI command without writing a workflow or
 > repeating a task whose inputs have not changed?
 
@@ -114,7 +118,7 @@ Use Node 24.11+ or Node 26+. From the testbed repository root:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
+cd examples/demo
 cf-ci
 cf-ci list
 cf-ci plan --format=mermaid

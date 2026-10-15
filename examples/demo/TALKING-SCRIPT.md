@@ -12,7 +12,7 @@ Use Node 24.11+ or Node 26+. Start at the testbed repository root:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
+cd examples/demo
 DEMO_SOURCE="$(mktemp /tmp/effect-ci-demo-source.XXXXXX)"
 cp src/message.js "$DEMO_SOURCE"
 ```
@@ -33,7 +33,7 @@ source and tests are type-checked through `allowJs` and `checkJs` in `tsconfig.j
 If you rehearsed in this checkout, its first run may already be cached. Call it
 the first run of this presentation, not a cold run. For a deliberate task-cache
 miss, use a disposable demo checkout and, after setup but before the first measured
-run, run `vp cache clean` once from `examples/developer-loop`. This removes Vite
+run, run `vp cache clean` once from `examples/demo`. This removes Vite
 task results in that disposable checkout, not installation/package-manager caches; call it
 task-cache-cold, not a completely cold machine. Do not clear a shared repository
 cache. Do not clean between the first run and the repeat that demonstrates reuse.
@@ -202,7 +202,7 @@ The default heuristic uses am-i-vibing's direct-agent environment detection with
 process scanning disabled. Explicit --format takes precedence when diagnostics are
 needed. Do not set fake agent/account credentials to demonstrate output mode.
 
-Open the agent in `examples/developer-loop` with `cf-ci` on its PATH. Give it
+Open the agent in `examples/demo` with `cf-ci` on its PATH. Give it
 this prompt; choose a different message if you already used this one in rehearsal:
 
 > Change the exported message in `src/message.js` to "Checked by my agent".

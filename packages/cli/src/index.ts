@@ -396,6 +396,7 @@ Usage:
   cf-ci list [--format=text|json]
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
+  cf-ci --workflow path/to/package [run|plan|list] [target]
 
 Commands:
   run     Execute the default workflow, or one exported action when a target is given
@@ -508,6 +509,12 @@ export const loadProgram = async (
   cwd: string = process.cwd(),
 ): Promise<LoadedProgram> => {
   const selected = extractWorkflow(args, cwd)
+  // A runner may select a marker-free package directory explicitly. Keep its
+  // inferred workflow's working root identical to ordinary local discovery.
+  if (lstatSync(selected.path).isDirectory()) {
+    return { args: selected.args, path: join(selected.path, ".cloudflare/ci/ci.ts"),
+      program: inferJavaScriptProgram(selected.path) }
+  }
   // Empty markers also work in CommonJS packages, where import otherwise yields default {}.
   if (basename(selected.path).startsWith("ci.") && readFileSync(selected.path, "utf8").trim() === "") {
     return { args: selected.args, path: selected.path,

@@ -65,6 +65,22 @@ test("marker-free package supports list and full Mermaid planning without writin
   assert.equal(existsSync(join(root, "checked.txt")), false)
 }))
 
+test("explicit marker-free directory works for GitHub runners without generating CI config", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const plan = spawnSync(process.execPath, [bin, "--workflow", root, "plan", "--format=mermaid"], {
+    cwd: tmpdir(), encoding: "utf8",
+  })
+  assert.equal(plan.status, 0, plan.stderr)
+  assert.match(plan.stdout, /step_install --> step_lint/)
+  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "--agent"], {
+    cwd: tmpdir(), encoding: "utf8", timeout: 30_000,
+  })
+  assert.equal(run.status, 0, run.stderr)
+  assert.equal(JSON.parse(run.stdout).ok, true)
+  assert.equal(readFileSync(join(root, "checked.txt"), "utf8"), "ok")
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+}))
+
 test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
   assert.throws(() => initializeJavaScriptProject(["run", "unknown"], root), /Unknown action target/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)

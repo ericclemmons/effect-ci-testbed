@@ -16,7 +16,7 @@ Use Node 24.11+ or Node 26+ and the repository's pnpm version. From a clone:
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/developer-loop
+cd examples/demo
 cf-ci
 cf-ci list
 cf-ci plan --format=mermaid
@@ -35,7 +35,7 @@ to forge detection signals. Explicit `--format` remains available as an override
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the
-[developer walkthrough](./examples/developer-loop/TALKING-SCRIPT.md) for expected
+[developer walkthrough](./examples/demo/TALKING-SCRIPT.md) for expected
 results and intentional failures.
 
 Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
@@ -168,7 +168,7 @@ Start with a conventional pipeline, then choose explicit actions or task discove
 | [Run CI with pnpm](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
 | [Discover checks automatically](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Run a single check from the CLI](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
-| [Check changes before pushing](./examples/developer-loop) | ✅ | ✅ | ✅ | 🔜 |
+| [Check changes before pushing](./examples/demo) | ✅ | ✅ | ✅ | 🔜 |
 
 ### Checkout and build artifacts
 
