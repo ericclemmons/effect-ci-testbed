@@ -1,6 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { syntaxIdentity, syntaxPaths } from "./node-syntax-check.ts";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import {
+  syntaxCommand,
+  syntaxLocalCommand,
+  syntaxIdentity,
+  syntaxPaths,
+} from "./node-syntax-check.ts";
+
+test("local syntax feedback resolves installed Node and parses without evaluating source", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "effect-ci-local-syntax-"));
+  mkdirSync(join(cwd, "src"));
+  const source = join(cwd, "src/message.ts");
+  const run = () =>
+    spawnSync("/bin/sh", ["-c", syntaxLocalCommand], {
+      cwd,
+      env: { PATH: `${dirname(process.execPath)}:/usr/bin:/bin` },
+      encoding: "utf8",
+    });
+  writeFileSync(source, 'export const value: string = "ok"; throw new Error("must not execute");');
+  assert.equal(run().status, 0);
+  writeFileSync(source, "export const value: string = ;");
+  assert.notEqual(run().status, 0);
+  assert.notEqual(syntaxLocalCommand, syntaxCommand);
+  assert.match(syntaxCommand, /\/usr\/local\/bin\/node/);
+});
 
 const descriptor = {
   version: 1,

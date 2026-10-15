@@ -242,10 +242,13 @@ zero-config packages.
 +import * as CI from "@effect-ci-testbed/ci";
 +import * as actions from "./actions.ts";
 +
-+export { lint, build, syntax } from "./actions.ts";
++export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
 +
 +export default CI.workflow("cf-ci-demo", function* () {
 +  yield* actions.lint();
++  yield* actions.check();
++  yield* actions.typecheck();
++  yield* actions.test();
 +  return yield* actions.build();
 +});
 ```
@@ -257,9 +260,8 @@ cf-ci run lint
 cf-ci run
 ```
 
-The explicit workflow takes precedence over the empty marker. This minimal example
-intentionally selects lint then build; add test/check/typecheck explicitly if they
-belong in the whole workflow. Exported actions become runnable commands.
+The explicit workflow takes precedence over the empty marker. Exported actions
+become runnable commands.
 [Complete package-manager composition](../node-npm) and
 [exported targets](../exported-actions).
 
@@ -277,14 +279,9 @@ belong in the whole workflow. Exported actions become runnable commands.
 +      return yield* pm.install();
 @@
        const workspace = yield* install();
--      return yield* workspace.exec("npm run lint");
+-      return yield* workspace.exec(`npm run ${name}`);
 +      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.run("lint");
-@@
-       const workspace = yield* install();
--      return yield* workspace.exec("npm run build");
-+      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.run("build");
++      return yield* pm.run(name);
 ```
 
 ```sh
@@ -394,10 +391,10 @@ SHA does not make it valid.
 --- a/.cloudflare/ci/workflow.ts
 +++ b/.cloudflare/ci/workflow.ts
 @@
--export { lint, build, syntax } from "./actions.ts";
-+export { lint, build, syntax, artifact } from "./actions.ts";
+-export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
++export { lint, check, typecheck, test, build, syntax, artifact } from "./actions.ts";
 @@
-   yield* actions.lint();
+   yield* actions.test();
 -  return yield* actions.build();
 +  return yield* actions.artifact();
 ```

@@ -1,5 +1,5 @@
 import * as CI from "@effect-ci-testbed/ci";
-import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
+import { syntaxLocalCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 
 const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source;
@@ -15,30 +15,28 @@ const install = CI.action(
     },
 );
 
-export const lint = CI.action(
-  "lint",
-  () =>
-    function* () {
-      const workspace = yield* install();
-      return yield* workspace.exec("npm run lint");
-    },
-);
+const script = (name: string) =>
+  CI.action(
+    name,
+    () =>
+      function* () {
+        const workspace = yield* install();
+        return yield* workspace.exec(`npm run ${name}`);
+      },
+  );
 
-export const build = CI.action(
-  "build",
-  () =>
-    function* () {
-      const workspace = yield* install();
-      return yield* workspace.exec("npm run build");
-    },
-);
+export const lint = script("lint");
+export const check = script("check");
+export const typecheck = script("typecheck");
+export const test = script("test");
+export const build = script("build");
 
 export const syntax = CI.check(
   "syntax",
   () =>
     function* () {
       const workspace = yield* checkout();
-      yield* workspace.exec(syntaxCommand);
+      yield* workspace.exec(syntaxLocalCommand);
     },
   { reuse: { scope: "commit" } },
 );
