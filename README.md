@@ -198,7 +198,7 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Choose where CI runs](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run CI on Blacksmith](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
 | [Format code without a container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless |
-| [Test untrusted code without a container](./examples/dynamic-project-checks) | — | 🔜 | — | ✅ · containerless |
+| [Test untrusted code without a container](./examples/dynamic-project-checks) | — | ✅ | — | ✅ · containerless |
 
 ### Toolchains and container images
 
