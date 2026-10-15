@@ -92,6 +92,18 @@ test("foreign/event-mismatched/non-Git identities fail before note retrieval", a
   }
 })
 
+test("host miss observations expose only bounded stages, never upstream error text", async () => {
+  const reasons: string[] = []
+  const cache = hostedCheckCache({
+    enrollments: [enrollment],
+    identify: async () => { throw new Error("private diagnostic payload") },
+    reader: { repository: "owner/fixture", request: async () => { throw new Error("must not fetch") } },
+    onMiss: reason => { reasons.push(reason) },
+  })
+  assert.equal(await Effect.runPromise(cache.lookup(request)), false)
+  assert.deepEqual(reasons, ["identity:exception"])
+})
+
 test("actual CI executes real local Node on misses, skips only signed check hits, never skips an action", async () => {
   const root = mkdtempSync(join(tmpdir(), "effect-ci-check-cache-"))
   writeFileSync(join(root, "app.js"), "export const answer = 42\n")
