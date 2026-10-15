@@ -30,14 +30,77 @@ JavaScript or Wasm APIs. Arbitrary project modules, native executables, and Vite
 toolchain compatibility remain separate work; this example runs a pinned formatter
 against untrusted source data.
 
-The [hosted example runner](../../apps/example-runner) imports this workflow unchanged.
+## Owned containerless deployment
+
+This directory owns its [private Worker/config](./cloudflare.config.ts),
+[wrapper](./src/worker.ts), [formatted source](./app/src/index.ts),
+[negative fixture](./fixtures/unformatted.txt), and Vite setup. It imports reusable
+packages, not another app or example implementation. There is **no Dockerfile,
+Container, Durable Object workspace, shell execution or workspace snapshot**.
+
+The native wrapper accepts exactly `{ "mode": "formatted" }` or
+`{ "mode": "unformatted" }`. Both source fixtures are bundled as raw text, not
+imported/executed as host code. No actor code, repository, token, tool options or
+outbound destination is accepted. The existing portable actions read `CI.Workspace`
+and call `SourceTools`; this host supplies only the fixed text and the real
+WorkerLoader service. A deliberately unformatted fixture must leave the native
+Workflow errored, even though the formatter itself successfully returns corrected text.
+
+The trusted formatter child has explicit empty environment bindings,
+`globalOutbound:null`, 1,000 ms CPU and zero subrequests. Parent-side bundling may
+fetch the pinned Prettier 3.6.2 package; the formatted source is data, not arbitrary
+project execution. The project-code capability tests belong to the separate
+[project-check recipe](../dynamic-project-checks), not a claim about executing source here.
+
+From this monorepo (workspace packages are still private/unpublished):
+
+```sh
+CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
+node --test examples/dynamic-worker-checks/src/ownership.test.ts apps/example-runner/src/source-tools.test.ts
+examples/dynamic-worker-checks/node_modules/.bin/tsc -p examples/dynamic-worker-checks/tsconfig.json
+node packages/cli/src/bin.ts run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts --format=json
+```
+
+The last command uses local Prettier, not WorkerLoader. Before deployment confirm
+Worker `effect-ci-source-formatter` and Workflow `effect-ci-source-formatter-checks`
+are absent. Stop if an existing resource is found; do not overwrite a shared host.
+With existing authorized Workers/Workflows/WorkerLoader access:
+
+```sh
+cf workers deployments list --worker effect-ci-source-formatter --per-page 1
+cf workflows instances list --workflow-name effect-ci-source-formatter-checks
+cd examples/dynamic-worker-checks
+cf build
+cf deploy --prebuilt
+cf workflows instances create effect-ci-source-formatter-checks --body '{"instance_id":"my-owned-formatter-positive","params":{"mode":"formatted"}}'
+cf workflows instances get my-owned-formatter-positive --workflow-name effect-ci-source-formatter-checks
+cf workflows instances create effect-ci-source-formatter-checks --body '{"instance_id":"my-owned-formatter-negative","params":{"mode":"unformatted"}}'
+cf workflows instances get my-owned-formatter-negative --workflow-name effect-ci-source-formatter-checks
+```
+
+The Worker has no secrets/public URL/HTTP execution route, and only `LOADER` is
+bound. Source reads and formatter RPC checkpoints have zero retries. An ambiguous
+create/deploy ACK requires reading the existing resource/history, not blind retry.
+Costs are parent Workflow/Worker, bundler requests and child WorkerLoader execution;
+there is no Container billing for this recipe. No new account permission, paid
+provider, GitHub App, Slack or AI integration is needed.
+
+Optional cleanup requires explicit owner authorization and retained evidence.
+In Cloudflare's dashboard remove only this owned Workflow and Worker. No bucket,
+Container or SQLite namespace is created. Never reset negative histories or remove
+the shared example host to hide failures. Fresh standalone native proof is pending;
+the older shared-host runs below are not relabeled.
+
+## Historical shared-host proof
+
+The [hosted example runner](../../apps/example-runner) imported this workflow unchanged.
 Instance `coverage-dynamic-formatter-20261009-1` completed both actions at immutable
 source `b7c510ed661c1c221072849ba1b1dd93308e702a`. The native Workflow
 `effect-ci-example-dynamic-formatter` recorded only two steps: GitHub source retrieval
 and formatter RPC, whose result reports `runtime: "dynamic-worker"`. This path has no
 Container checkout, commands, or snapshots. The earlier parent-Worker formatter proof
 is preserved as historical evidence.
-Platform configuration belongs to that app rather than this consumer example.
+Those historical runs used that app's platform configuration, not this new owned host.
 
 `coverage-dynamic-formatter-negative-20261009-1` used deliberately unformatted source
 at `b083b10cb636a980498934d8bda6dd1f3dc3b449`: the Dynamic Worker returned formatted

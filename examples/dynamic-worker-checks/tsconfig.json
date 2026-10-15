@@ -1,8 +1,9 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext", "strict": true,
+    "noEmit": true, "skipLibCheck": true, "exactOptionalPropertyTypes": true,
     "allowImportingTsExtensions": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": [".cloudflare/**/*.ts", "src/**/*.ts"]
+  "include": [".cloudflare/**/*.ts", "src/**/*.ts", "*.ts"]
 }

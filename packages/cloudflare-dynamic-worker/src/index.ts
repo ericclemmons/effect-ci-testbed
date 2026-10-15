@@ -27,7 +27,7 @@ export class Formatter extends WorkerEntrypoint {
 /** No shell, source filesystem, secrets, or outbound network is granted to the tool. */
 export const makeSourceTools = (loader: WorkerLoader): Tools.SourceToolsService => ({
   format: (request) => Effect.tryPromise(async () => {
-    const worker = loader.get("effect-ci-prettier-3.6.2-source-tools-v1", async () => {
+    const worker = loader.get("effect-ci-prettier-3.6.2-source-tools-v2-empty-env", async () => {
       const { mainModule, modules } = await createWorker({
         entryPoint: "src/formatter.ts",
         files: {
@@ -38,6 +38,7 @@ export const makeSourceTools = (loader: WorkerLoader): Tools.SourceToolsService 
       })
       return {
         compatibilityDate: "2026-10-07",
+        env: {},
         globalOutbound: null,
         limits: { cpuMs: 1_000, subRequests: 0 },
         mainModule,

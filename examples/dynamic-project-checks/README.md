@@ -30,7 +30,69 @@ payload. Failed response bodies and exception text are not copied into host
 diagnostics. A project can still tailor its behavior to a test: these checks are
 behavioral evidence, not proof that arbitrary malicious code is honest.
 
-## Run and verify
+## Owned containerless deployment
+
+This directory owns [config](./cloudflare.config.ts), [Workflow wrapper](./src/worker.ts),
+[closed hostile probes](./src/boundaries.ts), the two project modules, and Vite setup.
+It imports reusable packages only, not another app/example implementation. There
+is no Container definition/image, Durable Object workspace, snapshot or shell executor.
+
+The normal native Workflow accepts exactly `{ "mode": "fixture" }`. The two
+owned project files are bundled as **raw source strings**, never imported into the
+parent as executable modules. The unchanged portable actions pass them to the
+existing isolated `ProjectChecks` service. No actor-selected module, destination,
+repository, credential or policy is accepted by this fixed verification host.
+This is a working fixture host, not custom authored remote-workflow upload parity.
+
+The separate boundary Workflow accepts only `{ "mode": "verify-boundaries" }`.
+It runs owned fixed modules for HTTPS/TCP denial, empty bindings, fresh globals,
+inaccessible host files, wrong response, oversized response and a CPU loop. The
+exact loop module must first return a valid preflight response; prompt rejection
+must occur before the five-second request deadline. This is not a measured CPU
+usage result or a general-purpose isolate kill/memory-quota API.
+
+Local checks:
+
+```sh
+CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
+node --test examples/dynamic-project-checks/src/ownership.test.ts apps/example-runner/src/dynamic-project-runtime.test.ts
+examples/dynamic-project-checks/node_modules/.bin/tsc -p examples/dynamic-project-checks/tsconfig.json
+```
+
+The real local workerd test exercises the reusable isolation service, not this
+new native deployment or hosted CPU enforcement. Plain local CLI execution still
+does not silently substitute Node for the ProjectChecks service.
+
+Before creating anything, confirm Worker `effect-ci-project-checks` and both
+Workflow names below are absent; stop on an existing resource. With existing
+authorized Workers/Workflows/WorkerLoader access:
+
+```sh
+cf workers deployments list --worker effect-ci-project-checks --per-page 1
+cf workflows instances list --workflow-name effect-ci-owned-project-checks
+cf workflows instances list --workflow-name effect-ci-owned-project-boundaries
+cd examples/dynamic-project-checks
+cf build
+cf deploy --prebuilt
+cf workflows instances create effect-ci-owned-project-checks --body '{"instance_id":"my-owned-project-positive","params":{"mode":"fixture"}}'
+cf workflows instances get my-owned-project-positive --workflow-name effect-ci-owned-project-checks
+cf workflows instances create effect-ci-owned-project-boundaries --body '{"instance_id":"my-owned-project-boundaries","params":{"mode":"verify-boundaries"}}'
+cf workflows instances get my-owned-project-boundaries --workflow-name effect-ci-owned-project-boundaries
+```
+
+This private Worker has only `LOADER`, no secrets, public workers.dev/preview URL,
+HTTP execution route, storage binding, GitHub App, Slack, AI or release connection.
+Source/check/probe checkpoints have zero retries. Inspect existing resources and
+histories after an ambiguous ACK; never blindly rerun a create/deploy or reset a
+failed probe. Costs are Workflow steps, parent Worker and WorkerLoader child time,
+not Container runtime. No new account permission or paid provider is needed.
+
+Optional cleanup requires explicit owner authorization and retained evidence first.
+Use Cloudflare's dashboard to remove only these two owned Workflows and this Worker;
+there is no Container or SQLite namespace to remove. Preserve shared example
+resources and original histories. Fresh standalone native proof is pending.
+
+## Historical shared-host setup
 
 Deploy [the example host](../../apps/example-runner), then create an
 `effect-ci-example-dynamic-project` instance with `repository` (GitHub URL) and
@@ -55,7 +117,7 @@ import rejection is not a portable security promise. The administrative hosted
 probe instead checks that native host files are inaccessible. This does not promise
 that Worker virtual filesystems are absent or that every Node package works.
 
-## Recorded hosted evidence
+## Historical shared-host evidence
 
 `coverage-dynamic-project-20261012-3` completed on immutable source
 `baac78ba496d07baf71e0b8962c935d4aa12abab`: both CI actions completed, all four
