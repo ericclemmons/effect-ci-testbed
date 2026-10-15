@@ -974,9 +974,38 @@ container filesystem. This is a real integration failure, not a successful demo
 or infrastructure retry. The shared wrapper now supplies `runner.fileSystem`;
 its workerd/Workflow/RPC regression reproduces the old error, passes the normal
 package suite after the fix, and still rejects a missing lockfile before executing.
-The test container is a fixture, not native execution proof. A merged/deployed
-fix and a new actual same-app CLI run are still required before marking this
-step verified. The original failed history and CLI output remain retained.
+The test container is a fixture, not native execution proof. The original failed
+history and CLI output remain retained.
+
+The corrected merged source `2c8a27600b168655c2fd989e4abb200d60f3ffb8` was then
+built and deployed as Worker `57135e60-28d7-4700-bd42-4187bdb2820e`, preserving all
+16 binding identities, 17 exports, Access and signed callbacks. The actual CLI
+from a clean managed checkout ran `cf-ci run --remote` with automatic agent JSON
+and no agent/format flag. Native instance `f62fe0db-05e6-4acd-9492-9c8cbfacb6ac`
+completed all seven nodes and all six real commands, once each with zero retries:
+`npm ci`, lint, formatting checks, type-checking, tests (one source test plus 17
+verification tests), and build. The CLI exited `0`. The build emitted
+`dist/index.html`, `dist/app.js` and `dist/message.js`.
+
+Observed queue/execution/total times were 634 / 79,629 / 80,263 ms (one sample;
+an existing workspace-cache snapshot was restored). These include orchestration,
+container commands and snapshots, not isolated task latency or a cold benchmark.
+Full original CLI event outputs are retained privately; the history API truncates
+some large step previews, so those previews are not claimed as complete output.
+This proves same-app native execution, not signed check reuse, browser execution,
+artifact publication, Vite-site deployment, a model call or release approval.
+
+Read the same retained native history without dispatching a new run:
+
+```sh
+LIVE_DEMO_INSTANCE=f62fe0db-05e6-4acd-9492-9c8cbfacb6ac \
+  CF_BIN="$PWD/node_modules/.bin/cf" node --test src/live-demo.test.ts
+```
+
+The test is opt-in and skips in ordinary CI. `LIVE_DEMO_RECEIPT` optionally points
+to the private original CLI receipt to additionally validate its untruncated
+command events; do not publish raw receipts or credentials. No redeployment or
+new execution is needed to validate this evidence.
 
 ### 5. Run the first Workflow
 

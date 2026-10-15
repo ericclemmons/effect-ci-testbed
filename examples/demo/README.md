@@ -262,11 +262,19 @@ dispatch, status and event-stream routes, without changing the existing root
 workflow. Host policy permits only this repository, a full commit SHA and the
 whole suite. It does not accept an incoming module or deployment target.
 
-**Live verification pending:** the first actual CLI run authenticated and reached
-this workflow, but failed package-manager discovery because the host wrapper did
-not supply the remote filesystem. The fix wires the existing runner filesystem;
-a corrected native run must still pass before counting this step complete. The
-root service's older build receipt is not evidence for this new workflow.
+**Live verified:** `cf-ci run --remote` from clean commit
+`2c8a27600b168655c2fd989e4abb200d60f3ffb8` completed all seven nodes in native
+Workflow `f62fe0db-05e6-4acd-9492-9c8cbfacb6ac`: install, lint, formatting,
+type-checking, tests and the real Vite build. The CLI automatically selected JSON
+and exited `0`, without an agent or format flag. The build produced
+`dist/index.html`, `dist/app.js` and `dist/message.js`.
+
+The first attempt exposed a missing remote-filesystem connection; that failed
+history remains preserved separately. This corrected run took 80.263 seconds
+including 0.634 seconds queued, with an existing workspace-cache snapshot
+restored. It is one observed run, not a cold benchmark or signed reuse, browser
+verification, artifact publication or deployment of this Vite app.
+[Read-only native regression](../../apps/effect-ci/src/live-demo.test.ts).
 [GitHub-to-Cloudflare composition](../github-cloudflare-ci).
 
 ## 8. Attest a pure check, then let hosted CI verify reuse
