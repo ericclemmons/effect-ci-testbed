@@ -403,6 +403,7 @@ export class CommandError extends Error {
   readonly cwd: string
   readonly exitCode: number
   readonly details: string | undefined
+  readonly output: { readonly stdout: string; readonly stderr: string; readonly truncated: boolean } | undefined
 
   constructor(
     stepId: string,
@@ -410,6 +411,7 @@ export class CommandError extends Error {
     cwd: string,
     exitCode: number,
     details?: string,
+    output?: { readonly stdout: string; readonly stderr: string; readonly truncated: boolean },
   ) {
     super(`Command failed (${exitCode}): ${command}${details ? `\n${details}` : ""}`)
     this.stepId = stepId
@@ -417,6 +419,7 @@ export class CommandError extends Error {
     this.cwd = cwd
     this.exitCode = exitCode
     this.details = details
+    this.output = output
   }
 }
 
@@ -1566,9 +1569,16 @@ const makeLocalCommandExecutor = (output: "inherit" | "silent" = "inherit"): Com
 
     child.once("error", () => resume(Effect.fail(new CommandError(stepId, command, workspace.cwd, 1))))
     child.once("close", (code) => {
+      const stdoutText = stdout.join(""), stderrText = stderr.join("")
+      // Agent failures need diagnostics from this attempt, not a second execution.
+      // Keep only the tail of each stream in the error envelope (32K characters).
+      const limit = 32 * 1024
       resume(code === 0
-        ? Effect.succeed({ exitCode: 0, stderr: stderr.join(""), stdout: stdout.join("") })
-        : Effect.fail(new CommandError(stepId, command, workspace.cwd, code ?? 1)))
+        ? Effect.succeed({ exitCode: 0, stderr: stderrText, stdout: stdoutText })
+        : Effect.fail(new CommandError(stepId, command, workspace.cwd, code ?? 1, undefined, {
+            stdout: stdoutText.slice(-limit), stderr: stderrText.slice(-limit),
+            truncated: stdoutText.length > limit || stderrText.length > limit,
+          })))
     })
 
     return Effect.sync(() => child.kill("SIGTERM"))

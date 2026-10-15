@@ -689,6 +689,7 @@ const classifyFailure = (error: unknown): CliFailure => {
         cwd: error.cwd,
         exitCode: error.exitCode,
         stepId: error.stepId,
+        ...(error.output ? { output: error.output } : error.details ? { output: { text: error.details } } : {}),
       },
     )
   }
