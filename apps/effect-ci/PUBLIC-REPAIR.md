@@ -1,8 +1,12 @@
 # Owned public failure to proposed repair
 
 This is connected host source, **not yet native end-to-end proof**. The receiver
-enrollment is now version-pinned and the public source is unarmed. No new error or paid inference was
-emitted; historical operator-driven repairs remain unchanged and unmerged.
+enrollment is version-pinned. The one genuine public exception reached WOBS and
+authenticated capture, but title admission stopped before a proposal Workflow
+or new inference. The [receiver guide](../repair-events/PUBLIC-ACTIVATION.md)
+records the failed boundary and exact token-masking regression. Historical
+operator-driven repairs remain unchanged and unmerged. Do not replay this event
+or call its capture an automatic-repair success.
 
 Private bootstrap deployments from exact merged `b1a91ee07650c9b3f1d2e21e584d5620619f09a6`
 were independently verified: receiver `092e6d05-131e-428a-9c1e-707fb34af1c7`, agent

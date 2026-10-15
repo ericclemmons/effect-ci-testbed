@@ -12,7 +12,8 @@ export default class LocalReceiver extends Receiver {
     try {
       const payload = await request.json();
       const steps: string[] = [];
-      const reader = new NotificationInspectionWorkflow(this.ctx, {});
+      const reader = new NotificationInspectionWorkflow(this.ctx,
+        this.env.PUBLIC_SOURCE ? { PUBLIC_SOURCE: this.env.PUBLIC_SOURCE } : {});
       const result = await reader.run(
         { instanceId: "local-read", payload } as any,
         {
