@@ -60,6 +60,10 @@ test("adapter composes pinned note integrity, enrollment and exact-input signatu
   await Effect.runPromise(h.cache.record(request))
   assert.equal(h.calls.length, 4)
   for (const url of h.calls) assert.ok(url.startsWith("https://api.github.com/repos/owner/fixture/git/"))
+  const cloneUrl = harness(await sign())
+  assert.equal(await Effect.runPromise(cloneUrl.cache.lookup({ ...request,
+    event: { ...request.event, source: { kind: "git", repository: identity.repository + ".git", revision } },
+  })), true)
 })
 
 test("missing, invalid, unknown/revoked trust and changed inputs are ordinary misses", async () => {

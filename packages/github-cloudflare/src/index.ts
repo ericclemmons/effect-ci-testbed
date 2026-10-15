@@ -132,12 +132,12 @@ export const workflowEntrypoint = <A>(
       : undefined
     const runner = Cloudflare.makeRunner({
       binding,
-      cache: {
+      ...(options.cache === false ? {} : { cache: options.cache ?? {
         key: github?.repositoryName ?? event.payload.repository,
         // Vite+ fingerprints task inputs itself; this is only its transport cache.
         keyFiles: [],
         paths: ["node_modules/.vite/task-cache"],
-      },
+      } }),
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(options.root ? { root: options.root } : {}),
@@ -260,7 +260,7 @@ export const workflowEntrypoint = <A>(
         source: runner.source,
         workspaceFileSystem: runner.fileSystem,
         ...(options.checkCache
-          ? { checkCache: options.checkCache(this.env) }
+          ? { checkCache: options.checkCache(this.env, { runner }) }
           : {}),
         workspacePersistence: runner.persistence,
       }), { workflow: workflow.id, instance: event.instanceId }, this.env))

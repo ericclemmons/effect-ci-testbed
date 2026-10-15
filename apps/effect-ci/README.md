@@ -1039,6 +1039,51 @@ and completes the browser login. Access and the Worker API token remain separate
 authentication boundaries. Delete the local profile to forget the local service
 configuration; this does not revoke the server credential or remove any resources.
 
+### Enrolled demo syntax-check reuse
+
+The `/demo` workflow has one host-enrolled pure `syntax` check. Its trusted command
+strips TypeScript and constructs an unlinked `vm.SourceTextModule`; it never
+links imports or evaluates project code. This is syntax validation, not a type
+check. Source, package manifest and lockfile byte digests, the actual Linux x64
+Node executable/versions, full commit, repository, command and host policy are
+signed together. Only `demo-node-syntax-v1` is enrolled for that exact tuple.
+
+The private Ed25519 key stays in the operator's mode-600
+`~/.config/effect-ci/signers/demo-node-syntax-v1.pem`; only its public JWK is in
+the host. `node .cloudflare/ci/attest.ts` from a clean enrolled checkout copies
+only three committed inputs, runs the exact immutable Linux image locally with
+networking disabled/read-only input mounts, checks exit zero, and then signs
+outside Docker. It refuses dirty source, foreign repositories, unowned keys and
+overwriting existing exact-commit notes. It retains a private receipt under the
+demo's ignored `.verification/` directory. The key is not a general signer for
+arbitrary projects, commands or policies.
+
+```sh
+git push
+node .cloudflare/ci/attest.ts
+git push origin refs/notes/effect-ci-hosted-checks-v1
+cf-ci run --remote
+```
+
+The host inspects actual prepared files/runtime before reading the fixed public
+GitHub notes ref. Missing, invalid, unknown-key, policy/toolchain/source mismatch,
+revocation or network failure leaves ordinary execution intact. Builds and other
+actions cannot hit this cache. Removing the enrolled public key/check revokes
+reuse without deleting historical notes. Unsigned/advisory refs never authorize
+skipping anything. Publishing notes needs only the operator's existing repository
+write access; no signer secret, OAuth token or App key enters the container.
+
+This attested workflow disables **whole-container snapshot transport**: a prior
+project could modify system executables inside such a snapshot, invalidating
+trusted input inspection. Each source checkout starts from the owned image; only
+within-run workspace snapshots are used. GitHub's automatic directory caches and
+Vite's own task validation remain distinct. Native caching must restore declared
+cache files without restoring project-modified system state before re-enabling
+cross-run transport for this host. No new provider or inference cost is involved;
+Docker, container, snapshot/storage and GitHub API costs remain ordinary runtime
+costs. Native execute/reuse/invalid-proof acceptance is still pending this build;
+local tests are not presented as native evidence.
+
 ### 5. Run the first Workflow
 
 First exercise the same deployed service directly from the checkout:

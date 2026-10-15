@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import { fileURLToPath } from "node:url";
 import { demoProgram } from "./demo-program.ts";
 import { demoRouteAllowed, demoRunAllowed } from "./demo-policy.ts";
+import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 
 test("native demo enrollment selects the same package suite as local discovery, without release or approval", async () => {
   const root = fileURLToPath(new URL("../../../examples/demo/", import.meta.url));
@@ -17,12 +18,13 @@ test("native demo enrollment selects the same package suite as local discovery, 
   assert.equal(result.plan.workflowId, "cf-ci-demo");
   assert.deepEqual(
     result.plan.nodes.map((node) => node.id),
-    ["checkout", "install", "lint", "check", "typecheck", "test", "build"],
+    ["checkout", "install", "syntax", "lint", "check", "typecheck", "test", "build"],
   );
   assert.deepEqual(
     result.plan.nodes.flatMap((node) => node.commands.map((command) => command.command)),
     [
       "npm_config_cache=.effect-ci/cache/npm npm ci",
+      syntaxCommand,
       'npm run "lint"',
       'npm run "check"',
       'npm run "typecheck"',

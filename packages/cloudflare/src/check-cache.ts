@@ -23,7 +23,7 @@ export const hostedCheckCache = (options: HostedCheckCacheOptions): CheckCache =
       const source = request.event.source
       const repository = `https://github.com/${options.reader.repository}`
       if (request.policy.scope !== "commit" || source?.kind !== "git" ||
-          source.repository !== repository || source.revision !== request.event.revision ||
+          source.repository.replace(/\.git$/, "") !== repository || source.revision !== request.event.revision ||
           !/^[0-9a-f]{40}$/.test(source.revision)) return false
       const identity = await options.identify(request)
       if (!identity || identity.kind !== "check" || identity.repository !== repository ||

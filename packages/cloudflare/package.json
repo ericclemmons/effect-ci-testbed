@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./artifacts-source": "./src/artifacts-source.ts",
     "./check-cache": "./src/check-cache.ts",
-    "./check-evidence": "./src/check-evidence.ts"
+    "./check-evidence": "./src/check-evidence.ts",
+    "./node-syntax-check": "./src/node-syntax-check.ts",
+    "./node-syntax-signer": "./src/node-syntax-signer.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"
