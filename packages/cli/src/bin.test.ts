@@ -21,7 +21,7 @@ test("bare cf-ci shows help, Mermaid usage and project targets just like --help"
   assert.equal(bare.stdout, explicit.stdout)
   assert.match(bare.stdout, /cf-ci run\s+Execute the whole default workflow/)
   assert.match(bare.stdout, /cf-ci plan --format=mermaid/)
-  assert.match(bare.stdout, /Actions:\n  check/)
+  assert.match(bare.stdout, /Run commands:\n  cf-ci run  \(whole workflow\)\n  cf-ci run check/)
   assert.doesNotMatch(bare.stdout, /CI execution summary/)
 })
 
@@ -51,11 +51,14 @@ test("human defaults to text and direct-agent environment detection defaults to 
   })
   assert.equal(human.status, 0, human.stderr)
   assert.match(human.stdout, /^Workflow: exported-actions/m)
-  const agent = spawnSync(process.execPath, [bin, "list"], {
-    cwd: example, encoding: "utf8", env: { ...humanEnvironment, CODEX_THREAD_ID: "local-heuristic-test" },
-  })
-  assert.equal(agent.status, 0, agent.stderr)
-  assert.equal(JSON.parse(agent.stdout).workflow, "exported-actions")
+  for (const signal of [{ AI_AGENT: "demo" }, { CODEX_THREAD_ID: "local-heuristic-test" }, { CLAUDECODE: "1" }]) {
+    const agent = spawnSync(process.execPath, [bin, "list"], {
+      cwd: example, encoding: "utf8", env: { ...humanEnvironment, ...signal },
+    })
+    assert.equal(agent.status, 0, agent.stderr)
+    assert.equal(JSON.parse(agent.stdout).workflow, "exported-actions")
+    assert.deepEqual(JSON.parse(agent.stdout).commands, ["cf-ci run", "cf-ci run check"])
+  }
 })
 
 test("discovers workflow.ts and actions.ts from the current project", () => {

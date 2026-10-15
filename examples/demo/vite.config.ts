@@ -23,10 +23,10 @@ export default defineConfig({
     include: ["src/**/*.test.js"],
   },
   build: {
-    lib: {
-      entry: "src/message.js",
-      formats: ["es"],
-      fileName: "message",
+    rolldownOptions: {
+      input: { app: "index.html", message: "src/message.js" },
+      preserveEntrySignatures: "strict",
+      output: { entryFileNames: "[name].js" },
     },
     minify: false,
   },

@@ -1,219 +1,370 @@
-# Demo: check changes before pushing
+# Adopt Effect CI, one capability at a time
 
-This example was renamed from `examples/developer-loop` to `examples/demo`.
-Historical recordings and immutable receipts retain their original recipe name,
-source paths, release tags and digests; the rename does not recreate those proofs.
+> How far can an existing Vite project go without replacing its scripts or rewriting its CI?
 
-> Can a human and an agent use one CI command without writing a workflow or
-> repeating a task whose inputs have not changed?
+This is a hands-on adoption guide, not a presentation script. Each step adds a
+capability: make the change, run the command, inspect the result. Stop or skip
+wherever you want. There is no three-minute schedule or prescribed narration.
 
-Composition recipe: [zero-config discovery](../zero-config) +
-[Vite+ task caching](../vite-plus-cache). Continue to
-[verification evidence](../verification-evidence) when the result must be attested.
+Start with an existing Vite/Vite+ package with a lockfile and ordinary
+`lint`, `test`, and `build` scripts. This checked-in fixture is a small Vite+
+web application: HTML entrypoint, JavaScript source, lint, types, tests and build.
+The build also retains an exported message module for the existing verification
+harness. Making every hosted stage below operate on this same application remains
+work to finish—not a reason to substitute unrelated historical runs.
 
-```mermaid
-flowchart LR
-  checkout --> install
-  install --> lint
-  install --> check
-  lint --> check
-  check --> typecheck
-  install --> typecheck
-  install --> test
-  typecheck --> test
-  install --> build
-  test --> build
-```
-
----
-
-For copyable commands, expected output, and spoken narration, use the
-[step-by-step talking script](./TALKING-SCRIPT.md). The diagram is the inferred
-suite's execution order, not a declaration of Vite task prerequisites. Direct
-`cf-ci run build` runs build's setup and package lifecycle hooks, not the whole suite.
-
-The demo starts without a CI marker or custom Effect workflow. Bare `cf-ci`
-shows help and inferred targets. `cf-ci list` and `cf-ci plan --format=mermaid`
-inspect ordinary package scripts without creating files. The first explicit
-`cf-ci run` creates an empty, ignored `.cloudflare/ci/ci.ts` marker and executes
-the whole inferred workflow; `cf-ci run build` selects only the build target.
-There is no input glob or output manifest. Vite configuration
-selects the library entrypoint, lint rules, and cached task bodies.
-Ordinary package scripts expose those tasks and their lifecycle hooks; Effect CI discovers
-`check`, `lint`, `typecheck`, `test`, and `build`, installs dependencies, and
-invokes those scripts.
-
-```json
-{
-  "check": "vpr check:source",
-  "lint": "vpr lint:source",
-  "typecheck": "vpr typecheck:source",
-  "pretest": "vpr typecheck",
-  "test": "vpr test:source",
-  "prebuild": "vpr typecheck && vpr lint",
-  "build": "vpr build:source"
-}
-```
-
-The wrapper scripts call distinct tasks in `vite.config.ts`, with `cache: true`
-on each task. No package script needs a cache flag or recursively calls itself.
-The task bodies are Vite+'s built-in linter and builder, not custom programs.
-`no-undef` is explicitly an error in `vite.config.ts`, so a bare `asdf` fails lint
-even though it is valid JavaScript syntax. Plain `vp lint` discovers the project
-files without a directory argument. This example keeps its source in `src/`.
-The config excludes the generated `dist/` output and empty `.cloudflare/` CI marker.
-
-`check` runs formatting and lint only. `typecheck` uses the TypeScript checker
-through Vite+'s lint driver with lint rules disabled. `tsconfig.json` enables
-`allowJs` and `checkJs` for `src/`, so the JavaScript source and tests get static
-type checking without conversion to TypeScript. `test` requires type checking;
-`build` requires type checking and lint, but not formatting or test execution.
-`pretest` and `prebuild` express these prerequisites as package lifecycle hooks.
-Vite+ caches each configured task independently. A failed prerequisite prevents
-its dependent command from running. Run `cf-ci run build`, `npm run build`, or
-`vpr build` to include the hook; bare `vp build` invokes only the built-in bundler.
-Type-check flags stay in the configured `typecheck:source` task rather than global
-`lint.options`, because enabling them globally would also type-check `check`.
-
-The test checks that the exported message is a non-empty string, not a particular
-sentence, so the human and agent can change the message during the demo.
-
-This example joins [zero config](../zero-config) and [Vite+ caching](../vite-plus-cache)
-into a developer loop. Vite+ owns cache validity and output restoration. Effect CI
-owns discovery, planning, execution, and human/agent result formatting. A cache hit
-is not signed verification evidence.
-
-Local text output preserves tool colors when the terminal supports them, including
-Vite+ cache replay. `NO_COLOR`, `NODE_DISABLE_COLORS`, and explicit `FORCE_COLOR`
-settings are respected. Redirected output does not automatically enable colors,
-and JSON output remains separate from command logs.
-
-## Hosted browser transport (development boundary)
-
-The recorder still defaults to local Chromium. The owned
-[CDP relay](./verification/cdp-relay.mjs) is a tested building block for a
-future authenticated Kitesurf browser provider, not an enabled hosted recipe.
-It accepts an explicit **trusted host** authorization callback only after checking
-the exact Cloudflare account and browser session endpoint. It gives the browser
-engine a random, loopback-only WebSocket capability; the bearer token stays in
-the upstream TLS handshake, never in the page or returned endpoint.
-
-The listener expires within 60 seconds, closes on cancellation, rejects page
-Origins and concurrent clients, bounds buffered traffic, and refuses redirects.
-Its tests use real loopback WebSockets with inert credentials, not a Cloudflare
-session. An owning provider must still create/delete its remote session on every
-exit path and retain a server-side expiry if the host crashes. Do not publish
-the temporary CDP capability in verification reports or supply personal OAuth
-credentials to hosted Workers or project containers. A maintained session/auth
-adapter and same-run hosted recording remain pending.
+The CLI and libraries are currently private workspace packages, not a published
+npm onboarding path. In this testbed, from the repository root:
 
 ```sh
-node --test verification/cdp-relay.test.mjs
-```
-
-## Set up once
-
-Use Node 24.11+ or Node 26+. From the testbed repository root:
-
-```sh
-pnpm install
+pnpm install --frozen-lockfile
 export PATH="$PWD/node_modules/.bin:$PATH"
 cd examples/demo
+```
+
+Run `npm run dev` to edit the application, or `npm run preview` after a build to
+inspect the built application. Both print their local URL.
+
+Use Node 24.11+ or Node 26+. Keep agent implementation work in managed worktrees;
+the primary checkout stays clean on main. Local source edits below are intentional
+feedback experiments, not signed proof.
+
+## 1. Discover what this project can do
+
+No workflow, CI marker, or YAML change is needed:
+
+```sh
 cf-ci
 cf-ci list
+cf-ci plan
+cf-ci plan lint
 cf-ci plan --format=mermaid
 ```
 
-No `--workflow` flag is needed. Start in this package directory for marker-free
-inference. After the first explicit run creates the marker, discovery walks up
-and also works inside `src/`. The PATH setup exposes the workspace's CLI once;
-there is no package-manager prefix on subsequent CI commands.
-The product command is `cf-ci`, not yet `cf ci`.
+Help and list show exact runnable commands, including `cf-ci run lint`,
+`cf-ci run test`, and `cf-ci run build`. Plan resolves dependencies without
+executing them or creating files. Mermaid describes the selected graph; it is not
+a promise that package scripts have arbitrary parallel-safe dependencies.
 
-## Human demo
+**Inspect:** [package.json](./package.json) and [vite.config.ts](./vite.config.ts).
+Discovery uses conventional package scripts and their lifecycle hooks.
+[Zero-config details](../zero-config).
 
-1. Run `cf-ci run` for the full workflow, or `cf-ci run build` for just the build
-   target and prerequisites. Human terminals default to readable text.
-2. Run the build again. Look for Vite+'s `cache hit` output. Do not use replayed
-   build output as proof that the build executed again.
-3. Delete only the generated `dist/message.js` and rerun the build. Vite+ should
-   restore the output from cache.
-4. Change a sentence in this README and rerun the build. It does not read this
-   README, so the build should remain a hit.
-5. Change the string in `src/message.js`, without committing or pushing. Rerun
-   lint and build. The changed source should invalidate both tasks; inspect
-   `dist/message.js` to see the new string. An immediate repeat should hit.
-6. Add a bare `asdf` line to `src/message.js`. Run lint with `--agent`:
-   it must return `ok: false` and a nonzero exit code. Rerun with `--format=text`
-   to see the undefined-variable diagnostic, remove that line, and rerun.
-
-Compare total command times with `time`, keeping dependencies and task scope the
-same. Do not promise a speedup: this deliberately tiny build may be faster to
-execute than to validate. The point is visible reuse, correct invalidation, output
-restoration, and no push required—not an artificial slow task.
-
-Every inferred invocation still runs an installation action. Cache hits skip the
-Vite+ task body, not installation or the CLI. Output replay is tool-owned reuse,
-not a `CI.check` signed-evidence hit. Environment, network, time, and other inputs
-that filesystem observation cannot capture need a separate tracking policy.
-
-## Agent demo
-
-Compare `cf-ci list` with `cf-ci list --agent`, or `cf-ci run build` with
-`cf-ci run build --agent`. These execute the same workflow; the flag deterministically
-selects machine-readable JSON. Otherwise am-i-vibing detects direct-agent environment
-signals, with process scanning disabled. Explicit `--format` overrides either mode.
-
-Give the agent this task:
-
-> Change the exported message to "Checked before pushing". Discover the available
-> CI targets, inspect the lint plan, then run lint, test, and build with JSON output.
-> Fix any failure and rerun. Confirm the generated artifact contains the new
-> message. If committing is authorized, commit the intended changes and verify that
-> exact revision before attaching signed evidence. Do not push without authorization.
-
-The agent uses the same entrypoint as the human:
+## 2. Run the existing scripts before pushing
 
 ```sh
-cf-ci list --format=json
-cf-ci plan lint --format=json
-cf-ci run lint --format=json
-cf-ci run test --format=json
-cf-ci run build --format=json
+cf-ci run lint
+cf-ci run test
+cf-ci run build
+cf-ci run
 ```
 
-JSON mode suppresses command logs so stdout remains a structured CLI result.
-The current local executor does not include linter diagnostics in a JSON
-failure; rerun the failed target in text mode to read them. Use text mode to show
-Vite+ cache diagnostics. An `ok: true` result means this
-target succeeded, not that every possible check passed. Here `lint` runs Oxlint
-with undefined identifiers treated as errors. `build` first checks types and
-lint, then bundles the source into an ES module at `dist/message.js`. Run
-`cf-ci run check` for formatting/lint and `cf-ci run test` for behavioral tests.
+The last command runs the whole inferred workflow. A selected target runs only its
+own setup and lifecycle prerequisites, not every check. Here build includes
+`prebuild` (types and lint); test includes `pretest` (types).
+The first explicit local run creates an empty ignored
+`.cloudflare/ci/ci.ts` marker; it does not replace the package scripts.
 
-Working-file checks provide feedback, not reusable proof for old `HEAD`. Commits do
-not need to wait for checks to pass: an authorized agent can commit, run checks,
-fix failures in a new commit, then attest the passing revision with a signed Git
-note. See [verification evidence](../verification-evidence#commit-first-then-attest)
-for that separate contract; no dirty-tree attestation handoff is needed.
+Change the exported string in [src/message.js](./src/message.js), then:
 
-## GitHub checks
+```sh
+cf-ci run build
+cat dist/message.js
+```
 
-The root E2E workflow includes this discovered entrypoint in the existing
-Effect-on-GitHub matrix. Its plan and execute jobs use the shared runner and
-existing GitHub App reporter. No new App, secret, deployment, or hosted Worker is
-required. This example does not claim Cloudflare zero-config hosting coverage.
+Add a bare `asdf` line to that source file and run `cf-ci run lint`.
+Expect an undefined-variable diagnostic and a nonzero exit. Remove the line and
+rerun. Do not edit generated output to fix a source failure.
 
-The local plan/execute matrix runs the same example. The conventional
-[GitHub workflow](./.github/workflows/github.yml) runs these identical package
-scripts directly and is included in the native comparison matrix. Its caching
-comes from Vite+ too; the difference is the portable CI entrypoint and result
-contract, not a faster underlying build algorithm.
+## 3. Use the same commands as an agent
 
-At source `b5e2a663aeef5e87a993001ea446e000a2447584`, all five developer-loop
-jobs in [the full E2E run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/37958032547)
-passed: conventional GitHub Actions, local plan/execution, and Effect-on-GitHub
-plan/execution. Hosted Cloudflare zero-config execution remains unverified.
+An agent runs exactly the same commands:
+
+```sh
+cf-ci --help
+cf-ci list
+cf-ci plan lint
+cf-ci run lint
+```
+
+`@vercel/detect-agent` detects `AI_AGENT` and tool-specific environment signals.
+Human terminals default to text; agent environments default to JSON.
+No `--agent` flag is required. To inspect that interface from a human terminal:
+
+```sh
+AI_AGENT=demo cf-ci list
+AI_AGENT=demo cf-ci plan lint
+AI_AGENT=demo cf-ci run lint
+```
+
+JSON list includes both target names and exact runnable commands. Explicit
+`--format=text` or `--format=json` overrides detection. Detection changes output,
+not trust, permissions, execution location, or whether a check passed.
+
+**Current wrinkle:** JSON failures name the failed command but do not yet include
+the complete tool diagnostic. Use `cf-ci run lint --format=text` to inspect it.
+That is an ergonomics gap to fix, not the intended final agent workflow.
+
+## 4. Reuse task output, then invalidate it
+
+```sh
+time cf-ci run build
+time cf-ci run build
+```
+
+Inspect Vite+'s cache-hit/miss output. Change the string in `src/message.js` and
+repeat: the changed input must invalidate the task; an immediate repeat can hit.
+Delete only the generated `dist/message.js` and repeat to inspect output
+restoration. A README-only edit should not invalidate a task that does not read it.
+
+Optional task-cache-cold comparison, **only in a disposable checkout**:
+
+```sh
+vp cache clean
+time cf-ci run build
+time cf-ci run build
+```
+
+Do not clean the shared checkout for a presentation. This clears Vite task cache,
+not the package store or every machine cache. Installation still runs on each
+inferred invocation. A tiny cached task need not be faster than executing it.
+[Vite+ caching](../vite-plus-cache) owns task reuse; this is not attestation.
+
+## 5. Adopt on GitHub without moving execution yet
+
+Keep the existing workflow and package scripts first. Compare these checked-in files:
+
+- [Conventional GitHub Actions](./.github/workflows/github.yml): runs the scripts directly.
+- [Effect on GitHub](./.github/workflows/effect-on-github.yml): selects `examples/demo`
+  in the repository's [reusable runner](../../.github/workflows/effect-ci.yml).
+
+For this monorepo, the essential job change is:
+
+```yaml
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/demo
+      cache-key: demo-vite-task
+      cache-key-files: examples/demo/package-lock.json
+      cache-path: |
+        node_modules/.vite/task-cache
+        examples/demo/node_modules/.vite/task-cache
+    secrets: inherit
+```
+
+This is repository-specific setup, **not** a self-contained snippet to paste into
+an unrelated repo: the reusable workflow and its explicitly scoped GitHub App
+credentials must exist there. Do not add unrelated secrets. Keep the old job while
+comparing actual results, then remove duplication deliberately.
+
+Both local and Effect-on-GitHub plan/execution for the renamed demo passed in
+[PR228's exact full suite](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/38660283645).
+That proves this fixture on GitHub, not native Cloudflare execution of arbitrary
+zero-config packages.
+
+## 6. Make orchestration explicit when scripts stop being enough
+
+The marker is optional scaffolding, not the end of adoption. Add
+`.cloudflare/ci/actions.ts`:
+
+```ts
+import * as CI from "@effect-ci-testbed/ci";
+
+const checkout = CI.action("checkout", function* () {
+  const source = yield* CI.Source;
+  return () => source.checkout();
+});
+
+const install = CI.action(
+  "install",
+  () =>
+    function* () {
+      const workspace = yield* checkout();
+      const npm = yield* CI.PackageManager.JavaScript(workspace);
+      return yield* npm.install();
+    },
+);
+
+export const lint = CI.action(
+  "lint",
+  () =>
+    function* () {
+      const workspace = yield* install();
+      const npm = yield* CI.PackageManager.JavaScript(workspace);
+      return yield* npm.run("lint");
+    },
+);
+
+export const build = CI.action(
+  "build",
+  () =>
+    function* () {
+      const workspace = yield* install();
+      const npm = yield* CI.PackageManager.JavaScript(workspace);
+      return yield* npm.run("build");
+    },
+);
+```
+
+Add `.cloudflare/ci/workflow.ts`:
+
+```ts
+import * as CI from "@effect-ci-testbed/ci";
+import * as actions from "./actions.ts";
+
+export default CI.workflow("demo", function* () {
+  yield* actions.lint();
+  return yield* actions.build();
+});
+```
+
+```sh
+cf-ci
+cf-ci plan --format=mermaid
+cf-ci run lint
+cf-ci run
+```
+
+The explicit workflow takes precedence over the empty marker. This minimal example
+intentionally selects lint then build; add test/check/typecheck explicitly if they
+belong in the whole workflow. Exported actions become runnable commands.
+[Complete package-manager composition](../node-npm) and
+[exported targets](../exported-actions).
+
+## 7. Run a pushed commit remotely
+
+First configure the [hosted service](../../apps/effect-ci/README.md#5-run-the-first-workflow)
+and its Access credentials locally. The service selects the workflow; the CLI
+does **not** upload arbitrary local TypeScript or dirty source files.
+
+After an authorized commit and push, from a clean repository checkout:
+
+```sh
+export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL"
+export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
+cf-ci run --remote
+```
+
+Expect a native Workflow instance and streamed action events with a terminal
+success/failure. Do not redispatch if the stream disconnects without first
+inspecting the original instance. Never pass personal credentials into project
+code, containers, or agent prompts.
+
+**Integration gap:** the existing service has real remote-run evidence, but the
+same brownfield demo workflow is not yet enrolled and verified there. Until it is,
+this command runs the service's configured suite, not this local Vite build.
+[GitHub-to-Cloudflare composition](../github-cloudflare-ci).
+
+## 8. Attest a pure check, then let hosted CI verify reuse
+
+The intended next increment is: commit → execute exact inputs → sign evidence →
+push commit and notes → hosted verification → skip only the eligible pure check.
+Build artifacts, deploys, migrations, and releases must still execute.
+
+The [verification-evidence recipe](../verification-evidence) has real local
+Ed25519/Git-note execution and verification. The hosted reader and enrolled-key
+verifier also exist. **The complete native execute → signed reuse → invalid-proof
+fallback path is not finished.** There is no `cf-ci attest` command to paste here.
+
+Required live acceptance before this becomes a runnable step:
+
+- Derive source, dependencies, toolchain, command and policy from actual trusted inputs.
+- Keep the approved demo-restricted private signing key local; enroll only its public key.
+- Execute a clean committed pure check, then prove native reuse without executing it again.
+- Tamper with evidence and change inputs/key/policy; each case must execute normally.
+- Keep ordinary actions executing even when a pure check hits.
+
+This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
+[Cross-merge reuse](https://github.com/ericclemmons/effect-ci-testbed/issues/229)
+must issue new commit-bound evidence; copying a signature onto a merge/squash/rebase
+SHA does not make it valid.
+
+## 9. Carry real build output across jobs
+
+After the build action, publish the actual output:
+
+```ts
+const built = yield * actions.build();
+const artifact =
+  yield *
+  CI.Artifact.publish(built, {
+    name: "demo-build",
+    paths: ["dist/message.js"],
+  });
+const restored = yield * CI.Artifact.restore(artifact);
+yield * restored.exec("test -s dist/message.js");
+```
+
+Add this inside an explicit workflow and inspect `cf-ci plan --format=mermaid`,
+then `cf-ci run`. The receiver restores the recorded workspace rather than
+assuming another machine has the same local path.
+[Portable artifacts](../portable-artifacts) documents the actual hosted transport
+fixture. Wiring this Vite output through the hosted demo remains to verify.
+
+## 10. Assert the built application in a browser
+
+```sh
+npm run verify:browser
+npm run verify:browser -- --negative
+```
+
+The first runs a real build and local browser assertion. The second deliberately
+expects the wrong result and must retain failed footage. These are verification
+commands, not inferred default CI targets. Retain actual output, revision, outcome,
+and timing; review recordings before publication. See the proof section below.
+
+For a containerless build/serve increment, start with the
+[containerless site](../containerless-site). Its native build and browser proof
+are real but belong to a separate portable-JavaScript fixture, not a Vite/npm build
+silently running inside an isolate. Moving this project's build there is a
+separate compatibility step.
+
+## 11. Add controlled release, human decisions, and repair
+
+Next integrations, each with its own genuine execution requirement:
+
+- [Health-mediated rollout](../health-mediated-release): upload a candidate,
+  shift traffic, observe each cohort, roll back the exact prior allocation on failure.
+- [Human approval](../health-mediated-approval): request a real decision, bind it to
+  the exact release phase, and resume only after the authorized human responds.
+- [Incident repair host](../../apps/effect-ci/README.md): authentic Worker Issue →
+  bounded proposal → exact-commit native Node verification → proposed PR.
+
+These have separate hosted ingredient proofs, not one verified end-to-end
+brownfield onboarding run. The existing incident PR was an authenticated operator
+continuation; automatic webhook activation remains unfinished. Never self-approve
+a human gate or merge/deploy a proposed repair to manufacture a complete demo.
+No new failure or paid model call is needed just to replay old evidence.
+
+## 12. Let an agent onboard the next project
+
+First work through these increments by hand and fix the ergonomics. Then use this
+bounded onboarding prompt against a fresh, comparable brownfield project:
+
+> Inspect this project's scripts and existing CI. Run cf-ci --help to discover the
+> installed interface. Preserve current build/test behavior. Propose the smallest
+> incremental adoption: local discovery and plans, local checks, then GitHub CI.
+> Execute each supported step and show its real result before proceeding. Explain
+> setup and scoped permissions before remote execution, signing, publication or
+> release. Do not claim a capability works from a mock or historical receipt.
+> Do not invent commands or infer permission to push, deploy, sign, spend money,
+> approve a human gate, or merge a repair. Report unsupported steps with the exact
+> missing integration. Once local/GitHub behavior matches, propose remote execution,
+> pure-check attestation, artifacts, browser assertions and controlled release one
+> increment at a time.
+
+This prompt is provisional until the same sequence works by hand. It is not an
+acceptance substitute. The goal is one real application accumulating capabilities,
+not a tour that jumps between unrelated successes.
+
+Historical captures keep their original `developer-loop` recipe name, source
+paths, release tags and digests after the rename to `examples/demo`.
 
 ## Verification proof
 
@@ -227,7 +378,7 @@ npm run verify:browser -- --negative
 ```
 
 The recipe owns its preview, browser config and test fixtures. The first command
-runs the real `cf-ci run build`, opens its generated module in a fresh local
+runs the real `cf-ci run build`, opens its built application in a fresh local
 Chromium context, clicks **Show message**, and asserts a nonempty visible result.
 The second deliberately uses a wrong expectation: it must retain a failed E2E
 outcome and failed-run video. The verification wrapper succeeds only when that

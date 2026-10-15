@@ -21,7 +21,7 @@ cf-ci
 cf-ci list
 cf-ci plan --format=mermaid
 cf-ci run
-cf-ci run build --agent
+AI_AGENT=demo cf-ci run build
 ```
 
 The demo starts without a CI marker. Help, list and plan infer normal package
@@ -30,12 +30,12 @@ scripts without creating files. An explicit local `cf-ci run` creates an empty
 workflows take precedence; `plan`, `list`, and remote dispatch do not create files.
 Use a package-manager declaration or lockfile so installation can be resolved.
 Human terminals default to text; detected direct agents default to JSON.
-`--agent` explicitly shows the same JSON interface for a presenter without having
-to forge detection signals. Explicit `--format` remains available as an override.
+Detection uses `@vercel/detect-agent`, including the `AI_AGENT` convention; no
+agent flag is needed. Explicit `--format` remains available as an override.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the
-[developer walkthrough](./examples/demo/TALKING-SCRIPT.md) for expected
+[incremental adoption guide](./examples/demo/README.md) for expected
 results and intentional failures.
 
 Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
