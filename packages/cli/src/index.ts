@@ -7,6 +7,7 @@ import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
+import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -99,11 +100,11 @@ interface WorkflowInstanceEvent {
   readonly output?: unknown
 }
 
-const remoteHeaders = (): Headers => {
+const remoteHeaders = (url: string, token?: string): Headers => {
   const headers = new Headers({ "content-type": "application/json" })
 
-  if (process.env.EFFECT_CI_REMOTE_TOKEN) {
-    headers.set("authorization", `Bearer ${process.env.EFFECT_CI_REMOTE_TOKEN}`)
+  if (process.env.EFFECT_CI_REMOTE_TOKEN || token) {
+    headers.set("authorization", `Bearer ${process.env.EFFECT_CI_REMOTE_TOKEN || token}`)
   }
 
   if (process.env.CF_ACCESS_TOKEN) {
@@ -111,6 +112,9 @@ const remoteHeaders = (): Headers => {
   } else if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
     headers.set("cf-access-client-id", process.env.CF_ACCESS_CLIENT_ID)
     headers.set("cf-access-client-secret", process.env.CF_ACCESS_CLIENT_SECRET)
+  } else {
+    const access = cachedAccessToken(url)
+    if (access) headers.set("cf-access-token", access)
   }
 
   return headers
@@ -192,7 +196,9 @@ const builtInRemote = async (
   invocation: Invocation,
   root: string,
 ): Promise<unknown> => {
-  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL
+  const configuredRepository = gitOptional(root, "config", "--get", "remote.origin.url")
+  const profile = configuredRepository ? readRemoteProfile(cloneUrl(configuredRepository)) : undefined
+  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL || profile?.url
   const remoteUrl = configuredUrl ? remoteOrigin(configuredUrl) : undefined
 
   if (!remoteUrl) {
@@ -229,10 +235,12 @@ const builtInRemote = async (
   }
   const revision = git(root, "rev-parse", "HEAD")
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
+  // A URL override must never inherit another service's machine-profile token.
+  const headers = remoteHeaders(remoteUrl, profile?.url === remoteUrl ? profile.token : undefined)
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
     redirect: "error",
-    headers: remoteHeaders(),
+    headers,
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}) }),
   })
 
@@ -257,7 +265,7 @@ const builtInRemote = async (
     const before = events.length
     try {
       await streamRemoteEvents(await fetch(eventUrl, {
-        headers: remoteHeaders(), redirect: "error",
+        headers, redirect: "error",
       }), invocation.format, events, cursor)
       if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(events.at(-1)?.type ?? "")) break
     } catch (error) {

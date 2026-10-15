@@ -1007,6 +1007,38 @@ to the private original CLI receipt to additionally validate its untruncated
 command events; do not publish raw receipts or credentials. No redeployment or
 new execution is needed to validate this evidence.
 
+### Local CLI credentials (operator setup, not a demo step)
+
+`cf-ci run --remote` can read a private user-owned
+`~/.config/effect-ci/remotes.json` profile instead of requiring shell exports:
+
+```json
+{
+  "version": 1,
+  "remotes": [
+    {
+      "repository": "https://github.com/OWNER/REPOSITORY.git",
+      "url": "https://YOUR-HOST/demo",
+      "token": "YOUR-EXISTING-WORKER-API-TOKEN"
+    }
+  ]
+}
+```
+
+Create the file privately (mode `600`), outside repository checkouts. Only the
+matching repository uses it. An explicit remote URL override does not inherit a
+profile token for another endpoint. Existing environment overrides remain
+supported. Do not put App keys, Slack credentials or Access JWTs in the profile.
+
+Without explicit Access headers, the CLI reads the existing application-scoped
+session using `cloudflared access token --app <origin>` once per invocation. Its
+subprocess receives no API, GitHub App or Slack secrets; token output stays in
+memory and is sent only to the selected origin. The CLI does not initiate login.
+When the session expires, the operator runs `cloudflared access login <origin>`
+and completes the browser login. Access and the Worker API token remain separate
+authentication boundaries. Delete the local profile to forget the local service
+configuration; this does not revoke the server credential or remove any resources.
+
 ### 5. Run the first Workflow
 
 First exercise the same deployed service directly from the checkout:
