@@ -18,6 +18,8 @@ import * as Effect from "effect/Effect";
 export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
   lookup: (request) =>
     Effect.promise(async () => {
+      const transport: Array<{ status: number; endpoint: string }> = [];
+      let identified = false;
       const key = await crypto.subtle.importKey("jwk", syntaxPublicKey, "Ed25519", false, [
         "verify",
       ]);
@@ -25,14 +27,20 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
         reader: {
           repository: "ericclemmons/effect-ci-testbed",
           // Public, fixed GET endpoints only. Rate limits are misses, never bypass.
-          request: (url, init) =>
-            fetch(url, {
+          request: async (url, init) => {
+            const response = await fetch(url, {
               ...init,
               headers: {
                 ...Object.fromEntries(new Headers(init.headers)),
                 "user-agent": "effect-ci-demo-check-evidence",
               },
-            }),
+            });
+            transport.push({
+              status: response.status,
+              endpoint: new URL(url).pathname.split("/").at(-2) ?? "unknown",
+            });
+            return response;
+          },
         },
         enrollments: [
           {
@@ -69,10 +77,22 @@ export const demoCheckCache = (runner: Runner): CI.CheckCache => ({
               onOutput: () => {},
             }),
           );
-          return syntaxIdentity(input.event.revision!, result.stdout);
+          const identity = await syntaxIdentity(input.event.revision!, result.stdout);
+          identified = true;
+          return identity;
         },
       });
-      return Effect.runPromise(cache.lookup(request));
+      const verified = await Effect.runPromise(cache.lookup(request));
+      // Bounded host-owned observation only, never source text or credentials.
+      // This receipt cannot grant reuse; the verifier result above remains authority.
+      const observation = runner.actionExecutor.execute({
+        stepId: "syntax:evidence-observation",
+        options: { retries: { limit: 0, delay: 0, backoff: "constant" } },
+        run: () => Effect.succeed({ value: { verified, identified, transport }, commands: [] }),
+      });
+      // This runner callback is closed over plain data, with no service requirements.
+      await Effect.runPromise(observation as Effect.Effect<CI.ActionExecutionResult, unknown>);
+      return verified;
     }),
   record: () => Effect.void,
 });
