@@ -171,7 +171,7 @@ export const workflowEntrypoint = <A>(
       workspaceId: event.instanceId,
     })
     let operation = 0
-    const workflowDetailsUrl = detailsUrl(
+    const workflowDetailsUrl = github?.detailsUrl ?? detailsUrl(
       this.env.EFFECT_CI_DETAILS_URL,
       event.instanceId,
     )

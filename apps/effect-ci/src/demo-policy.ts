@@ -1,4 +1,11 @@
 /** Host enrollment, not an incoming repository/module selector. */
+export const demoGitHubRef = "refs/heads/demo/live";
+export const demoGitHubAllowed = (input: {
+  readonly repository: string; readonly repositoryName: string; readonly revision: string;
+  readonly installationId: number; readonly ref?: string;
+}): boolean => demoRunAllowed(input) && input.repositoryName === "ericclemmons/effect-ci-testbed" &&
+  input.installationId === 165265172 && input.ref === demoGitHubRef;
+
 export const demoRouteAllowed = (pathname: string): boolean =>
   pathname === "/demo" ||
   pathname === "/demo/" ||

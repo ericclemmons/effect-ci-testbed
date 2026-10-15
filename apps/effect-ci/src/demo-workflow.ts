@@ -1,6 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { demoRunAllowed } from "./demo-policy.ts";
+import { demoRunAllowed, demoGitHubAllowed } from "./demo-policy.ts";
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
@@ -43,8 +43,9 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     // Signed input identification must start from the owned immutable image.
     cache: false,
     container: { image: "workspace", instance: "standard-1" },
-    notificationChannels: (environment) => demoReviewedReleaseEnabled ? environment : {},
-    finalize: (context) => demoReviewedReleaseEnabled ? finalizeDemoRelease(context).then(() => undefined) : Promise.resolve(),
+    notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
+    finalize: (context) => demoReviewedReleaseEnabled && context.parameters.trigger === "github" && demoGitHubAllowed(context.parameters)
+      ? finalizeDemoRelease(context).then(() => undefined) : Promise.resolve(),
     checkCache: (environment, { runner }) =>
       demoCheckCache(runner, (operation) =>
         withDemoEvidenceRead(
@@ -63,7 +64,7 @@ export class DemoCIWorkflow extends Base {
     event: Readonly<WorkflowEvent<GitHubCloudflare.WorkflowParameters>>,
     step: WorkflowStep,
   ) {
-    if (event.payload.trigger !== "remote" || !demoRunAllowed(event.payload)) {
+    if (!(event.payload.trigger === "remote" ? demoRunAllowed(event.payload) : demoGitHubAllowed(event.payload))) {
       throw new Error("Demo workflow requires its enrolled repository and full revision");
     }
     return super.run(event, step);
