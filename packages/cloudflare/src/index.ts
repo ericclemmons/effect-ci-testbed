@@ -899,3 +899,4 @@ export const workflowEntrypoint = <
 }
 export { hostedCheckBytes, verifyHostedCheckEvidence, type HostedCheckIdentity } from "./check-evidence.ts"
 export { readGitHubCheckNote, type GitHubCheckNote, type GitHubCheckNoteReader } from "./check-note.ts"
+export { hostedCheckCache, type HostedCheckCacheOptions } from "./check-cache.ts"

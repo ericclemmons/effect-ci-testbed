@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./artifacts-source": "./src/artifacts-source.ts"
+    "./artifacts-source": "./src/artifacts-source.ts",
+    "./check-cache": "./src/check-cache.ts",
+    "./check-evidence": "./src/check-evidence.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

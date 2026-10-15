@@ -112,6 +112,41 @@ Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
 separately cache their bytes or workspace snapshots.
 
+### Read-only hosted cache adapter
+
+`hostedCheckCache` from `@effect-ci-testbed/cloudflare/check-cache` now composes the
+dedicated immutable Git-note reader with the enrolled exact-input verifier and the
+actual `CI.CheckCache` interface. Runner-owned `identify(request)` must compute
+source/toolchain/policy digests from the **actual prepared workspace and runtime**,
+and return `undefined` for dirty, incomplete or non-pure inputs. Project-provided
+hashes, event payloads, command names and a clean Git status are not substitutes.
+The adapter cross-checks repository, full revision, workflow, step and command
+against the CI request before reading the note. It snapshots expected inputs before
+network access; incoming evidence cannot replace them.
+
+Only a matching host enrollment and signature return a hit. Missing or malformed
+notes, network failures, changed inputs, unknown/revoked keys and ineligible checks
+are misses; CI executes normally. `record` is deliberately a no-op: the hosted
+adapter has no private key and never writes notes or enrolls signers. Ordinary
+actions remain outside the cache even when their command matches a signed check.
+
+Reproduce the adapter, integrity and trust regressions from the repository root:
+
+```sh
+node --test packages/cloudflare/src/check-cache.test.ts packages/cloudflare/src/check-evidence.test.ts packages/cloudflare/src/check-note.test.ts
+pnpm --filter @effect-ci-testbed/cloudflare check
+```
+
+The integration test uses actual CI orchestration and real **local** Node syntax
+checks for misses, with four ordinary action executions preserved across two signed
+check hits. GitHub replies, identity digests and ephemeral signing keys are lab
+fixtures. No production signer was generated/enrolled, no native command was skipped,
+and no Git note was pushed. No external permissions, credentials, resource creation
+or paid services are needed; the temporary local fixture contains only `app.js`.
+Actual host input computation, approved local signer enrollment and native
+execute/reuse/fallback evidence remain required for #144. This adapter must be
+installed by trusted runner code, not exposed as a project-selected bypass.
+
 ### Demo enrollment and revocation
 
 The operator has authorized a **dedicated demo signing key**, not a repository-wide
