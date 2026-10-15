@@ -24,6 +24,12 @@ test(
       format: "esm",
       platform: "neutral",
       external: ["cloudflare:workers", "cloudflare:workflows"],
+      // Preserve the historical capture-only host regression independently of
+      // the production public-incident enrollment and its private capabilities.
+      plugins: [{ name: "local-capture-only-host", setup(builder: any) {
+        builder.onLoad({ filter: /public-enrollment\.ts$/ }, () => ({ loader: "ts",
+          contents: "export const publicIncidentEnrollment = undefined;" }));
+      } }],
     });
     const code = compiled.outputFiles[0].text;
     const secret = "a".repeat(64);

@@ -24,16 +24,17 @@ test("local authenticated delivery -> private producer proof -> SQLite outbox di
       issue: { id: "33333333-3333-3333-3333-333333333333", count: "1", type: "ISSUE_TYPE_EXCEPTION",
         status: "ISSUE_STATUS_ACTIVE", title: policy.message, first_observed: observed, last_observed: observed,
         services: [{ name: policy.service, type: "SERVICE_TYPE_WORKER", first_observed: observed, last_observed: observed }] } } };
-  const bundle = async (armed: boolean) => (await build({
+  const bundle = async (armed: boolean | "actual") => (await build({
     entryPoints: [join(pkg, "src/worker.ts")], bundle: true, write: false, format: "esm", platform: "neutral",
     external: ["cloudflare:workers", "cloudflare:workflows"],
     // LOCAL HOST fixture, never a runtime flag or an API which arms production.
-    plugins: armed ? [{ name: "local-enrollment-only", setup(builder: any) {
+    plugins: armed !== "actual" ? [{ name: "local-enrollment-only", setup(builder: any) {
       builder.onLoad({ filter: /public-enrollment\.ts$/ }, () => ({ loader: "ts",
-        contents: `export const publicIncidentEnrollment = ${JSON.stringify(policy)};` }));
+        contents: `export const publicIncidentEnrollment = ${armed ? JSON.stringify(policy) : "undefined"};` }));
     } }] : [],
   })).outputFiles[0].text;
   const production = await bundle(false);
+  const actualHost = await bundle("actual");
   const armed = await bundle(true);
   const manifest = (contents: string) => ({ mainModule: "index.js", modules: { "index.js": { type: "esm", contents } } });
   const secret = "a".repeat(64);
@@ -58,7 +59,7 @@ test("local authenticated delivery -> private producer proof -> SQLite outbox di
   });
   for (const lost of [false, true]) {
     const binding = fake(lost);
-    const runtime = new Miniflare({ workers: [{ config: receiver(production) }, { config: binding }] });
+    const runtime = new Miniflare({ workers: [{ config: receiver(actualHost) }, { config: binding }] });
     try {
       let helper = await runtime.getWorker("local-public-bindings");
       const stats = async () => (await helper.fetch("https://local.invalid/")).json();
@@ -66,7 +67,14 @@ test("local authenticated delivery -> private producer proof -> SQLite outbox di
         method: "POST", body: raw, headers: { "content-type": "application/json", "cf-webhook-auth": auth },
       });
       const raw = JSON.stringify(event);
-      // Shipped code remains capture-only even with local fake capabilities bound.
+      // Actual production enrollment still cannot read source/dispatch before
+      // normal authentication. Local fake services see ZERO unauthorized calls.
+      assert.equal((await post(raw, "b".repeat(64))).status, 401);
+      assert.equal((await stats()).starts, 0);
+      assert.equal((await stats()).proofs, 0);
+      // Historical capture-only host behavior remains a distinct local fixture.
+      await runtime.setOptions({ workers: [{ config: receiver(production) }, { config: binding }] });
+      helper = await runtime.getWorker("local-public-bindings");
       assert.equal((await post(raw)).status, 202);
       assert.equal((await stats()).starts, 0);
       assert.equal((await stats()).proofs, 0);
