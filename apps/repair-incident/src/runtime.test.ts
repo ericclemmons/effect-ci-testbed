@@ -31,10 +31,12 @@ test(
     const config = (contents: string) => ({
       name: "effect-ci-repair-incident",
       compatibilityDate: "2026-10-07",
+      env: { WORKER_METADATA: { type: "json", value: { id: "11111111-1111-1111-1111-111111111111" } } },
       exports: {
         OwnedFaultSource: { type: "worker" },
         OwnedFaultOnce: { type: "durable-object", storage: "sqlite" },
         PublicFailureClaim: { type: "durable-object", storage: "sqlite" },
+        PublicIncidentEvidence: { type: "worker" },
         OwnedIncidentWorkflow: {
           type: "workflow",
           name: "effect-ci-owned-incident",
@@ -94,6 +96,8 @@ test(
       // fetch exception. This is NOT a native WOBS Issue/delivery/repair proof.
       const publicLocal = await bundle("fixtures/public-local.ts");
       await runtime.setOptions({ workers: [{ config: config(publicLocal) }] });
+      const evidence = async () => (await runtime.dispatchFetch("https://owned.invalid/__local-evidence")).json();
+      assert.deepEqual(await evidence(), { state: "absent" });
       const httpReplies = await Promise.all(
         Array.from({ length: 8 }, () =>
           runtime.dispatchFetch("https://owned.invalid/failure"),
@@ -101,6 +105,11 @@ test(
       );
       assert.equal(httpReplies.filter((r) => r.status === 500).length, 1);
       assert.equal(httpReplies.filter((r) => r.status === 410).length, 7);
+      const claimProof = await evidence();
+      assert.equal(claimProof.version, "11111111-1111-1111-1111-111111111111");
+      assert.equal(claimProof.currentVersion, claimProof.version);
+      assert.equal(claimProof.fixtureDigest, "6e3a3627b9fd217104ff0b7d73aba6968d2422558539af3aac2f5f2625ef6dd6");
+      assert.ok(Number.isSafeInteger(claimProof.claimedAt));
       await runtime.setOptions({
         workers: [{ config: config(publicLocal + "\n// public claim reload\n") }],
       });
@@ -108,6 +117,7 @@ test(
         (await runtime.dispatchFetch("https://owned.invalid/failure")).status,
         410,
       );
+      assert.deepEqual(await evidence(), claimProof);
       // The separately claimed historic RPC source remains complete, not reset.
       await runtime.setOptions({ workers: [{ config: config(local) }] });
       assert.equal((await send("inspect")).result.state, "complete");

@@ -8,6 +8,8 @@ export default defineConfig({
     previewUrls: false,
     exports: {
       NotificationCaptures: exports.durableObject({ storage: "sqlite" }),
+      PublicIncidentActivations: exports.durableObject({ storage: "sqlite" }),
+      PublicIncidentAdmission: exports.worker(),
       NotificationEvidence: exports.worker(),
       OwnedIncidentAdmission: exports.worker(),
       OwnedIncidentAdmissionWorkflow: exports.workflow({

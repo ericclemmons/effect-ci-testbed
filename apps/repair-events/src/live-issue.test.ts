@@ -12,7 +12,7 @@ test(
     const cf = (...args: string[]) =>
       JSON.parse(
         execFileSync(
-          process.env.CF_BIN ?? "/Users/eric/Library/pnpm/bin/cf",
+        process.env.CF_BIN ?? "cf",
           args,
           {
             encoding: "utf8",
@@ -80,7 +80,7 @@ test(
       notification.services.map((service: { name: string }) => service.name),
       ["effect-ci-repair-incident"],
     );
-    const { issue } = cf("o11y", "issues", "get", issueId);
+    const { issue } = cf("observability", "issues", "get", issueId);
     assert.equal(issue.service, "effect-ci-repair-incident");
     assert.equal(issue.fingerprint, notification.fingerprint);
     assert.equal(issue.firstObserved, Date.parse(notification.first_observed));
@@ -94,7 +94,7 @@ test(
     assert.equal(activity.scope, "service");
     assert.equal(activity.status, "succeeded");
     const occurrences = cf(
-      "o11y",
+      "observability",
       "issues",
       "occurrences",
       issueId,

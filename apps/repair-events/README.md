@@ -1,5 +1,12 @@
 # Authenticated Issue notification capture
 
+The separate [public-incident automatic activation preparation](PUBLIC-ACTIVATION.md)
+now has descriptor-safe source corroboration and a durable single-slot outbox,
+with actual local workerd/SQLite lost-ACK and reload tests. Its HOST enrollment
+is still undefined, no new bindings/deployment are active, and the downstream
+fresh proposal/native verification/PR/Slack chain is not yet connected. This is
+not a completed live automatic repair.
+
 See [reproduction, permissions, costs and safe cleanup](REPRODUCE.md). The bounded admission policy reads the pinned authentic capture and maps only the developer-enrolled owned source/version/Issue to a fixed private fixture base. It persists one semantic identity independently of transport-byte captures, with no inference or repair authority. Local SQLite concurrency/reload proof is separate from the completed native admission proof below.
 
 Native semantic admission (2026-10-14): merged source `63dbaa911dabde2b99fe9be17a6a8dedb07e8832` rebuilt6modules and deployed once to existing receiver version `563d3e79-8a12-440a-a45b-7ff4255bf807`, preserving the secret and capture namespace. Root404/unsigned notification401/admission HTTP404 remained intact. Inspect `coverage-owned-admission-inspect-20261014-1` completed stateabsent; ONE `coverage-owned-admission-once-20261014-1` completed15:36:26.296UTC with `duplicate:false`; separate-checkpoint `coverage-owned-admission-replay-20261014-1` completed with `duplicate:true`, exactly identical enrolled identity and admitted timestamp1791992186246. Each had one checkpoint/one attempt/zero retries, class `30dced3b-1769-4ed5-bb4c-f574f540d921`. Original quarantined capture is unchanged. This is native same-record semantic dedupe, NOT forced process restart, a fresh incident, paid retry, repository source parity or repair authorization.

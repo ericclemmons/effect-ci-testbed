@@ -7,35 +7,75 @@ import {
 } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import { EMISSION_ID, ERROR_MESSAGE, healthStatus, mode } from "./fault.ts";
-import { PUBLIC_EMISSION_ID, publicFaultFetch } from "./public-fault.ts";
+import { PUBLIC_EMISSION_ID, PUBLIC_FIXTURE_DIGEST, publicFaultFetch } from "./public-fault.ts";
 // HOST SOURCE gate, not a caller/env flag. Keep false until the authenticated
 // automatic pipeline and source/version/private-fixture enrollment are ready.
 const publicFailureEnabled: boolean = false;
 
 /** Separate durable record; never reads, resets or reuses the old RPC emission. */
-export class PublicFailureClaim extends DurableObject {
+interface PublicEnvironment { WORKER_METADATA: { id: string } }
+interface PublicClaimRecord {
+  version: 1;
+  producerVersion: string;
+  claimedAt: number;
+  fixtureDigest: string;
+}
+function validPublicClaim(value: PublicClaimRecord | undefined): value is PublicClaimRecord {
+  return !!value && value.version === 1 &&
+    /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value.producerVersion) &&
+    Number.isSafeInteger(value.claimedAt) && value.claimedAt >= 0 &&
+    value.fixtureDigest === PUBLIC_FIXTURE_DIGEST;
+}
+export class PublicFailureClaim extends DurableObject<PublicEnvironment> {
+  async inspect() {
+    const record = await this.ctx.storage.get<PublicClaimRecord>("public-http-emission-v1");
+    if (record === undefined) return { state: "absent" as const };
+    if (!validPublicClaim(record)) throw new Error("Owned public claim unavailable");
+    return { emission: PUBLIC_EMISSION_ID, version: record.producerVersion,
+      currentVersion: this.env.WORKER_METADATA.id, fixtureDigest: record.fixtureDigest,
+      claimedAt: record.claimedAt };
+  }
   async claim(): Promise<boolean> {
     return this.ctx.storage.transaction(async (storage) => {
-      const stored = await storage.get<{ version: 1; claimed: true }>(
+      const stored = await storage.get<PublicClaimRecord>(
         "public-http-emission-v1",
       );
       if (stored !== undefined) {
-        if (stored.version !== 1 || stored.claimed !== true)
+        if (!validPublicClaim(stored))
           throw new Error("Owned public claim unavailable");
         return false;
       }
       // Claimed means possibly emitted, NOT confirmed Issue delivery. A crash or
       // lost ACK between this write and the exception cannot authorize a retry.
-      await storage.put("public-http-emission-v1", {
-        version: 1,
-        claimed: true,
-      });
+      const record: PublicClaimRecord = { version: 1,
+        producerVersion: this.env.WORKER_METADATA.id, claimedAt: Date.now(),
+        fixtureDigest: PUBLIC_FIXTURE_DIGEST };
+      if (!validPublicClaim(record)) throw new Error("Owned public claim unavailable");
+      await storage.put("public-http-emission-v1", record);
       return true;
     });
   }
   override fetch() {
     return new Response("Not found", { status: 404 });
   }
+}
+/** Private read-only source corroboration; no emit/reset/model/writer methods.
+ * The host separately pins version -> exact deployment source evidence. This
+ * service does not claim to read the Issues occurrence API or attest source.
+ */
+export class PublicIncidentEvidence extends WorkerEntrypoint {
+  async readPublicClaim() {
+    const namespace = (
+      this.ctx.exports as unknown as {
+        PublicFailureClaim: DurableObjectNamespace<PublicFailureClaim>;
+      }
+    ).PublicFailureClaim;
+    const r = await namespace.getByName(PUBLIC_EMISSION_ID).inspect();
+    if ("state" in r) return { state: "absent" as const };
+    return { emission: r.emission, version: r.version, currentVersion: r.currentVersion,
+      fixtureDigest: r.fixtureDigest, claimedAt: r.claimedAt };
+  }
+  override fetch() { return new Response("Not found", { status: 404 }); }
 }
 type Receipt = {
   emissionId: typeof EMISSION_ID;

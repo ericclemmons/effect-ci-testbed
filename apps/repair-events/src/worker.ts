@@ -7,6 +7,9 @@ import {
 } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import { inspection } from "./inspection.ts";
+import { publicIncidentEnrollment } from "./public-enrollment.ts";
+import { PublicIncidentActivations } from "./public-activation.ts";
+export { PublicIncidentActivations, PublicIncidentAdmission } from "./public-activation.ts";
 import {
   OWNED_INCIDENT,
   normalizeOwnedIncident,
@@ -339,6 +342,16 @@ export default class NotificationReceiver extends WorkerEntrypoint<Environment> 
         }
       ).NotificationCaptures;
       await namespace.getByName(OWNER).capture(raw);
+      if (publicIncidentEnrollment !== undefined) {
+        const activations = (
+          this.ctx.exports as unknown as {
+            PublicIncidentActivations: DurableObjectNamespace<PublicIncidentActivations>;
+          }
+        ).PublicIncidentActivations;
+        // Normal authenticated delivery, not an operator Workflow dispatch.
+        // One permanent slot for the enrolled public source, not per delivery.
+        await activations.getByName("owned-public-incident-v1").activate(await digest(raw));
+      }
       // No body, digest, receipt, account metadata or secret returned publicly.
       return new Response(null, { status: 202 });
     } catch {

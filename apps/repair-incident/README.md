@@ -6,7 +6,8 @@ Private, standalone deterministic failure source for the Friday incident loop. N
 
 The next end-to-end test needs a genuine public fetch exception, not another replay
 of that completed private RPC. `src/public-fault.ts` implements an owned `/failure`
-GET using the same fixed `healthStatus()` fixture. A separate `PublicFailureClaim`
+GET using the exact fixed `fixtures/public-health.js` bytes (the broken
+`healthStatus()` fixture, SHA256 `6e3a3627b9fd217104ff0b7d73aba6968d2422558539af3aac2f5f2625ef6dd6`). A separate `PublicFailureClaim`
 SQLite object durably claims the attempt **before** the uncaught HTTP exception.
 Concurrent/later GETs return410 without logging or returning a cached500. Claim or
 acknowledgement uncertainty returns409 and never retries; a claim is NOT proof the
@@ -14,6 +15,15 @@ exception occurred or an Issue was delivered. There is no reset endpoint. Root,
 queries, other methods and declared prefetch requests do not consume the claim.
 An ordinary deliberate browser GET can consume it once after activation; this is
 a test source, not an authentication or approval endpoint.
+
+The new private read-only `PublicIncidentEvidence.readPublicClaim()` returns the
+claimed version/time/fixture digest plus the current native `WORKER_METADATA`
+version. It cannot emit or reset. Deployment adds only the native version-metadata
+binding, not an API token. The consumer must pin the exact deployed version to
+independently retained source evidence and reject version drift. This trusted
+source corroboration is **not** an Issues occurrence-API read or source attestation.
+The local regression supplies clearly fake metadata; only native deployment
+readback can establish the actual version. No new deployment has happened yet.
 
 This route is **host-disabled** (`publicFailureEnabled=false`) and workers.dev
 remains disabled. No native HTTP exception, Issue, inference or repair has been
