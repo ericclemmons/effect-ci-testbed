@@ -1,4 +1,9 @@
-import { formatCondition, type PlanNode, type RuntimeEvent, type WorkflowPlan } from "@effect-ci-testbed/ci"
+import {
+  formatCondition,
+  type PlanNode,
+  type RuntimeEvent,
+  type WorkflowPlan,
+} from "@effect-ci-testbed/ci"
 import {
   createCheck,
   updateCheck,
@@ -9,6 +14,7 @@ import {
 } from "./index.ts"
 
 export interface ReporterOptions {
+  readonly executionEnvironment?: "GitHub Actions" | "Cloudflare" | "Local"
   readonly detailsUrl?: string
   readonly externalId?: string
   readonly repository: string
@@ -27,6 +33,7 @@ interface StepCheck {
   readonly htmlUrl: string
   optional: boolean
   status: PlanNode["status"]
+  name: string
 }
 
 const MAX_OUTPUT_LENGTH = 60_000
@@ -50,15 +57,15 @@ const planStages = (value: WorkflowPlan) => {
   for (const node of value.nodes) {
     stages.set(
       node.id,
-      1 + Math.max(
-        0,
-        ...[
-          ...node.dependencies,
-          ...node.after,
-          ...(node.rollbackFor ? [node.rollbackFor] : []),
-        ]
-          .map((dependency) => stages.get(dependency) ?? 0),
-      ),
+      1 +
+        Math.max(
+          0,
+          ...[
+            ...node.dependencies,
+            ...node.after,
+            ...(node.rollbackFor ? [node.rollbackFor] : []),
+          ].map((dependency) => stages.get(dependency) ?? 0),
+        ),
     )
   }
 
@@ -72,20 +79,67 @@ const planStages = (value: WorkflowPlan) => {
   return groups
 }
 
-const mermaidLabel = (value: string): string => value
-  .replaceAll("&", "&amp;")
-  .replaceAll('"', "&quot;")
-  .replaceAll("<", "&lt;")
-  .replaceAll(">", "&gt;")
+const mermaidLabel = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\n", " ")
+    .replaceAll("\r", " ")
 
-const planDiagram = (value: WorkflowPlan, currentStep?: string): string => {
-  const identifiers = new Map(
-    value.nodes.map((node, index) => [node.id, `step${index}`] as const),
-  )
+const statusLabel = (status: PlanNode["status"]): string =>
+  ({
+    planned: "○",
+    queued: "◷",
+    running: "▶",
+    complete: "✅",
+    reused: "♻ reused",
+    verified: "✅ verified",
+    warning: "⚠",
+    failed: "❌",
+    skipped: "⊘",
+  })[status]
+
+const checkLink = (value: string | undefined, repository: string): string | undefined => {
+  if (!value) return undefined
+  try {
+    const url = new URL(value)
+    const path = url.pathname.slice(`/${repository}/`.length)
+    return url.protocol === "https:" &&
+      url.hostname === "github.com" &&
+      !url.username &&
+      !url.password &&
+      !url.port &&
+      url.pathname.startsWith(`/${repository}/`) &&
+      /^(?:runs\/\d+|actions\/runs\/\d+(?:\/job\/\d+)?)$/.test(path)
+      ? url.href
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const planDiagram = (
+  value: WorkflowPlan,
+  currentStep?: string,
+  checks: ReadonlyMap<string, StepCheck> = new Map(),
+  repository = "",
+): string => {
+  const identifiers = new Map(value.nodes.map((node, index) => [node.id, `step${index}`] as const))
   const lines = ["flowchart LR"]
 
   for (const node of value.nodes) {
-    lines.push(`  ${identifiers.get(node.id)}["${mermaidLabel(node.id)}${node.optional ? " (optional)" : ""}"]`)
+    const check = checks.get(node.id)
+    const status = check?.status ?? node.status
+    lines.push(
+      `  ${identifiers.get(node.id)}["${statusLabel(status)} ${mermaidLabel(node.id)}${node.optional ? " (optional)" : ""}"]`,
+    )
+    const url = checkLink(check?.htmlUrl, repository)
+    if (url)
+      lines.push(
+        `  click ${identifiers.get(node.id)} href ${JSON.stringify(url)} "Open check" _top`,
+      )
   }
 
   for (const node of value.nodes) {
@@ -117,6 +171,23 @@ const planDiagram = (value: WorkflowPlan, currentStep?: string): string => {
   return lines.join("\n")
 }
 
+const markdownLabel = (value: string): string =>
+  value.replaceAll(/([\\`*_[\]<>])/g, "\\$1").replaceAll(/[\r\n]/g, " ")
+
+const stepLinks = (
+  plan: WorkflowPlan,
+  checks: ReadonlyMap<string, StepCheck>,
+  repository: string,
+): string =>
+  plan.nodes
+    .map((node) => {
+      const check = checks.get(node.id)
+      const label = `${statusLabel(check?.status ?? node.status)} ${markdownLabel(node.id)}`
+      const url = checkLink(check?.htmlUrl, repository)
+      return url ? `[${label}](<${url}>)` : label
+    })
+    .join(" · ")
+
 const planSummary = (value: WorkflowPlan): string => {
   const groups = planStages(value)
   const lines = [
@@ -136,36 +207,36 @@ const planSummary = (value: WorkflowPlan): string => {
 
     if (ordered.length === 1) {
       const node = ordered[0]!
-      const dependencies = node.dependencies.length > 0
-        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
-        : ""
-      const after = node.after.length > 0
-        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
-        : ""
+      const dependencies =
+        node.dependencies.length > 0
+          ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
+          : ""
+      const after =
+        node.after.length > 0 ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}` : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const rollback = node.rollbackFor
-        ? ` — rolls back \`${node.rollbackFor}\``
-        : ""
-      lines.push(`${stage}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
+      const rollback = node.rollbackFor ? ` — rolls back \`${node.rollbackFor}\`` : ""
+      lines.push(
+        `${stage}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`,
+      )
       continue
     }
 
     lines.push(`${stage}. **In parallel**`)
 
     for (const [index, node] of ordered.entries()) {
-      const dependencies = node.dependencies.length > 0
-        ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
-        : ""
-      const after = node.after.length > 0
-        ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}`
-        : ""
+      const dependencies =
+        node.dependencies.length > 0
+          ? ` — depends on ${node.dependencies.map((id) => `\`${id}\``).join(", ")}`
+          : ""
+      const after =
+        node.after.length > 0 ? ` — after ${node.after.map((id) => `\`${id}\``).join(", ")}` : ""
       const optional = node.optional ? " — **optional**" : ""
       const condition = node.condition ? ` — if \`${formatCondition(node.condition)}\`` : ""
-      const rollback = node.rollbackFor
-        ? ` — rolls back \`${node.rollbackFor}\``
-        : ""
-      lines.push(`   - ${stage}${branchSuffix(index)}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`)
+      const rollback = node.rollbackFor ? ` — rolls back \`${node.rollbackFor}\`` : ""
+      lines.push(
+        `   - ${stage}${branchSuffix(index)}. \`${node.id}\`${dependencies}${after}${condition}${rollback}${optional}`,
+      )
     }
   }
 
@@ -174,31 +245,44 @@ const planSummary = (value: WorkflowPlan): string => {
   return lines.join("\n")
 }
 
-const planText = (value: WorkflowPlan): string => value.nodes
-  .filter((node) =>
-    node.commands.length > 0 || node.approval || node.artifacts.length > 0 ||
-    node.secrets.length > 0 || node.condition || node.rollbackFor)
-  .map((node) => {
-    const commands = node.commands
-      .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
-      .join("\n\n")
-    const approval = node.approval
-      ? `**Approval:** ${node.approval.title}\n\n${node.approval.summary}`
-      : ""
-    const metadata = [
-      node.condition ? `**Condition:** \`${formatCondition(node.condition)}\`` : "",
-      node.rollbackFor ? `**Rolls back:** \`${node.rollbackFor}\`` : "",
-      node.secrets.length > 0 ? `**Secrets required:** ${node.secrets.map((name) => `\`${name}\``).join(", ")}` : "",
-      ...node.artifacts.map((artifact) =>
-        `**Artifact ${artifact.direction}:** \`${artifact.name}\` (${artifact.paths.map((path) => `\`${path}\``).join(", ")})`),
-    ].filter(Boolean).join("\n\n")
-    const details = [approval, metadata, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
-      .filter(Boolean)
-      .join("\n\n")
+const planText = (value: WorkflowPlan): string =>
+  value.nodes
+    .filter(
+      (node) =>
+        node.commands.length > 0 ||
+        node.approval ||
+        node.artifacts.length > 0 ||
+        node.secrets.length > 0 ||
+        node.condition ||
+        node.rollbackFor,
+    )
+    .map((node) => {
+      const commands = node.commands
+        .map((entry) => `$ ${entry.command}\n# cwd: ${entry.cwd}`)
+        .join("\n\n")
+      const approval = node.approval
+        ? `**Approval:** ${node.approval.title}\n\n${node.approval.summary}`
+        : ""
+      const metadata = [
+        node.condition ? `**Condition:** \`${formatCondition(node.condition)}\`` : "",
+        node.rollbackFor ? `**Rolls back:** \`${node.rollbackFor}\`` : "",
+        node.secrets.length > 0
+          ? `**Secrets required:** ${node.secrets.map((name) => `\`${name}\``).join(", ")}`
+          : "",
+        ...node.artifacts.map(
+          (artifact) =>
+            `**Artifact ${artifact.direction}:** \`${artifact.name}\` (${artifact.paths.map((path) => `\`${path}\``).join(", ")})`,
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+      const details = [approval, metadata, commands ? `\`\`\`sh\n${commands}\n\`\`\`` : ""]
+        .filter(Boolean)
+        .join("\n\n")
 
-    return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n${details}`
-  })
-  .join("\n\n")
+      return `#### ${node.id}${node.optional ? " (optional)" : ""}\n\n${details}`
+    })
+    .join("\n\n")
 
 const checkOutput = (
   workflowId: string,
@@ -258,7 +342,7 @@ const checkOutput = (
     case "skipped":
       return {
         title: `${stepId} was skipped`,
-        summary: `Skipped because a dependency in ${workflowId} failed.`,
+        summary: `This action did not run as part of ${workflowId}.`,
         conclusion: "skipped",
       }
   }
@@ -271,14 +355,12 @@ export class Reporter {
   private mode: WorkflowPlan["mode"] = "execute"
   private plan: WorkflowPlan | undefined
   private workflowId = "effect-ci"
+  private executionEnvironment = "Local"
 
   private readonly client: ReporterClient
   private readonly options: ReporterOptions
 
-  constructor(
-    options: ReporterOptions,
-    client: ReporterClient = { createCheck, updateCheck },
-  ) {
+  constructor(options: ReporterOptions, client: ReporterClient = { createCheck, updateCheck }) {
     this.options = options
     this.client = client
   }
@@ -305,23 +387,40 @@ export class Reporter {
 
   private outputText(stepId: string): string | undefined {
     const text = this.output.get(stepId)?.trimEnd()
-    return text ? `#### Command output\n\n\`\`\`text\n${text}\n\`\`\`` : undefined
+    if (!text) return undefined
+    // A tool can emit Markdown fences. Keep its output inside the log block.
+    const fence = "`".repeat(
+      Math.max(3, ...Array.from(text.matchAll(/`+/g), (match) => match[0].length + 1)),
+    )
+    return `#### Command output\n\n${fence}console\n${text}\n${fence}`
   }
 
   private async publishStep(
     stepId: string,
     status: PlanNode["status"],
-    name = `${this.workflowId} / ${stepId}`,
+    name?: string,
     optional = false,
   ) {
-    const output = checkOutput(this.workflowId, stepId, status, optional)
-    const text = [
-      this.plan
-        ? `### Execution graph\n\n\`\`\`mermaid\n${planDiagram(this.plan, stepId)}\n\`\`\``
-        : undefined,
-      this.outputText(stepId),
-    ].filter(Boolean).join("\n\n") || undefined
     const existing = this.checks.get(stepId)
+    name ??= existing?.name ?? `${this.executionEnvironment} / ${this.workflowId} / ${stepId}`
+    const states = new Map(this.checks)
+    states.set(stepId, {
+      id: existing?.id ?? 0,
+      htmlUrl: existing?.htmlUrl ?? "",
+      name,
+      status,
+      optional,
+    })
+    const output = checkOutput(this.workflowId, stepId, status, optional)
+    const text =
+      [
+        this.plan
+          ? `### Execution graph\n\n\`\`\`mermaid\n${planDiagram(this.plan, stepId, states, this.options.repository)}\n\`\`\`\n\n${stepLinks(this.plan, states, this.options.repository)}`
+          : undefined,
+        this.outputText(stepId),
+      ]
+        .filter(Boolean)
+        .join("\n\n") || undefined
 
     if (!existing) {
       const check = await this.client.createCheck({
@@ -332,9 +431,7 @@ export class Reporter {
         ...(text ? { text } : {}),
         ...(output.status ? { status: output.status } : {}),
         ...(output.conclusion ? { conclusion: output.conclusion } : {}),
-        ...(this.options.externalId
-          ? { externalId: `${this.options.externalId}:${stepId}` }
-          : {}),
+        ...(this.options.externalId ? { externalId: `${this.options.externalId}:${stepId}` } : {}),
       })
 
       this.checks.set(stepId, {
@@ -342,6 +439,7 @@ export class Reporter {
         htmlUrl: check.htmlUrl,
         status,
         optional,
+        name,
       })
       return
     }
@@ -360,6 +458,7 @@ export class Reporter {
     })
     existing.status = status
     existing.optional = optional
+    existing.name = name
   }
 
   private stepCheckNames(value: WorkflowPlan): ReadonlyMap<string, string> {
@@ -374,7 +473,10 @@ export class Reporter {
       for (const [index, stepId] of [...stepIds].sort().entries()) {
         const ordinal = stepIds.length > 1 ? `${prefix}${branchSuffix(index)}` : prefix
         const node = nodes.find((candidate) => candidate.id === stepId)
-        names.set(stepId, `${this.workflowId} / ${ordinal}. ${stepId}${node?.optional ? " (optional)" : ""}`)
+        names.set(
+          stepId,
+          `${this.executionEnvironment} / ${this.workflowId} / ${ordinal}. ${stepId}${node?.optional ? " (optional)" : ""}`,
+        )
       }
     }
 
@@ -391,7 +493,7 @@ export class Reporter {
       token: this.options.token,
       repository: this.options.repository,
       checkId: this.options.summaryCheckId,
-      name: `${this.workflowId} / Cloudflare`,
+      name: `${this.executionEnvironment} / ${this.workflowId}`,
       title: conclusion
         ? `${this.workflowId} ${conclusion === "success" ? "passed" : "failed"} on Cloudflare`
         : `${this.workflowId} is running on Cloudflare`,
@@ -411,6 +513,9 @@ export class Reporter {
         return
       case "workflow.started":
         this.workflowId = event.workflowId
+        this.executionEnvironment =
+          this.options.executionEnvironment ??
+          (event.environment === "cloudflare" ? "Cloudflare" : "Local")
         this.mode = event.mode
         await this.updateSummary("in_progress")
         return
@@ -423,7 +528,11 @@ export class Reporter {
         this.appendOutput(event.stepId, event.stream, event.text)
         return
       case "workflow.plan": {
+        this.workflowId = event.workflowId
         this.plan = event.plan
+        this.executionEnvironment =
+          this.options.executionEnvironment ??
+          (event.plan.environment === "cloudflare" ? "Cloudflare" : "Local")
 
         if (this.mode === "execute") {
           const names = this.stepCheckNames(event.plan)
@@ -439,16 +548,15 @@ export class Reporter {
           const text = planText(this.plan)
           const check = await this.client.createCheck({
             ...this.options,
-            name: `${this.workflowId} / 0. plan`,
-            title: event.conclusion === "success"
-              ? `${this.workflowId} plan ready`
-              : `${this.workflowId} plan failed`,
+            name: `${this.executionEnvironment} / ${this.workflowId} / 0. plan`,
+            title:
+              event.conclusion === "success"
+                ? `${this.workflowId} plan ready`
+                : `${this.workflowId} plan failed`,
             summary: planSummary(this.plan),
             ...(text ? { text } : {}),
             conclusion: event.conclusion,
-            ...(this.options.externalId
-              ? { externalId: `${this.options.externalId}:plan` }
-              : {}),
+            ...(this.options.externalId ? { externalId: `${this.options.externalId}:plan` } : {}),
           })
 
           this.checks.set("plan", {
@@ -456,7 +564,15 @@ export class Reporter {
             htmlUrl: check.htmlUrl,
             status: event.conclusion === "success" ? "complete" : "failed",
             optional: false,
+            name: `${this.executionEnvironment} / ${this.workflowId} / 0. plan`,
           })
+        }
+
+        // Earlier checks must include the final state and links of later siblings too.
+        if (this.mode === "execute" && this.plan) {
+          for (const [stepId, check] of this.checks) {
+            await this.publishStep(stepId, check.status, check.name, check.optional)
+          }
         }
 
         await this.updateSummary("completed", event.conclusion)

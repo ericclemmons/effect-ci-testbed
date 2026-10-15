@@ -1,4 +1,4 @@
-name: Testbed E2E
+name: GitHub Actions / Recipe checks
 
 on:
   pull_request:

@@ -13,6 +13,7 @@ const required = (name: string): string => {
 }
 
 const reporter = new Reporter({
+  executionEnvironment: process.env.GITHUB_ACTIONS === "true" ? "GitHub Actions" : "Local",
   token: required("GITHUB_TOKEN"),
   repository: required("GITHUB_REPOSITORY"),
   sha: required("EFFECT_CI_SHA"),
