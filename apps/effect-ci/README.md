@@ -28,6 +28,11 @@ This run used the Worker API token as well as Access; it did not deploy a releas
 
 ## Experience
 
+The same-build candidate controller is documented in
+[Demo release integration](./DEMO-RELEASE.md). It is locally verified but remains
+host-disabled pending the real human window and authenticated push enrollment;
+the historical HMD lab below is not that live acceptance.
+
 1. Install the Effect CI GitHub App on a repository.
 2. Push a commit or update a pull request.
 3. GitHub immediately shows queued Effect CI checks.

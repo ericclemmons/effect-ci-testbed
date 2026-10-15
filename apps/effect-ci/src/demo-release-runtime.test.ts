@@ -1,0 +1,166 @@
+import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+import test from "node:test";
+
+test(
+  "actual local build/finalizer/review SQLite/RPC composition commits one candidate after four fake human decisions",
+  { timeout: 30000 },
+  async () => {
+    const require = createRequire(import.meta.url),
+      plugin = realpathSync(new URL("../node_modules/@cloudflare/vite-plugin", import.meta.url));
+    const { Miniflare } = require(require.resolve("miniflare", { paths: [plugin] }));
+    const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
+    const bundle = await build({
+      stdin: {
+        resolveDir: new URL(".", import.meta.url).pathname,
+        loader: "ts",
+        contents: `
+    import{DurableObject,WorkerEntrypoint}from'cloudflare:workers';
+    import*as CI from'@effect-ci-testbed/ci';import{workflowEntrypoint}from'@effect-ci-testbed/github-cloudflare';
+    import{finalizeDemoRelease}from'./demo-release.ts';export{HmdApprovals}from'./hmd-approval.ts';
+    const previous='11111111-1111-4111-8111-111111111111',version='22222222-2222-4222-8222-222222222222';
+    const receipt={revision:'a'.repeat(40),digest:'b'.repeat(64),moduleDigest:'c'.repeat(64),version,policy:'owned-vite-release-pointer-v1',script:'effect-ci-hmd-demo'};
+    let messages=[],phase=0,commits=0,rollbacks=0,images=0,renders=0,requests=0;
+    let journal;const copy=()=>structuredClone(journal);
+    export class Broker extends WorkerEntrypoint{
+      prepareCandidate(){return receipt;}
+      begin(owner,candidate){phase=0;journal={candidate,previous:[{version:previous,percentage:100}],status:'active',deployment:{id:'33333333-3333-4333-8333-333333333333',versions:[{version:previous,percentage:100}]}};return copy();}
+      renew(){return copy();}
+      promote(owner,p){phase=p;journal.deployment={id:'44444444-4444-4444-8444-'+String(p).padStart(12,'0'),versions:p===100?[{version,percentage:100}]:[{version:previous,percentage:100-p},{version,percentage:p}]};return copy();}
+      complete(){commits++;journal.status='complete';return copy();}
+      rollback(){rollbacks++;phase=0;journal.status='rolled-back';journal.deployment.versions=[{version:previous,percentage:100}];return copy();}
+    }
+    export class WorkspaceContainer extends DurableObject{}
+    export class HealthChartRenderer extends WorkerEntrypoint{render(){renders++;return new Uint8Array([1,2]);}}
+    export class PrivateSlackImages extends DurableObject{upload(){images++;return {ok:true,fileId:'F123'};}}
+    globalThis.fetch=async(input,init)=>{
+      const url=String(input);
+      if(url.startsWith('https://slack.com/api/')){messages.push({url,body:JSON.parse(init.body)});return Response.json({ok:true,ts:'123.456'});}
+      if(url.startsWith('https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
+      throw Error('Unexpected outbound request');
+    };
+    const build=CI.action('build',()=>function*(){return receipt;});
+    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,finalize:finalizeDemoRelease});
+    export default{async fetch(request,env,ctx){const p=await request.json();
+      if(p.op==='start'){messages=[];commits=rollbacks=images=renders=requests=0;await ctx.exports.DemoCIWorkflow.create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:receipt.revision}});return Response.json({started:true});}
+      if(p.op==='status')return Response.json(await(await ctx.exports.DemoCIWorkflow.get(p.id)).status());
+      if(p.op==='submit'){const r=ctx.exports.HmdApprovals.getByName(p.cap.owner);return Response.json(await r.submit(p.cap,p.decision,'FAKE local test human decision','slack:T1:U1'));}
+      return Response.json({messages,phase,commits,rollbacks,images,renders,requests,journal});
+    }};`,
+      },
+      bundle: true,
+      write: false,
+      format: "esm",
+      target: "esnext",
+      conditions: ["workerd", "import"],
+      external: ["cloudflare:workers", "node:*"],
+    });
+    const runtime = new Miniflare({
+      workers: [
+        {
+          config: {
+            name: "demo-release-test",
+            compatibilityDate: "2026-10-07",
+            compatibilityFlags: ["nodejs_compat"],
+            manifest: {
+              mainModule: "index.js",
+              modules: { "index.js": { type: "esm", contents: bundle.outputFiles[0].text } },
+            },
+            exports: {
+              DemoCIWorkflow: { type: "workflow", name: "demo-release-test" },
+              Broker: { type: "worker" },
+              HealthChartRenderer: { type: "worker" },
+              WorkspaceContainer: { type: "durable-object", storage: "sqlite" },
+              PrivateSlackImages: { type: "durable-object", storage: "sqlite" },
+              HmdApprovals: { type: "durable-object", storage: "sqlite" },
+            },
+            env: {
+              RELEASE_MANAGER: {
+                type: "worker",
+                worker: "demo-release-test",
+                exportName: "Broker",
+              },
+              SLACK_BOT_TOKEN: { type: "text", value: "fake-token" },
+              SLACK_APP_ID: { type: "text", value: "A1" },
+              SLACK_TEAM_ID: { type: "text", value: "T1" },
+              SLACK_CHANNEL_ID: { type: "text", value: "C1" },
+            },
+          },
+        },
+      ],
+    });
+    const call = async (p: unknown): Promise<any> =>
+      (
+        await runtime.dispatchFetch("https://test.invalid", {
+          method: "POST",
+          body: JSON.stringify(p),
+        })
+      ).json();
+    async function reviewAt(phase: number) {
+      for (let n = 0; n < 200; n++) {
+        const state = await call({});
+        const frame = state.messages.at(-1)?.body;
+        const button = frame?.blocks
+          ?.find((b: any) => b.type === "actions")
+          ?.elements?.find((e: any) => e.action_id === "hmd_approve");
+        if (button) {
+          const cap = JSON.parse(button.value);
+          if (cap.phase === phase) return cap;
+        }
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      throw Error("No review " + phase);
+    }
+    async function terminal(id: string) {
+      for (let n = 0; n < 200; n++) {
+        const s = await call({ op: "status", id });
+        if (["complete", "errored"].includes(s.status)) return s;
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      throw Error("No terminal state");
+    }
+    try {
+      for (const id of ["accept", "reject"]) {
+        await call({ op: "start", id });
+        for (const phase of [10, 25, 75, 100]) {
+          const cap = await reviewAt(phase);
+          assert.equal(
+            await call({
+              op: "submit",
+              cap,
+              decision: id === "reject" && phase === 25 ? "rejected" : "approved",
+            }),
+            true,
+          );
+          assert.equal(
+            await call({ op: "submit", cap, decision: "approved" }),
+            false,
+            "consumed capability cannot replay",
+          );
+          if (id === "reject" && phase === 25) break;
+        }
+        const outcome = await terminal(id),
+          state = await call({});
+        assert.equal(
+          outcome.status,
+          id === "accept" ? "complete" : "errored",
+          JSON.stringify(outcome.error),
+        );
+        assert.equal(state.commits, id === "accept" ? 1 : 0);
+        assert.equal(state.rollbacks, id === "accept" ? 0 : 1);
+        assert.equal(state.journal.status, id === "accept" ? "complete" : "rolled-back");
+        assert.equal(
+          state.messages.filter((m: any) => m.url.endsWith("/chat.postMessage")).length,
+          1,
+        );
+        assert.equal(state.images, id === "accept" ? 4 : 2);
+        assert.equal(state.renders, state.images);
+        assert.equal(state.requests, id === "accept" ? 500 : 300);
+        assert.ok(!state.messages.at(-1).body.blocks.some((b: any) => b.type === "actions"));
+      }
+    } finally {
+      await runtime.dispose();
+    }
+  },
+);

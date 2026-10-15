@@ -15,19 +15,22 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     const wallNow=Date.now.bind(Date);let expiryNow=null;
     Date.now=()=>expiryNow===null?wallNow():expiryNow;
     class Instance extends RpcTarget {
-      constructor(owner){super();this.owner=owner}
+      constructor(owner,destination='lab'){super();this.owner=owner;this.destination=destination}
       status(){return {status:"waiting"}}
-      sendEvent(event){events.push({owner:this.owner,...event});if(this.owner==="lost")throw new Error("Lost event acknowledgement")}
+      sendEvent(event){events.push({owner:this.owner,destination:this.destination,...event});if(this.owner==="lost")throw new Error("Lost event acknowledgement")}
     }
     export class HmdReviewWorkflow extends WorkerEntrypoint {get(owner){return new Instance(owner)}}
+    export class DemoCIWorkflow extends WorkerEntrypoint {get(owner){return new Instance(owner,'demo')}}
     export class Broker extends WorkerEntrypoint {renew(){renewals++}promote(){verified++}}
     export default {async fetch(req,env){
       const p=await req.json();const stub=env.REVIEWS.getByName(p.owner??"run");
-      if(p.operation==="register") {
+      if(p.operation==="read-demo"){try{return Response.json(await stub.readDemoDecision(p.owner,p.phase,p.snapshot));}catch{return Response.json({rejected:true});}}
+      if(p.operation==="cross-register"){try{await stub.register(p.owner,10,'a'.repeat(64),Date.now()+300000);return Response.json({rejected:false});}catch{return Response.json({rejected:true});}}
+      if(p.operation==="register"||p.operation==="register-demo") {
         if(p.owner==="expired")expiryNow=wallNow();
         const deadline=Date.now()+(p.ttl??300000);
         if(p.owner==="expired")await new Promise(resolve=>setTimeout(resolve,75));
-        const cap=await stub.register(p.owner??"run",p.phase??10,p.snapshot??"a".repeat(64),deadline);
+        const cap=await stub[p.operation==='register-demo'?'registerDemo':'register'](p.owner??"run",p.phase??10,p.snapshot??"a".repeat(64),deadline);
         return Response.json({owner:cap.owner,phase:cap.phase,snapshot:cap.snapshot,token:cap.token});
       }
       if(p.operation==="advance-expiry"){expiryNow+=p.ms;return Response.json({advanced:true})}
@@ -41,7 +44,7 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
   const name = "hmd-review-ledger-probe"
   const runtime = new Miniflare({ workers: [{ config: { name, compatibilityDate: "2026-10-07",
     manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: output.outputFiles[0].text } } },
-    exports: { HmdApprovals: { type: "durable-object", storage: "sqlite" }, HmdReviewWorkflow: { type: "worker" }, Broker: { type: "worker" } },
+    exports: { HmdApprovals: { type: "durable-object", storage: "sqlite" }, HmdReviewWorkflow: { type: "worker" }, DemoCIWorkflow: { type: "worker" }, Broker: { type: "worker" } },
     env: { REVIEWS: { type: "durable-object", worker: name, exportName: "HmdApprovals" }, RELEASE_MANAGER: { type: "worker", worker: name, exportName: "Broker" },
       SLACK_APP_ID: { type: "json", value: "A1" }, SLACK_TEAM_ID: { type: "json", value: "T1" }, SLACK_CHANNEL_ID: { type: "json", value: "C1" } },
   } }] })
@@ -69,6 +72,17 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     assert.equal(state.renewals, 1)
     assert.equal(state.verified, 1)
     assert.equal(state.events[0].type, "hmd-review-10")
+    assert.equal(state.events[0].destination,"lab","old lab destination stays unchanged")
+    const demo=await send({operation:"register-demo",owner:"demo-owned"})
+    assert.deepEqual(await send({operation:"read-demo",owner:"demo-owned",phase:10,snapshot:demo.snapshot}),{rejected:true},"unconsumed events are not authority")
+    assert.deepEqual(await send({operation:"cross-register",owner:"demo-owned"}),{rejected:true},"host destination cannot change")
+    await send({operation:"submit",owner:"demo-owned",cap:demo})
+    let demoState
+    for(let n=0;n<30;n++){demoState=await send({operation:"state"});if(demoState.events.some((e:any)=>e.owner==='demo-owned'))break;await new Promise(r=>setTimeout(r,10));}
+    assert.equal(demoState.events.find((e:any)=>e.owner==='demo-owned').destination,'demo')
+    const decision=await send({operation:"read-demo",owner:"demo-owned",phase:10,snapshot:demo.snapshot})
+    assert.equal(decision.decision,'approved');assert.equal(decision.actor,'slack:T1:U1')
+    assert.deepEqual(await send({operation:"read-demo",owner:"demo-owned",phase:10,snapshot:'b'.repeat(64)}),{rejected:true})
     assert.equal(state.events[0].payload.snapshot, cap.snapshot)
     assert.deepEqual(await send({ operation: "submit", cap }), [false, false])
     await send({ operation: "close" })
@@ -89,7 +103,7 @@ test("actual SQLite approval consumes once; expired, stale and lost event ack ca
     assert.equal(await send({ operation: "inspect", owner: "expired", cap: expired }), false)
     assert.deepEqual(await send({ operation: "submit", owner: "expired", cap: expired }), [false, false])
     const final = await send({ operation: "state" })
-    assert.equal(final.events.length, 2)
-    assert.equal(final.renewals, 1, "rejection never promotes or renews deployment authority")
+    assert.deepEqual(final.events.map((e:any)=>e.owner), ["run","demo-owned","lost"])
+    assert.equal(final.renewals, 2, "only the lab and demo approvals renew; rejection never promotes or renews")
   } finally { await runtime.dispose() }
 })

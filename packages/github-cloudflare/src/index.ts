@@ -40,6 +40,8 @@ export interface HostFinalization<A> {
   readonly parameters: WorkflowParameters
   readonly instanceId: string
   readonly step: WorkflowStep
+  /** Host-owned export capabilities, never exposed to project actions. */
+  readonly exports: unknown
   readonly value: A
   readonly card: RunCard
   /** Update the SAME maintained message. Keys must be stable across Workflow replay. */
@@ -299,7 +301,7 @@ export const workflowEntrypoint = <A>(
         if (!deferredCompletion) throw new Error("Missing successful build completion")
         await options.finalize({
           environment: this.env, parameters: event.payload, instanceId: event.instanceId,
-          step, value: result.value, card,
+          step, exports: this.ctx.exports, value: result.value, card,
           publish: (key, presentation) => {
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
             // Never create a replacement review card after a lost/failed build-card ACK.
