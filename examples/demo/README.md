@@ -234,58 +234,20 @@ zero-config packages.
 
 ## 6. Make orchestration explicit when scripts stop being enough
 
-The marker is optional scaffolding, not the end of adoption. Add
-`.cloudflare/ci/actions.ts`:
+> Compose the existing [actions](./.cloudflare/ci/actions.ts) into a workflow.
 
-```ts
-import * as CI from "@effect-ci-testbed/ci";
-
-const checkout = CI.action("checkout", function* () {
-  const source = yield* CI.Source;
-  return () => source.checkout();
-});
-
-const install = CI.action(
-  "install",
-  () =>
-    function* () {
-      const workspace = yield* checkout();
-      const npm = yield* CI.PackageManager.JavaScript(workspace);
-      return yield* npm.install();
-    },
-);
-
-export const lint = CI.action(
-  "lint",
-  () =>
-    function* () {
-      const workspace = yield* install();
-      const npm = yield* CI.PackageManager.JavaScript(workspace);
-      return yield* npm.run("lint");
-    },
-);
-
-export const build = CI.action(
-  "build",
-  () =>
-    function* () {
-      const workspace = yield* install();
-      const npm = yield* CI.PackageManager.JavaScript(workspace);
-      return yield* npm.run("build");
-    },
-);
-```
-
-Add `.cloudflare/ci/workflow.ts`:
-
-```ts
-import * as CI from "@effect-ci-testbed/ci";
-import * as actions from "./actions.ts";
-
-export default CI.workflow("demo", function* () {
-  yield* actions.lint();
-  return yield* actions.build();
-});
+```diff
+--- /dev/null
++++ b/.cloudflare/ci/workflow.ts
++import * as CI from "@effect-ci-testbed/ci";
++import * as actions from "./actions.ts";
++
++export { lint, build } from "./actions.ts";
++
++export default CI.workflow("demo", function* () {
++  yield* actions.lint();
++  return yield* actions.build();
++});
 ```
 
 ```sh
@@ -301,17 +263,46 @@ belong in the whole workflow. Exported actions become runnable commands.
 [Complete package-manager composition](../node-npm) and
 [exported targets](../exported-actions).
 
-## 7. Run a pushed commit remotely
+### Detect the package manager
 
-First configure the [hosted service](../../apps/effect-ci/README.md#5-run-the-first-workflow)
-and its Access credentials locally. The service selects the workflow; the CLI
-does **not** upload arbitrary local TypeScript or dirty source files.
+> Keep the actions; replace npm-specific commands with lockfile-based detection.
 
-After an authorized commit and push, from a clean repository checkout:
+```diff
+--- a/.cloudflare/ci/actions.ts
++++ b/.cloudflare/ci/actions.ts
+@@
+       const workspace = yield* checkout();
+-      return yield* workspace.exec("npm ci");
++      const pm = yield* CI.PackageManager.JavaScript(workspace);
++      return yield* pm.install();
+@@
+       const workspace = yield* install();
+-      return yield* workspace.exec("npm run lint");
++      const pm = yield* CI.PackageManager.JavaScript(workspace);
++      return yield* pm.run("lint");
+@@
+       const workspace = yield* install();
+-      return yield* workspace.exec("npm run build");
++      const pm = yield* CI.PackageManager.JavaScript(workspace);
++      return yield* pm.run("build");
+```
 
 ```sh
-export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL/demo"
-export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
+cf-ci plan --format=mermaid
+cf-ci run
+```
+
+## 7. Run a pushed commit remotely
+
+> Same command, hosted execution. Reuse the existing Cloudflare Access login.
+
+```sh
+cf-ci run --remote
+```
+
+```sh
+# Only if the existing Access session has expired:
+cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 cf-ci run --remote
 ```
 
