@@ -27,8 +27,10 @@ cd apps/notification-isolation
 cf build
 ```
 
-The sources and config are prepared; **no native deployment or hosted result is
-claimed yet**. Before first deployment, anonymously discover the installed CLI's
+The private fixture is now deployed and its three retained native cases passed
+their expected outcomes. Read the [exact native evidence](./NATIVE.md); do not
+recreate these operations for proof. The commands below document first setup,
+not a rehearsal replay. Before any new owned deployment, anonymously discover the installed CLI's
 Worker/Workflow read and deploy commands, read their help, and check that both
 `effect-ci-provider-isolation` resources are absent. Stop if either exists rather
 than overwriting another resource. Retain exact tested source/build identities,
@@ -71,8 +73,8 @@ merely to refresh proof or conceal a failed operation.
 
 ## Boundary
 
-Local tests use genuine workerd/Workflow/SQLite/RPC but do not count as a native
-hosted-provider result. This is not a Slack outage, GitHub delivery proof, HMD
+Local tests use genuine workerd/Workflow/SQLite/RPC and remain distinct from the
+three [native hosted results](./NATIVE.md). This is not a Slack outage, GitHub delivery proof, HMD
 approval or repair automation. Required state/check persistence and approval /
 deployment policy still fail closed. General raw runtime callbacks are not made
 optional by wrapping provider delivery; remaining #167 acceptance stays explicit.
