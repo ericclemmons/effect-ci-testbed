@@ -18,11 +18,17 @@ test(
       stdin: {
         resolveDir: new URL(".", import.meta.url).pathname,
         contents: `
-    import handler,{DemoSitePublisher,DemoSiteRevisions} from './worker.ts';
-    export {DemoSitePublisher,DemoSiteRevisions};
+    import handler,{DemoSitePublisher,DemoSiteRevisions,SiteInspectionWorkflow} from './worker.ts';
+    export {DemoSitePublisher,DemoSiteRevisions,SiteInspectionWorkflow};
     export default {async fetch(request,env,ctx){
       if(new URL(request.url).pathname==='/test-only-publish') {
         const p=await request.json();try{return Response.json(await ctx.exports.DemoSitePublisher({}).publish(p.revision,p.assets));}catch{return new Response('Rejected',{status:422});}
+      }
+      if(new URL(request.url).pathname==='/test-only-inspect') {
+        const p=await request.json();await ctx.exports.SiteInspectionWorkflow.create({id:p.id,params:p.params});return new Response('Created');
+      }
+      if(new URL(request.url).pathname==='/test-only-status') {
+        return Response.json(await(await ctx.exports.SiteInspectionWorkflow.get(new URL(request.url).searchParams.get('id'))).status());
       }
       return handler.fetch(request,env,ctx);
     }};
@@ -33,7 +39,7 @@ test(
       write: false,
       format: "esm",
       target: "esnext",
-      external: ["cloudflare:workers", "node:*"],
+      external: ["cloudflare:*", "node:*"],
     });
     const config = {
       name: "demo-site-test",
@@ -45,6 +51,7 @@ test(
       exports: {
         DemoSitePublisher: { type: "worker" },
         DemoSiteRevisions: { type: "durable-object", storage: "sqlite" },
+        SiteInspectionWorkflow: { type: "workflow", name: "effect-ci-demo-site-inspection" },
       },
     };
     const runtime = new Miniflare({ workers: [{ config }] });
@@ -92,6 +99,22 @@ test(
         404,
       );
       assert.equal((await runtime.dispatchFetch(record.url + "?token=anything")).status, 404);
+      const inspect = async (id: string, params: unknown) => {
+        await runtime.dispatchFetch("https://site.invalid/test-only-inspect", { method: "POST", body: JSON.stringify({ id, params }) });
+        for (let i = 0; i < 100; i++) {
+          const h: any = await (await runtime.dispatchFetch(`https://site.invalid/test-only-status?id=${id}`)).json();
+          if (["complete", "errored"].includes(h.status)) return h;
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        throw Error("Local inspection did not finish");
+      };
+      const inspected = await inspect("metadata-once", {});
+      assert.equal(inspected.status, "complete");
+      assert.deepEqual(inspected.output, ["105ce02b81915f845df75cbc20ecc383162b54f6", "4ae41a23fa6a0978c5f58ec60a135b07fc5addd2"].map(revision =>
+        ({ revision, count: 1, capacity: 256, present: false })));
+      assert.equal((await inspect("reject-actor-source", { revision })).status, "errored");
+      assert.equal((await runtime.dispatchFetch("https://site.invalid/inspect")).status, 404);
+      assert.equal(await (await runtime.dispatchFetch(record.url)).text(), assets["index.html"], "Inspection leaves immutable assets unchanged");
       const excessive = await publish({ revision: "b".repeat(40), assets: { ...assets, "index.html": "<style>x{}</style>".repeat(9) } });
       assert.equal(excessive.status, 200);
       assert.equal((await runtime.dispatchFetch((await excessive.json()).url)).status, 503,

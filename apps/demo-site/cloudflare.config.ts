@@ -9,6 +9,7 @@ export default defineConfig({
     exports: {
       DemoSitePublisher: exports.worker(),
       DemoSiteRevisions: exports.durableObject({ storage: "sqlite" }),
+      SiteInspectionWorkflow: exports.workflow({ name: "effect-ci-demo-site-inspection" }),
     },
   },
 });
