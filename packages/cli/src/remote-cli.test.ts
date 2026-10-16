@@ -88,8 +88,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = []) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, "run", ...targets, "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
+    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = [], command = "run") => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [bin, command, ...targets, "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
         env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
@@ -99,6 +99,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       child.on("error", reject)
       child.on("close", (code) => resolve({ code, output }))
     })
+    const ready = await run("fixture-user-token", false, "json", false, [], "doctor")
+    assert.equal(ready.code, 0, ready.output)
+    assert.deepEqual(JSON.parse(ready.output), { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets: ["test", "build"], dispatched: false })
+    assert.doesNotMatch(ready.output, /fixture-api-token|fixture-user-token/)
+    assert.equal(dispatches, 0)
     const success = await run()
     assert.equal(success.code, 0, success.output)
     assert.match(success.output, /lint passed/)
@@ -144,6 +149,10 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(missingToken.code, 3, missingToken.output)
     assert.equal(JSON.parse(missingToken.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
     assert.equal(dispatches, 7, "Access alone must not dispatch or imply API authentication")
+    const unready = await run("fixture-user-token", false, "json", true, [], "doctor")
+    assert.equal(unready.code, 3, unready.output)
+    assert.equal(JSON.parse(unready.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
+    assert.equal(dispatches, 7)
     const profileDirectory = join(workstationHome, ".config", "effect-ci")
     await mkdir(profileDirectory, { recursive: true, mode: 0o700 })
     await writeFile(join(profileDirectory, "remotes.json"), JSON.stringify({ version: 1, remotes: [{
@@ -179,7 +188,15 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(incompatible.code, 3, incompatible.output)
     assert.equal(JSON.parse(incompatible.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
     assert.equal(dispatches, 10, "an incompatible capability protocol must not dispatch")
+    capabilityProtocol = "effect-ci-remote-v1"
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
+    await mkdir(join(directory, ".cloudflare", "ci"), { recursive: true })
+    await writeFile(join(directory, ".cloudflare", "ci", "workflow.ts"), 'throw Error("Doctor must never import project code");\n')
+    const dirtyReady = await run("fixture-user-token", false, "text", true, [], "doctor")
+    assert.equal(dirtyReady.code, 0, dirtyReady.output)
+    assert.match(dirtyReady.output, /Remote access ready/)
+    assert.equal(dispatches, 10)
+    await rm(join(directory, ".cloudflare"), { recursive: true })
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)

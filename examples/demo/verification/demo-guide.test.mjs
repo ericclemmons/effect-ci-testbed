@@ -6,7 +6,7 @@ import test from "node:test";
 const guide = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const shell = [...guide.matchAll(/```sh\n([\s\S]*?)```/g)].map((match) => match[1]);
 
-test("demo starts with only install and build; optional CLI preparation stays separate", () => {
+test("step zero builds simply and checks remote readiness before the walkthrough", () => {
   const start = shell[0];
   assert.equal(start, "pnpm install\npnpm build\n");
   assert.match(guide, /git switch -c demo\/rehearsal\n/);
@@ -14,8 +14,10 @@ test("demo starts with only install and build; optional CLI preparation stays se
     guide,
     /export PATH="\$\(git rev-parse --show-toplevel\)\/node_modules\/\.bin:\$PATH"/,
   );
-  assert.match(guide, /Only direct `cf-ci run --remote` calls need:/);
-  assert.match(guide, /<details>[\s\S]*cloudflared access login[\s\S]*<\/details>/);
+  const setup = guide.split("## 1.")[0];
+  assert.match(setup, /cloudflared access login[^\n]*\ncf-ci doctor --remote/);
+  assert.doesNotMatch(setup, /<details>/);
+  assert.match(setup, /without starting work/);
   assert.doesNotMatch(start, /git worktree|tiged|gh repo create|npm ci|--frozen-lockfile/);
   assert.ok(shell.every((block) => !/^(?:time )?(?:npm|npx)(?: |$)/m.test(block)));
 });
@@ -37,7 +39,7 @@ test("fresh demo endpoint is public config; Access is not an API token", () => {
     /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
   );
   assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
-  assert.match(guide, /Access login\nalone does not provide that API token/);
+  assert.match(guide, /Access login alone does not provide that API token/);
 });
 
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {
