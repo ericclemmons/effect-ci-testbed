@@ -305,10 +305,11 @@ a container unless their complete build path has a separately proven isolate ada
 
 ### Diagnosis and repair
 
-Future recipes for responding to failures and observability events.
+Inspect an existing verified Flue repair, then distinguish it from automatic healing.
 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
+| [Inspect a verified Flue repair proposal](./examples/flue-repair) | — | — | — | ✅ |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 | Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 

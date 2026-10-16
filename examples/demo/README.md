@@ -517,6 +517,17 @@ remains unfinished. The [incident host](../../apps/effect-ci/README.md) has sepa
 ingredient proofs; its earlier operator continuation is not automatic activation.
 Never merge/deploy a proposed repair or replay a paid inference to manufacture a demo.
 
+For the separately working **Flue proposal → native check → unmerged PR** example,
+run this read-only evidence check from the repository root:
+
+```sh
+node examples/flue-repair/verify.ts
+```
+
+[Flue example, actual proposed PR and limits](../flue-repair/README.md).
+Routine formatting and autofixable lint rules should use their deterministic
+fixer instead of an AI call; the formatting-to-PR path is still being wired.
+
 ## 12. Let your agent migrate the next project
 
 > Agent-first adoption: tell your agent what you want.

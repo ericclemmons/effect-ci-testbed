@@ -160,10 +160,13 @@ verification notes to distinguish them; a chart alone proves none of those claim
 
 ## Diagnosis and repair
 
-Repair proposals and observability-triggered healing are roadmap recipes in the
-matrix, not runnable examples yet. They should build on event routing, public
-targets, dependency-aware reruns, and commit-bound evidence rather than introducing
-a second execution engine.
+[Inspect a verified Flue repair proposal](./flue-repair) revalidates the original
+real hosted agent, exact-commit native Node check and unmerged private-fixture PR
+without spending inference or replaying the operation. It is an owned recorded
+integration, not a portable new-repository installer or automatic incident healing.
+Deterministic formatting-to-PR recovery and observability-triggered healing remain
+unfinished. They should build on event routing, public targets, dependency-aware
+reruns and commit-bound evidence rather than introducing a second execution engine.
 
 ## Adding a recipe
 
