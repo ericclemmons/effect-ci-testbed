@@ -8,6 +8,7 @@ import workflow from "../.cloudflare/ci/workflow.ts";
 import formatted from "../app/src/index.ts?raw";
 import unformatted from "../fixtures/unformatted.txt?raw";
 import { fixtureMode } from "./mode.ts";
+export { AssertionWorkflow } from "./vitest-worker.ts";
 const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "30 seconds" } as const;
 
 export class FormatterWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader }, unknown> {

@@ -72,7 +72,7 @@ actual pinned `@vitest/expect` 5.0.3 `JestChaiExpect` plugin and Chai. The teste
 subset is synchronous `toBe`, `toEqual` and `.not` assertions inside an awaited
 Worker fetch handler. A real unequal assertion returns `AssertionError`, not a
 manufactured passing result. Separate fresh children show no global-state leak;
-empty bindings, denied outbound fetch and a rejected `node:fs` import are checked.
+empty bindings, denied outbound fetch and denied `node:fs` host-file access are checked.
 
 ```sh
 cd examples/dynamic-worker-checks
@@ -87,12 +87,73 @@ The fixed diagnostic bridge caps its tool bundle at 350,000 bytes. This is a
 compatibility investigation, not a production project-test protocol or proof
 that local CPU termination is enforced.
 
-No native hosted assertion run or infinite-loop termination is claimed. Test
+No native hosted assertion run or infinite-loop termination is claimed yet. Test
 discovery, `describe`/`test` registration, mocks, snapshots, plugins, filesystem,
 Vite transforms, arbitrary npm modules and the full Vitest runner remain outside
-this tested subset. #137 stays open for the bounded adapter, hosted positive /
-negative execution and CPU proof. No permission, deployment, resource or model
-call was needed for this investigation.
+this tested subset. #137 stays open for hosted positive / negative execution and
+CPU proof. No permission, deployment, resource or model call was needed for the
+local investigation.
+
+### Bounded project-test adapter: prepared, not natively verified
+
+The reusable [`/tests` service](../../packages/cloudflare-dynamic-worker/src/project-tests.ts)
+bundles only the host-owned pinned assertion runtime. Project modules are then
+appended as raw child modules; they never enter the host bundler, resolver or
+JavaScript evaluator. Every named exported test gets a fresh WorkerLoader child
+and a narrow `expect` supporting `toBe`, `toEqual` and `.not`:
+
+```ts
+const report = yield* Tests.makeProjectTests(env.LOADER).run({
+  mainModule: "suite.js",
+  modules: { "suite.js": "export function sum(expect) { expect(2 + 3).toBe(5) }" },
+  tests: [{ name: "sum", export: "sum" }],
+});
+if (report.tests.some(test => !test.passed)) throw Error("Project tests failed");
+```
+
+This is a host API, not permission to accept arbitrary public execution. The
+protocol caps project modules/tests at 16 each and project UTF-8 source at 64 KiB.
+The separately trusted tool bundle is at most 16 modules / 512 KiB. Each test has
+at most 64 assertions, a 1,000 ms CPU setting, five-second outer deadline, no
+outbound or parent bindings, and at most 1 KiB returned text. Empty tests fail;
+errors return only assertion/execution classifications, never project exception
+messages or values. This is not signed reusable evidence or proof against a
+project author intentionally writing a vacuous passing assertion.
+
+The real local adapter test covers relative modules, genuine success/failure,
+fresh globals, missing exports, empty tests, excessive assertions, redaction,
+blocked network, denied host-file access and an unprovided import. Workerd may
+expose a `process` global; its mere presence/absence is not the capability fence.
+The tests check actual prohibited operations instead of assuming that name is
+absent. Native infinite-loop termination remains unverified.
+
+The prepared `AssertionWorkflow` adds **only** the private
+`effect-ci-vitest-subset-checks` Workflow to this recipe's existing Worker, reusing
+its existing `LOADER`. It accepts exactly one fixed mode: `passing`,
+`assertion-failure`, `state-isolation`, `cpu-loop`, `forbidden-import` or
+`host-filesystem`. No actor source, path, destination, identity or policy input.
+The wrapper persists the redacted report before rejecting a failed test with a
+non-retryable error; negative cases must remain errored, not be made green.
+
+Before its first native rollout, verify exact-source CI, that the original
+formatter Workflow is idle and unchanged, that the new Workflow name is absent,
+and that the repair automation still admits only its original incident service.
+Retain a create-only intent and the existing version/exports/bindings/URLs. Build
+and deploy this private host once with `cf deploy --prebuilt`, without any secret
+file or new account permission. Preserve all older formatter histories. An
+ambiguous upload or create requires reading that same operation, never retry.
+
+```sh
+cf workflows instances create effect-ci-vitest-subset-checks --body '{"instance_id":"owned-vitest-positive","params":{"mode":"passing"}}'
+cf workflows instances get owned-vitest-positive --workflow-name effect-ci-vitest-subset-checks
+```
+
+The other fixed modes use separate create-once owned identities. Do not dispatch
+the CPU-loop case until the native host and its fixed CPU policy are verified.
+Normal Workflow/Worker/bundler/child execution is metered; there is no Container,
+paid browser provider, model call or automatic repair enrollment. Retiring this
+new Workflow requires explicit cleanup authority and retaining its negative
+histories, not deleting/restarting them for a fresh demo.
 
 ## Owned containerless deployment
 
