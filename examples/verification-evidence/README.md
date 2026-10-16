@@ -2,6 +2,11 @@
 
 > If the exact commit already passed lint locally, can trusted CI avoid doing the same work again?
 
+The local recipe below demonstrates signed check reuse. The owned Cloudflare demo
+also has a narrower, live-verified enrollment: one pure TypeScript syntax check.
+It does **not** yet reuse lint or the test suite. See
+[retained native evidence](#retained-native-demo-evidence) for the distinction.
+
 ```mermaid
 flowchart LR
   step_verification_checkout["verification checkout"]
@@ -68,7 +73,7 @@ never asked to trust an arbitrary status submitted by the developer. Repositorie
 mix policies—for example, accepting developer proofs for lint while always rerunning
 release and security checks remotely.
 
-### Hosted verifier foundation (not yet integrated)
+### Hosted exact-input verifier
 
 The Cloudflare package now provides `hostedCheckBytes` and
 `verifyHostedCheckEvidence`: a bounded, read-only WebCrypto Ed25519 verifier with
@@ -89,10 +94,12 @@ exact-input signature verification and fail-closed misses. The workerd test pins
 expected inputs and only raw public-key bytes in host bindings; an incoming
 request cannot substitute its own expected identity. Raw key import avoids
 Node/workerd differences in exported JWK algorithm labels.
-**This is not hosted cache reuse proof:** trusted note fetching,
-host-computed input identities, approved signer enrollment and actual hosted
-execute-versus-reuse tests remain necessary. No signer has been enrolled and no
-hosted command is skipped by this foundation. See [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
+These verifier tests alone are not hosted cache reuse proof. The separately
+enrolled demo now supplies trusted note fetching, host-computed input identities,
+an approved signer and actual native execute-versus-reuse histories; that narrow
+integration is recorded below. General check enrollment and the remaining
+comparison work in [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144)
+are not complete.
 
 `readGitHubCheckNote` supplies a separate host-only retrieval primitive for the
 dedicated `refs/notes/effect-ci-hosted-checks-v1` namespace. It pins the notes
@@ -104,9 +111,10 @@ a ten-second overall deadline; missing/auth/redirect/truncation/ambiguity or
 integrity errors return a miss without reflected upstream errors.
 
 Retrieval is **not authorization**. The returned text still needs the exact-input
-signature verifier and approved trust policy. Tests use mocked GitHub responses;
-the integration is not yet installed in the native hosted cache path, and the
-operator's advisory `effect-ci-verification` notes are never read as reusable proof.
+signature verifier and approved trust policy. Retrieval unit tests use mocked
+GitHub responses; the demo's native integration uses the fixed dedicated notes
+ref. The operator's advisory `effect-ci-verification` notes are never read as
+reusable proof.
 
 Only side-effect-free checks belong here. Checkout, install, builds, migrations,
 deployments, and artifact-producing work remain ordinary actions even if a runner can
@@ -140,11 +148,11 @@ pnpm --filter @effect-ci-testbed/cloudflare check
 The integration test uses actual CI orchestration and real **local** Node syntax
 checks for misses, with four ordinary action executions preserved across two signed
 check hits. GitHub replies, identity digests and ephemeral signing keys are lab
-fixtures. No production signer was generated/enrolled, no native command was skipped,
-and no Git note was pushed. No external permissions, credentials, resource creation
+fixtures. Those adapter tests generate/enroll no production signer, skip no native
+command, and push no Git note. No external permissions, credentials, resource creation
 or paid services are needed; the temporary local fixture contains only `app.js`.
-Actual host input computation, approved local signer enrollment and native
-execute/reuse/fallback evidence remain required for #144. This adapter must be
+The demo's separate host input computation, signer enrollment and retained native
+execute/reuse/fallback evidence are described below. This adapter must be
 installed by trusted runner code, not exposed as a project-selected bypass.
 
 ### Demo enrollment and revocation
@@ -154,8 +162,8 @@ trust bypass. Enrollment is a host-controlled allowlist binding a public key to 
 demo repository and explicit side-effect-free checks. A project cannot enroll itself,
 choose the verifier's expected inputs, or opt a build/deploy/release into reuse.
 The private key stays on the local signing machine; only the public key belongs in
-the hosted verifier configuration. Permission to enroll is not a claim that the
-native integration below is already installed or verified.
+the hosted verifier configuration. The installed demo enrollment applies only to
+its fixed syntax-check identity, not to this recipe's illustrative lint command.
 
 The intended user journey is:
 
@@ -180,8 +188,41 @@ proofs. Git note transport and cryptographic validity alone never grant authorit
 This is **developer/agent-signed verification**: an authorized signer asserts that
 the check passed. It does not prove execution on independent hardware, guarantee a
 compromise-free signing machine, or turn an advisory operator note into trusted
-evidence. The native hosted execute/reuse/fallback path remains unverified until
-its actual end-to-end runs are recorded. See [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
+evidence.
+
+### Retained native demo evidence
+
+Seven retained Cloudflare runs checked commit
+`b22f6cfc30b7feb480cb25e30a86576a431276cb`. With a valid exact-input note, the
+host verified the pure syntax check and omitted its parser command. Missing
+evidence, a tampered signature, wrong commit, changed prepared-input digest,
+changed policy digest and an unknown key all executed the parser normally.
+The input inspector and all six ordinary package commands ran in every case,
+with zero command retries. These are historical acceptance runs, not a claim
+that every later preview is healthy.
+
+The fixed parser strips TypeScript and constructs an **unlinked**
+`vm.SourceTextModule`: it does not import or evaluate project code. Its identity
+binds the actual committed input bytes, Linux Node runtime, repository, full
+commit, command and host policy. The private key stays local; the host receives
+only the enrolled public key. Whole-container cross-run snapshot transport is
+disabled for this attested host so project-modified system executables cannot
+be restored as trusted inspection tools.
+
+Read the existing histories without signing, pushing notes or dispatching work:
+
+```sh
+LIVE_DEMO_SIGNED_CHECKS=1 CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-signed-check.test.ts
+```
+
+See [exact native instances, observed timings and retained failures](../../apps/effect-ci/README.md#enrolled-demo-syntax-check-reuse).
+The timings include orchestration and are not an isolated performance benchmark.
+Full test-suite reuse, the remaining backend/developer-loop comparison in
+[#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144), and
+[cross-merge provenance](https://github.com/ericclemmons/effect-ci-testbed/issues/229)
+remain unfinished. Copying an old signature to a merge commit does not authorize
+reuse, and this documentation change grants no new signer or trust authority.
 
 ## Commit first, then attest
 
