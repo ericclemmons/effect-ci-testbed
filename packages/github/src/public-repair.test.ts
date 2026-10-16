@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import { publicProposalFixture } from "./public-proposal.fixture.ts";
 import { publicProposalFromHistory } from "./public-proposal.ts";
-import { runPublicRepair, publicRepairRun } from "./public-repair.ts";
+import { runPublicRepair, publicRepairRun, readFailedPublicRepair } from "./public-repair.ts";
 import { FIXED_SOURCE, REPAIR_REPOSITORY } from "./repair.ts";
 import type { OperationStore } from "./repair-operation.ts";
 function memory() {
@@ -62,4 +62,17 @@ test("lost completed SQLite ACK retains the proposal and never invokes writer ag
   await assert.rejects(runPublicRepair(e.instance, store, async () => e, propose));
   assert.equal((await runPublicRepair(e.instance, store, async () => { throw new Error("no reread"); }, propose)).replay, true);
   assert.equal(writes, 1);
+});
+test("failed public evidence is readable for append-only reconciliation, never reset or silently completed", async () => {
+  const e = await evidence(), { store, current } = memory();
+  await assert.rejects(runPublicRepair(e.instance, store, async () => e, async () => { throw Error("PR acknowledgement lost"); }));
+  const before = structuredClone(current());
+  const retained = await readFailedPublicRepair(before);
+  assert.deepEqual(retained.evidence, e);
+  assert.deepEqual(current(), before);
+  for (const bad of [{ ...before, state: "pending" }, { ...before, state: "complete" }, { ...before, digest: "f".repeat(64) }, { ...before, result }])
+    await assert.rejects(readFailedPublicRepair(bad));
+  let calls = 0;
+  await assert.rejects(runPublicRepair(e.instance, store, async () => e, async () => (++calls, result)));
+  assert.equal(calls, 0);
 });

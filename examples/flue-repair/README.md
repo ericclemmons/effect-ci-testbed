@@ -28,8 +28,12 @@ deployed. The verification command checks that ordering and the exact patch.
 | Narrow private-fixture GitHub writer | [Writer](../../packages/github/src/repair.ts) |
 | Independent exact-commit verification | [Verifier](../../packages/github/src/repair-verifier.ts) |
 
-This is a **recorded operator-triggered Flue example**, not the unfinished public
-HTTP 500 → Workers Issues → automatic repair flow, and not a portable fresh-repo
+This command verifies a **recorded operator-triggered Flue example**, not the public
+HTTP500 run. That newer run automatically produced a fresh proposal, passed its
+native check and created [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4),
+then failed its final acknowledgement on the renamed bot's login.
+[Exact result, retained failure and pending reconciliation](../../apps/effect-ci/PUBLIC-REPAIR.md).
+Neither example is a portable fresh-repo
 installer. [Host setup, permissions, budget, native receipts and limits](../../apps/repair-agent/README.md).
 Do not redispatch the historical instance, reset its budget, or merge/deploy the
 proposal. A genuinely new model task needs separately enrolled source and a
