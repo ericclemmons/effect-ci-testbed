@@ -213,6 +213,8 @@ export async function runReviewedRelease(options: {
     history: ReadonlyArray<ReviewedObservation>,
   ) => Promise<unknown>;
   settled?: (observation: ReviewedObservation) => Promise<void>;
+  /** Observational stage status only; never a decision or deployment capability. */
+  settling?: (phase: ReviewedObservation["phase"]) => Promise<void>;
   probe?: typeof probeRelease;
 }) {
   const { owner, step, broker } = options;
@@ -255,6 +257,8 @@ export async function runReviewedRelease(options: {
       await step.do(`vite-release:promote-${phase}`, once, async () =>
         view(await broker.promote(owner, phase)),
       );
+      try { await options.settling?.(phase); }
+      catch { console.warn("Release phase presentation unavailable; decision policy unchanged"); }
       // Control-plane readback is not a data-plane readiness signal. Give the
       // allocation a fixed bounded settling interval, then measure ONE cohort.
       // This does not turn missing attribution into approval or retry a write.

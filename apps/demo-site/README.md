@@ -46,7 +46,8 @@ Exactly matching same-revision bytes replay; changed bytes for an existing revis
 are rejected. There is no mutable `latest` route.
 
 Open the returned `/r/<commit>/<asset-digest>/index.html` URL in the browser.
-Click **Show message**.
+The release message is visible immediately. Click **Test JavaScript** to check
+the built browser code.
 
 ## Permissions, costs, limits and cleanup
 
@@ -56,6 +57,10 @@ HTTP GET/HEAD can read, while POST/PUT/DELETE cannot publish. Assets are public:
 never publish secrets, raw traces, or private browser recordings. CSP denies
 network connections, framing and forms; JavaScript is allowed only from this
 separate credential-free public origin.
+For HTML, CSP additionally permits up to eight exact SHA-256 style-element
+hashes derived from that immutable response. Kumo and the app's embedded CSS can
+render without allowing arbitrary inline styles, inline scripts, style attributes,
+network requests or `unsafe-inline`. Asset bodies/digests are not rewritten.
 
 The fixed file allowlist is `index.html`, `app.js`, `message.js`, each nonempty and
 at most256KiB, at most512KiB total. The registry accepts at most32 immutable
