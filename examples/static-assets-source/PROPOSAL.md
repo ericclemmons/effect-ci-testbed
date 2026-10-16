@@ -1,8 +1,10 @@
 # Workers Static Assets: deployment authority proposal
 
-Status: **targets and credential boundary approved by Eric; not enabled, deployed or proven live**. This records the approval boundary
-for issue #133, not a runnable recipe or a replacement for the completed Vite
-release. Eric supplied a separate credential locally; its value is never recorded here.
+Status: **approved and proven live**. The [native evidence](verification/native-20261016.md)
+records the supported upload, deployment, served-byte checks and browser interaction.
+This document retains the approval boundary for issue #133; the [runnable recipe](README.md)
+is separate from the completed Vite release. Eric supplied a separate credential
+locally; its value is never recorded here.
 
 ## Approved resources
 
@@ -10,7 +12,7 @@ Eric approved these dedicated resources in the existing test account, and the pr
 source-reader connection described below. Do not reuse the HMD deployment token,
 release target, immutable demo-site publisher or local personal OAuth token.
 
-| Resource | Proposed exact name | Purpose |
+| Resource | Approved exact name | Purpose |
 | --- | --- | --- |
 | Public Worker | `effect-ci-static-assets-demo` | Serve the uploaded three-file fixture with an `ASSETS` binding |
 | Private broker Worker | `effect-ci-static-assets-broker` | Fixed-target upload/deployment orchestration; no public writer |
@@ -19,12 +21,12 @@ release target, immutable demo-site publisher or local personal OAuth token.
 | Existing App private export | `StaticAssetSourceReader` | Read only the enrolled testbed paths at an exact commit |
 | Broker secret | `STATIC_ASSETS_DEPLOY_TOKEN` | Assets upload and Worker version/deployment API authority |
 
-The proposed App export is an additional private service edge, not a public
-endpoint. It would use the existing selected-testbed installation's one-repository
+The App export is an additional private service edge, not a public
+endpoint. It uses the existing selected-testbed installation's one-repository
 Contents READ token, revoke it in `finally`, and return only bounded plain source
 data. No token enters the broker's project data, a container or a model. No new
 repository enrollment, GitHub installation permission or signing authority is
-requested. The App change would require its own fresh deployment preflight.
+requested. The App deployment received its own fresh deployment preflight.
 
 ## Credential boundary and limitation
 
@@ -62,16 +64,16 @@ References: [upload-session permission](https://developers.cloudflare.com/api/re
 
 ## Closed source and publication policy
 
-Proposed source is `ericclemmons/effect-ci-testbed`, installation `165265172`,
-at a lowercase full 40-character commit. A future standalone fixture would
-contain exactly `site/index.html`, `site/app.js` and `site/style.css` under this
+Enrolled source is `ericclemmons/effect-ci-testbed`, installation `165265172`,
+at a lowercase full 40-character commit. The standalone fixture contains
+exactly `site/index.html`, `site/app.js` and `site/style.css` under this
 directory: regular, non-executable UTF-8 files, no NUL bytes, at most 32 KiB each
 and 64 KiB combined. The encoded source manifest is at most 96 KiB. These are
 no-build protocol fixtures, not a second claim about the already released Vite
 build. The three-file fixture and pure preparation/reader implementation are
 present, alongside the broker, upload journal and native Workflow configuration.
-The private App export and both new Workers are defined in source but have not
-yet been deployed. No local fake-API test establishes live acceptance.
+The private App export and both new Workers are deployed. The linked native
+evidence establishes live acceptance separately from the local fake-API tests.
 
 Local verification (fake GitHub API; no token mint or external calls):
 
@@ -112,13 +114,15 @@ the operation for read-only reconciliation, not another upload/deployment under
 a new identity. Where an API does not expose enough readback to establish the
 outcome, report the unresolved boundary rather than inventing a recovery claim.
 
-Acceptance still requires an actual native no-Container run: pinned source read,
+Acceptance requires an actual native no-Container run: pinned source read,
 immutable DO storage, supported asset upload, dedicated Worker deployment,
 independent version/allocation readback and all three served files matching the
 checked bytes. Tests must cover bad paths, limits, conflicting revisions,
 corruption and ambiguous acknowledgement. Public serving is GET/HEAD with a
 fixed host-authored module and restrictive CSP; source text is never evaluated
-inside the broker. No deployment or live acceptance is implied by this document.
+inside the broker. These live criteria were met by the linked evidence, not by
+this authority document alone. The original failed history and separate GET-only
+reconciliation remain preserved alongside the successful bugfix-source run.
 
 Before any deployment, commit reproducible standalone config, setup commands,
 permission/cost documentation and cleanup instructions, then rebuild exact
