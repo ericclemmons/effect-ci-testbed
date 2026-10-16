@@ -165,7 +165,7 @@ test(
         assert.equal(result.status.status, name === "Threaded" ? "complete" : "errored");
         const roots = result.messages.filter((m: any) => !m.body.thread_ts && (!m.body.ts || m.body.ts === "123.456"));
         assert.equal(roots.filter((m: any) => m.url.endsWith("chat.postMessage")).length, 1);
-        assert.ok(roots.every((m: any) => m.body.blocks.length === 1));
+        assert.ok(roots.every((m: any) => m.body.blocks.length === 2));
         assert.ok(roots.every((m: any) => !JSON.stringify(m.body.blocks).includes("Release still running")));
         const posts = result.messages.filter((m: any) => m.body.thread_ts);
         assert.equal(posts.length, 2, "one build reply, one host review reply; no repost on lost ACK");

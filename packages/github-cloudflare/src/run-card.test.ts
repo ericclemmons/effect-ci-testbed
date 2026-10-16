@@ -7,17 +7,30 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
-test("channel status is one line; individual thread details omit sibling checks", () => {
+test("parent retains workflow, rotating status and latest evidence; replies contain only their step", () => {
   const card = new RunCard(identity)
   card.update(event("checkout", "complete")); card.update(event("build", "running"))
   card.setHealth({ phase: 25, decision: "uncertain", evidenceSource: "native-wobs" }, "FPRIVATE")
   const root = card.render({ statusOnly: true })
-  assert.equal(root.blocks.length, 1)
-  assert.match(root.text, /Running · build/)
-  assert.doesNotMatch(JSON.stringify(root), /checkout|FPRIVATE|uncertain|divider|header/)
+  assert.equal(root.blocks.length, 3)
+  assert.match(root.text, /^build · ▶️ Running · build$/)
+  assert.doesNotMatch(JSON.stringify(root), /checkout|divider|header/)
+  assert.match(JSON.stringify(root), /FPRIVATE/)
+  assert.ok(!root.blocks.some(block => block.type === "actions"))
   const detail = card.render({ onlyStep: "build" })
-  assert.doesNotMatch(detail.text, /checkout/)
+  assert.match(detail.text, /^▶️ build — running/)
+  assert.doesNotMatch(detail.text, /checkout|Run:|1\./)
+  assert.doesNotMatch(JSON.stringify(detail.blocks), /owner\/repo|Details|header|divider|1\. /)
   assert.match(JSON.stringify(detail.blocks), /FPRIVATE/)
+  card.update(event("build", "complete"))
+  card.update(event("Release 25%", "running"))
+  assert.match(card.render({ statusOnly: true }).text, /Running · Release 25%$/)
+  card.setHealth({ phase: 75, decision: "uncertain", evidenceSource: "native-wobs" }, "FLATEST")
+  card.update({ type: "workflow.completed", workflowId: "cf-ci-demo", conclusion: "success", timestamp: "now" })
+  const final = card.render({ statusOnly: true })
+  assert.equal(final.text, "cf-ci-demo · ✅ Passed")
+  assert.match(JSON.stringify(final.blocks), /FLATEST/)
+  assert.doesNotMatch(JSON.stringify(final.blocks), /FPRIVATE|actions|1\. /)
 })
 
 test("reverted presentation omits skipped checks without deleting semantic history", () => {

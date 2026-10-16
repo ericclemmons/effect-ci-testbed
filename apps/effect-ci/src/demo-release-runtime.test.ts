@@ -160,8 +160,11 @@ test(
         assert.equal(state.rejectedPhases.length, state.images, "each private image's definite validation rejection is bounded and recovered before review");
         assert.equal(state.requests, id === "accept" ? 500 : 300);
         const roots = state.messages.filter((m: any) => !m.body.thread_ts && (!m.body.ts || m.body.ts === "123.456"));
-        assert.ok(roots.every((m: any) => m.body.blocks.length === 1 && m.body.blocks[0].type === "section"));
-        assert.ok(roots.every((m: any) => !/F123|hmd_approve|1\\. |2\\. /.test(JSON.stringify(m.body.blocks))));
+        assert.ok(roots.every((m: any) => m.body.blocks[0].type === "section" && /cf-ci-demo/.test(m.body.text)));
+        assert.ok(roots.every((m: any) => !/hmd_approve|1\\. |2\\. /.test(JSON.stringify(m.body.blocks))));
+        assert.ok(roots.at(-1).body.blocks.some((b: any) => b.type === "image" && b.slack_file.id === "F123"), "terminal parent preserves latest graph");
+        const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");
+        assert.ok(replyUpdates.every((m: any) => !m.body.blocks.some((b: any) => ["header", "context", "divider"].includes(b.type))), "step replies omit repeated run chrome");
         const replies = state.messages.filter((m: any) => m.body.thread_ts);
         assert.equal(replies.length, 1 + state.images, "one build reply and one reply per reviewed phase");
         assert.ok(replies.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));

@@ -180,10 +180,16 @@ export class RunCard {
       const current = ordered.find(id => this.checks.get(id)!.status === "waiting") ??
         ordered.find(id => this.checks.get(id)!.status === "failed") ??
         ordered.find(id => this.checks.get(id)!.status === "running") ??
-        ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status))
-      const title = `${headline}${this.phase !== "success" && current ? ` · ${current}` : ""}`.replace(/[\r\n]/g, " ").slice(0, 250)
-      const text = `${escape(title)} · ${sourceLinks(this.identity)}`
-      return { text: title, blocks: [{ type: "section", text: { type: "mrkdwn", text, verbatim: true } }] }
+        ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
+      const title = `${this.workflowId} · ${headline}${this.phase !== "success" && current ? ` · ${current}` : ""}`.replace(/[\r\n]/g, " ").slice(0, 250)
+      return { text: title, blocks: [
+        { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
+        { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
+        // Latest evidence remains visible without opening the thread, including
+        // after terminal success/failure. Approval capabilities stay in replies.
+        ...(this.health?.fileId ? [{ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Latest observed health confidence intervals; not a forecast" }] : []),
+        ...(this.health && !this.health.fileId ? [{ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · chart unavailable` } }] : []),
+      ] }
     }
     if (options.minimal) {
       const current = options.currentStep ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
@@ -206,9 +212,9 @@ export class RunCard {
     const lines = ordered.filter(id => (!options.onlyStep || id === options.onlyStep) && (!options.hideSkipped || this.checks.get(id)!.status !== "skipped")).map((id, index) => {
       const check = this.checks.get(id)!
 
-      return `${index + 1}. ${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
+      return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
     })
-    const blocks: Array<SlackBlock> = [
+    const blocks: Array<SlackBlock> = options.onlyStep ? [] : [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },
       { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
       { type: "divider" },
@@ -249,6 +255,6 @@ export class RunCard {
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
     const health = this.health ? `\nRelease ${this.health.phase}% · ${this.health.decision} · ${this.health.evidenceSource}` : ""
 
-    return { text: `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
+    return { text: options.onlyStep ? `${lines.join("\n")}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
   }
 }

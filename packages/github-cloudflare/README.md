@@ -48,12 +48,15 @@ history or notification records.
 
 ## Compact Slack status and threaded details
 
-`slackLayout: "status-thread"` keeps the channel message to one logical line:
-current status/step, workflow and linked source/details. No checklist, graph or
-approval capability appears on that root. The owned demo opts into this layout;
+`slackLayout: "status-thread"` keeps one parent summary: the workflow title,
+rotating current status/step, linked source/details and latest health graph.
+The final result retains that graph. No checklist or approval capability appears
+on the parent. The owned demo opts into this layout;
 other hosts keep their existing presentation unless they opt in.
 
-Each running step gets one maintained, non-broadcast reply. Host continuations
+Each running step gets one maintained, non-broadcast reply containing only that
+step's status and evidence—no numbering or repeated workflow/source/details header.
+Host continuations
 can use `publish(key, presentation, threadKey)` to keep a review's graph,
 explanation and controls together in that same phase reply; settling updates it
 to remove the controls. Full semantic history and GitHub reporting are unchanged.
