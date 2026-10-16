@@ -15,7 +15,7 @@ failure fails the native Workflow and GitHub summary; successful build checks
 remain truthful build checks. Build failure never enters the continuation.
 Without `finalize`, existing reporting and return values are unchanged.
 
-`publish` updates the same acknowledged Slack bot message rather than opening a
+By default, `publish` updates the same acknowledged Slack bot message rather than opening a
 separate release card. Stable keys must match `[A-Za-z0-9:_-]{1,128}`. Host updates
 use zero retries and a 20-second timeout, and delivery rejection fails closed.
 One transport-level exception applies to an existing Slack message containing a
@@ -45,3 +45,23 @@ deployment, token, paid inference or native cloud run; it is not live Slack/HMD
 evidence. No new configuration, account permission, resource or dependency is
 required. Removing `finalize` restores the previous host behavior without deleting
 history or notification records.
+
+## Compact Slack status and threaded details
+
+`slackLayout: "status-thread"` keeps the channel message to one logical line:
+current status/step, workflow and linked source/details. No checklist, graph or
+approval capability appears on that root. The owned demo opts into this layout;
+other hosts keep their existing presentation unless they opt in.
+
+Each running step gets one maintained, non-broadcast reply. Host continuations
+can use `publish(key, presentation, threadKey)` to keep a review's graph,
+explanation and controls together in that same phase reply; settling updates it
+to remove the controls. Full semantic history and GitHub reporting are unchanged.
+
+Thread creation first acknowledges a capability-free/image-free placeholder,
+then updates that known reply with details. Native thread checkpoints have zero
+retries. A lost/invalid post ACK blocks that reply rather than posting a replacement;
+required host review delivery fails closed. Only an acknowledged image update
+retains the existing narrowly bounded `invalid_blocks` exception. No new scope,
+channel or permission is needed. Webhook-only Slack and Discord retain their
+existing behavior. Existing historical messages are not rewritten or replayed.

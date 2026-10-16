@@ -78,7 +78,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
             return r.ok ? { ok: true, fileId: r.fileId } : { ok: false };
           },
           publish: async () => {
-            const frame = card.render();
+            const frame = card.render({ onlyStep: `Release ${observation.phase}%` });
             await context.publish(`review-${observation.phase}`, {
               text: frame.text,
               blocks: [
@@ -103,7 +103,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
                   ],
                 },
               ],
-            });
+            }, `Release ${observation.phase}%`);
           },
         });
         await graph({ type: "observed", observations: history });
@@ -136,7 +136,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
           timestamp: timestamp(),
         });
         status(observation.phase, "complete");
-        await context.publish(`settled-${observation.phase}`);
+        await context.publish(`settled-${observation.phase}`, card.render({ onlyStep: `Release ${observation.phase}%` }), `Release ${observation.phase}%`);
       },
     });
   } finally {

@@ -42,6 +42,7 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     // Whole-container cache snapshots may contain project-modified system files.
     // Signed input identification must start from the owned immutable image.
     cache: false,
+    slackLayout: "status-thread",
     container: { image: "workspace", instance: "standard-1" },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: (context) => demoReviewedReleaseEnabled && context.parameters.trigger === "github" && demoGitHubAllowed(context.parameters)
