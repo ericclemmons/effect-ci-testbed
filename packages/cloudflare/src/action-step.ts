@@ -4,6 +4,7 @@ import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 import { nativeCommandError, restoreCommandError } from "./command-error.ts"
+import { actionCheckpointError } from "./action-checkpoint-error.ts"
 
 type HandleData = { readonly provider: string; readonly value: any }
 
@@ -94,7 +95,7 @@ export const makeActionExecutor = (
           activeBodies.delete(request.stepId)
         }
       }),
-      catch: (error) => restoreCommandError(error, { stepId: request.stepId }),
+      catch: (error) => actionCheckpointError(restoreCommandError(error, { stepId: request.stepId }), request.stepId),
     })
     return {
       commands: result.commands,

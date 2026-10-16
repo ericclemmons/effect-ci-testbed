@@ -1429,3 +1429,8 @@ or independent human review. Review capabilities, identity validation, required
 state persistence, deployment mutation and review deadlines remain authoritative;
 missing review delivery is never approval. The remaining review-delivery and
 legacy HMD-lab policy audit is tracked separately in #167.
+
+The native action adapter also distinguishes an
+[uncertain checkpoint acknowledgement](../../packages/cloudflare/src/action-checkpoints.md)
+from an unapplied external operation. Reconcile the exact retained artifact;
+neither an internal platform error nor an existing publication authorizes a blind retry.

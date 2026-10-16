@@ -14,6 +14,7 @@ test("actual local Workflow failed checkpoints retain both command streams witho
   const command = fileURLToPath(new URL("../../../packages/cloudflare/src/command-step.ts", import.meta.url))
   const action = fileURLToPath(new URL("../../../packages/cloudflare/src/action-step.ts", import.meta.url))
   const errors = fileURLToPath(new URL("../../../packages/cloudflare/src/command-error.ts", import.meta.url))
+  const runner = fileURLToPath(new URL("../../../packages/cloudflare/src/index.ts", import.meta.url))
   const code = (await build({ stdin: { resolveDir: pkg, loader: "ts", contents: `
     import {WorkerEntrypoint,WorkflowEntrypoint} from 'cloudflare:workers';
     import * as CI from ${JSON.stringify(ci)};
@@ -21,11 +22,24 @@ test("actual local Workflow failed checkpoints retain both command streams witho
     import {executeCommandStep} from ${JSON.stringify(command)};
     import {makeActionExecutor} from ${JSON.stringify(action)};
     import {commandFailure} from ${JSON.stringify(errors)};
+    import {makeRunner} from ${JSON.stringify(runner)};
     export class DiagnosticWorkflow extends WorkflowEntrypoint {
       async run(event,step){
         let executions=0;const request={stepId:'compile',command:'node check.mjs',workspace:CI.Workspace.remote('local','/workspace'),options:{retries:{limit:0,delay:'1 second'}}};
         const result={exitCode:7,stdout:'compiler context\\n',stderr:'missing export\\n'};
         let error;
+        if(event.payload.mode==='runner-ack'){
+          // Real local Workflow checkpoint, simulated lost ACK AFTER its body.
+          // This is not another native platform outage or a failed child exit.
+          const lost={do:async(name,config,callback)=>{await step.do(name,config,callback);throw Error('Attempt failed due to internal workflows error');}};
+          const runner=makeRunner({workspaceId:'local',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40),
+            step:lost,binding:{getByName:()=>({execute:async()=>{executions++;return {exitCode:0,stdout:'',stderr:''};}})}});
+          const exit=await Effect.runPromiseExit(runner.executor.execute({...request,commandIndex:1,onOutput:()=>{}}));
+          if(!Exit.isFailure(exit))throw Error('Lost ACK must not become success');
+          error=Cause.squash(exit.cause);
+          if(!(error instanceof CI.CommandCheckpointError))throw Error('Runner erased checkpoint classification');
+          return {caughtForLocalInspection:true,executions,stage:error.stage,processExitCode:error.processExitCode,effects:error.effects};
+        }
         if(event.payload.mode==='command'){
           try{await executeCommandStep(step,request,async()=>{executions++;return result;});}
           catch(e){error=e;}
@@ -48,7 +62,7 @@ test("actual local Workflow failed checkpoints retain both command streams witho
     manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: code } } },
   } }] })
   try {
-    for (const mode of ["command", "action"]) {
+    for (const mode of ["command", "action", "runner-ack"]) {
       assert.equal((await runtime.dispatchFetch("https://local.invalid/", { method: "POST", body: JSON.stringify({ mode }) })).status, 200)
       let state: any
       for (let i = 0; i < 200; i++) {
@@ -57,8 +71,10 @@ test("actual local Workflow failed checkpoints retain both command streams witho
         await new Promise(resolve => setTimeout(resolve, 20))
       }
       assert.equal(state.status, "complete", JSON.stringify(state))
-      assert.deepEqual(state.output, { caughtForLocalInspection: true, executions: 1, stepId: "compile", exitCode: 7,
-        output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } })
+      assert.deepEqual(state.output, mode === "runner-ack"
+        ? { caughtForLocalInspection: true, executions: 1, stage: "checkpoint-ack", processExitCode: null, effects: "unknown" }
+        : { caughtForLocalInspection: true, executions: 1, stepId: "compile", exitCode: 7,
+          output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } })
     }
   } finally { await runtime.dispose() }
 })
