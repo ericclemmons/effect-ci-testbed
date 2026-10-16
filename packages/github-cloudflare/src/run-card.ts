@@ -198,12 +198,19 @@ export class RunCard {
   /** A native table in the first thread reply, never a capability or raw payload. */
   renderDetails(): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const repository = this.identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
+    const repositoryUrl = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ? `https://github.com/${repository}` : undefined
+    const commitUrl = repositoryUrl && /^[a-f0-9]{7,64}$/i.test(this.identity.revision) ? `${repositoryUrl}/commit/${this.identity.revision}` : undefined
+    const cell = (text: string, url?: string) => url ? { type: "rich_text", elements: [{ type: "rich_text_section",
+      elements: [{ type: "link", url, text: text.slice(0, 80) }] }] } : { type: "raw_text", text: text.slice(0, 80) }
     const rows = [["Field", "Value"], ["Workflow", this.workflowId], ["Repository", repository],
       ["Commit", this.identity.revision], ["Run", this.identity.instanceId],
       ...(safeUrl(this.identity.detailsUrl) ? [["Dashboard", safeUrl(this.identity.detailsUrl)!]] : [])]
     return { text: rows.slice(1).map(([key, value]) => `${key}: ${value!.slice(0, 500)}`).join("\n"), blocks: [
       { type: "table", column_settings: [{ is_wrapped: false }, { is_wrapped: true }],
-        rows: rows.map(row => row.map(text => ({ type: "raw_text", text: text.slice(0, 500) }))) },
+        rows: [[cell("Field"), cell("Value")], [cell("Workflow"), cell(this.workflowId)],
+          [cell("Repository"), cell(repositoryUrl ? repository.split("/")[1]! : repository, repositoryUrl)],
+          [cell("Commit"), cell(this.identity.revision.slice(0, 7), commitUrl)],
+          [cell("Run"), cell(this.identity.instanceId.slice(0, 8), safeUrl(this.identity.detailsUrl))]] },
     ] }
   }
 
