@@ -44,6 +44,21 @@ test("explicit agent mode prints JSON while explicit format takes precedence", (
   assert.match(human.stdout, /^Workflow: exported-actions/m)
 })
 
+test("semantic usage errors honor explicit JSON in an ordinary non-agent environment", () => {
+  for (const cwd of [example, zeroConfig]) {
+    for (const args of [["list", "check"], ["run", ...Array(33).fill("check")]]) {
+      const result = spawnSync(process.execPath, [bin, ...args, "--format=json"], {
+        cwd, encoding: "utf8", env: { PATH: process.env.PATH ?? "" },
+      })
+      assert.equal(result.status, 2)
+      assert.equal(result.stderr, "")
+      const output = JSON.parse(result.stdout)
+      assert.equal(output.ok, false)
+      assert.equal(output.error.code, "CI_USAGE_ERROR")
+    }
+  }
+})
+
 test("human defaults to text and direct-agent environment detection defaults to JSON without format flags", () => {
   const humanEnvironment = { PATH: process.env.PATH ?? "" }
   const human = spawnSync(process.execPath, [bin, "list"], {
