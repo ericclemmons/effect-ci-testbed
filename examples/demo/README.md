@@ -249,6 +249,7 @@ node examples/flue-repair/verify-public.ts
 ## Verification proof
 
 Maintainer evidence, not adoption steps: [recording notes](./verification/README.md).
+[Actual Kumo main release and read-only checks](./verification/polished-release-20261016.md).
 **Video:** [Historical local recording](./verification/README.md).
 **Measured results:** [Historical capture receipt](./verification/published/local-4ebc193.json).
 [Proof-page contract](../PROOF-PAGES.md).

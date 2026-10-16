@@ -25,7 +25,7 @@ test("UTF8 wire bytes and both tails remain bounded, with explicit truncation", 
 })
 test("unknown, forged, oversized and accessor values are not command diagnostics", () => {
   let accessed = false
-  assert.equal(encodeCommandDiagnostics({ ...record(), get output() { accessed = true; throw Error("getter") } }), undefined)
+  assert.equal(encodeCommandDiagnostics({ ...record(), get output(): never { accessed = true; throw Error("getter") } }), undefined)
   assert.equal(accessed, false)
   for (const d of [{ ...record(), extra: true }, { ...record(), exitCode: 0 },
     { ...record(), output: { ...record().output, secret: "foreign" } },

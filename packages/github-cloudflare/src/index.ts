@@ -228,7 +228,9 @@ export const workflowEntrypoint = <A>(
     })
     const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
     const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
-      step.do(`notification-provider:${provider}:${key}`, deliver))
+      step.do(`notification-provider:${provider}:${key}`, {
+        retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds",
+      }, deliver))
     const notify = (key: string, update: () => boolean, override?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, required = false, threadKey?: string): Promise<void> => {
       notificationQueue = notificationQueue.then(async () => {
         if (!update()) return

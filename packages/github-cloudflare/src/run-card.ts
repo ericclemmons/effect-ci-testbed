@@ -63,6 +63,7 @@ export class RunCard {
   private readonly checks = new Map<string, { status: keyof typeof symbols; optional: boolean; dependencies: Set<string> }>()
   private review: { stepId: string; request: ApprovalRequest; url?: string } | undefined
   private health: Readonly<RunHealth & { fileId?: string }> | undefined
+  private lastHealthChart: Readonly<{ phase: RunHealth["phase"]; fileId: string }> | undefined
   private readonly identity: RunIdentity
   private readonly failures = new Map<string, string>()
   private resultLink: { label: string; url: string } | undefined
@@ -151,6 +152,7 @@ export class RunCard {
     this.health = Object.freeze({ phase: health.phase, decision: health.decision,
       evidenceSource: health.evidenceSource, ...(health.metrics ? { metrics: copyHealthMetrics(health.metrics) } : {}),
       ...(fileId ? { fileId } : {}) })
+    if (fileId) this.lastHealthChart = Object.freeze({ phase: health.phase, fileId })
   }
 
   snapshot(): RunSnapshot {
@@ -197,8 +199,8 @@ export class RunCard {
         ...(this.resultLink ? [{ type: "section", text: { type: "mrkdwn", text: link(this.resultLink.url, this.resultLink.label), verbatim: true } }] : []),
         // Latest evidence remains visible without opening the thread, including
         // after terminal success/failure. Approval capabilities stay in replies.
-        ...(this.health?.fileId ? [{ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Latest observed health confidence intervals; not a forecast" }] : []),
-        ...(this.health && !this.health.fileId ? [{ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · chart unavailable` } }] : []),
+        ...(this.lastHealthChart ? [{ type: "image", slack_file: { id: this.lastHealthChart.fileId }, alt_text: `Latest successfully rendered health confidence intervals: Release ${this.lastHealthChart.phase}%; not a forecast` }] : []),
+        ...(this.health && !this.health.fileId ? [{ type: "section", text: { type: "plain_text", text: `Release ${this.health.phase}% · ${this.health.decision} · chart unavailable${this.lastHealthChart ? `; last chart: ${this.lastHealthChart.phase}%` : ""}` } }] : []),
       ] }
     }
     if (options.minimal) {

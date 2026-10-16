@@ -48,3 +48,23 @@ test("health presentation copies input, excludes provider receipts and rejects p
   assert.throws(() => card.setHealth(health, "https://public.example/chart.png"))
   assert.throws(() => card.setHealth({ ...health, phase: 50 } as unknown as RunHealth))
 })
+
+test("a missing new chart retains only the parent's last valid frame, explicitly labeled as older evidence", () => {
+  const card = new RunCard({ instanceId: "owned-run", repository: "owner/repo", revision: "abcdef123" })
+  card.setHealth({ phase: 75, decision: "uncertain", evidenceSource: "closed-client-http-cohort" }, "FLAST75")
+  card.setHealth({ phase: 100, decision: "uncertain", evidenceSource: "closed-client-http-cohort" })
+  const parent = card.render({ statusOnly: true })
+  assert.deepEqual(parent.blocks.find(b => b.type === "image")?.slack_file, { id: "FLAST75" })
+  assert.match(String(parent.blocks.find(b => b.type === "image")?.alt_text), /75%/)
+  assert.match(JSON.stringify(parent.blocks), /Release 100%.*chart unavailable.*last chart: 75%/)
+  assert.equal(card.render({ onlyStep: "Release 100%" }).blocks.some(b => b.type === "image"), false,
+    "An older phase image must not impersonate this review's current snapshot")
+  assert.equal(card.snapshot().health?.phase, 100)
+  assert.ok(!JSON.stringify(card.snapshot()).includes("FLAST75"))
+  card.setHealth({ phase: 100, decision: "uncertain", evidenceSource: "closed-client-http-cohort" }, "FNEW100")
+  assert.deepEqual(card.render({ statusOnly: true }).blocks.find(b => b.type === "image")?.slack_file, { id: "FNEW100" })
+  assert.ok(!JSON.stringify(card.render({ statusOnly: true })).includes("last chart:"))
+  const other = new RunCard({ instanceId: "other-run", repository: "owner/repo", revision: "abcdef123" })
+  other.setHealth({ phase: 100, decision: "uncertain", evidenceSource: "closed-client-http-cohort" })
+  assert.equal(other.render({ statusOnly: true }).blocks.some(b => b.type === "image"), false)
+})
