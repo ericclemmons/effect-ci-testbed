@@ -24,5 +24,9 @@ export function failedCommandOutput(diagnostics: CommandDiagnostics, redactValue
     ...(stderr ? [`stderr${truncated ? " (tail; output truncated)" : ""}\n${stderr.slice(-2200)}`] : []),
     ...(!stdout && !stderr ? ["No stdout or stderr was captured."] : []),
   ]
-  return { text: streams.join("\n"), blocks: streams.map(text => ({ type: "section", text: { type: "plain_text", text, emoji: false } })) }
+  // Text elements preserve literal newlines/indentation, without interpreting
+  // fences, mrkdwn links or user-provided Block Kit elements in command output.
+  return { text: streams.join("\n"), blocks: streams.map(text => ({ type: "rich_text", elements: [
+    { type: "rich_text_preformatted", elements: [{ type: "text", text }] },
+  ] })) }
 }
