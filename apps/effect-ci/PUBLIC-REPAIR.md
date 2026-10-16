@@ -1,6 +1,42 @@
 # Owned public failure to proposed repair
 
-## Next approved test
+## Current native result: PR exists; acknowledgement failed
+
+One ordinary public GET returned500 and produced Issue
+`52da6a3f-87f0-49cd-865d-c7d7030a169b` with one occurrence. Its authenticated
+notification automatically started `public-incident-7a661383b6ee262fb99c597774c25674ba25046989b3a01e4092706614407849`.
+The fresh Flue proposal completed, and exact commit
+`390e1eb0fb1c29263a3ec329c6db9049b881c66a` passed native Node check
+`116806821705` before [PR #4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4)
+was created. It remains OPEN and UNMERGED; nothing deployed the repair.
+
+The automatic repair Workflow then **errored** during final PR identity validation:
+the App had been renamed from `effect-ci-testbed` to `effect-ci`. Historical PR3
+and new PR4 have the same bot ID `334321206`, and the native check belongs to
+the same App `5089816`; the stale login comparison was wrong. The failed history
+and failed permanent writer slot are retained, not reset or relabeled complete.
+The SAME lifetime ledger advanced once: six ten-cent reservations,60c reserved,
+640c authorization remaining, three of four host calls used. These are reservation
+bounds, not a measured invoice.
+
+The approved reconciliation implementation reads this SAME existing branch/PR
+and native check with repository-only Contents/PR/Checks READ tokens, revoked in
+`finally`. It cannot create a missing branch/PR, execute Node, call a model or
+change the failed slot. It appends a separate receipt and updates only the existing
+Slack card at sequence4. Missing/ambiguous card state cannot post another root.
+Native reconciliation is still pending; this is not a clean successful automatic
+Workflow or a second automatic run.
+
+After exact merged build/deployment and fresh read-only preflight, the operator
+can create ONE instance of the existing `effect-ci-owned-repair-verification`
+Workflow with raw body `{instance_id:"<new-reconciliation-receipt-id>",params:{mode:"reconcile-public-pr"}}`.
+This explicitly operator-authorized reconciliation is not event activation proof.
+No new resources, bindings, container image or permission scope are needed.
+Normal Workflow/RPC/SQLite metering applies; there is no AI spend. Preserve all
+histories and receipts for safe stop; do not reset/replay the public source or
+rerun an uncertain reconciliation checkpoint.
+
+## Approved test preparation (historical)
 
 Eric explicitly approved ONE fresh bounded end-to-end public-error test after
 the event-routing correction. It uses `owned-public-health-500-v2`, preserves the
@@ -14,12 +50,12 @@ before selecting the repair Workflow. Raw HTTP JSON or a matching-looking event
 does not grant repair authority. Arbitrary Hono error events are not enrolled by
 this fixed owned policy yet; adding a `.trigger` method is not blanket permission.
 
-The new source remains unarmed until its exact version/source is enrolled,
+The source remained unarmed until its exact version/source was enrolled,
 resources and ledger are independently read, current approved model pricing is
 verified, and a create-only private intent records this one authorized attempt.
 The repair PR must remain OPEN and UNMERGED; no repair is deployed.
 
-## Previous run
+## Previous v1 run
 
 This is connected host source, **not yet native end-to-end proof**. The receiver
 enrollment is version-pinned. The one genuine public exception reached WOBS and
@@ -140,7 +176,7 @@ deployment and independent readback. Never rerun old drivers blindly.
 
 There is deliberately no command here to replay the existing error. Receiver/source
 guides describe discovery/setup. Publish actual IDs/outcomes only after native
-execution; no new native IDs exist yet.
+execution. The current native IDs and failed acknowledgement are recorded above.
 
 ## Resources, costs and safe stop
 

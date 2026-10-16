@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Release preview · Effect CI</title>
+    <!-- kumo-styles -->
     <style>
       :root {
         font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -148,7 +149,15 @@
             This message comes from <code>src/message.ts</code> in the built application.
           </p>
         </section>
-        <div id="browser-check"></div>
+        <section class="browser-check" aria-labelledby="browser-label">
+          <div>
+            <h2 id="browser-label">Browser check</h2>
+            <p id="interaction" role="status" aria-live="polite">
+              Ready to test this page's browser code.
+            </p>
+          </div>
+          <!-- kumo-button -->
+        </section>
         <footer>Built with Vite + Kumo · Served from the checked build output</footer>
       </main>
     </div>

@@ -8,6 +8,9 @@ export const REPAIR_COMMAND = "node --test repair-demo/health.test.mjs"
 export const BROKEN_SOURCE = "export function healthStatus() { return 500; }\n"
 export const FIXED_SOURCE = "export function healthStatus() { return 200; }\n"
 const APP_ID = "5089816"
+// Stable bot ID corroborated against the owned App's existing and current PRs.
+// GitHub App renames change the login, not this identity or installation scope.
+const REPAIR_BOT_ID = 334321206
 const INSTALLATION = 165265172
 const root = `https://api.github.com/repos/${REPAIR_REPOSITORY}`
 const encoder = new TextEncoder()
@@ -115,6 +118,12 @@ export function withRepairCheckToken<T>(credentials: GitHubAppCredentials,
   return withToken(credentials, { contents: "read", checks: "write" }, operation, fetcher)
 }
 
+/** Read-only reconciliation cannot mutate code, checks, or PRs. */
+export function withRepairReadToken<T>(credentials: GitHubAppCredentials,
+  operation: (token: string) => Promise<T>, fetcher: typeof fetch = fetch) {
+  return withToken(credentials, { contents: "read", pull_requests: "read", checks: "read" }, operation, fetcher)
+}
+
 export interface RepairVerification {
   commit: string
   sourceDigest: string
@@ -138,13 +147,31 @@ interface RepairOptions {
 /** Constructor callback is trusted host code, NEVER an RPC argument or model-provided proof. */
 export async function proposeRepair(credentials: GitHubAppCredentials, options: RepairOptions,
   verify: (input: RepairVerificationInput) => Promise<RepairVerification>, fetcher: typeof fetch = fetch) {
+  return repairAttempt(credentials, options, verify, fetcher, true)
+}
+
+/** Inspect the SAME existing candidate/PR. Missing artifacts never authorize creation.
+ * The trusted callback must read retained native evidence, never execute a command.
+ */
+export async function reconcileRepair(credentials: GitHubAppCredentials, options: RepairOptions,
+  readVerification: (input: RepairVerificationInput) => Promise<RepairVerification>, fetcher: typeof fetch = fetch) {
+  return repairAttempt(credentials, options, readVerification, fetcher, false)
+}
+
+async function repairAttempt(credentials: GitHubAppCredentials, options: RepairOptions,
+  verify: (input: RepairVerificationInput) => Promise<RepairVerification>, fetcher: typeof fetch,
+  creationAllowed: boolean) {
   if (!/^[a-z0-9][a-z0-9-]{0,47}$/.test(options.runId) || !sha(options.baseCommit)) throw reject()
   const source = repairSource(options.proposedText)
   const sourceDigest = await digest("SHA-256", encoder.encode(source))
   const branch = `codex/repair-${options.runId}`
   const message = `Repair owned demo health status\n\nEffect-CI-Repair: ${options.runId}\nEffect-CI-Base: ${options.baseCommit}\nEffect-CI-Patch-SHA256: ${sourceDigest}`
-  return withRepairInstallationToken(credentials, async token => {
-    const api = (path: string, method?: string, body?: unknown, missing?: boolean) => request(fetcher, root + path, token, method, body, missing)
+  const token = creationAllowed ? withRepairInstallationToken : withRepairReadToken
+  return token(credentials, async token => {
+    const api = (path: string, method?: string, body?: unknown, missing?: boolean) => {
+      if (!creationAllowed && method !== undefined && method !== "GET") throw new Error("Read-only reconciliation cannot mutate repair artifacts")
+      return request(fetcher, root + path, token, method, body, missing)
+    }
     const ref = async (name: string, missing = false) => {
       const value = await api(`/git/ref/heads/${name}`, "GET", undefined, missing)
       if (value === undefined) return undefined
@@ -182,6 +209,7 @@ export async function proposeRepair(credentials: GitHubAppCredentials, options: 
     const nextRoot = await repairTreeHash(rootTree.map(entry => entry.path === "repair-demo" ? { ...entry, sha: nextDirectory } : entry))
     let commit = await ref(branch, true)
     if (commit === undefined) {
+      if (!creationAllowed) throw new Error("Existing repair branch required; no writes permitted")
       const createdBlob = await api("/git/blobs", "POST", { content: source, encoding: "utf-8" })
       if (createdBlob?.sha !== nextBlob) throw reject()
       const createdTree = await api("/git/trees", "POST", { base_tree: baseData.tree.sha,
@@ -208,8 +236,9 @@ export async function proposeRepair(credentials: GitHubAppCredentials, options: 
     const existing = await api(`/pulls?head=ericclemmons:${branch}&base=${REPAIR_BASE}&state=all`)
     if (!Array.isArray(existing) || existing.length > 1) throw reject()
     const created = existing.length === 0
+    if (created && !creationAllowed) throw new Error("Existing repair PR required; no writes permitted")
     const pr = created ? await api("/pulls", "POST", { title, body, head: branch, base: REPAIR_BASE }) : existing[0]
-    if (!record(pr) || !Number.isSafeInteger(pr.number) || pr.number < 1 || pr.user?.login !== "effect-ci-testbed[bot]" ||
+    if (!record(pr) || !Number.isSafeInteger(pr.number) || pr.number < 1 || pr.user?.id !== REPAIR_BOT_ID || pr.user?.type !== "Bot" ||
         pr.state !== "open" || pr.title !== title || pr.head?.ref !== branch || pr.head?.sha !== commit || pr.base?.ref !== REPAIR_BASE ||
         typeof pr.body !== "string" || !pr.body.includes(marker) || !pr.body.includes(proof)) throw new Error("Repair PR identity did not match; reconcile before retrying")
     return { repository: REPAIR_REPOSITORY, commit, sourceDigest, evidenceId: evidence.evidenceId,

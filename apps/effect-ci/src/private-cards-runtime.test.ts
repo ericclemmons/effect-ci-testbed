@@ -18,9 +18,9 @@ test("actual SQLite card owner posts once, updates one ts, and stops after lost 
       return Response.json({ok:true,channel:"CHANNEL",ts:body.ts||(body.thread_ts?"1791685465."+(700000+(++threadPosts)):"1791685465.683799")});
     };
     export default {async fetch(req,env){
-      const {owner,sequence,text,thread}=await req.json();const stub=env.CARDS.getByName(owner);
+      const {owner,sequence,text,thread,existing}=await req.json();const stub=env.CARDS.getByName(owner);
       const frame={text,blocks:[{type:"section",text:{type:"plain_text",text}}]};
-      const send=()=>thread?stub.publishThread(owner,thread,sequence,frame):stub.publish(owner,sequence,frame);
+      const send=()=>existing?stub.publishExisting(owner,sequence,frame):thread?stub.publishThread(owner,thread,sequence,frame):stub.publish(owner,sequence,frame);
       const results=await Promise.all([send(),send()]);
       return Response.json({results,calls});
     }};
@@ -35,8 +35,8 @@ test("actual SQLite card owner posts once, updates one ts, and stops after lost 
       SLACK_BOT_TOKEN: { type: "json", value: "test-only-token" }, SLACK_APP_ID: { type: "json", value: "APP" },
       SLACK_TEAM_ID: { type: "json", value: "TEAM" }, SLACK_CHANNEL_ID: { type: "json", value: "CHANNEL" } },
   } }] })
-  const send = async (owner: string, sequence: number, text: string, thread?: string) => (await runtime.dispatchFetch("https://probe.invalid",
-    { method: "POST", body: JSON.stringify({ owner, sequence, text, thread }) })).json()
+  const send = async (owner: string, sequence: number, text: string, thread?: string, existing = false) => (await runtime.dispatchFetch("https://probe.invalid",
+    { method: "POST", body: JSON.stringify({ owner, sequence, text, thread, existing }) })).json()
   try {
     assert.equal((await send("run", 0, "start")).calls.length, 1)
     const replay = await send("run", 0, "start")
@@ -70,5 +70,14 @@ test("actual SQLite card owner posts once, updates one ts, and stops after lost 
     assert.equal(changed.calls.at(-1).threadTs, undefined)
     assert.equal((await send("thread-run", 4, "lost", "10")).calls.length, 8)
     assert.equal((await send("thread-run", 5, "later", "10")).calls.length, 8)
+    const orphanReconciliation = await send("reconcile-orphan", 4, "existing PR", undefined, true)
+    assert.equal(orphanReconciliation.calls.length, 8)
+    assert.ok(orphanReconciliation.results.every((r: {ok:boolean}) => !r.ok))
+    await send("reconcile-owned", 3, "stopped")
+    const reconciled = await send("reconcile-owned", 4, "existing verified PR", undefined, true)
+    assert.equal(reconciled.calls.length, 10)
+    assert.equal(reconciled.calls.at(-1).ts, "1791685465.683799")
+    assert.ok(reconciled.calls.at(-1).method.endsWith("chat.update"))
+    assert.equal((await send("reconcile-owned", 4, "existing verified PR", undefined, true)).calls.length, 10)
   } finally { await runtime.dispose() }
 })

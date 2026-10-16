@@ -9,6 +9,7 @@ import {
   repairTreeHash,
   type GitTreeEntry,
   withRepairCheckToken,
+  withRepairReadToken,
   type RepairVerification,
 } from "./repair.ts";
 
@@ -39,6 +40,28 @@ const hash = async (text: string) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+
+/** Read retained exact-commit native evidence; no Node callback or check writer. */
+export async function readOwnedRepairVerification(
+  credentials: GitHubAppCredentials, commit: string, runId: string, evidenceId: string,
+  fetcher: typeof fetch = fetch,
+): Promise<RepairVerification> {
+  if (!sha(commit) || !/^[a-z0-9][a-z0-9-]{0,47}$/.test(runId) ||
+      !/^github_check_[1-9][0-9]{0,15}$/.test(evidenceId)) throw reject();
+  const id = Number(evidenceId.slice("github_check_".length));
+  if (!Number.isSafeInteger(id)) throw reject();
+  const sourceDigest = await hash(FIXED_SOURCE);
+  const externalId = `owned-native-repair:${runId}:${commit}:${sourceDigest}`;
+  const summary = `Exact commit: ${commit}\nSource SHA-256: ${sourceDigest}\nCommand: ${OWNED_NODE_COMMAND}\nThree pinned files fetched from this commit and materialized without credentials. Actual native Node exit code: 0.\nNo merge or deployment.`;
+  return withRepairReadToken(credentials, async token => {
+    const check = await api(fetcher, token, `/check-runs/${id}`);
+    if (check.id !== id || check.app?.id !== 5089816 || check.head_sha !== commit ||
+        check.name !== HOST_CHECK_NAME || check.external_id !== externalId ||
+        check.status !== "completed" || check.conclusion !== "success" || check.output?.summary !== summary)
+      throw reject();
+    return { commit, sourceDigest, passed: true, evidenceId };
+  }, fetcher);
+}
 
 async function api(
   fetcher: typeof fetch,

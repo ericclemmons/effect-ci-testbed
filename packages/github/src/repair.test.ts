@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process"
 import { generateKeyPairSync } from "node:crypto"
 import test from "node:test"
 import { BROKEN_SOURCE, FIXED_SOURCE, REPAIR_BASE, REPAIR_COMMAND, REPAIR_PATH, REPAIR_REPOSITORY,
-  proposeRepair, repairBlobHash, repairSource, repairTreeHash, withRepairInstallationToken,
+  proposeRepair, reconcileRepair, repairBlobHash, repairSource, repairTreeHash, withRepairInstallationToken,
   withRepairCheckToken,
   type GitTreeEntry, type RepairVerificationInput } from "./repair.ts"
 
@@ -25,7 +25,7 @@ async function harness() {
   const nextDirectoryId = await repairTreeHash(oldDirectory.map(entry => entry.path === "health.js" ? { ...entry, sha: nextBlob } : entry))
   const nextRootId = await repairTreeHash(oldRoot.map(entry => entry.path === "repair-demo" ? { ...entry, sha: nextDirectoryId } : entry))
   const state = { branch: undefined as string | undefined, message: "", pr: undefined as any,
-    writes: [] as string[], revoked: 0, loseRef: false, losePR: false, drift: false, foreignTree: false, unsafeTree: false }
+    writes: [] as string[], revoked: 0, readOnly: false, loseRef: false, losePR: false, drift: false, foreignTree: false, unsafeTree: false }
   const fetcher: typeof fetch = async (raw, init) => {
     const url = new URL(String(raw))
     assert.equal(url.origin, "https://api.github.com")
@@ -33,11 +33,14 @@ async function harness() {
     assert.ok(init?.signal)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     if (url.pathname === "/app/installations/165265172/access_tokens") {
-      assert.deepEqual(body, { repositories: ["effect-ci-private-github-fixture"], permissions: { contents: "write", pull_requests: "write" } })
-      return Response.json({ token: "scoped-test-token", permissions: { contents: "write", pull_requests: "write", metadata: "read" } })
+      const permissions = body.permissions.checks === "read" ? { contents: "read", pull_requests: "read", checks: "read" } : { contents: "write", pull_requests: "write" }
+      state.readOnly = permissions.contents === "read"
+      assert.deepEqual(body, { repositories: ["effect-ci-private-github-fixture"], permissions })
+      return Response.json({ token: "scoped-test-token", permissions: { ...permissions, metadata: "read" } })
     }
     if (url.pathname === "/installation/token") { assert.equal(init?.method, "DELETE"); state.revoked++; return new Response(null, { status: 204 }) }
     assert.ok(url.pathname.startsWith(`/repos/${REPAIR_REPOSITORY}/`))
+    if (state.readOnly) assert.equal(init?.method, "GET", "read token must never mutate GitHub")
     const path = url.pathname.slice(`/repos/${REPAIR_REPOSITORY}`.length)
     assert.equal(new Headers(init?.headers).get("authorization"), "Bearer scoped-test-token")
     if (init?.method === "POST") state.writes.push(path)
@@ -73,7 +76,7 @@ async function harness() {
     if (path === "/pulls" && init?.method === "POST") {
       assert.equal(body.base, REPAIR_BASE); assert.equal(body.head, "codex/repair-owned")
       assert.equal(state.pr, undefined, "never duplicate a PR")
-      state.pr = { number: 1, title: body.title, body: body.body, user: { login: "effect-ci-testbed[bot]" }, state: "open",
+      state.pr = { number: 1, title: body.title, body: body.body, user: { login: "effect-ci-testbed[bot]", id: 334321206, type: "Bot" }, state: "open",
         head: { ref: body.head, sha: candidate }, base: { ref: body.base } }
       if (state.losePR) { state.losePR = false; throw new Error("lost acknowledgement") }
       return Response.json(state.pr)
@@ -88,7 +91,8 @@ async function harness() {
   }
   const run = (check = verify) => proposeRepair(credentials, { runId: "owned", baseCommit: base,
     proposedText: "```javascript\nexport function healthStatus() { return 200; }\n```" }, check, fetcher)
-  return { state, fetcher, verify, run }
+  const reconcile = () => reconcileRepair(credentials, { runId: "owned", baseCommit: base, proposedText: FIXED_SOURCE }, verify, fetcher)
+  return { state, fetcher, verify, run, reconcile }
 }
 
 test("Git tree hash matches independent git implementation, including directory sort and mode", async () => {
@@ -125,6 +129,38 @@ test("lost branch and PR acknowledgements reconcile without blind retries or dup
     assert.equal(h.state.writes.filter(path => path === "/pulls").length, 1)
   }
 })
+test("App rename preserves the stable owned bot identity, not its display login", async () => {
+  const h = await harness(); await h.run()
+  h.state.pr.user.login = "effect-ci[bot]"
+  const retained = await h.run()
+  assert.equal(retained.created, false)
+  assert.equal(retained.pullRequest, 1)
+  assert.equal(h.state.writes.length, 5)
+  for (const user of [
+    { login: "effect-ci[bot]", id: 123, type: "Bot" },
+    { login: "effect-ci[bot]", id: 334321206, type: "User" },
+    { login: "effect-ci-testbed[bot]", type: "Bot" },
+  ]) {
+    h.state.pr.user = user
+    await assert.rejects(h.run(), /PR identity did not match/)
+  }
+  assert.equal(h.state.writes.length, 5)
+})
+test("read-only reconciliation requires the existing branch and PR; it never creates or reruns a repair", async () => {
+  const absent = await harness()
+  await assert.rejects(absent.reconcile(), /Existing repair branch required/)
+  assert.equal(absent.state.writes.length, 0)
+  const h = await harness(); await h.run()
+  h.state.pr.user.login = "effect-ci[bot]"
+  const result = await h.reconcile()
+  assert.equal(result.created, false)
+  assert.equal(result.pullRequest, 1)
+  assert.equal(h.state.readOnly, true)
+  assert.equal(h.state.writes.length, 5)
+  h.state.pr = undefined
+  await assert.rejects(h.reconcile(), /Existing repair PR required/)
+  assert.equal(h.state.writes.length, 5)
+})
 test("failed or mismatched verification never proposes a PR, and revokes writer token", async () => {
   for (const bad of [async () => { throw new Error("secret in test failure") },
     async (input: RepairVerificationInput) => ({ commit: base, sourceDigest: input.sourceDigest, passed: true as const, evidenceId: "wrong-commit" })]) {
@@ -140,7 +176,7 @@ test("base drift, symlinks, foreign tree and foreign PR identity fail closed", a
   await assert.rejects(unsafe.run(), /policy rejected/); assert.equal(unsafe.state.writes.length, 0)
   const foreign = await harness(); await foreign.run(); foreign.state.foreignTree = true
   await assert.rejects(foreign.run(), /not the exact owned patch/)
-  const pr = await harness(); await pr.run(); pr.state.pr.user.login = "someone-else"
+  const pr = await harness(); await pr.run(); pr.state.pr.user.id = 123
   await assert.rejects(pr.run(), /PR identity did not match/); assert.equal(pr.state.writes.length, 5)
   const during = await harness()
   await assert.rejects(during.run(async input => { const receipt = await during.verify(input); during.state.drift = true; return receipt }), /refs changed/)

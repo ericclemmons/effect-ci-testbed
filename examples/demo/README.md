@@ -213,8 +213,10 @@ Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
 
 > HTTP failure → authenticated event → Flue proposal → exact-commit test → unmerged PR.
 
-The old one-shot public error reached WOBS but stopped at admission; that run is
-not a completed automatic repair. The new end-to-end test is pending.
+The new public500 automatically reached Flue, passed the exact-commit native Node
+check and opened [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
+Its final acknowledgement failed on the renamed bot's login; same-record
+reconciliation is pending. [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 
 The separately completed Flue → native Node → proposed PR path can be inspected
