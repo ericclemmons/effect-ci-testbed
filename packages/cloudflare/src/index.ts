@@ -695,7 +695,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           return result
         },
-        catch: (error) => error instanceof CI.CommandError
+        catch: (error) => error instanceof CI.CommandError || error instanceof CI.CommandCheckpointError
           ? error
           : new CI.CommandError(stepId, command, workspace.cwd, 1),
       }),

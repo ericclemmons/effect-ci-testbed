@@ -309,7 +309,7 @@ interface RuntimeShape {
     stepId: string,
     workspace: Workspace,
     command: string,
-  ) => Effect.Effect<Workspace, CommandError>
+  ) => Effect.Effect<Workspace, CommandFailure>
   readonly readFile: (
     stepId: string,
     workspace: Workspace,
@@ -423,6 +423,28 @@ export class CommandError extends Error {
     this.output = output
   }
 }
+
+/** The provider did not acknowledge the checkpoint; no process exit is known. */
+export class CommandCheckpointError extends Error {
+  readonly _tag = "CommandCheckpointError"
+  readonly stage = "checkpoint-ack"
+  readonly processExitCode = null
+  readonly effects = "unknown"
+  readonly stepId: string
+  readonly command: string
+  readonly cwd: string
+  readonly checkpoint: string | undefined
+  constructor(stepId: string, command: string, cwd: string, checkpoint?: string) {
+    super(`Native command checkpoint acknowledgement failed (stage=checkpoint-ack; process exit unknown): ${command}. External effects may already exist; reconcile the same identity, never retry automatically`)
+    this.name = "CommandCheckpointError"
+    this.stepId = stepId
+    this.command = command
+    this.cwd = cwd
+    this.checkpoint = checkpoint
+  }
+}
+
+export type CommandFailure = CommandError | CommandCheckpointError
 
 export interface ApprovalRequest {
   readonly title: string
@@ -584,7 +606,7 @@ export class Workspace {
     return new Workspace(join(this.cwd, path), this.kind, this.id, this.revision)
   }
 
-  exec(command: string): Effect.Effect<Workspace, CommandError, Runtime | CurrentStep> {
+  exec(command: string): Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep> {
     const workspace = this
     return Effect.gen(function* () {
       const runtime = yield* Runtime
@@ -750,7 +772,7 @@ export interface AptPackageManager {
   readonly workspace: Workspace
   readonly install: (
     packages: ReadonlyArray<string>,
-  ) => Effect.Effect<Workspace, CommandError | PackageManagerError, Runtime | CurrentStep>
+  ) => Effect.Effect<Workspace, CommandFailure | PackageManagerError, Runtime | CurrentStep>
 }
 
 export const Apt = (
@@ -791,9 +813,9 @@ export interface JavaScriptPackageManager {
   readonly workspace: Workspace
   readonly install: (
     options?: JavaScriptInstallOptions,
-  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-  readonly run: (script: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
-  readonly exec: (command: string) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
+  readonly run: (script: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
+  readonly exec: (command: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
 
 const fromPackageManagerField = (
@@ -943,10 +965,10 @@ export class ToolchainError extends Error {
 export interface NodeToolchain {
   readonly version: string
   readonly workspace: Workspace
-  readonly install: () => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  readonly install: () => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
   readonly exec: (
     command: string,
-  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
 
 export interface MiseInstallOptions {
@@ -957,10 +979,10 @@ export interface MiseToolchain {
   readonly workspace: Workspace
   readonly install: (
     options?: MiseInstallOptions,
-  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
   readonly exec: (
     command: string,
-  ) => Effect.Effect<Workspace, CommandError, Runtime | CurrentStep>
+  ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
 
 const miseEnvironment = [
@@ -1115,7 +1137,7 @@ export interface CommandExecutor {
   readonly handlesStepOptions?: boolean
   readonly execute: (
     request: CommandExecutionRequest,
-  ) => Effect.Effect<CommandExecutionResult, CommandError>
+  ) => Effect.Effect<CommandExecutionResult, CommandFailure>
 }
 
 export interface CheckCacheRequest {

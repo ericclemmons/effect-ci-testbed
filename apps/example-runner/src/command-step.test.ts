@@ -11,6 +11,32 @@ const request = {
   options: { retries: { limit: 2, delay: 0, backoff: "constant" as const }, timeout: 1000 },
 }
 
+test("lost native command ACK is not a fabricated process exit and does not rerun", async () => {
+  let executions = 0
+  const step = { async do(_name: string, options: WorkflowStepConfig, callback: () => Promise<CI.CommandExecutionResult>) {
+    assert.equal(options.retries?.limit, 0)
+    await callback()
+    throw Error("Attempt failed due to internal workflows error")
+  } } as unknown as Pick<WorkflowStep, "do">
+  await assert.rejects(executeCommandStep(step, { ...request, options: {} }, async () => {
+    executions++
+    return { exitCode: 0, stdout: "effect already happened", stderr: "" }
+  }), error => {
+    assert.ok(error instanceof CI.CommandCheckpointError)
+    assert.equal(error instanceof CI.CommandError, false)
+    assert.equal(error.processExitCode, null)
+    assert.equal("exitCode" in error, false)
+    assert.equal(error.stepId, "build")
+    assert.equal(error.checkpoint, "build")
+    assert.equal(error.stage, "checkpoint-ack")
+    assert.equal(error.effects, "unknown")
+    assert.match(error.message, /process exit unknown/)
+    assert.doesNotMatch(error.message, /effect already happened/)
+    return true
+  })
+  assert.equal(executions, 1)
+})
+
 test("multiple commands in one action have distinct replay-stable checkpoints", async () => {
   const cache = new Map<string, CI.CommandExecutionResult>()
   let calls = 0
