@@ -179,7 +179,7 @@ Local authored goals and the hosted program are separate until remote parity lan
 cf-ci run test build --remote
 ```
 
-Prepared, not yet deployed: selected hosted goals share installation and never
+Live verified: selected hosted goals share installation and never
 publish or release. The CLI checks host capabilities before dispatch; an older
 host rejects the command without starting the default workflow. Without targets,
 `cf-ci run --remote` runs the hosted suite and publishes a preview.

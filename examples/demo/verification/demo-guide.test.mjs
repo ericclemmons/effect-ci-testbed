@@ -95,5 +95,5 @@ test("remote goals distinguish negotiated computation from the default preview w
   assert.match(guide, /cf-ci run test build --remote/);
   assert.match(guide, /checks host capabilities before dispatch/);
   assert.match(guide, /selected hosted goals share installation and never\npublish or release/);
-  assert.match(guide, /Prepared, not yet deployed/);
+  assert.match(guide, /Live verified: selected hosted goals/);
 });
