@@ -169,6 +169,20 @@ cf workflows instances get owned-vitest-positive --workflow-name effect-ci-vites
 
 The other fixed modes use separate create-once owned identities. Do not dispatch
 the CPU-loop case until the native host and its fixed CPU policy are verified.
+The prepared GET-only acceptance reader pins the independently recorded Workflow
+version, checks all six retained cases and requires the same tool digest. A CPU
+execution failure without a successful `exceededCpu` journal checkpoint fails
+acceptance; a timeout alone is not sufficient. Its synthetic reader regressions
+are not native proof. The live reader remains opt-in until these histories exist:
+
+```sh
+node --test examples/dynamic-worker-checks/src/vitest-evidence.test.ts
+# After rollout: set VITEST_WORKFLOW_VERSION from the independent receipt.
+LIVE_OWNED_VITEST=1 CF_BIN=cf node --test examples/dynamic-worker-checks/src/vitest-live.test.ts
+```
+
+The reader's fixed identities are `owned-vitest-<mode>-20261016-1`; it never creates
+or retries them. It must not be enabled against the illustrative ID above.
 Normal Workflow/Worker/bundler/child/tail execution and journal storage are metered; there is no Container,
 paid browser provider, model call or automatic repair enrollment. Retiring this
 new Workflow or journal requires explicit cleanup authority and retaining its negative
