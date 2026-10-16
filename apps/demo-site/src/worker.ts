@@ -1,4 +1,5 @@
-import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint, WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
+import { NonRetryableError } from "cloudflare:workflows";
 import {
   demoSite,
   demoSiteUrl,
@@ -8,6 +9,13 @@ import {
 } from "@effect-ci-testbed/cloudflare/demo-site";
 
 export class DemoSiteRevisions extends DurableObject {
+  async inspect(revision: string) {
+    const exact = siteRevision(revision);
+    const revisions = (await this.ctx.storage.get<string[]>("revisions")) ?? [];
+    const value = await this.ctx.storage.get<DemoSite>(`site:${exact}`);
+    // Metadata only: no assets, keys, arbitrary SQL, writes or reset capability.
+    return { revision: exact, count: revisions.length, capacity: 32, present: value !== undefined };
+  }
   async publish(
     revision: string,
     assets: unknown,
@@ -41,7 +49,7 @@ export class DemoSiteRevisions extends DurableObject {
     return new Response("Not found", { status: 404 });
   }
 }
-const registry = (ctx: ExecutionContext) =>
+const registry = (ctx: { exports: unknown }) =>
   (
     ctx.exports as unknown as { DemoSiteRevisions: DurableObjectNamespace<DemoSiteRevisions> }
   ).DemoSiteRevisions.getByName("demo-site-revisions-v1");
@@ -56,6 +64,22 @@ export class DemoSitePublisher extends WorkerEntrypoint {
   }
   override fetch() {
     return new Response("Not found", { status: 404 });
+  }
+}
+// Fixed read-only diagnostic; never publishes or changes the released allocation.
+export class SiteInspectionWorkflow extends WorkflowEntrypoint<unknown, unknown> {
+  async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
+    if (!event.payload || typeof event.payload !== "object" || Array.isArray(event.payload) || Reflect.ownKeys(event.payload).length)
+      throw new NonRetryableError("Empty inspection payload required");
+    return step.do("registry:read-metadata", { retries: { limit: 0, delay: "1 second" }, timeout: "15 seconds" }, async () => {
+      const results = [];
+      for (const revision of ["105ce02b81915f845df75cbc20ecc383162b54f6", "4ae41a23fa6a0978c5f58ec60a135b07fc5addd2"]) {
+        const value = await registry(this.ctx).inspect(revision);
+        results.push({ revision: value.revision, count: value.count, capacity: value.capacity, present: value.present });
+        value[Symbol.dispose]?.();
+      }
+      return results;
+    });
   }
 }
 export default {

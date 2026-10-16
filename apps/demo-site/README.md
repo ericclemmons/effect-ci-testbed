@@ -45,6 +45,28 @@ must be reconciled with the same revision, never a new identity to evade a confl
 Exactly matching same-revision bytes replay; changed bytes for an existing revision
 are rejected. There is no mutable `latest` route.
 
+### Private publication diagnosis
+
+`SiteInspectionWorkflow` is a fixed, read-only inspection of the same registry.
+Its empty payload cannot select source, SQL, destinations or policy. It returns
+only revision count, the unchanged capacity of 32, and presence of the fixed
+released `105ce02…` and failed-preview `4ae41a2…` revisions—never asset bodies.
+It adds one private Workflow, no binding, secret or public route. It is prepared
+for diagnosing the retained publication failure; no native inspection is claimed
+until its actual result is recorded.
+
+```sh
+cf workflows instances create effect-ci-demo-site-inspection --body '{"instance_id":"owned-site-inspection-20261016-1","params":{}}'
+cf workflows instances get owned-site-inspection-20261016-1 --workflow-name effect-ci-demo-site-inspection
+```
+
+Create it once only after its reviewed host is deployed. An ambiguous acknowledgement
+requires reading that same ID, not retrying. Inspection uses ordinary metered
+Workflow/DO reads, with zero retries and a 15-second checkpoint deadline. It does
+not publish, evict, reset storage, restart a failed run or shift production traffic.
+Retain its history; removing the diagnostic Workflow needs deliberate cleanup
+authority and must leave the existing registry and immutable URLs intact.
+
 Open the returned `/r/<commit>/<asset-digest>/index.html` URL in the browser.
 The release message is visible immediately. Click **Test JavaScript** to check
 the built browser code.
