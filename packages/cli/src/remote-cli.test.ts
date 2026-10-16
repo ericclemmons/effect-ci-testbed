@@ -37,6 +37,9 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.ok(address && typeof address !== "string")
     const origin = `http://127.0.0.1:${address.port}`
     server.on("request", async (request, response) => {
+      if (!request.headers.authorization) {
+        response.writeHead(401); response.end("API authentication required"); return
+      }
       assert.equal(request.headers.authorization, "Bearer fixture-api-token")
       if (request.headers["cf-access-token"]) {
         assert.equal(request.headers["cf-access-token"], "fixture-user-token")

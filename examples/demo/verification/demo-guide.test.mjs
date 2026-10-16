@@ -32,14 +32,18 @@ test("ordinary branch pushes preview; main is production without a special ref o
   assert.doesNotMatch(guide, /git push[^\n`]*(?:HEAD|refs\/heads\/|:)/);
 });
 
-test("fresh demo endpoint is public config; Access is not an API token", () => {
+test("fresh demo endpoint is public config; only the enrolled identity avoids an API profile", () => {
   const endpoint = readFileSync(new URL("../.env", import.meta.url), "utf8");
   assert.match(
     endpoint,
     /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
   );
   assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
-  assert.match(guide, /Access login alone does not provide that API token/);
+  assert.match(
+    guide,
+    /existing Access login; no separate API profile is needed for your\napproved identity/,
+  );
+  assert.match(guide, /Other API-token clients are unchanged/);
 });
 
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {

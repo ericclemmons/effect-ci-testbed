@@ -9,6 +9,7 @@
     "./notifications": "./src/notification-service.ts",
     "./notification-delivery": "./src/notification-delivery.ts",
     "./run-card": "./src/run-card.ts",
+    "./access-identity": "./src/access-identity.ts",
     "./github-comment": "./src/github-comment.ts"
   },
   "scripts": {
@@ -19,7 +20,8 @@
     "@effect-ci-testbed/cloudflare": "workspace:*",
     "@effect-ci-testbed/github": "workspace:*",
     "@resvg/resvg-wasm": "2.6.2",
-    "effect": "4.0.0-beta.19"
+    "effect": "4.0.0-beta.19",
+    "jose": "6.2.12"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261001.1",

@@ -212,18 +212,20 @@ const remoteConnection = (root: string) => {
     )
   }
 
-  if (!configured.token) {
+  const headers = remoteHeaders(remoteUrl, configured.token)
+  const accessOnly = !configured.token && headers.has("cf-access-token")
+  if (!configured.token && !accessOnly) {
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      "Remote endpoint found, but its Effect CI API token is missing. Configure your private Effect CI remote profile, or set EFFECT_CI_REMOTE_TOKEN only for this CLI process. Keep credentials out of project env files. Cloudflare Access login is separate; do not use a deployment token.",
+      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
     )
   }
 
-  return { remoteUrl, headers: remoteHeaders(remoteUrl, configured.token) }
+  return { remoteUrl, headers, accessOnly }
 }
 
-const remoteCapabilities = async ({ remoteUrl, headers }: ReturnType<typeof remoteConnection>) => {
+const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType<typeof remoteConnection>) => {
   let available: unknown
   try {
     const response = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
@@ -234,13 +236,17 @@ const remoteCapabilities = async ({ remoteUrl, headers }: ReturnType<typeof remo
   } catch (error) {
     if (error instanceof CliFailure) throw error
   }
-  const descriptor = available as { protocol?: unknown; targets?: unknown } | undefined
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown } | undefined
   const targets = descriptor?.targets
   if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
       targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
       new Set(targets).size !== targets.length)
     throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
       "The remote host did not return compatible capabilities. No run was dispatched; check the endpoint and Access login, or update the host.")
+  if (accessOnly && (!Array.isArray(descriptor.authentication) ||
+    !descriptor.authentication.includes("cloudflare-access-identity")))
+    throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
+      "This host has not enrolled Access-only remote authentication. Configure its private API profile; no run was dispatched.")
   return targets as string[]
 }
 
@@ -271,6 +277,7 @@ const builtInRemote = async (
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
   const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
+  if (!targets && connection.accessOnly) await remoteCapabilities(connection)
   if (targets) {
     if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
