@@ -87,19 +87,23 @@ redacted diagnostics without changing approval, retry or rollback policy.
 The new `observer-success` / `observer-business-failure` modes exercise an actual
 rejecting loopback RPC plus a healthy SQLite observer alongside the provider layer.
 `observer-status` is persisted separately in a required zero-retry checkpoint.
-They are **local implementation tests until a separately recorded native rollout**;
-the three retained native cases above do not prove the new generic callbacks.
-No new resource, permission, secret or public route is required for that extension.
-The separate GET-only reader requires independently recorded new Worker and
-Workflow version pins; it must not be pointed at the older provider campaign:
+Both new cases now have [separate native proof](./NATIVE.md#native-generic-runtime-observers),
+on their own recorded Worker/Workflow version. The three older native cases were
+preserved and independently re-read; they are not relabelled as the new callbacks.
+The existing private fixture was updated without a new resource, permission,
+secret, binding, public route or model call. The GET-only reader pins both new
+version identities and does not accept an operator-provided substitute:
 
 ```sh
 node --test apps/notification-isolation/src/observer-evidence.test.ts
-LIVE_RUNTIME_OBSERVERS=1 OBSERVER_WORKER_VERSION=<recorded-worker-version> OBSERVER_WORKFLOW_VERSION=<recorded-workflow-version> CF_BIN=cf node --test apps/notification-isolation/src/observer-live.test.ts
+LIVE_RUNTIME_OBSERVERS=1 CF_BIN=cf node --test apps/notification-isolation/src/observer-live.test.ts
 ```
 
 Its fixed IDs are `owned-observer-success-20261016-1` and
 `owned-observer-business-failure-20261016-1`. The first command uses explicitly
 synthetic reader fixtures, not native evidence. The opt-in command reads only;
-it never creates, retries or resets either operation. Do not enable it until the
-separate native campaign and independent version receipts actually exist.
+it never creates, retries or resets either operation. Generic callback deadline,
+sync-throw, business retry/rollback and rejected/unavailable-approval contracts
+have local tests; the new native pair tests actual rejecting RPC/healthy SQLite
+delivery, not every possible callback fault. Dedicated HMD review-delivery policy
+still needs its remaining audit in #167; no missing notification implies approval.
