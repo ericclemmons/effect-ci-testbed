@@ -386,17 +386,26 @@ with fixed HTTP cohorts, not WOBS-completeness proof. Each observation replaces
 the private graph in **one owned Slack message**, preserving its checklist and
 inline progression buttons. Historical uncertainty is never relabeled healthy.
 
+Current source policy for this legacy lab requires an authorized decision when
+evidence is inconclusive. The historical timer-acceptance runs above and below
+remain preserved evidence of their old policy, not current behavior. The normal
+source-push demo uses its separate five-minute fail-closed review contract.
+
 Progress or Reject records the decision with one click by default; the actor,
 snapshot and acceptance time remain recorded without inventing a human comment.
 When `HMD_REQUIRE_RATIONALE=true`, a required rationale modal is used instead.
 A fresh Slack signature,
 pinned app/team/channel, authorized reviewer, and owner/phase/snapshot-bound
-single-use capability are required. Set `HMD_AUTO_PROGRESS_MINUTES` to an integer
-from 1–5 (default **2**). The displayed absolute deadline starts at snapshot
-creation, not from clicking the button. Clear healthy evidence progresses
-immediately. Inconclusive or near-margin evidence progresses when that deadline
-elapses, or earlier when an authorized operator clicks **Progress**. Deadline
-acceptance is recorded as `deadline-risk-acceptance`, never as healthy evidence.
+single-use capability are required. The legacy setting `HMD_AUTO_PROGRESS_MINUTES`
+still accepts an integer from 1–5 (default **2**) for the review window, but no
+longer grants deadline acceptance. The displayed absolute deadline starts at
+snapshot creation, not from clicking the button. Clear healthy evidence may
+progress immediately; inconclusive or near-margin evidence requires an authorized
+**Progress** decision. At the deadline, the lab closes the capability and restores
+the prior allocation rather than advancing. Missing delivery or silence is not approval.
+The actual local Workflow/SQLite/RPC regression waits one elapsed minute with no
+scripted decision: only 10% is promoted, the run errors and the prior allocation is
+restored once. This is local runtime evidence, not another native lab dispatch.
 While waiting, the hosted flow collects another bounded HTTP cohort every 30s.
 Counts accumulate within the same pinned stage window, the graph updates in the
 same message, and the original deadline never moves. Clear healthy evidence can
@@ -446,7 +455,7 @@ new-version cohort does not erase the previous version and is never presented
 as a zero-error success. The short HTTP demo is not a production WOBS history;
 its small samples may remain inconclusive throughout the entire lab.
 
-### Live continuous-sampling timer evidence
+### Historical live continuous-sampling timer evidence
 
 Merged source `c62f623e700b0d2356ea6a9f138c2a384c0d4978`, host version
 `5491d634-d9ae-4008-bfeb-8c2c5b968896`, ran
