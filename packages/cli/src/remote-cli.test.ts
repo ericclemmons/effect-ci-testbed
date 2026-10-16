@@ -21,6 +21,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let diagnosticFailure = false
   let routePrefix = ""
   let supportsTargets = true
+  let capabilityStatus = 200
+  let capabilityProtocol = "effect-ci-remote-v1"
   const selections: unknown[] = []
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
@@ -45,8 +47,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(request.headers["cf-access-client-secret"], "fixture-access-secret")
       }
       if (request.url === `${routePrefix}/capabilities`) {
-        response.writeHead(supportsTargets ? 200 : 404, { "content-type": "application/json" })
-        response.end(JSON.stringify({ protocol: "effect-ci-remote-v1", targets: ["test", "build"] }))
+        response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json" })
+        response.end(JSON.stringify({ protocol: capabilityProtocol, targets: ["test", "build"] }))
         return
       }
       if (request.url === `${routePrefix}/runs`) {
@@ -163,6 +165,20 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
       assert.equal(dispatches, 10, "unknown goals and older hosts must not dispatch the default suite")
     }
+    supportsTargets = true
+    for (const status of [401, 403]) {
+      capabilityStatus = status
+      const denied = await run("fixture-user-token", false, "json", true, ["test", "build"])
+      assert.equal(denied.code, 3, denied.output)
+      assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
+      assert.equal(dispatches, 10, "capability authentication failure must not dispatch")
+    }
+    capabilityStatus = 200
+    capabilityProtocol = "unknown-protocol"
+    const incompatible = await run("fixture-user-token", false, "json", true, ["test", "build"])
+    assert.equal(incompatible.code, 3, incompatible.output)
+    assert.equal(JSON.parse(incompatible.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
+    assert.equal(dispatches, 10, "an incompatible capability protocol must not dispatch")
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
