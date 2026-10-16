@@ -9,6 +9,7 @@ export interface ProjectTestResult {
   readonly containers: 0
   readonly toolModuleCount: number
   readonly toolBytes: number
+  readonly toolDigest: string
   readonly tests: ReadonlyArray<{ readonly name: string; readonly passed: boolean; readonly assertions: number; readonly failure?: "assertion" | "execution" }>
 }
 export const projectTestPolicy = Object.freeze({ maxModules: 16, maxSourceBytes: 65536,

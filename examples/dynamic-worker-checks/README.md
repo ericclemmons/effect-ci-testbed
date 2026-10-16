@@ -127,20 +127,35 @@ expose a `process` global; its mere presence/absence is not the capability fence
 The tests check actual prohibited operations instead of assuming that name is
 absent. Native infinite-loop termination remains unverified.
 
-The prepared `AssertionWorkflow` adds **only** the private
+The prepared `AssertionWorkflow` adds the private
 `effect-ci-vitest-subset-checks` Workflow to this recipe's existing Worker, reusing
-its existing `LOADER`. It accepts exactly one fixed mode: `passing`,
+its existing `LOADER`. A private tail entrypoint and SQLite outcome journal retain
+only owner/test identity, platform outcome and timing metadata, at most 16
+immutable receipts per run. They never read/store logs, exceptions, request data
+or source and have no reset or public read/write route. The tail is configured by
+the host, not supplied by project/event input or exposed in the child environment.
+The Workflow accepts exactly one fixed mode: `passing`,
 `assertion-failure`, `state-isolation`, `cpu-loop`, `forbidden-import` or
 `host-filesystem`. No actor source, path, destination, identity or policy input.
 The wrapper persists the redacted report before rejecting a failed test with a
 non-retryable error; negative cases must remain errored, not be made green.
+The CPU case additionally requires a real platform `exceededCpu` tail receipt;
+an arbitrary execution error or outer timer is not CPU proof. After one fixed
+two-second settle it reads that same journal once and fails closed if unavailable.
+See the [tail outcome contract](https://developers.cloudflare.com/workers/runtime-apis/handlers/tail/),
+[fresh child / tail API](https://developers.cloudflare.com/dynamic-workers/api-reference/)
+and [custom limits](https://developers.cloudflare.com/dynamic-workers/usage/limits/).
+Each report includes the actual tool-bundle digest and byte/module counts; it is
+not a signed attestation or a claim of local/native dependency-byte equivalence.
 
 Before its first native rollout, verify exact-source CI, that the original
 formatter Workflow is idle and unchanged, that the new Workflow name is absent,
 and that the repair automation still admits only its original incident service.
 Retain a create-only intent and the existing version/exports/bindings/URLs. Build
 and deploy this private host once with `cf deploy --prebuilt`, without any secret
-file or new account permission. Preserve all older formatter histories. An
+file or new account permission. This adds one Workflow, one private tail export
+and one SQLite class, not an external destination, outbound binding, secret or
+public URL. Preserve all older formatter histories. An
 ambiguous upload or create requires reading that same operation, never retry.
 
 ```sh
@@ -150,9 +165,9 @@ cf workflows instances get owned-vitest-positive --workflow-name effect-ci-vites
 
 The other fixed modes use separate create-once owned identities. Do not dispatch
 the CPU-loop case until the native host and its fixed CPU policy are verified.
-Normal Workflow/Worker/bundler/child execution is metered; there is no Container,
+Normal Workflow/Worker/bundler/child/tail execution and journal storage are metered; there is no Container,
 paid browser provider, model call or automatic repair enrollment. Retiring this
-new Workflow requires explicit cleanup authority and retaining its negative
+new Workflow or journal requires explicit cleanup authority and retaining its negative
 histories, not deleting/restarting them for a fresh demo.
 
 ## Owned containerless deployment
@@ -186,9 +201,11 @@ examples/dynamic-worker-checks/node_modules/.bin/tsc -p examples/dynamic-worker-
 node packages/cli/src/bin.ts run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts --format=json
 ```
 
-The last command uses local Prettier, not WorkerLoader. Before deployment confirm
+The last command uses local Prettier, not WorkerLoader. For first-time formatter
+setup only, before deployment confirm
 Worker `effect-ci-source-formatter` and Workflow `effect-ci-source-formatter-checks`
-are absent. Stop if an existing resource is found; do not overwrite a shared host.
+are absent. This owned host already exists; its prepared assertion extension
+requires the guarded update described above, not another bootstrap. Do not overwrite a shared host.
 With existing authorized Workers/Workflows/WorkerLoader access:
 
 ```sh
@@ -211,8 +228,9 @@ there is no Container billing for this recipe. No new account permission, paid
 provider, GitHub App, Slack or AI integration is needed.
 
 Optional cleanup requires explicit owner authorization and retained evidence.
-In Cloudflare's dashboard remove only this owned Workflow and Worker. No bucket,
-Container or SQLite namespace is created. Never reset negative histories or remove
+In Cloudflare's dashboard remove only explicitly authorized owned resources. The
+original formatter creates no bucket, Container or SQLite namespace; the prepared
+assertion extension adds its separate immutable outcome journal. Never reset negative histories or remove
 the shared example host to hide failures. The older shared-host runs below are not relabeled.
 
 ### Fresh standalone native proof

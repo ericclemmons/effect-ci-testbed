@@ -43,6 +43,7 @@ test("bounded shared adapter executes genuine assertions, failures and fresh pro
       { name: "missing export", export: "missing" }]);
     assert.equal(r.runtime, "dynamic-worker"); assert.equal(r.containers, 0); assert.equal(r.tool, "vitest-expect-5.0.3-subset");
     assert.equal(r.toolModuleCount, 1); assert.ok(r.toolBytes > 0 && r.toolBytes <= 524288);
+    assert.match(r.toolDigest, /^[a-f0-9]{64}$/);
     assert.deepEqual(r.tests, [
       { name: "positive", passed: true, assertions: 3 },
       { name: "negative", passed: false, assertions: 1, failure: "assertion" },

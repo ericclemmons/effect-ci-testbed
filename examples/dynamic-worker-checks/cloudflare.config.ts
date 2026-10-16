@@ -4,5 +4,6 @@ export default defineConfig({ worker: { name: "effect-ci-source-formatter", entr
   observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
   env: { LOADER: bindings.workerLoader() },
   exports: { FormatterWorkflow: exports.workflow({ name: "effect-ci-source-formatter-checks" }),
-    AssertionWorkflow: exports.workflow({ name: "effect-ci-vitest-subset-checks" }) },
+    AssertionWorkflow: exports.workflow({ name: "effect-ci-vitest-subset-checks" }),
+    AssertionTail: exports.worker(), AssertionJournal: exports.durableObject({ storage: "sqlite" }) },
 } });

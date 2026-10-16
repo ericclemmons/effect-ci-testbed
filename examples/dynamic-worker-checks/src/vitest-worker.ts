@@ -3,6 +3,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 import * as Dynamic from "@effect-ci-testbed/cloudflare-dynamic-worker/tests";
 import * as Effect from "effect/Effect";
 import { assertionMode, assertionFixture } from "./vitest-fixture.ts";
+import type { AssertionJournal } from "./vitest-trace.ts";
 
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "30 seconds" } as const;
 export class AssertionWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader }, unknown> {
@@ -10,10 +11,16 @@ export class AssertionWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader
     let mode;
     try { mode = assertionMode(event.payload); }
     catch { throw new NonRetryableError("Exact owned assertion fixture mode required"); }
+    const capabilities = this.ctx.exports as unknown as {
+      AssertionTail: (options: { props: { owner: string; test: number } }) => Fetcher;
+      AssertionJournal: DurableObjectNamespace<AssertionJournal>;
+    };
     const report = await step.do("isolated:vitest-subset", once, async () => {
-      const r = await Effect.runPromise(Dynamic.makeProjectTests(this.env.LOADER).run(assertionFixture(mode)));
+      const r = await Effect.runPromise(Dynamic.makeProjectTests(this.env.LOADER, {
+        tailForTest: test => [capabilities.AssertionTail({ props: { owner: event.instanceId, test } })],
+      }).run(assertionFixture(mode)));
       return { runtime: r.runtime, tool: r.tool, containers: r.containers,
-        toolModuleCount: r.toolModuleCount, toolBytes: r.toolBytes, tests: r.tests.map(t => ({ ...t })) };
+        toolModuleCount: r.toolModuleCount, toolBytes: r.toolBytes, toolDigest: r.toolDigest, tests: r.tests.map(t => ({ ...t })) };
     });
     await step.do("fixture:verify-report", once, async () => {
       if (report.runtime !== "dynamic-worker" || report.tool !== "vitest-expect-5.0.3-subset" || report.containers !== 0 ||
@@ -29,6 +36,19 @@ export class AssertionWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader
         throw new NonRetryableError("Execution boundary must reject");
       return { mode, validated: true };
     });
+    if (mode === "cpu-loop") {
+      await step.sleep("fixture:tail-settle", "2 seconds");
+      await step.do("fixture:cpu-tail-outcome", once, async () => {
+        const value = await capabilities.AssertionJournal.getByName(event.instanceId).read(0);
+        if (!value) throw new NonRetryableError("Native CPU tail receipt unavailable");
+        try {
+          if (value.owner !== event.instanceId || value.test !== 0 || value.outcome !== "exceededCpu")
+            throw new NonRetryableError("Native CPU limit outcome required");
+          return { owner: value.owner, test: value.test, outcome: value.outcome, cpuTime: value.cpuTime,
+            wallTime: value.wallTime, eventTimestamp: value.eventTimestamp };
+        } finally { value[Symbol.dispose]?.(); }
+      });
+    }
     // Retain the redacted report first; failing tests must not make a green CI run.
     if (report.tests.some(t => !t.passed)) throw new NonRetryableError("Owned isolated project test failed");
     return { mode, report, containers: 0 };

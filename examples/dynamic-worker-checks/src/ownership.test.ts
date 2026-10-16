@@ -10,9 +10,12 @@ test("formatter accepts only owned data fixtures, never actor code or capabiliti
 });
 test("formatter owns WorkerLoader configuration and fixture source without Containers", async () => {
   const root = new URL("../", import.meta.url);
-  for (const file of ["src/worker.ts", "cloudflare.config.ts", "vite.config.ts"]) assert.doesNotMatch(await readFile(new URL(file, root), "utf8"), /(?:\.\.\/)+(?:apps|examples)\//);
+  for (const file of ["src/worker.ts", "src/vitest-worker.ts", "src/vitest-trace.ts", "cloudflare.config.ts", "vite.config.ts"]) assert.doesNotMatch(await readFile(new URL(file, root), "utf8"), /(?:\.\.\/)+(?:apps|examples)\//);
   const config = await readFile(new URL("cloudflare.config.ts", root), "utf8");
-  assert.match(config, /LOADER: bindings.workerLoader\(\)/); assert.doesNotMatch(config, /defineContainer|durableObject|dockerfile/);
+  assert.match(config, /LOADER: bindings.workerLoader\(\)/); assert.doesNotMatch(config, /defineContainer|dockerfile/);
+  assert.equal((config.match(/exports\.durableObject\(/g) ?? []).length, 1);
+  assert.match(config, /AssertionJournal: exports\.durableObject\(\{ storage: "sqlite" \}\)/,
+    "Only the bounded immutable outcome journal is added, never a project workspace");
   assert.doesNotMatch(await readFile(new URL("tsconfig.json", root), "utf8"), /"extends"/);
   assert.match(await readFile(new URL("src/worker.ts", root), "utf8"), /app\/src\/index.ts\?raw/);
 });
