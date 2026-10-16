@@ -322,7 +322,10 @@ interface ParsedInvocation {
   readonly targets: ReadonlyArray<string>
 }
 
-const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
+const parseInvocation = (
+  args: ReadonlyArray<string>,
+  onFormat?: (format: OutputFormat) => void,
+): ParsedInvocation => {
   let parsed: ReturnType<typeof parseArgs>
 
   try {
@@ -355,6 +358,9 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
       `Unknown output format: ${format}. Expected text, json, or mermaid.`,
     )
   }
+
+  // Retain an explicit output contract even if later semantic validation fails.
+  onFormat?.(format)
 
   if (parsed.values.local && parsed.values.remote) {
     throw new CliFailure(
@@ -772,7 +778,7 @@ export const main = async (
   let format: OutputFormat = detectedFormat()
 
   try {
-    const invocation = parseInvocation(args)
+    const invocation = parseInvocation(args, value => { format = value })
     format = invocation.format
 
     if (invocation.help) {
@@ -892,12 +898,13 @@ export const runCli = async (
   // Discovery/help must never run the workflow or initialize a project.
   // Explicit `run` remains the entrypoint for executing the default workflow.
   if (args.length === 0) args = ["--help"]
+  let format = detectedFormat()
   try {
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
     if (!explicit && !findWorkflow(cwd)) {
-      const invocation = parseInvocation(args)
+      const invocation = parseInvocation(args, value => { format = value })
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
@@ -924,7 +931,12 @@ export const runCli = async (
     process.exitCode = await main(loaded.program, loaded.args, loaded.path)
   } catch (error) {
     const failure = classifyFailure(error)
-    console.error(`Error [${failure.code}]: ${failure.message}`)
+    if (format === "json") {
+      printJson({ schemaVersion: 1, ok: false, error: {
+        code: failure.code, message: failure.message,
+        ...(failure.details === undefined ? {} : { details: failure.details }),
+      } })
+    } else console.error(`Error [${failure.code}]: ${failure.message}`)
     process.exitCode = failure.exitCode
   }
 }
