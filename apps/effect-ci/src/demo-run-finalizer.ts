@@ -20,7 +20,7 @@ export async function finalizeDemoRun(context: HostFinalization<unknown>) {
   }
   // A preview has no release candidate, lease, traffic write or approval window.
   const text = `Preview published: <${url}|open checked build>. Production is unchanged.`;
-  await context.publish("preview-published", { text, blocks: [
+  await context.observe?.("preview-published", { text, blocks: [
     { type: "section", text: { type: "mrkdwn", text } },
   ] });
 }

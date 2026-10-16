@@ -17,7 +17,8 @@ test("preview publication keeps a link on the same card without accessing releas
     get environment() { throw Error("Preview must not request a production binding"); },
     get step() { throw Error("Preview must not request a release checkpoint"); },
     get exports() { throw Error("Preview must not request approvals"); },
-    publish: async (key: string) => { published.push(key); },
+    observe: async (key: string) => { published.push(key); },
+    get publish() { throw Error("Non-interactive preview must not require authoritative publication"); },
   } as unknown as HostFinalization<unknown>;
   await finalizeDemoRun(context);
   assert.deepEqual(published, ["preview-published"]);
@@ -25,4 +26,7 @@ test("preview publication keeps a link on the same card without accessing releas
   const foreign = Object.create(context);
   Object.defineProperty(foreign, "value", { value: { revision, digest, url: "https://foreign.example/" } });
   await assert.rejects(finalizeDemoRun(foreign));
+  const noDisplay = Object.create(context);
+  Object.defineProperty(noDisplay, "observe", { value: undefined });
+  await finalizeDemoRun(noDisplay);
 });

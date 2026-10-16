@@ -1420,6 +1420,26 @@ Hosted CI installs the [structured WOBS logger](../../packages/cloudflare/src/wo
 Effect logs retain workflow, step and retry-attempt context; terminal failures
 still propagate. These diagnostics are not HMD health denominators.
 
+Non-interactive preview links and post-decision settled frames use the optional
+observational path. Their delivery failure must not undo a valid build or release
+decision. A real local Workflow/SQLite/RPC regression simulates failure of the
+final known-parent/known-reply updates after four fake local review decisions:
+one commit, no rollback, no replacement post. That is not a native Slack outage
+or independent human review. Review capabilities, identity validation, required
+state persistence, deployment mutation and review deadlines remain authoritative;
+missing review delivery is never approval. The remaining review-delivery and
+legacy HMD-lab policy audit is tracked separately in #167.
+
+The demo's review presentation distinguishes typed transport/checkpoint
+unavailability from invalid message identity or required state failures. Only
+the former leaves the existing five-minute decision wait in control: no repost,
+no inferred acceptance, and the normal timeout recovery still applies. Invalid
+parent/reply identity remains a hard failure. Local workerd/Workflow/SQLite tests
+inject a failed review delivery and a simulated deadline (not five minutes of
+native elapsed time), plus a mismatched reply: neither can commit; both restore
+the previous allocation. The legacy HMD lab and native outage proof remain
+separate unfinished work; these tests do not claim independent human review.
+
 The native action adapter also distinguishes an
 [uncertain checkpoint acknowledgement](../../packages/cloudflare/src/action-checkpoints.md)
 from an unapplied external operation. Reconcile the exact retained artifact;
