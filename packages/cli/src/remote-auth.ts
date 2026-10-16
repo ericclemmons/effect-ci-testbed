@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { remoteOrigin } from "./remote-protocol.ts"
 
-export const remoteProfilePath = () => join(homedir(), ".config", "effect-ci", "remotes.json")
+export const remoteProfilePath = () => process.env.EFFECT_CI_REMOTE_PROFILE || join(homedir(), ".config", "effect-ci", "remotes.json")
 
 /** User-owned, private machine configuration, never checked-out project code. */
 export const readRemoteProfile = (repository: string, path = remoteProfilePath()): {

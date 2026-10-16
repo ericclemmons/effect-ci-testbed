@@ -37,7 +37,7 @@ test("fresh demo endpoint is public config; Access is not an API token", () => {
     /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
   );
   assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
-  assert.match(guide, /Access login alone does not\nprovide that API token/);
+  assert.match(guide, /Access login\nalone does not provide that API token/);
 });
 
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {

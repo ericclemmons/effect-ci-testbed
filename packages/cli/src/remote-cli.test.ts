@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, execFileSync } from "node:child_process"
-import { mkdtemp, writeFile, rm } from "node:fs/promises"
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises"
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -10,6 +10,7 @@ import { encodeCommandDiagnostics } from "../../ci/src/command-diagnostics.ts"
 
 test("remote CLI authenticates dispatch and tails logs; dirty input cannot silently become HEAD", async () => {
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-remote-"))
+  const workstationHome = await mkdtemp(join(tmpdir(), "effect-ci-private-home-"))
   const ci = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
   const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
   const server = createServer()
@@ -80,7 +81,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const run = (userToken = "", explicit = true, format = "text", projectConfig = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, "run", "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
+        env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
@@ -133,7 +134,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(missingToken.code, 3, missingToken.output)
     assert.equal(JSON.parse(missingToken.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
     assert.equal(dispatches, 7, "Access alone must not dispatch or imply API authentication")
-    await writeFile(join(directory, ".env.local"), "EFFECT_CI_REMOTE_TOKEN=fixture-api-token\n", { mode: 0o600 })
+    const profileDirectory = join(workstationHome, ".config", "effect-ci")
+    await mkdir(profileDirectory, { recursive: true, mode: 0o700 })
+    await writeFile(join(profileDirectory, "remotes.json"), JSON.stringify({ version: 1, remotes: [{
+      repository: "https://github.com/example/project.git", url: origin + routePrefix, token: "fixture-api-token",
+    }] }), { mode: 0o600 })
     const configured = await run("fixture-user-token", false, "text", true)
     assert.equal(configured.code, 0, configured.output)
     assert.match(configured.output, /Workflow completed/)
@@ -145,5 +150,6 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })
+    await rm(workstationHome, { recursive: true, force: true })
   }
 })

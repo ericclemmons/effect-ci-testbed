@@ -219,7 +219,7 @@ const builtInRemote = async (
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      "Remote endpoint found, but its Effect CI API token is missing. Put EFFECT_CI_REMOTE_TOKEN in a private .env.local (mode 600), your shell, or your private remote profile. Cloudflare Access login is separate; do not use a deployment token.",
+      "Remote endpoint found, but its Effect CI API token is missing. Configure your private Effect CI remote profile, or set EFFECT_CI_REMOTE_TOKEN only for this CLI process. Keep credentials out of project env files. Cloudflare Access login is separate; do not use a deployment token.",
     )
   }
 
