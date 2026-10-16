@@ -140,7 +140,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
           timestamp: timestamp(),
         });
         status(observation.phase, "complete");
-        await context.publish(`settled-${observation.phase}`, card.render({ onlyStep: `Release ${observation.phase}%` }), `Release ${observation.phase}%`);
+        await context.observe?.(`settled-${observation.phase}`, card.render({ onlyStep: `Release ${observation.phase}%` }), `Release ${observation.phase}%`);
       },
     });
   } finally {

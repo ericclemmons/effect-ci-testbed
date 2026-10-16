@@ -1419,3 +1419,13 @@ management remain follow-up slices.
 Hosted CI installs the [structured WOBS logger](../../packages/cloudflare/src/wobs-logging.md).
 Effect logs retain workflow, step and retry-attempt context; terminal failures
 still propagate. These diagnostics are not HMD health denominators.
+
+Non-interactive preview links and post-decision settled frames use the optional
+observational path. Their delivery failure must not undo a valid build or release
+decision. A real local Workflow/SQLite/RPC regression simulates failure of the
+final known-parent/known-reply updates after four fake local review decisions:
+one commit, no rollback, no replacement post. That is not a native Slack outage
+or independent human review. Review capabilities, identity validation, required
+state persistence, deployment mutation and review deadlines remain authoritative;
+missing review delivery is never approval. The remaining review-delivery and
+legacy HMD-lab policy audit is tracked separately in #167.
