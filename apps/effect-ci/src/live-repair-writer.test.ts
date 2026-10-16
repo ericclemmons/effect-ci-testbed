@@ -59,7 +59,8 @@ test(
     const pr = api("pulls/2"),
       check = api("check-runs/115785356860"),
       files = api("pulls/2/files");
-    assert.equal(pr.user.login, "effect-ci-testbed[bot]");
+    assert.equal(pr.user.id, 334321206);
+    assert.equal(pr.user.type, "Bot");
     assert.equal(pr.state, "open");
     assert.equal(pr.merged, false);
     assert.equal(pr.head.sha, expected.commit);

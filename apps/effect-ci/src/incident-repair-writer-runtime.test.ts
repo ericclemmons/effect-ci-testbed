@@ -66,7 +66,7 @@ test(
       if(path==="/pulls"&&init.method==="GET")return Response.json(pr?[pr]:[]);
       if(path==="/pulls"&&init.method==="POST"){
         if(pr||verified!==1||body.base!=="demo/friday-repair"||body.head!=="codex/repair-"+INCIDENT_REPAIR_RUN)throw new Error("PR before verification or duplicate");
-        pr={number:3,state:"open",title:body.title,body:body.body,user:{login:"effect-ci-testbed[bot]"},head:{ref:body.head,sha:candidate},base:{ref:body.base}};return Response.json(pr);
+        pr={number:3,state:"open",title:body.title,body:body.body,user:{login:"effect-ci[bot]",id:334321206,type:"Bot"},head:{ref:body.head,sha:candidate},base:{ref:body.base}};return Response.json(pr);
       }
       throw new Error("Unexpected fixed API path");
     };
