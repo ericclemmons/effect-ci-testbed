@@ -45,6 +45,39 @@ must be reconciled with the same revision, never a new identity to evade a confl
 Exactly matching same-revision bytes replay; changed bytes for an existing revision
 are rejected. There is no mutable `latest` route.
 
+### Private publication diagnosis
+
+`SiteInspectionWorkflow` is a fixed, read-only inspection of the same registry.
+Its empty payload cannot select source, SQL, destinations or policy. It returns
+only revision count, the host-owned retention capacity, and presence of the fixed
+released `105ce02…` and failed-preview `4ae41a2…` revisions—never asset bodies.
+It adds one private Workflow, no binding, secret or public route. Its retained
+[native inspection](./PUBLICATION-DIAGNOSIS.md) found the original registry full
+at 32/32, with the released revision present and failed preview absent. The new
+256-revision retention policy also has native metadata readback preserving all
+32 old records. Metadata is not publication proof: see
+[publication acceptance and current status](https://github.com/ericclemmons/effect-ci-testbed/pull/311)
+for the separate source-triggered run and byte verification.
+
+```sh
+cf workflows instances create effect-ci-demo-site-inspection --body '{"instance_id":"owned-site-inspection-20261016-1","params":{}}'
+cf workflows instances get owned-site-inspection-20261016-1 --workflow-name effect-ci-demo-site-inspection
+```
+
+Create it once only after its reviewed host is deployed. An ambiguous acknowledgement
+requires reading that same ID, not retrying. Inspection uses ordinary metered
+Workflow/DO reads, with zero retries and a 15-second checkpoint deadline. It does
+not publish, evict, reset storage, restart a failed run or shift production traffic.
+Retain its history; removing the diagnostic Workflow needs deliberate cleanup
+authority and must leave the existing registry and immutable URLs intact.
+
+From the repository root, read the retained before/after inspections without creating or restarting anything:
+
+```sh
+LIVE_DEMO_SITE_CAPACITY=1 CF_BIN=apps/effect-ci/node_modules/.bin/cf \
+  node --test apps/demo-site/src/live-capacity.test.ts
+```
+
 Open the returned `/r/<commit>/<asset-digest>/index.html` URL in the browser.
 The release message is visible immediately. Click **Test JavaScript** to check
 the built browser code.
@@ -63,8 +96,12 @@ render without allowing arbitrary inline styles, inline scripts, style attribute
 network requests or `unsafe-inline`. Asset bodies/digests are not rewritten.
 
 The fixed file allowlist is `index.html`, `app.js`, `message.js`, each nonempty and
-at most256KiB, at most512KiB total. The registry accepts at most32 immutable
-revisions; it never evicts or overwrites one. These are UTF-8 text assets, not a
+at most256KiB, at most512KiB total. The registry accepts at most256 immutable
+revisions; it never evicts or overwrites one. This bounds logical asset payloads
+at 128MiB plus metadata/storage overhead; actual storage remains metered. The
+previous capacity of 32 exhausted during normal preview pushes; the increase
+retains every old revision and does not grant any actor a configurable quota.
+These are UTF-8 text assets, not a
 generic binary download service. Worker requests, DO compute/storage and the
 existing native build containers remain metered; there is no inference or paid
 browser provider here. GET recomputes stored byte identities before serving.
@@ -78,7 +115,10 @@ operator cleanup decision; no automatic destructive cleanup is provided.
 
 Local tests use real workerd/SQLite/RPC and fake small assets to cover concurrent
 publication, same-revision conflict, persisted reload, method/path/digest rejection
-and response bytes. They are not native Vite-build or live-browser evidence.
+and response bytes. The capacity regression admits the 33rd revision without
+eviction, races the last slots at 256, rejects overflow/conflicts and preserves
+old receipts across reload. These local tests are not native Vite-build or
+live-browser evidence.
 
 Native instance `14c8ceb0-840f-4f39-a565-a97cc9b76c71` completed on source
 `b302e8cb0965cdbc7da2ab455d696385e782abf7`: all ten actions passed, nine real
