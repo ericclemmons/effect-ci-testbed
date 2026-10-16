@@ -2,6 +2,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import manifest from "../../../examples/demo/package.json" with { type: "json" };
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import * as Effect from "effect/Effect";
+import { demoRemoteSelection } from "./demo-policy.ts";
 import { demoReleaseError, demoPublicationError } from "./demo-release-error.ts";
 import {
   demoCandidatePolicy,
@@ -38,7 +39,8 @@ export function makeDemoProgram(publisher?: {
   revision: string;
   publish: (assets: DemoAssets) => Promise<{ revision: string; digest: string; url: string }>;
   prepare?: (revision: string, digest: string) => Promise<DemoCandidateReceipt>;
-}) {
+}, targets?: ReadonlyArray<string>) {
+  const selection = targets === undefined ? undefined : demoRemoteSelection({ targets });
   const publish = CI.action<{ revision: string; digest: string; url: string }>(
     "publish site",
     function* () {
@@ -97,6 +99,11 @@ export function makeDemoProgram(publisher?: {
   return {
     ...inferred,
     workflow: CI.workflow(manifest.name, function* () {
+      if (selection) {
+        // Explicit goals are computation-only. Do not reach the default suite,
+        // syntax policy, publisher, candidate creation or release finalizer.
+        return yield* CI.parallel(selection.map(target => inferred.actions[target]!()));
+      }
       yield* syntax();
       yield* inferred.workflow.effect;
       return publisher?.prepare

@@ -5,7 +5,7 @@
 One app, one rehearsal branch. Make a change, run it, push it, inspect Slack.
 Branch pushes publish previews; main releases through the Slack review.
 
-## 0. Build the app
+## 0. Set up once
 
 > Use this repository and its hosted integration. No new repo or worktree.
 
@@ -16,34 +16,27 @@ pnpm install
 pnpm build
 ```
 
-Use Node 24.11+ or Node 26+. Run `pnpm dev` to edit the app.
+Use Node 24.11+ or Node 26+. Stay in `examples/demo` and prepare this shell:
 
-<details>
-<summary>Prepare this repo's unpublished CLI for the walkthrough</summary>
+```sh
+export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
+cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
+cf-ci doctor --remote
+```
 
-Stay in `examples/demo`. Create an ordinary branch if you are on `main`, and add
-the workspace CLI to this shell:
+If you are on `main`, create a rehearsal branch; otherwise keep your branch:
 
 ```sh
 git switch -c demo/rehearsal
-export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
 ```
 
-Already on your own branch? Keep it. GitHub pushes use your normal GitHub login;
-they do not require Cloudflare Access. Only direct `cf-ci run --remote` calls need:
+**Finish remote setup before presenting.** `doctor` checks authentication and host
+capabilities without starting work. The URL is already in `.env`. The current host
+also requires your private API profile at `~/.config/effect-ci/remotes.json` (mode
+`600`). Access login alone does not provide that API token. Keep credentials out
+of project env files; never use a deployment token.
 
-```sh
-cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
-```
-
-The public worker URL is checked into `.env`; `.env.local` may override the URL.
-On a new computer, the existing API credential belongs in your private Effect CI
-remote profile—not either project env file, which Vite can read. Access login
-alone does not provide that API token. Never use a Cloudflare deployment token.
-The default profile is `~/.config/effect-ci/remotes.json` (mode `600`); a CLI-only
-`EFFECT_CI_REMOTE_PROFILE` can select another private file.
-
-</details>
+GitHub pushes use your normal GitHub login, not Access. Run `pnpm dev` to edit the app.
 
 ## 1. Discover the project
 
@@ -174,10 +167,22 @@ branch's name). Subsequent pushes are just `git push`; never redirect to a deplo
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
 The parent card shows status and the preview link. Its thread holds step output.
+Failed command replies include bounded, redacted stdout/stderr and the exit code.
 Click **Details on that Slack parent card** for the same Cloudflare Workflow run.
 
 The host currently selects its fixed demo program, not uploaded `workflow.ts`.
 Local authored goals and the hosted program are separate until remote parity lands.
+
+### Select hosted goals
+
+```sh
+cf-ci run test build --remote
+```
+
+Prepared, not yet deployed: selected hosted goals share installation and never
+publish or release. The CLI checks host capabilities before dispatch; an older
+host rejects the command without starting the default workflow. Without targets,
+`cf-ci run --remote` runs the hosted suite and publishes a preview.
 
 ## 8. Verify previously checked work
 
