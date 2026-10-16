@@ -185,6 +185,7 @@ node --test ../../packages/cloudflare/src/static-assets-source.test.ts \
   ../../apps/effect-ci/src/static-assets-read.test.ts \
   ../../apps/effect-ci/src/static-assets-journal-runtime.test.ts
 node --test src/runtime.test.ts
+VERIFY_STATIC_BUILD_BUNDLE=1 node --test src/compiled-runtime.test.ts
 cf-ci plan --workflow .cloudflare/ci/workflow.ts
 ```
 
@@ -195,6 +196,10 @@ bytes, token revocation and redaction. They are **not** native deployment proof.
 The build runtime tests use real local WorkerLoader children and SQLite, with
 mocked Git/API responses and locally prepared compiler modules. They do not
 prove hosted compiler preparation, account limits or a native Assets upload.
+The opt-in compiled-broker test builds and loads the actual production bundle,
+including worker-bundler/WASM and public pinned compiler dependencies, with no
+Git reader or deployment credential. It verifies local preparation and the
+eight isolation checks; it is not a native publication.
 
 ## Cost and cleanup
 

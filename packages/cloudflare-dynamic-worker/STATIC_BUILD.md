@@ -43,6 +43,7 @@ argument.
 ```sh
 pnpm exec node --test packages/cloudflare-dynamic-worker/src/static-build*.test.ts
 pnpm --filter @effect-ci-testbed/cloudflare-dynamic-worker check
+VERIFY_STATIC_BUILD_BUNDLE=1 pnpm exec node --test examples/static-assets-source/src/compiled-runtime.test.ts
 ```
 
 The actual local WorkerLoader test bundles only the pinned compiler with esbuild
@@ -54,3 +55,13 @@ can exist without granting host process capabilities; its name alone is not an
 isolation test. Negative source/output tests reject oversize data, malformed
 output and redacted compiler failure. This does not prove native worker-bundler
 preparation, resource enforcement or a served-site deployment.
+
+The opt-in compiled-broker test additionally exercises real worker-bundler/WASM
+preparation in local workerd, with no source reader or deployment credential.
+It downloads the fixed public compiler dependencies and verifies all eight
+closed isolation checks. This caught an unresolved `ts-interface-checker`
+import: its legacy package `main` omits `.js`, which this bundler does not
+resolve. The host pins version 0.1.13 and provides one fixed virtual alias to its
+explicit `dist/index.js`; no project alias, Node child compatibility or broader
+capability is introduced. CI runs this test explicitly. It still does not prove
+hosted execution or publication.
