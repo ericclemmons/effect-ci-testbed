@@ -38,3 +38,13 @@ test("missing, empty, symlinked and oversized build outputs reject", () => {
   symlinkSync(join(fixture(), "dist"), join(link, "dist"));
   assert.throws(() => verifyBuild(link));
 });
+
+test("local output verification enforces the deployed publisher's 256KiB per-file and 512KiB site limits", () => {
+  const oversized = fixture();
+  writeFileSync(join(oversized, "dist/app.js"), "x".repeat(256 * 1024 + 1));
+  assert.throws(() => verifyBuild(oversized));
+  const total = fixture();
+  for (const name of ["index.html", "app.js", "message.js"])
+    writeFileSync(join(total, "dist", name), "x".repeat(180 * 1024));
+  assert.throws(() => verifyBuild(total));
+});
