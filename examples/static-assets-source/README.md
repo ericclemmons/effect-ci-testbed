@@ -13,9 +13,9 @@ the [native proof](./verification/native-20261016.md). Local full publication is
 still planned; the Local tests below do not grant that matrix cell.
 
 The additional `build` mode compiles a fixed TypeScript fixture in a fresh
-Dynamic Worker before using the same publication journal. **Local verification
-passes; native build acceptance is pending.** This is a bounded TypeScript
-transform, not a Vite build or arbitrary package installation.
+Dynamic Worker before using the same publication journal. **Native build and
+browser acceptance passed.** See the [actual build proof](./verification/native-build-20261016.md).
+This is a bounded TypeScript transform, not a Vite build or arbitrary package installation.
 
 ## Bounded build
 
@@ -57,9 +57,11 @@ Only the trusted publisher receives the deployment credential; the compiler
 receives source text only. A completed receipt binds raw source, compiler and
 emitted bytes, but digests alone do not authenticate a Git commit.
 
-After a successful native build, open the same public fixture and click
-**Verify compiled JavaScript**. Until native acceptance is recorded, the live
-URL and screenshot below remain evidence for the earlier **no-build** fixture.
+Open the [built fixture](https://effect-ci-static-assets-demo.ericclemmons.workers.dev/)
+and click **Verify compiled JavaScript**. The live URL now serves this build;
+the older no-build screenshot below remains historical evidence, not its current UI.
+
+![Actual browser running the emitted JavaScript](./verification/published/static-build-36d7a3b.png)
 
 ## Dedicated resources and authority
 
@@ -124,7 +126,9 @@ cf workflows instances create effect-ci-static-assets-publish --body \
 Use a pushed `ericclemmons/effect-ci-testbed` commit containing this directory's
 three `site/` files. The only public target is
 [the live Static Assets fixture](https://effect-ci-static-assets-demo.ericclemmons.workers.dev/).
-Open it and click **Verify interaction**.
+In `publish` mode its no-build fixture has **Verify interaction**. The current
+live `build` fixture instead has **Verify compiled JavaScript**; do not republish
+the old fixture just to reproduce its historical screenshot.
 
 ![Actual built-in browser after clicking Verify interaction](./verification/published/static-assets-5ba5791.png)
 
@@ -216,6 +220,8 @@ the committed Vite release or historical incidents.
 **Video:** Pending — no native feature clip yet.
 
 **Measured results:** [Actual native run, preserved failure/recovery and served-byte proof](./verification/native-20261016.md).
+The [native TypeScript build](./verification/native-build-20261016.md) additionally
+records compiler isolation, immutable provenance and browser behavior.
 
 Use the [proof-page contract](../PROOF-PAGES.md). Local fake-API timing is not a
 deployment benchmark, and the existing DO/Dynamic Worker site is not evidence

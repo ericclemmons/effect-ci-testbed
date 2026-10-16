@@ -67,9 +67,10 @@ The matrix labels proven paths and planned paths separately. Reading source in a
 or building one artifact in an isolate does not classify the rest of the pipeline.
 The existing DO-source recipe still materializes its files into a Container.
 
-The next optimization path is [static files with no build](./static-assets-source), then **a static build
-in an isolate**. A trusted host retrieves commit-pinned GitHub files; a DO stores
-immutable revisions and deployment receipts. For the second recipe, a bounded
+The [Static Assets recipe](./static-assets-source) has native proof for both
+**static files with no build** and **a bounded TypeScript build in an isolate**.
+A trusted host retrieves commit-pinned GitHub files; a DO stores
+immutable revisions and deployment receipts. In build mode, a bounded
 Dynamic Worker transforms source into assets without receiving deployment secrets.
 A fixed-target uploader validates outputs and uses the static-assets deployment API.
 The standalone [containerless site](./containerless-site) explores another path:
@@ -78,7 +79,7 @@ through a Dynamic Worker. Its recorded hosted run verifies actual GitHub source,
 all served assets and browser counter behavior. It does not claim the direct
 Static Assets upload path or arbitrary Vite compatibility.
 Running `cf` locally to dispatch that pipeline is distinct from running the CLI in
-a DO; unrestricted Node tooling and lifecycle scripts are not implied by this plan.
+a DO; unrestricted Node tooling and lifecycle scripts are not implied by these proofs.
 
 ## Toolchains and container images
 
