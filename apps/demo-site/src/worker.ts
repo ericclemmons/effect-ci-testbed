@@ -70,7 +70,7 @@ export default {
     try {
       const site = await registry(ctx).read(match[1]!);
       if (!site || site.digest !== match[2]) return new Response("Not found", { status: 404 });
-      return siteResponse(site, match[3]!, request.method === "HEAD");
+      return await siteResponse(site, match[3]!, request.method === "HEAD");
     } catch {
       return new Response("Site unavailable", { status: 503 });
     }

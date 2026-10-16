@@ -44,6 +44,10 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
       candidate: value,
       broker,
       step,
+      settling: async (phase) => {
+        status(phase, "running");
+        await context.observe?.(`settling-${phase}`, card.render({ onlyStep: `Release ${phase}%` }), `Release ${phase}%`);
+      },
       review: async (observation, history) => {
         status(observation.phase, "running");
         const capability = await step.do(

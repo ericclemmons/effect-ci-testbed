@@ -135,6 +135,25 @@ test("phase observation waits for a bounded data-plane settling interval, withou
   assert.equal(result.releaseCommitted, true);
   assert.equal(waits, 4);
 });
+test("phase presentation follows the actual promotion before settling; observer failure is not authority", async () => {
+  const h = harness(), phases: number[] = [];
+  h.step.sleep = async (name, duration) => {
+    assert.equal(duration, "2 minutes");
+    assert.equal(phases.at(-1), Number(name.split("-").at(-1)));
+  };
+  const result = await runReviewedRelease({
+    owner: "stage-presentation", candidate, broker: h.broker, step: h.step, probe: h.probe,
+    settling: async phase => {
+      assert.equal(h.state().allocation.versions.find(v => v.version === version)?.percentage, phase);
+      phases.push(phase);
+      throw Error("Fake observational delivery failure");
+    },
+    review: async o => ({snapshot:o.snapshot,decision:"approved",reason:"FAKE test risk acceptance"}),
+  });
+  assert.deepEqual(phases,[10,25,75,100]);
+  assert.equal(result.releaseCommitted,true);
+  assert.equal(h.state().writes,4);
+});
 test("reject, stale decision, missing attribution and regression restore the captured prior allocation", async () => {
   for (const mode of ["reject", "stale", "missing", "zero-candidate", "regression", "timeout"]) {
     const h = harness();
