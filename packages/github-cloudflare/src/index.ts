@@ -5,6 +5,8 @@ import * as Effect from "effect/Effect"
 import { hasNotificationChannels, sendNotification, type NotificationChannels, type NotificationResult } from "./notifications.ts"
 import { RunCard, type SlackBlock } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
+import { NotificationDeliveryUnavailable } from "./notification-delivery.ts"
+export { NotificationDeliveryUnavailable, deliverReviewPresentation } from "./notification-delivery.ts"
 import {
   WorkflowEntrypoint,
   type WorkflowEvent,
@@ -232,7 +234,7 @@ export const workflowEntrypoint = <A>(
         retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds",
       }, deliver))
     const notify = (key: string, update: () => boolean, override?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, required = false, threadKey?: string): Promise<void> => {
-      notificationQueue = notificationQueue.then(async () => {
+      const delivery = notificationQueue.then(async () => {
         if (!update()) return
         const deliveries = await Effect.runPromise(Effect.gen(function*() {
           const service = yield* Notifications
@@ -243,7 +245,7 @@ export const workflowEntrypoint = <A>(
         }
         if (!hasNotificationChannels(channels)) return
         if (presentationBlocked) {
-          if (required) throw new Error("Host finalization notification needs reconciliation")
+          if (required) throw new NotificationDeliveryUnavailable()
           return
         }
         const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
@@ -251,7 +253,7 @@ export const workflowEntrypoint = <A>(
           try { return await step.do(name, policy, deliver) }
           catch (error) {
             presentationBlocked = true
-            if (required) throw error
+            if (required) throw new NotificationDeliveryUnavailable()
             // This receipt is observational, not approval or business authority.
             // Do not expose upstream errors, which may contain webhook secrets.
             try {
@@ -282,7 +284,7 @@ export const workflowEntrypoint = <A>(
         slackMessageTs = result.slackMessageTs ?? slackMessageTs
         discordMessageId = result.discordMessageId ?? discordMessageId
 
-        if (result.failed && required) throw new Error("Host finalization notification needs reconciliation")
+        if (result.failed && required) throw new NotificationDeliveryUnavailable()
         if (result.failed) {
           // A root with no acknowledged identity is not safe to recreate later.
           if ((channels.SLACK_BOT_TOKEN && !slackMessageTs) ||
@@ -291,7 +293,7 @@ export const workflowEntrypoint = <A>(
         }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
-          const failed = () => { blockedThreads.add(threadKey); if (required) throw new Error("Host finalization thread needs reconciliation") }
+          const failed = () => { blockedThreads.add(threadKey); if (required) throw new NotificationDeliveryUnavailable() }
           if (blockedThreads.has(threadKey)) { failed(); return }
           const detail = override ?? card.render({ onlyStep: threadKey })
           const slack = { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! }
@@ -302,17 +304,29 @@ export const workflowEntrypoint = <A>(
             const posted = await deliveryStep(`notification:${key}:thread-post`, () => sendNotification(slack,
               `Preparing ${threadKey}`, fetch, undefined, [{ type: "section", text: { type: "plain_text", text: `Preparing ${threadKey}`.slice(0, 3000) } }],
               undefined, { slackThreadTs: slackMessageTs! }))
+            if (posted?.slackMessageTs === slackMessageTs && required)
+              throw new Error("Host finalization thread identity mismatch")
             if (!posted || posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
             ts = posted.slackMessageTs
             threadMessages.set(threadKey, ts)
           }
           const updated = await deliveryStep(`notification:${key}:thread-update`, () => sendNotification(slack,
             detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
+          if (updated && !updated.failed && updated.slackMessageTs !== ts && required)
+            throw new Error("Host finalization thread identity mismatch")
           if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
         }
       })
 
-      return notificationQueue
+      // Only transport unavailability releases the presentation queue. Validation,
+      // identity and required persistence failures remain poisonous/authoritative.
+      notificationQueue = delivery.catch((error) => {
+        if (!(error instanceof NotificationDeliveryUnavailable)) throw error
+      })
+      // The caller awaits delivery; retain a poisoned queue for later callers
+      // without creating a second unhandled rejection for the same failure.
+      void notificationQueue.catch(() => undefined)
+      return delivery
     }
 
     let deferredCompletion: Extract<CI.RuntimeEvent, { type: "workflow.completed" }> | undefined
@@ -384,13 +398,13 @@ export const workflowEntrypoint = <A>(
           },
           publish: (key, presentation, threadKey) => {
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
+            if (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) throw new Error("Invalid host thread key")
             // Never create a replacement review card after a lost/failed build-card ACK.
             if (!hasNotificationChannels(channels) ||
                 presentationBlocked ||
                 (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs) ||
                 (channels.SLACK_WEBHOOK_URL && !(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)))
-              throw new Error("Host finalization requires an acknowledged maintained notification")
-            if (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) throw new Error("Invalid host thread key")
+              throw new NotificationDeliveryUnavailable()
             return notify(`host-finalize:custom:${key}`, () => true, presentation, true, threadKey ?? key)
           },
         })

@@ -1,4 +1,5 @@
 import type { HostFinalization } from "@effect-ci-testbed/github-cloudflare";
+import { deliverReviewPresentation } from "@effect-ci-testbed/github-cloudflare/notification-delivery";
 import {
   runReviewedRelease,
   type ReviewedReleaseBroker,
@@ -83,7 +84,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
           },
           publish: async () => {
             const frame = card.render({ onlyStep: `Release ${observation.phase}%` });
-            await context.publish(`review-${observation.phase}`, {
+            await deliverReviewPresentation(() => context.publish(`review-${observation.phase}`, {
               text: frame.text,
               blocks: [
                 ...frame.blocks,
@@ -107,7 +108,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
                   ],
                 },
               ],
-            }, `Release ${observation.phase}%`);
+            }, `Release ${observation.phase}%`));
           },
         });
         await graph({ type: "observed", observations: history });
