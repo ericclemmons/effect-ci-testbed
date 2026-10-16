@@ -60,6 +60,8 @@ test(
       check = api("check-runs/115785356860"),
       files = api("pulls/2/files");
     assert.equal(pr.user.login, "effect-ci-testbed[bot]");
+    assert.equal(pr.state, "open");
+    assert.equal(pr.merged, false);
     assert.equal(pr.head.sha, expected.commit);
     assert.equal(pr.head.ref, "codex/repair-friday-native-repair-20261014-1");
     assert.equal(pr.base.ref, "demo/friday-repair");
