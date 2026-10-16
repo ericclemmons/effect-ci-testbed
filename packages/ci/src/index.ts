@@ -895,19 +895,20 @@ export const JavaScript = (
     const standalonePnpm = name === "pnpm" && !(yield* workspace.exists("pnpm-workspace.yaml"))
     const executable = name === "pnpm" && standalonePnpm ? "pnpm --ignore-workspace" : name
     // Changing a local pnpm store rewrites node_modules metadata and makes the
-    // user's next ordinary pnpm command request a purge/reinstall. Only remote
-    // workspaces use the runner-owned, transportable package cache.
-    const pnpmStore = workspace.kind === "remote" ? " --store-dir .effect-ci/cache/pnpm" : ""
+    // user's next ordinary pnpm command request a purge/reinstall. Remote and
+    // CI workspaces retain the runner-owned, transportable package cache.
 
     const command = (
       operation: "install" | "run" | "exec",
       value?: string,
       frozenLockfile = false,
       offline = false,
+      runnerCache = workspace.kind === "remote",
     ) => {
       switch (operation) {
         case "install": {
           const offlineFlag = offline ? " --offline" : ""
+          const pnpmStore = runnerCache ? " --store-dir .effect-ci/cache/pnpm" : ""
 
           if (!frozenLockfile) {
             switch (name) {
@@ -954,6 +955,7 @@ export const JavaScript = (
           undefined,
           frozenLockfile,
           options?.offline ?? false,
+          workspace.kind === "remote" || runtime.ci,
         ))
       }),
       run: (script: string) => workspace.exec(command("run", script)),

@@ -27,15 +27,16 @@ for (const monorepo of [false, true]) {
   })
 }
 
-for (const remote of [false, true]) {
+for (const location of ["local", "ci", "remote"] as const) {
   for (const frozenLockfile of [false, true]) {
-    test(`pnpm ${remote ? "remote cache" : "local store"} preserves normal installs (frozen=${frozenLockfile})`, async () => {
+    test(`pnpm ${location} store preserves normal installs (frozen=${frozenLockfile})`, async () => {
       const install = CI.action("install", () => function* () {
-        const workspace = remote ? CI.Workspace.remote("test", "/project") : CI.Workspace.local("/project")
+        const workspace = location === "remote" ? CI.Workspace.remote("test", "/project") : CI.Workspace.local("/project")
         const manager = yield* CI.PackageManager.JavaScript(workspace)
         return yield* manager.install({ frozenLockfile, offline: true })
       })
       const result = await CI.runPromise(CI.workflow("pnpm-store", () => install()), {
+        ci: location === "ci",
         mode: "plan",
         output: "silent",
         workspaceFileSystem: {
@@ -44,7 +45,7 @@ for (const remote of [false, true]) {
         },
       })
       const command = result.plan.nodes[0]!.commands[0]!.command
-      assert.equal(command.includes("--store-dir .effect-ci/cache/pnpm"), remote)
+      assert.equal(command.includes("--store-dir .effect-ci/cache/pnpm"), location !== "local")
       assert.equal(command.includes("--frozen-lockfile"), frozenLockfile)
       assert.match(command, /--offline$/)
       assert.match(command, /^pnpm --ignore-workspace install/)
