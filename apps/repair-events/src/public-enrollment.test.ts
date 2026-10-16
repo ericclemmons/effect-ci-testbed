@@ -4,7 +4,9 @@ import { publicIncidentEnrollment } from "./public-enrollment.ts";
 import { admitPublicIncident } from "../../../packages/github/src/public-incident.ts";
 
 test("host title matches observed WOBS token masking literally, never as a wildcard", () => {
-  const p = publicIncidentEnrollment!;
+  const p = { ...publicIncidentEnrollment!, source: "23bdde6b7bd4924d13cb34666c484e3f6888e21b",
+    version: "cd91c304-a8a1-48f5-97cf-ad60b7edb285", emission: "owned-public-health-500-v1",
+    message: "Effect CI owned public health fixture returned 500 (<token>)" };
   // LOCAL synthetic transport/claim isolates the title contract observed on the
   // genuine public exception. This is NOT its private claim or native admission.
   const observedAt = Date.parse("2026-10-15T18:35:34.236Z"), claimedAt = observedAt - 1;
@@ -26,4 +28,12 @@ test("host title matches observed WOBS token masking literally, never as a wildc
   }
   assert.throws(() => admitPublicIncident(JSON.stringify(event), claim, p, claimedAt + 300001));
   assert.throws(() => admitPublicIncident(JSON.stringify(event), { ...claim, claimedAt: observedAt + 1 }, p, observedAt + 1000));
+});
+
+test("the next approved source enrollment pins the independently deployed v2 version and exact fixed title", () => {
+  const p = publicIncidentEnrollment!;
+  assert.equal(p.source, "f8eb61a874ccf972fceed25ed6889978608d87bc");
+  assert.equal(p.version, "9c829b54-985d-4811-b806-690f93338284");
+  assert.equal(p.emission, "owned-public-health-500-v2");
+  assert.equal(p.message, "Effect CI public health check failed");
 });

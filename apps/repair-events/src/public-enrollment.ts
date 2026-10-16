@@ -6,12 +6,12 @@ import type { PublicIncidentEnrollment } from "../../../packages/github/src/publ
 export const publicIncidentEnrollment: PublicIncidentEnrollment | undefined = {
   policy: "owned-public-http-repair-v1",
   service: "effect-ci-repair-incident",
-  source: "23bdde6b7bd4924d13cb34666c484e3f6888e21b",
-  version: "cd91c304-a8a1-48f5-97cf-ad60b7edb285",
-  emission: "owned-public-health-500-v1",
-  // Exact observed notification title after WOBS's token masking. This is a
-  // literal display string, NOT a wildcard or source/occurrence attestation.
-  message: "Effect CI owned public health fixture returned 500 (<token>)",
+  source: "f8eb61a874ccf972fceed25ed6889978608d87bc",
+  version: "9c829b54-985d-4811-b806-690f93338284",
+  emission: "owned-public-health-500-v2",
+  // Host-authored fixed error contains no token-looking identifier. Exact title,
+  // private source proof, freshness and budget fences all remain required.
+  message: "Effect CI public health check failed",
   fixtureDigest: "6e3a3627b9fd217104ff0b7d73aba6968d2422558539af3aac2f5f2625ef6dd6",
   notificationPolicy: "a376288b467440058fc2f3d8dd0f0e3b",
 };
