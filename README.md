@@ -139,6 +139,9 @@ Workflows and exported actions serve different entrypoints:
   deployment actions stay private by default.
 - Bare `cf-ci` prints help, including list/plan/Mermaid usage and configured project
   targets, without executing or initializing a project.
+- `cf-ci run test build` creates an on-demand parallel workflow from exported
+  actions, sharing their declared prerequisites once. All targets are validated
+  before execution; the built-in remote runner still rejects target selection.
 - Running `cf-ci run` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.

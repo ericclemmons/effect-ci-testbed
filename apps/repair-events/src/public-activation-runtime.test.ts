@@ -54,7 +54,7 @@ test("local authenticated delivery -> private producer proof -> SQLite outbox di
         async inspect(){return {starts:(await this.ctx.storage.get('starts'))??0,proofs:(await this.ctx.storage.get('proofs'))??0,instance:await this.ctx.storage.get('instance')};}
       }
       export class Source extends WorkerEntrypoint {async readPublicClaim(){await this.ctx.exports.Counter.getByName('local').increment('proofs');return ${JSON.stringify(proof)};}}
-      export class Dispatcher extends WorkerEntrypoint {async startPublicIncident(id){await this.ctx.exports.Counter.getByName('local').increment('starts',id);${lost ? "throw new Error('LOCAL created but acknowledgement lost');" : "return {id};"}}}
+      export class Dispatcher extends WorkerEntrypoint {async trigger(event){if(event.type!=='observability_issue'||Object.keys(event).sort().join()!=='admissionId,type')throw Error('Unexpected event');const id=event.admissionId;await this.ctx.exports.Counter.getByName('local').increment('starts',id);${lost ? "throw new Error('LOCAL created but acknowledgement lost');" : "return {id};"}}}
       export default class extends WorkerEntrypoint {async fetch(request){try{const id=new URL(request.url).searchParams.get('id');return Response.json(id?await this.env.ADMISSION.readPublicAdmission(id):await this.ctx.exports.Counter.getByName('local').inspect());}catch{return new Response('Local read rejected',{status:400});}}}`),
   });
   for (const lost of [false, true]) {

@@ -1,12 +1,12 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { demoRunAllowed, demoGitHubAllowed } from "./demo-policy.ts";
+import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed } from "./demo-policy.ts";
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
 import { demoCheckCache } from "./demo-check-cache.ts";
 import { withDemoEvidenceRead } from "./demo-evidence-reader.ts";
-import { demoReviewedReleaseEnabled, finalizeDemoRelease } from "./demo-release.ts";
+import { finalizeDemoRun } from "./demo-run-finalizer.ts";
 
 // The host enrolls this package and task names at deployment. Its pushed source
 // and package scripts still execute in the native workspace, never in the host.
@@ -34,7 +34,11 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     return makeDemoProgram({
       revision: parameters.revision,
       publish: (assets) => publisher.publish(parameters.revision, assets),
-      prepare: (revision, digest) => release.prepareCandidate(revision, digest),
+      // Preview branches publish immutable static bytes, never a production
+      // candidate or release approval. Remote CLI is also publication-only.
+      ...(parameters.trigger === "github" && demoProductionAllowed(parameters)
+        ? { prepare: (revision: string, digest: string) => release.prepareCandidate(revision, digest) }
+        : {}),
     }).workflow;
   },
   {
@@ -45,8 +49,7 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     slackLayout: "status-thread",
     container: { image: "workspace", instance: "standard-1" },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
-    finalize: (context) => demoReviewedReleaseEnabled && context.parameters.trigger === "github" && demoGitHubAllowed(context.parameters)
-      ? finalizeDemoRelease(context).then(() => undefined) : Promise.resolve(),
+    finalize: finalizeDemoRun,
     checkCache: (environment, { runner }) =>
       demoCheckCache(runner, (operation) =>
         withDemoEvidenceRead(

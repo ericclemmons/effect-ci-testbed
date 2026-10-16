@@ -65,6 +65,7 @@ export class RunCard {
   private health: Readonly<RunHealth & { fileId?: string }> | undefined
   private readonly identity: RunIdentity
   private readonly failures = new Map<string, string>()
+  private resultLink: { label: string; url: string } | undefined
 
   constructor(identity: RunIdentity) {
     this.identity = identity
@@ -122,6 +123,14 @@ export class RunCard {
 
   setReviewUrl(url: string): void {
     if (this.review) this.review.url = url
+  }
+
+  /** Host-owned public evidence link; never pass a signed capability or secret. */
+  setResultLink(label: string, url: string): void {
+    const safe = safeUrl(url)
+    if (!safe || url.length > 2048 || !label.trim() || label.length > 80 || /[\r\n]/.test(label))
+      throw new Error("Invalid result link")
+    this.resultLink = { label, url: safe }
   }
 
   /** Host-sanitized diagnostic only. Never pass raw errors, logs or capability payloads. */
@@ -185,6 +194,7 @@ export class RunCard {
       return { text: title, blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
+        ...(this.resultLink ? [{ type: "section", text: { type: "mrkdwn", text: link(this.resultLink.url, this.resultLink.label), verbatim: true } }] : []),
         // Latest evidence remains visible without opening the thread, including
         // after terminal success/failure. Approval capabilities stay in replies.
         ...(this.health?.fileId ? [{ type: "image", slack_file: { id: this.health.fileId }, alt_text: "Latest observed health confidence intervals; not a forecast" }] : []),

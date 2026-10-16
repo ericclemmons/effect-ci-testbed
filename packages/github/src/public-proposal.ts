@@ -36,7 +36,7 @@ export async function assertPublicAdmission(instance: string, value: unknown) {
   if (field(value, "instance") !== instance || identity.instance !== instance ||
       identity.admission.policy !== PUBLIC_REPAIR_POLICY ||
       identity.admission.service !== "effect-ci-repair-incident" ||
-      identity.admission.emission !== "owned-public-health-500-v1" ||
+      !["owned-public-health-500-v1", "owned-public-health-500-v2"].includes(identity.admission.emission) ||
       identity.admission.fixtureDigest !== PUBLIC_FIXTURE_DIGEST) throw rejected();
   return { instance, admission: identity.admission };
 }

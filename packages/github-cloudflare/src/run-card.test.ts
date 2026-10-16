@@ -217,3 +217,12 @@ test("source context rejects unsafe links and escapes source mention syntax", ()
   assert.ok(!blocks.includes("javascript:"))
   assert.ok(!blocks.includes("|Details>"))
 })
+
+test("the compact parent retains the latest host-owned preview link after completion", () => {
+  const card = new RunCard(identity)
+  for (const url of ["http://example.com", "javascript:alert(1)", "https://user:secret@example.com"])
+    assert.throws(() => card.setResultLink("Open preview", url))
+  card.setResultLink("Open preview", "https://example.com/r/checked/index.html")
+  card.update({ type: "workflow.completed", workflowId: "demo", conclusion: "success", timestamp: "now" })
+  assert.ok(JSON.stringify(card.render({ statusOnly: true }).blocks).includes("https://example.com/r/checked/index.html|Open preview"))
+})

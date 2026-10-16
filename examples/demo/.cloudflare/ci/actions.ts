@@ -38,6 +38,14 @@ export const build = CI.action("build", function* () {
   return () => workspace.exec("npm run build");
 });
 
+/** Local deployment preview: consume the checked build, print its real byte
+ * identities, and do not upload or claim an external deployment. */
+export const deploy = CI.action("deploy preview", function* () {
+  yield* CI.parallel([test(), build()]);
+  const workspace = yield* build();
+  return () => workspace.exec("node .cloudflare/ci/deploy.ts");
+});
+
 export const syntax = CI.check(
   "syntax",
   () =>

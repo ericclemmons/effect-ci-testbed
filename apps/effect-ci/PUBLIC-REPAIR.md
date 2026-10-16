@@ -1,5 +1,26 @@
 # Owned public failure to proposed repair
 
+## Next approved test
+
+Eric explicitly approved ONE fresh bounded end-to-end public-error test after
+the event-routing correction. It uses `owned-public-health-500-v2`, preserves the
+consumed v1 namespace/Issue/capture/history, and uses the SAME lifetime ledger,
+host call allowance and permanent public admission/writer slots. No slot is reset.
+Readiness now refuses an occupied admission or writer slot before arming.
+
+The receiver sends a canonical private `trigger({type:"observability_issue",
+admissionId})` event. The host validates the event and re-reads immutable admission
+before selecting the repair Workflow. Raw HTTP JSON or a matching-looking event
+does not grant repair authority. Arbitrary Hono error events are not enrolled by
+this fixed owned policy yet; adding a `.trigger` method is not blanket permission.
+
+The new source remains unarmed until its exact version/source is enrolled,
+resources and ledger are independently read, current approved model pricing is
+verified, and a create-only private intent records this one authorized attempt.
+The repair PR must remain OPEN and UNMERGED; no repair is deployed.
+
+## Previous run
+
 This is connected host source, **not yet native end-to-end proof**. The receiver
 enrollment is version-pinned. The one genuine public exception reached WOBS and
 authenticated capture, but title admission stopped before a proposal Workflow

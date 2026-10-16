@@ -8,6 +8,20 @@ const workflow = CI.workflow("test-and-build", function* () {
   yield* CI.parallel([actions.test(), actions.build()]);
 });
 
+test("deployment preview owns both goals and does not run after a failed test", async () => {
+  const calls: string[] = [];
+  await assert.rejects(CI.runPromise(CI.workflow("deploy", () => actions.deploy()), {
+    output: "silent",
+    source: { checkout: () => Effect.succeed(CI.Workspace.local("/demo")) },
+    executor: { execute: ({ stepId, command, workspace }) => Effect.suspend(() => {
+      calls.push(stepId);
+      return stepId === "test" ? Effect.fail(new CI.CommandError(stepId, command, workspace.cwd, 1))
+        : Effect.succeed({ exitCode: 0, stdout: "", stderr: "" });
+    }) },
+  }));
+  assert.ok(!calls.includes("deploy preview"));
+});
+
 test(
   "test and build share setup once, overlap independent checks, then overlap goals",
   { timeout: 5000 },
