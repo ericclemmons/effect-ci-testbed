@@ -193,19 +193,35 @@ Keep the existing workflow and package scripts first. Compare these checked-in f
 - [Effect on GitHub reference](./verification/effect-on-github.example.yml): selects `examples/demo`
   in the repository's [reusable runner](../../.github/workflows/effect-ci.yml).
 
-For this monorepo, the essential job change is:
+Replace the manual job in [`.github/workflows/github.yml`](./.github/workflows/github.yml):
 
-```yaml
-permissions:
-  contents: read
-  checks: write
-
-jobs:
-  ci:
-    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
-    with:
-      workflow: examples/demo
-    secrets: inherit
+```diff
+--- a/.github/workflows/github.yml
++++ b/.github/workflows/github.yml
+@@
+ permissions:
+   contents: read
++  checks: write
+@@
+ jobs:
+   ci:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v7
+-      - uses: voidzero-dev/setup-vp@v1.21.2
+-        with:
+-          node-version: 24
+-          cache: true
+-          run-install: true
+-      - run: npm run lint
+-      - run: npm run check
+-      - run: npm run typecheck
+-      - run: npm run test
+-      - run: npm run build
++    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
++    with:
++      workflow: examples/demo
++    secrets: inherit
 ```
 
 > Caching is on by default. No cache keys or paths to configure.
@@ -220,7 +236,8 @@ GitHub can reference this repo's workflow directly with `owner/repo/path@ref`;
 an HTTP download or published CLI package is not required. This example runs
 **on GitHub Actions**, not Cloudflare. A source reference alone does not make
 its monorepo assumptions portable. In this configured repository the scoped
-GitHub App setup already exists. Keep the old job while comparing results.
+GitHub App setup already exists. This replaces the manual job rather than adding
+a duplicate run. Keep the separate baseline file for comparison.
 [GitHub workflow-reference syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_iduses).
 
 Both local and Effect-on-GitHub plan/execution for the renamed demo passed in
@@ -228,9 +245,9 @@ Both local and Effect-on-GitHub plan/execution for the renamed demo passed in
 That proves this fixture on GitHub, not native Cloudflare execution of arbitrary
 zero-config packages.
 
-## 6. Make orchestration explicit when scripts stop being enough
+## 6. Ask for test and build, not their prerequisites
 
-> Compose the existing [actions](./.cloudflare/ci/actions.ts) into a workflow.
+> Request two goals. Their actions supply the dependencies; shared work runs once.
 
 ```diff
 --- /dev/null
@@ -238,14 +255,10 @@ zero-config packages.
 +import * as CI from "@effect-ci-testbed/ci";
 +import * as actions from "./actions.ts";
 +
-+export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
++export * from "./actions.ts";
 +
 +export default CI.workflow("cf-ci-demo", function* () {
-+  yield* actions.lint();
-+  yield* actions.check();
-+  yield* actions.typecheck();
-+  yield* actions.test();
-+  return yield* actions.build();
++  yield* CI.parallel([actions.test(), actions.build()]);
 +});
 ```
 
@@ -256,8 +269,21 @@ pnpm exec cf-ci run lint
 pnpm exec cf-ci run
 ```
 
-The explicit workflow takes precedence over the empty marker. Exported actions
-become runnable commands.
+The checked-in [actions](./.cloudflare/ci/actions.ts) put installation and the
+parallel `lint`, `check`, and `typecheck` prerequisites on both goals. Requesting
+only `build` still runs its prerequisites. Requesting both shares one checkout,
+one installation and one invocation of each prerequisite, then runs test and
+build concurrently. A failed prerequisite prevents both goals. You do not repeat
+that ordering in the workflow.
+
+This is dependency-aware composition, not automatic inference from script names:
+marker-free discovery currently runs its inferred script list serially. Package
+lifecycle hooks still run as authored; SDK deduplication does not remove a
+`pretest` or `prebuild` command inside your package manager.
+
+The explicit workflow takes precedence over the empty marker. `export *` makes
+the public actions runnable commands; use `export { test, build }` instead to
+expose only those goals.
 [Complete package-manager composition](../node-npm) and
 [exported targets](../exported-actions).
 
@@ -269,21 +295,23 @@ become runnable commands.
 --- a/.cloudflare/ci/actions.ts
 +++ b/.cloudflare/ci/actions.ts
 @@
-       const workspace = yield* checkout();
--      return yield* workspace.exec("npm ci");
-+      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.install();
-@@
-       const workspace = yield* install();
--      return yield* workspace.exec(`npm run ${name}`);
-+      const pm = yield* CI.PackageManager.JavaScript(workspace);
-+      return yield* pm.run(name);
+ const install = CI.action("install", function* () {
+   const workspace = yield* checkout();
+-  return () => workspace.exec("npm ci");
++  const pm = yield* CI.PackageManager.JavaScript(workspace);
++  return () => pm.install();
+ });
 ```
 
 ```sh
 pnpm exec cf-ci plan --format=mermaid
 pnpm exec cf-ci run
 ```
+
+For each script action, resolve `CI.PackageManager.JavaScript(workspace)` during
+construction in the same way, and use `pm.run(name)` in its returned body instead
+of `workspace.exec("npm run …")`. Detection follows the project's declared package
+manager and lockfile; it does not convert an npm lockfile to pnpm.
 
 ## 7. Run a pushed commit remotely
 
@@ -309,6 +337,8 @@ The host's `DemoCIWorkflow` selects this package's manifest and uses the same
 dispatch, status and event-stream routes, without changing the existing root
 workflow. Host policy permits only this repository, a full commit SHA and the
 whole suite. It does not accept an incoming module or deployment target.
+The authored parallel workflow in step 6 runs locally; this deployed host still
+selects its fixed inferred program, not your uploaded TypeScript workflow.
 
 Remote CLI runs stay quiet and build-only: they publish/prepare but never shift
 traffic. For the Slack build card, release decisions and Cloudflare Dashboard,
@@ -331,9 +361,18 @@ verification, artifact publication or deployment of this Vite app.
 [Read-only native regression](../../apps/effect-ci/src/live-demo.test.ts).
 [GitHub-to-Cloudflare composition](../github-cloudflare-ci).
 
-## 8. Attest a pure check, then let hosted CI verify reuse
+## 8. Reuse an already-validated check
 
-> Sign a clean committed check. Hosted CI verifies its exact inputs; ordinary actions still run.
+> The useful goal is to verify prior test success instead of running the suite again.
+
+`lint` and `test` can both be pure checks when they only assert success and do not
+produce required outputs. The test action in step 6 uses `CI.check`, not an
+artifact-producing action. Marking a check reusable is not enough: the host must
+trust evidence for that exact check, all of its inputs, toolchain and commit.
+
+**Full test-suite reuse is not enrolled yet.** The live example below proves the
+narrower syntax-only policy. It does not skip lint or the test suite, and its
+signature cannot be reused as evidence for either.
 
 ```diff
 --- a/.cloudflare/ci/workflow.ts
@@ -341,7 +380,7 @@ verification, artifact publication or deployment of this Vite app.
 @@
  export default CI.workflow("cf-ci-demo", function* () {
 +  yield* actions.syntax();
-   yield* actions.lint();
+   yield* CI.parallel([actions.test(), actions.build()]);
 ```
 
 ```sh
@@ -385,7 +424,7 @@ This is [#144](https://github.com/ericclemmons/effect-ci-testbed/issues/144).
 must issue new commit-bound evidence; copying a signature onto a merge/squash/rebase
 SHA does not make it valid.
 
-## 9. Use the build output in another action
+## 9. Pass the checked build to the next action
 
 > Return a workspace. The next action gets its files automatically—no cache, publish, or restore calls.
 
@@ -393,12 +432,8 @@ SHA does not make it valid.
 --- a/.cloudflare/ci/workflow.ts
 +++ b/.cloudflare/ci/workflow.ts
 @@
--export { lint, check, typecheck, test, build, syntax } from "./actions.ts";
-+export { lint, check, typecheck, test, build, syntax, verify } from "./actions.ts";
-@@
-   yield* actions.test();
--  return yield* actions.build();
-+  return yield* actions.verify();
+-  yield* CI.parallel([actions.test(), actions.build()]);
++  yield* CI.parallel([actions.test(), actions.verify()]);
 ```
 
 [`actions.ts`](./.cloudflare/ci/actions.ts):
@@ -422,6 +457,18 @@ git commit -m "Use the build output in another action"
 git push -u origin HEAD
 pnpm exec cf-ci run --remote
 ```
+
+This byte-verification action is a supporting artifact check, not a deploy.
+The real next consumer is the host's `publish site` action in step 10. It receives
+the checked build and publishes those bytes through a private fixed-destination
+capability; it does not rebuild the app or give deployment credentials to it.
+
+A portable `deploy` action invoking `cf deploy --prebuilt` would be the more
+familiar adoption example, but this Vite fixture has no such Worker configuration
+or enrolled project-side deployment credential. Adding that command here would
+not work. The separate [deployment-hook recipe](../deploy-hook) executes a real
+`cf` build and credential-free deployment **dry run**, not a live Vite deployment.
+Do not present its dry run as this application's release.
 
 ## 10. Serve the checked build
 

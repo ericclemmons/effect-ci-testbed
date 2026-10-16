@@ -6,30 +6,37 @@ const checkout = CI.action("checkout", function* () {
   return () => source.checkout();
 });
 
-const install = CI.action(
-  "install",
-  () =>
-    function* () {
-      const workspace = yield* checkout();
-      return yield* workspace.exec("npm ci");
-    },
-);
+const install = CI.action("install", function* () {
+  const workspace = yield* checkout();
+  return () => workspace.exec("npm ci");
+});
 
 const script = (name: string) =>
-  CI.action(
-    name,
-    () =>
-      function* () {
-        const workspace = yield* install();
-        return yield* workspace.exec(`npm run ${name}`);
-      },
-  );
+  CI.check(name, function* () {
+    const workspace = yield* install();
+    return function* () {
+      yield* workspace.exec(`npm run ${name}`);
+    };
+  });
 
 export const lint = script("lint");
 export const check = script("check");
 export const typecheck = script("typecheck");
-export const test = script("test");
-export const build = script("build");
+
+// Each goal owns its prerequisites. Callers request goals, not their setup order.
+export const test = CI.check("test", function* () {
+  const workspace = yield* install();
+  yield* CI.parallel([lint(), check(), typecheck()]);
+  return function* () {
+    yield* workspace.exec("npm run test");
+  };
+});
+
+export const build = CI.action("build", function* () {
+  const workspace = yield* install();
+  yield* CI.parallel([lint(), check(), typecheck()]);
+  return () => workspace.exec("npm run build");
+});
 
 export const syntax = CI.check(
   "syntax",
