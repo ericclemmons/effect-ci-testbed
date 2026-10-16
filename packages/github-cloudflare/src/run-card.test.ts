@@ -75,6 +75,14 @@ test("the first details reply is a bounded native table with no mrkdwn interpola
   const encoded = JSON.stringify(frame.blocks)
   assert.match(encoded, /raw_text/); assert.doesNotMatch(encoded, /mrkdwn|javascript:|actions/)
   assert.ok(encoded.length < 10000)
+  const revision = "a".repeat(40), detailsUrl = "https://dash.cloudflare.com/account/workflows/instance/owned-run"
+  const compact = new RunCard({ ...identity, repository: "owner/repo", revision, detailsUrl }).renderDetails()
+  const table = JSON.stringify(compact.blocks)
+  assert.match(table, /"text":"aaaaaaa"/)
+  assert.match(table, /"text":"repo"/)
+  assert.ok(table.includes(`https://github.com/owner/repo/commit/${revision}`))
+  assert.ok(table.includes(detailsUrl))
+  assert.ok(!table.includes('"text":"https://'), "URLs are link targets, not wide visible cells")
 })
 
 test("waiting and failure retain explicit state; successful parallel work retains the last completed step", () => {
