@@ -1,5 +1,26 @@
 # Release the checked demo candidate
 
+## Branch contract: current demo versus intended default
+
+The intended product default is **`main` → reviewed production deployment** and
+**other branches → isolated Workers Previews**, with a Slack status card, preview
+link and same-run Cloudflare Dashboard link. Preview builds must not request
+production approval or mutate production traffic/bindings/resources.
+
+That routing is **not deployed yet**. The working owned-test enrollment below
+still uses `demo/live` for its release flow; it is a temporary test policy, not
+a requirement for users to create a special production branch. Keep it available
+until the replacement has genuine native preview and production evidence.
+
+Cloudflare distinguishes [Previews](https://developers.cloudflare.com/workers/previews/)
+from [Version URLs](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/).
+Version URLs use that version's production resources, not isolated branch resources.
+The current immutable Vite publication and candidate Version URL must not be
+presented as a native isolated Worker Preview. Enabling GitHub App access to more
+repositories also does not independently enroll those repos in this host's policy.
+
+## Current verified demo enrollment
+
 The demo finalizer now connects its actual workflow result to
 `@effect-ci-testbed/cloudflare/reviewed-release`, the existing private release
 broker, private review records, graph renderer and the maintained build card.

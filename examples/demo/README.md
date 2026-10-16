@@ -11,34 +11,25 @@ To change it yourself, [push a change through release](#11-release-the-checked-b
 Those steps use this repository's already-configured host; you do not need to
 create another repo or change the App installation to try them.
 
-## 0. Start with a standalone Vite repo and ordinary GitHub Actions
+## 0. Rehearse in a throwaway worktree
 
-> Start with working CI. Adopt Effect CI without rewriting the application.
+> Use this repo's working app, Slack integration and Cloudflare host. Leave your usual checkout alone.
 
 ```sh
-npx --yes tiged ericclemmons/effect-ci-testbed/examples/demo cf-ci-demo
-cd cf-ci-demo
-npm ci
-npm run lint
-npm run check
-npm run typecheck
-npm test
-npm run build
-git init -b main
-git add .
-git commit -m "Start with a Vite app and conventional GitHub Actions"
-gh repo create ericclemmons/cf-ci-demo --private --source=. --push
-gh run list
+git fetch origin main demo/live
+git worktree add -b codex/demo-rehearsal ../effect-ci-demo origin/demo/live
+cd ../effect-ci-demo
+git merge --no-edit origin/main
+pnpm install
+cd examples/demo
+pnpm build
 ```
 
-Open <https://github.com/ericclemmons/cf-ci-demo/actions> in the browser.
-
-[tiged subdirectory copying](https://github.com/tiged/tiged#specify-a-subdirectory) ·
-[GitHub repo creation](https://cli.github.com/manual/gh_repo_create) ·
-[Baseline workflow](./.github/workflows/github.yml)
-
-**Not live yet:** the portable one-`uses:` Cloudflare action. The current reusable
-workflow is monorepo-specific; installing the App alone does not enroll new repos.
+Run this from the repository root. Choose another branch/directory name if they
+already exist. You now have an isolated rehearsal branch with the released demo's
+history plus the latest features. No new repository, credential or GitHub App
+installation change is needed. Keep local experiments here; only the explicit
+push to **`demo/live` in step 11** starts the Slack-reviewed rollout.
 
 Start with an existing Vite/Vite+ package with a lockfile and ordinary
 `lint`, `test`, and `build` scripts. This checked-in fixture is a small Vite+
@@ -48,17 +39,9 @@ harness. Hosted build, serving and reviewed release below now use this same
 application. Portable Cloudflare onboarding and automatic repair remain unfinished;
 unrelated historical runs do not substitute for them.
 
-The CLI and libraries are currently private workspace packages, not a published
-npm onboarding path. In this testbed, from the repository root:
-
-```sh
-pnpm install --frozen-lockfile
-export PATH="$PWD/node_modules/.bin:$PATH"
-cd examples/demo
-```
-
-Run `npm run dev` to edit the application, or `npm run preview` after a build to
-inspect the built application. Both print their local URL.
+Use `pnpm exec cf-ci` below to run this workspace's CLI; no PATH changes or npm
+publication are needed. Run `pnpm dev` to edit the application, or `pnpm preview`
+after a build to inspect the built application. Both print their local URL.
 
 Use Node 24.11+ or Node 26+. Keep agent implementation work in managed worktrees;
 the primary checkout stays clean on main. Local source edits below are intentional
@@ -69,11 +52,11 @@ feedback experiments, not signed proof.
 No workflow, CI marker, or YAML change is needed:
 
 ```sh
-cf-ci
-cf-ci list
-cf-ci plan
-cf-ci plan lint
-cf-ci plan --format=mermaid
+pnpm exec cf-ci
+pnpm exec cf-ci list
+pnpm exec cf-ci plan
+pnpm exec cf-ci plan lint
+pnpm exec cf-ci plan --format=mermaid
 ```
 
 Help and list show exact runnable commands, including `cf-ci run lint`,
@@ -87,13 +70,13 @@ Discovery uses conventional package scripts and their lifecycle hooks.
 
 ## 2. Run the existing scripts before pushing
 
-> Instead of running ad-hoc npm scripts, agents run the same CI workflows (or actions) as the cloud.
+> Instead of running ad-hoc package scripts, agents run the same CI workflows (or actions) as the cloud.
 
 ```sh
-cf-ci run lint
-cf-ci run test
-cf-ci run build
-cf-ci run
+pnpm exec cf-ci run lint
+pnpm exec cf-ci run test
+pnpm exec cf-ci run build
+pnpm exec cf-ci run
 ```
 
 ```diff
@@ -104,7 +87,7 @@ cf-ci run
 ```
 
 ```sh
-cf-ci run build
+pnpm exec cf-ci run build
 cat dist/message.js
 ```
 
@@ -116,7 +99,7 @@ cat dist/message.js
 ```
 
 ```sh
-cf-ci run lint
+pnpm exec cf-ci run lint
 # Expected: undefined-variable diagnostic; nonzero exit.
 ```
 
@@ -128,7 +111,7 @@ cf-ci run lint
 ```
 
 ```sh
-cf-ci run lint
+pnpm exec cf-ci run lint
 # Expected: exit 0.
 ```
 
@@ -137,10 +120,10 @@ cf-ci run lint
 An agent runs exactly the same commands:
 
 ```sh
-cf-ci --help
-cf-ci list
-cf-ci plan lint
-cf-ci run lint
+pnpm exec cf-ci --help
+pnpm exec cf-ci list
+pnpm exec cf-ci plan lint
+pnpm exec cf-ci run lint
 ```
 
 `@vercel/detect-agent` detects `AI_AGENT` and tool-specific environment signals.
@@ -149,9 +132,9 @@ No `--agent` flag is required. To inspect that interface from a human terminal:
 
 ```sh
 export AI_AGENT=true
-cf-ci list
-cf-ci plan lint
-cf-ci run lint
+pnpm exec cf-ci list
+pnpm exec cf-ci plan lint
+pnpm exec cf-ci run lint
 ```
 
 JSON list includes both target names and exact runnable commands. Explicit
@@ -175,8 +158,8 @@ combined error message, not invented separate streams.
 ## 4. Reuse task output, then invalidate it
 
 ```sh
-time cf-ci run build
-time cf-ci run build
+time pnpm exec cf-ci run build
+time pnpm exec cf-ci run build
 ```
 
 Inspect Vite+'s cache-hit/miss output. Change the string in `src/message.ts` and
@@ -184,7 +167,7 @@ repeat: the changed input must invalidate the task; an immediate repeat can hit.
 
 ```sh
 rm dist/message.js
-cf-ci run build
+pnpm exec cf-ci run build
 ```
 
 A README-only edit should not invalidate a task that does not read it.
@@ -192,9 +175,9 @@ A README-only edit should not invalidate a task that does not read it.
 Optional task-cache-cold comparison, **only in a disposable checkout**:
 
 ```sh
-vp cache clean
-time cf-ci run build
-time cf-ci run build
+pnpm exec vp cache clean
+time pnpm exec cf-ci run build
+time pnpm exec cf-ci run build
 ```
 
 Do not clean the shared checkout for a presentation. This clears Vite task cache,
@@ -219,7 +202,7 @@ permissions:
 
 jobs:
   ci:
-    uses: ./.github/workflows/effect-ci.yml
+    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
     with:
       workflow: examples/demo
     secrets: inherit
@@ -233,10 +216,12 @@ jobs:
 +      cache: false
 ```
 
-This is repository-specific setup, **not** a self-contained snippet to paste into
-an unrelated repo: the reusable workflow and its explicitly scoped GitHub App
-credentials must exist there. Do not add unrelated secrets. Keep the old job while
-comparing actual results, then remove duplication deliberately.
+GitHub can reference this repo's workflow directly with `owner/repo/path@ref`;
+an HTTP download or published CLI package is not required. This example runs
+**on GitHub Actions**, not Cloudflare. A source reference alone does not make
+its monorepo assumptions portable. In this configured repository the scoped
+GitHub App setup already exists. Keep the old job while comparing results.
+[GitHub workflow-reference syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_iduses).
 
 Both local and Effect-on-GitHub plan/execution for the renamed demo passed in
 [PR228's exact full suite](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/38660283645).
@@ -265,10 +250,10 @@ zero-config packages.
 ```
 
 ```sh
-cf-ci
-cf-ci plan --format=mermaid
-cf-ci run lint
-cf-ci run
+pnpm exec cf-ci
+pnpm exec cf-ci plan --format=mermaid
+pnpm exec cf-ci run lint
+pnpm exec cf-ci run
 ```
 
 The explicit workflow takes precedence over the empty marker. Exported actions
@@ -296,8 +281,8 @@ become runnable commands.
 ```
 
 ```sh
-cf-ci plan --format=mermaid
-cf-ci run
+pnpm exec cf-ci plan --format=mermaid
+pnpm exec cf-ci run
 ```
 
 ## 7. Run a pushed commit remotely
@@ -305,13 +290,13 @@ cf-ci run
 > Same command, hosted execution. Reuse the existing Cloudflare Access login.
 
 ```sh
-cf-ci run --remote
+pnpm exec cf-ci run --remote
 ```
 
 ```sh
 # Only if the existing Access session has expired:
 cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
-cf-ci run --remote
+pnpm exec cf-ci run --remote
 ```
 
 Expect a native Workflow instance and streamed action events with a terminal
@@ -325,17 +310,10 @@ dispatch, status and event-stream routes, without changing the existing root
 workflow. Host policy permits only this repository, a full commit SHA and the
 whole suite. It does not accept an incoming module or deployment target.
 
-For the owned testbed's enrolled `demo/live` branch, push a new source change:
-
-```sh
-git push origin HEAD:refs/heads/demo/live
-```
-
-Open **#effect-ci** in Slack. The same card shows the build, then the enrolled
-GitHub flow waits for the release decisions in [step 11](#11-release-the-checked-build-with-a-decision).
-It reaches Passed only after the release commits. Remote CLI runs remain quiet,
-build-only runs: they publish/prepare but never shift traffic. This enrollment is
-specific to the owned host, not standalone Cloudflare onboarding.
+Remote CLI runs stay quiet and build-only: they publish/prepare but never shift
+traffic. For the Slack build card, release decisions and Cloudflare Dashboard,
+use the explicit **`demo/live` push in step 11**. That card reaches Passed only
+after release commits. This enrollment is specific to the owned host.
 [Host enrollment and actual evidence](../../apps/effect-ci/DEMO-RELEASE.md).
 
 **Live verified:** `cf-ci run --remote` from clean commit
@@ -369,11 +347,11 @@ verification, artifact publication or deployment of this Vite app.
 ```sh
 git add src .cloudflare/ci
 git commit -m "Add a reusable syntax check"
-git push
-cf-ci run --remote
+git push -u origin HEAD
+pnpm exec cf-ci run --remote
 node .cloudflare/ci/attest.ts
 git push origin refs/notes/effect-ci-hosted-checks-v1
-cf-ci run --remote
+pnpm exec cf-ci run --remote
 ```
 
 The signer executes the fixed parse-only TypeScript check in the host's immutable
@@ -437,12 +415,12 @@ export const verify = CI.action(
 ```
 
 ```sh
-cf-ci plan --format=mermaid
-cf-ci run verify
+pnpm exec cf-ci plan --format=mermaid
+pnpm exec cf-ci run verify
 git add .cloudflare/ci
 git commit -m "Use the build output in another action"
-git push
-cf-ci run --remote
+git push -u origin HEAD
+pnpm exec cf-ci run --remote
 ```
 
 ## 10. Serve the checked build
@@ -450,7 +428,7 @@ cf-ci run --remote
 > Build in a container. Serve those same bytes without one.
 
 ```sh
-cf-ci run --remote
+pnpm exec cf-ci run --remote
 ```
 
 Open the [published preview](https://effect-ci-demo-site.ericclemmons.workers.dev/r/e7179eccf60c82d6f0cbf57c5d7a880cc4bab108/cbb7c3279acf7de80096837e389e7ad8cbcbb92fdafb76b9c9251407bda7419b/index.html).
@@ -466,12 +444,12 @@ release URL. [Host configuration and publication evidence](../../apps/demo-site/
 
 > Watch one build card. Inspect the actual candidate's graph. Decide what ships.
 
-In a clean checkout of **this repository**, from `examples/demo`:
+Stay on your throwaway rehearsal branch, in `examples/demo`. First incorporate
+any new changes to the enrolled branch so the release push stays fast-forward:
 
 ```sh
 git fetch origin main demo/live
-git switch demo/live
-git merge --ff-only origin/demo/live
+git merge --no-edit origin/demo/live
 git merge --no-edit origin/main
 ```
 
@@ -488,12 +466,21 @@ git commit -m "Update the release message"
 git push origin HEAD:refs/heads/demo/live
 ```
 
-Open **#effect-ci** in Slack, then open the new run's thread. At 10%, 25%, 75% and
-100%, inspect the graph and choose **Progress** or **Reject**. The channel keeps
-one updating status line. Allow two minutes between phases; each decision expires
+Open **[#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J)**.
+The parent card shows the workflow, rotating step/status and latest graph. Open
+its thread for each step's evidence and release controls. At 10%, 25%, 75% and
+100%, inspect the graph and choose **Progress** or **Reject**. Allow two minutes between phases; each decision expires
 after five minutes. Sparse data stays uncertain: Progress accepts that risk.
 Reject or timeout restores the prior version. The final Progress keeps the new
 build live at 100%.
+
+Click **Details on that Slack parent card** to open the same run in the
+**Cloudflare Dashboard**. Inspect its native steps, logs and outputs there;
+return to Slack for Progress/Reject. To explore before making a new push,
+[open the completed example in Cloudflare](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-demo/instance/3b9098e0-c8f9-11f1-9c69-5d488bf82d84).
+That link is the retained example, not your next run. Never use Force push or
+reset `demo/live` for a rehearsal; this push advances it without renaming your
+local rehearsal branch.
 
 Open the [live release](https://effect-ci-hmd-demo.ericclemmons.workers.dev/) and
 look for **Hello from the next release.** under **Release message**. It redirects to the same checked immutable Vite build,
