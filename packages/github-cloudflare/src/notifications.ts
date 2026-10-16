@@ -50,7 +50,7 @@ export const sendNotification = async (
   slackMessageTs?: string,
   blocks?: ReadonlyArray<SlackBlock>,
   discordMessageId?: string,
-  options: { readonly privateImageValidation?: boolean; readonly wait?: (milliseconds: number) => Promise<void> } = {},
+  options: { readonly privateImageValidation?: boolean; readonly wait?: (milliseconds: number) => Promise<void>; readonly slackThreadTs?: string } = {},
 ): Promise<NotificationResult> => {
   const slackBot = Boolean(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)
   const endpoints = [
@@ -87,6 +87,7 @@ export const sendNotification = async (
             ...(entry.provider === "slack-bot" ? {
               channel: channels.SLACK_CHANNEL_ID,
               ...(slackMessageTs ? { ts: slackMessageTs } : {}),
+              ...(!slackMessageTs && options.slackThreadTs ? { thread_ts: options.slackThreadTs, reply_broadcast: false } : {}),
               text: text.slice(0, 3000),
               parse: "none",
               unfurl_links: false,

@@ -161,7 +161,7 @@ export class RunCard {
     })
   }
 
-  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean; currentStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+  render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean; currentStep?: string; statusOnly?: boolean; onlyStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
     const visit = (id: string) => {
@@ -176,6 +176,15 @@ export class RunCard {
       this.checks.get(options.rollbackStep)?.status === "complete")
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
+    if (options.statusOnly) {
+      const current = ordered.find(id => this.checks.get(id)!.status === "waiting") ??
+        ordered.find(id => this.checks.get(id)!.status === "failed") ??
+        ordered.find(id => this.checks.get(id)!.status === "running") ??
+        ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status))
+      const title = `${headline}${this.phase !== "success" && current ? ` · ${current}` : ""}`.replace(/[\r\n]/g, " ").slice(0, 250)
+      const text = `${escape(title)} · ${sourceLinks(this.identity)}`
+      return { text: title, blocks: [{ type: "section", text: { type: "mrkdwn", text, verbatim: true } }] }
+    }
     if (options.minimal) {
       const current = options.currentStep ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
         ordered.find(id => this.checks.get(id)!.status === "running") ??
@@ -194,7 +203,7 @@ export class RunCard {
         ...actions,
       ] }
     }
-    const lines = ordered.filter((id) => !options.hideSkipped || this.checks.get(id)!.status !== "skipped").map((id, index) => {
+    const lines = ordered.filter(id => (!options.onlyStep || id === options.onlyStep) && (!options.hideSkipped || this.checks.get(id)!.status !== "skipped")).map((id, index) => {
       const check = this.checks.get(id)!
 
       return `${index + 1}. ${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`

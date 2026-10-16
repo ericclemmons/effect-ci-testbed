@@ -72,6 +72,7 @@ export default {
 };
 
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {
+  slackLayout: "status-thread",
   notificationChannels,
   root: "examples/github-cloudflare-ci",
   container: { image: "workspace", instance: "standard-1" },
