@@ -6,8 +6,9 @@ The [owned public incident repair implementation](PUBLIC-REPAIR.md) now connects
 admission, a fresh bounded proposal, native verification and a proposed-PR Slack
 card. A genuine public500 now automatically produced a fresh Flue proposal,
 passed exact-commit native Node verification and created unmerged PR4. The final
-acknowledgement failed on the renamed bot's login; approved same-record
-reconciliation is pending. The linked guide preserves that failure explicitly.
+acknowledgement failed on the renamed bot's login; approved read-only reconciliation
+confirmed the existing PR and updated the same Slack card. The linked guide
+preserves the original failed Workflow explicitly; no repair merged or deployed.
 
 ```mermaid
 flowchart LR

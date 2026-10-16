@@ -32,7 +32,8 @@ This command verifies a **recorded operator-triggered Flue example**, not the pu
 HTTP500 run. That newer run automatically produced a fresh proposal, passed its
 native check and created [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4),
 then failed its final acknowledgement on the renamed bot's login.
-[Exact result, retained failure and pending reconciliation](../../apps/effect-ci/PUBLIC-REPAIR.md).
+[Exact result, retained failure and completed operator reconciliation](../../apps/effect-ci/PUBLIC-REPAIR.md).
+Verify that actual public-error run read-only with `node examples/flue-repair/verify-public.ts`.
 Neither example is a portable fresh-repo
 installer. [Host setup, permissions, budget, native receipts and limits](../../apps/repair-agent/README.md).
 Do not redispatch the historical instance, reset its budget, or merge/deploy the

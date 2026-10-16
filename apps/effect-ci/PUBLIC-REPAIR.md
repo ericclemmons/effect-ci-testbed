@@ -24,12 +24,29 @@ and native check with repository-only Contents/PR/Checks READ tokens, revoked in
 `finally`. It cannot create a missing branch/PR, execute Node, call a model or
 change the failed slot. It appends a separate receipt and updates only the existing
 Slack card at sequence4. Missing/ambiguous card state cannot post another root.
-Native reconciliation is still pending; this is not a clean successful automatic
-Workflow or a second automatic run.
+Native reconciliation completed in `coverage-public-pr-reconciliation-20261015-1`,
+two checkpoints/one attempt each/zero retries. It preserved the original failure
+and updated the SAME Slack timestamp `1792123875.343789`. App source
+`0573977be607652b504d92073567c903c585c96e` deployed as
+`0903a743-0e16-49e1-b614-0e6bf0521b0b`, preserving all24 exports/19 bindings,
+secrets, image and producer/agent/receiver/production allocations. This is a
+completed **operator reconciliation**, not a clean successful automatic Workflow
+or a second automatic run.
 
-After exact merged build/deployment and fresh read-only preflight, the operator
-can create ONE instance of the existing `effect-ci-owned-repair-verification`
-Workflow with raw body `{instance_id:"<new-reconciliation-receipt-id>",params:{mode:"reconcile-public-pr"}}`.
+Read-only acceptance (existing Cloudflare CLI/GitHub sessions):
+
+```sh
+node examples/flue-repair/verify-public.ts
+```
+
+It rechecks the real GET occurrence/version, authentic capture digest/counterpart,
+fresh Flue history and retained six-reservation ledger, exact native check before
+the PR, one-file diff, OPEN/UNMERGED state, and separate same-card reconciliation.
+It never emits, dispatches, infers, writes code/PRs, reruns Node, merges or deploys.
+
+The operator created ONE instance of the existing `effect-ci-owned-repair-verification`
+Workflow with raw body `{instance_id:"coverage-public-pr-reconciliation-20261015-1",params:{mode:"reconcile-public-pr"}}`.
+Do not dispatch it again; use the read-only acceptance command above.
 This explicitly operator-authorized reconciliation is not event activation proof.
 No new resources, bindings, container image or permission scope are needed.
 Normal Workflow/RPC/SQLite metering applies; there is no AI spend. Preserve all

@@ -3,26 +3,40 @@
 > How far can an existing Vite project go without replacing its scripts?
 
 One app, one rehearsal branch. Make a change, run it, push it, inspect Slack.
-Host rollout for the new main/preview policy is pending native verification.
+Branch pushes publish previews; main releases through the Slack review.
 
-## 0. Set up once
+## 0. Build the app
 
 > Use this repository and its hosted integration. No new repo or worktree.
 
-From a clean repository checkout:
+In `examples/demo`, on your usual checkout:
 
 ```sh
-git fetch origin main
-git switch -c demo/rehearsal origin/main
 pnpm install
-export PATH="$PWD/node_modules/.bin:$PATH"
-cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
-cd examples/demo
 pnpm build
 ```
 
-Use Node 24.11+ or Node 26+. Keep this shell open. Run `pnpm dev` to edit the app.
-The Access login is for the hosted app; GitHub pushes use your normal GitHub login.
+Use Node 24.11+ or Node 26+. Run `pnpm dev` to edit the app.
+
+<details>
+<summary>Prepare this repo's unpublished CLI for the walkthrough</summary>
+
+Stay in `examples/demo`. Create an ordinary branch if you are on `main`, and add
+the workspace CLI to this shell:
+
+```sh
+git switch -c demo/rehearsal
+export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
+```
+
+Already on your own branch? Keep it. GitHub pushes use your normal GitHub login;
+they do not require Cloudflare Access. Only direct `cf-ci run --remote` calls need:
+
+```sh
+cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
+```
+
+</details>
 
 ## 1. Discover the project
 
@@ -145,8 +159,11 @@ Marker-free script discovery is still conservative and serial in its default wor
 ```sh
 git add src .cloudflare/ci
 git commit -m "Rehearse the demo"
-git push -u origin HEAD
+git push
 ```
+
+For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
+branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
 The parent card shows status and the preview link. Its thread holds step output.
@@ -215,15 +232,16 @@ Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
 
 The new public500 automatically reached Flue, passed the exact-commit native Node
 check and opened [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
-Its final acknowledgement failed on the renamed bot's login; same-record
-reconciliation is pending. [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
+Its renamed-bot acknowledgement error is preserved. Approved read-only
+reconciliation confirmed that existing PR and updated the same Slack card.
+[Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 
-The separately completed Flue → native Node → proposed PR path can be inspected
-without spending or changing anything, from the repository root:
+Verify that actual public-error run without another error, model call or write,
+from the repository root with your existing Cloudflare CLI and GitHub sessions:
 
 ```sh
-node examples/flue-repair/verify.ts
+node examples/flue-repair/verify-public.ts
 ```
 
 [Flue integration and actual unmerged proposal](../flue-repair).

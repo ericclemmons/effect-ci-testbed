@@ -1,5 +1,12 @@
 # Owned failure signal
 
+Current v2 claim is consumed. One genuine public GET on version
+`9c829b54-985d-4811-b806-690f93338284` automatically led to fresh Flue, a native
+exact-commit check and unmerged PR4. Its final renamed-bot acknowledgement failed;
+separate read-only reconciliation confirmed the existing PR and updated the same
+Slack card without replaying the error or model. [Actual evidence](../effect-ci/PUBLIC-REPAIR.md).
+This URL is not a resettable rehearsal. The v1 account below is historical.
+
 Standalone deterministic failure source for the Friday incident loop. Its historical private RPC path remains separate from the new one-shot public test below. No secrets, AI, GitHub, repair writer, arbitrary prompt or deployment binding reaches the source. The historical authenticated Workflow/SQLite emission is preserved unchanged; never replay it to stand in for a new public incident.
 
 ## Public HTTP one-shot (native attempt retained)
