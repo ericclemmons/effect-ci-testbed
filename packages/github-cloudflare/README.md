@@ -88,8 +88,9 @@ contracts remain separate work in #167; this is not completion of that issue.
 node --test packages/github-cloudflare/src/notification-isolation-runtime.test.ts
 ```
 
-The local workerd/SQLite regression injects a synchronous notification checkpoint
-exception at the real hosted call site. It checks successful and failed business
+The local workerd/SQLite regression injects synchronous throws, rejected promises
+and an actual 20-second timeout inside the real durable notification checkpoint.
+It checks successful and failed business
 outcomes, a healthy second provider, no repeated destination attempt, the bounded
 policy and redacted receipt. Notification endpoints are fake; no live delivery
 or cloud failure-isolation proof is claimed.
