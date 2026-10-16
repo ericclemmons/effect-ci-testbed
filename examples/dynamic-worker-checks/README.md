@@ -65,6 +65,35 @@ toolchain rollout. No hosted resource was created/redeployed for this investigat
 Future Worker-compatible artifacts must be investigated afresh; do not substitute
 the existing Prettier proof or silently execute native tools.
 
+### Genuine Vitest assertion subset: local compatibility
+
+The [assertion compatibility test](./src/vitest-compatibility.test.mjs) uses the
+actual pinned `@vitest/expect` 5.0.3 `JestChaiExpect` plugin and Chai. The tested
+subset is synchronous `toBe`, `toEqual` and `.not` assertions inside an awaited
+Worker fetch handler. A real unequal assertion returns `AssertionError`, not a
+manufactured passing result. Separate fresh children show no global-state leak;
+empty bindings, denied outbound fetch and a rejected `node:fs` import are checked.
+
+```sh
+cd examples/dynamic-worker-checks
+pnpm install
+pnpm test:vitest-compatibility
+```
+
+Only trusted tool/source text is bundled in Node; the assertions execute in
+actual **local** WorkerLoader isolates without Node compatibility. Each child has
+an explicit 1,000 ms CPU setting, zero subrequests and `globalOutbound:null`.
+The fixed diagnostic bridge caps its tool bundle at 350,000 bytes. This is a
+compatibility investigation, not a production project-test protocol or proof
+that local CPU termination is enforced.
+
+No native hosted assertion run or infinite-loop termination is claimed. Test
+discovery, `describe`/`test` registration, mocks, snapshots, plugins, filesystem,
+Vite transforms, arbitrary npm modules and the full Vitest runner remain outside
+this tested subset. #137 stays open for the bounded adapter, hosted positive /
+negative execution and CPU proof. No permission, deployment, resource or model
+call was needed for this investigation.
+
 ## Owned containerless deployment
 
 This directory owns its [private Worker/config](./cloudflare.config.ts),

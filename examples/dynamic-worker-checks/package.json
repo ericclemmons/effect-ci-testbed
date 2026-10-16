@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "test:oxc-compatibility": "node --test src/oxc-compatibility.test.mjs"
+    "test:oxc-compatibility": "node --test src/oxc-compatibility.test.mjs",
+    "test:vitest-compatibility": "node --test src/vitest-compatibility.test.mjs"
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
@@ -15,6 +16,7 @@
     "prettier": "3.6.2"
   },
   "devDependencies": {
+    "@vitest/expect": "5.0.3",
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@cloudflare/workers-types": "5.20261001.1",
     "@types/node": "^26.6.3",
