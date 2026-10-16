@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash, generateKeyPairSync } from "node:crypto";
 import test from "node:test";
-import { readOwnedStaticAssets } from "./static-assets-read.ts";
+import { readOwnedStaticAssets, readOwnedStaticBuildAssets } from "./static-assets-read.ts";
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
   privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
 const credentials = { appId: "5089816", privateKey }, revision = "a".repeat(40), tree = "b".repeat(40);
 const blob = createHash("sha1").update("blob 5\0hello").digest("hex");
-function harness(options: { revokeFailure?: boolean; readFailure?: boolean; permissions?: object } = {}) {
+function harness(options: { revokeFailure?: boolean; readFailure?: boolean; permissions?: object; build?: boolean } = {}) {
   const state = { minted: 0, read: 0, revoked: 0 };
   const transport: typeof fetch = async (input, init) => {
     const url = String(input);
@@ -22,7 +22,7 @@ function harness(options: { revokeFailure?: boolean; readFailure?: boolean; perm
     if (options.readFailure) throw Error("private.fixture.token sensitive upstream body");
     if (url.endsWith(`commits/${revision}`)) return Response.json({ sha: revision, tree: { sha: tree } });
     if (url.endsWith(`trees/${tree}?recursive=1`)) return Response.json({ sha: tree, truncated: false,
-      tree: ["app.js", "index.html", "style.css"].map(name => ({ path: `examples/static-assets-source/site/${name}`, mode: "100644", type: "blob", size: 5, sha: blob })) });
+      tree: [options.build ? "app.ts" : "app.js", "index.html", "style.css"].map(name => ({ path: `examples/static-assets-source/${options.build ? "build-site" : "site"}/${name}`, mode: "100644", type: "blob", size: 5, sha: blob })) });
     assert.ok(url.endsWith(`blobs/${blob}`));
     return Response.json({ sha: blob, size: 5, encoding: "base64", content: "aGVsbG8=" });
   };
@@ -33,6 +33,16 @@ test("owned source token is one-repository read-only and revoked before bytes re
   assert.deepEqual(h.state, { minted: 1, read: 5, revoked: 1 });
   assert.equal(result.revision, revision);
   assert.ok(!JSON.stringify(result).includes("private.fixture.token"));
+});
+test("separate build reader keeps the same selected-repository read-only authority and revocation boundary", async () => {
+  const h = harness({ build: true }), result = await readOwnedStaticBuildAssets(credentials, revision, h.transport);
+  assert.deepEqual(h.state, { minted: 1, read: 5, revoked: 1 });
+  assert.ok(!JSON.stringify(result).includes("private.fixture.token"));
+  for (const options of [{ readFailure: true }, { revokeFailure: true }, { permissions: { contents: "write" } }]) {
+    const bad = harness({ ...options, build: true });
+    await assert.rejects(readOwnedStaticBuildAssets(credentials, revision, bad.transport), { message: "Static source read unavailable" });
+    assert.equal(bad.state.revoked, 1);
+  }
 });
 test("invalid revision never mints; source, permission and cleanup failures revoke and redact", async () => {
   const invalid = harness(); await assert.rejects(readOwnedStaticAssets(credentials, "main", invalid.transport));

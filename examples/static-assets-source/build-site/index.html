@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Built without a container · Effect CI</title>
+  <link rel="stylesheet" href="./style.css">
+  <main>
+    <p class="eyebrow">Effect CI / Dynamic Worker build</p>
+    <h1>TypeScript in.<br>Checked JavaScript out.</h1>
+    <p class="intro">A minimal build transform, served through Workers Static Assets.</p>
+    <ol aria-label="Build path">
+      <li><span>01</span> Commit-pinned source</li>
+      <li><span>02</span> Bounded compiler isolate</li>
+      <li><span>03</span> Verified served bytes</li>
+    </ol>
+    <section aria-labelledby="browser-check">
+      <h2 id="browser-check">Try the compiled module</h2>
+      <p id="result" role="status">Ready to run the JavaScript emitted from app.ts.</p>
+      <button type="button">Verify compiled JavaScript</button>
+      <a href="./app.js">Inspect the emitted module</a>
+    </section>
+    <p class="scope">One TypeScript file. No npm lifecycle, framework build or Container.</p>
+  </main>
+  <script type="module" src="./app.js"></script>
+</html>

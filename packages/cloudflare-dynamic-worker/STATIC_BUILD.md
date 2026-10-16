@@ -5,10 +5,12 @@ string to JavaScript in a fresh Dynamic Worker. It uses pinned Sucrase 3.35.1,
 not a project-supplied compiler or plugin. Project source is request data: it is
 never passed through the host's bundler, imported or evaluated there.
 
-This is **compiler preparation**, not completed hosted build/deployment coverage
-for #134. Wiring authenticated immutable source, validating the complete output
-asset manifest, durable build provenance and the existing trusted uploader into
-one actual hosted build-to-served-site run remains required. The existing
+This is not completed **hosted build/deployment coverage** for #134. The
+[Static Assets build mode](../../examples/static-assets-source/README.md#bounded-build)
+now wires authenticated immutable source, complete output-manifest validation,
+durable build provenance and the existing trusted uploader together, with local
+Workflow/SQLite/WorkerLoader verification. An actual hosted build-to-served-site
+run remains required. The existing
 [no-build Static Assets recipe](../../examples/static-assets-source/README.md)
 is separate real evidence; it is not relabelled as this build.
 

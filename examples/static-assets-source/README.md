@@ -1,4 +1,4 @@
-# Deploy a static site without a build or container
+# Publish static files, or compile TypeScript without a container
 
 > Can a DO retain checked, commit-pinned files and publish them through the real Workers Static Assets API?
 
@@ -11,6 +11,55 @@ Container, `npm install`, project-code execution or CLI inside a DO is involved.
 independent served-byte, version/allocation and browser checks are recorded in
 the [native proof](./verification/native-20261016.md). Local full publication is
 still planned; the Local tests below do not grant that matrix cell.
+
+The additional `build` mode compiles a fixed TypeScript fixture in a fresh
+Dynamic Worker before using the same publication journal. **Local verification
+passes; native build acceptance is pending.** This is a bounded TypeScript
+transform, not a Vite build or arbitrary package installation.
+
+## Bounded build
+
+Use a pushed commit containing `build-site/app.ts`, `build-site/index.html` and
+`build-site/style.css`. The private reader authenticates those exact Git blobs;
+the Workflow checkpoints their raw manifest before compiling `app.ts` to
+`site/app.js`. HTML and CSS pass through unchanged.
+
+```sh
+cf workflows instances create effect-ci-static-assets-publish --body \
+  '{"instance_id":"my-static-build-checks","params":{"mode":"build-checks","revision":"FULL_40_CHARACTER_COMMIT"}}'
+cf workflows instances create effect-ci-static-assets-publish --body \
+  '{"instance_id":"my-static-build-run","params":{"mode":"build","revision":"FULL_40_CHARACTER_COMMIT"}}'
+```
+
+These are operator commands, not instructions to repeat completed evidence.
+First deploy the exact-green App's updated private reader and the broker's
+`LOADER` binding using the guarded procedure below. Existing deployments use
+`cf deploy --prebuilt` to preserve secrets; the secret-file command below is
+**initial provisioning only**. Keep the existing token unchanged.
+
+The compiler is pinned Sucrase 3.35.1, with no project configuration, plugins,
+environment bindings or outbound network. Input and emitted JavaScript are each
+limited to 32 KiB; the host rechecks source, output and compiler digests. The
+child receives a requested 1-second CPU limit and a 5-second host timeout.
+Exact CPU enforcement has not been measured; no hard one-second claim is made.
+
+`build-checks` publishes nothing. It checks type erasure, malformed/oversized
+input rejection, fresh child state, and denial of network, native process and
+known parent-only bundle access. Its revision is a claim, not authentication:
+independently bind the deployed Worker/Workflow version to the checked commit.
+
+Builds share the **same 32-revision journal, active-operation fence and pending
+mutation history** as no-build publications. SQLite retains bounded raw source
+and emitted manifests (at most 96 KiB each) with immutable provenance. A changed
+compiler identity conflicts even if emitted bytes match. There is no reset,
+eviction, parallel budget or escape from an uncertain upload acknowledgement.
+Only the trusted publisher receives the deployment credential; the compiler
+receives source text only. A completed receipt binds raw source, compiler and
+emitted bytes, but digests alone do not authenticate a Git commit.
+
+After a successful native build, open the same public fixture and click
+**Verify compiled JavaScript**. Until native acceptance is recorded, the live
+URL and screenshot below remain evidence for the earlier **no-build** fixture.
 
 ## Dedicated resources and authority
 
@@ -52,7 +101,7 @@ cd ..
 cf build
 ```
 
-Provision only `STATIC_ASSETS_DEPLOY_TOKEN` on the private broker through the
+For initial provisioning only, supply `STATIC_ASSETS_DEPLOY_TOKEN` on the private broker through the
 supported file-based deployment flag, never via a command argument containing
 the value. Confirm that the ignored file contains only that assignment, and do
 not pass it to the public target or App:
@@ -130,10 +179,12 @@ mode on the same revision, not permission to upload again.
 
 ```sh
 node --test ../../packages/cloudflare/src/static-assets-source.test.ts \
+  ../../packages/cloudflare/src/static-assets-build.test.ts \
   ../../packages/cloudflare/src/static-assets-github.test.ts \
   ../../packages/cloudflare/src/static-assets-publish.test.ts \
   ../../apps/effect-ci/src/static-assets-read.test.ts \
   ../../apps/effect-ci/src/static-assets-journal-runtime.test.ts
+node --test src/runtime.test.ts
 cf-ci plan --workflow .cloudflare/ci/workflow.ts
 ```
 
@@ -141,6 +192,9 @@ The real local workerd/SQLite test covers concurrency, pending intents across
 reload, immutable replay and capacity. API/source tests use fake responses and
 credentials: success, lost ACKs, foreign uploads, target drift, corrupt served
 bytes, token revocation and redaction. They are **not** native deployment proof.
+The build runtime tests use real local WorkerLoader children and SQLite, with
+mocked Git/API responses and locally prepared compiler modules. They do not
+prove hosted compiler preparation, account limits or a native Assets upload.
 
 ## Cost and cleanup
 

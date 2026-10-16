@@ -9,6 +9,7 @@
     "./r2-source": "./src/r2-source.ts",
     "./durable-source": "./src/durable-source.ts",
     "./static-assets-source": "./src/static-assets-source.ts",
+    "./static-assets-build": "./src/static-assets-build.ts",
     "./static-assets-service": "./src/static-assets-service.ts",
     "./static-assets-publish": "./src/static-assets-publish.ts",
     "./static-assets-journal": "./src/static-assets-journal.ts",
