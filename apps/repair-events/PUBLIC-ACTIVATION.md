@@ -1,5 +1,20 @@
 # Automatic public-incident activation (version-pinned preparation)
 
+## Next approved event test
+
+The next HOST enrollment pins `owned-public-health-500-v2` to source
+`f8eb61a874ccf972fceed25ed6889978608d87bc` and independently deployed producer
+`9c829b54-985d-4811-b806-690f93338284`. Eric explicitly approved this ONE fresh
+bounded test after the event-routing correction. It is not a replay/reset of the
+expired v1 claim. Native activation/PR acceptance is still pending.
+
+The receiver now sends the private canonical `.trigger` event only after durable
+admission. The CI host re-reads admission before selecting its fixed repair
+Workflow. An existing public admission or writer slot prevents another arm.
+The same lifetime model ledger and host-call cap remain unchanged.
+
+## Retained previous test
+
 This is the receiver side of the next **owned test**, not a live automatic repair
 claim. Production `src/public-enrollment.ts` pins producer version
 `cd91c304-a8a1-48f5-97cf-ad60b7edb285` to exact deployed source
