@@ -153,7 +153,7 @@ test("write confirmation reads the active allocation rather than trusting a mini
   assert.deepEqual(await api.create(versions, "owned-operation"), await api.latest())
 })
 
-function delayedReadHarness(mode: "converges" | "stale" | "foreign" | "malformed") {
+function delayedReadHarness(mode: "converges" | "stale" | "foreign" | "malformed" | "transport" | "changed-previous") {
   let journal: ReleaseJournal | undefined
   let posts = 0, readsAfterWrite = 0
   const waits: number[] = []
@@ -168,8 +168,10 @@ function delayedReadHarness(mode: "converges" | "stale" | "foreign" | "malformed
     }
     if (!written) return Response.json({success:true,result:{deployments:[old]}})
     readsAfterWrite++
+    if (mode === "transport") throw Error("secret network failure")
     const value = mode === "foreign" ? {...written,id:id(99),annotations:{"workers/message":"foreign-owner"}} :
       mode === "malformed" ? {...old,versions:[]} :
+      mode === "changed-previous" ? {...old,annotations:{"workers/message":"changed-previous"}} :
       mode === "stale" || readsAfterWrite < 3 ? old : written
     return Response.json({success:true,result:{deployments:[value]}})
   }) as typeof fetch, {wait:async ms=>{waits.push(ms)}})
@@ -189,11 +191,11 @@ test("bounded stale-read confirmation accepts only the same intent, with exactly
   assert.deepEqual(h.waits,[250,500])
 })
 
-test("exhausted stale reads retain pending intent; foreign and malformed reads stop immediately", async () => {
-  for(const mode of ["stale","foreign","malformed"] as const) {
+test("exhausted stale reads retain pending intent; foreign, changed, malformed and failed reads stop immediately", async () => {
+  for(const mode of ["stale","foreign","malformed","transport","changed-previous"] as const) {
     const h=delayedReadHarness(mode)
     await h.manager.begin("delayed-read",id(3))
-    await assert.rejects(h.manager.promote("delayed-read",10))
+    await assert.rejects(h.manager.promote("delayed-read",10),error=>!String(error).includes("secret"))
     assert.equal(h.posts(),1)
     assert.ok(h.journal().pending)
     assert.equal(h.reads(),mode==="stale"?4:1)
