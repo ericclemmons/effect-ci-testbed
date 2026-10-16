@@ -35,11 +35,11 @@ The [production URL](https://effect-ci-hmd-demo.ericclemmons.workers.dev/)
 returned 302 to this build's immutable Vite publication. Independent health
 identity and all three raw asset hashes/sizes matched the native verifier:
 
-| File | Bytes | SHA-256 |
-| --- | ---: | --- |
-| `index.html` | 926 | `cea4ffa2f433cf5d086041a821bbef2f90f6af39df2d9da3bae56f145a78d230` |
-| `app.js` | 1660 | `a5bb1bb19ab1d75f07725b5a7d50c2b1a38de5dd56b5adc6b1dadc6eee642b4f` |
-| `message.js` | 100 | `c9d95addba605e1fc6fff983591fbef245f4ae99d0f81356b9661bf7f3b343b0` |
+| File         | Bytes | SHA-256                                                            |
+| ------------ | ----: | ------------------------------------------------------------------ |
+| `index.html` |   926 | `cea4ffa2f433cf5d086041a821bbef2f90f6af39df2d9da3bae56f145a78d230` |
+| `app.js`     |  1660 | `a5bb1bb19ab1d75f07725b5a7d50c2b1a38de5dd56b5adc6b1dadc6eee642b4f` |
+| `message.js` |   100 | `c9d95addba605e1fc6fff983591fbef245f4ae99d0f81356b9661bf7f3b343b0` |
 
 Asset digest: `cbb7c3279acf7de80096837e389e7ad8cbcbb92fdafb76b9c9251407bda7419b`.
 The actual browser showed **Hello from the demo app.** without a click, then
