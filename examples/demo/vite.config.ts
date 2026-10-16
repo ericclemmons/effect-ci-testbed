@@ -41,7 +41,11 @@ export default defineConfig({
       },
       "test:source": {
         command: "vp test && node --test verification/*.test.mjs verification/*.test.ts",
-        cache: true,
+        cache: {
+          // Vitest's result/timing cache is generated state, not test input.
+          input: [{ auto: true }, "!.vite/**", "!node_modules/.vite/**"],
+          output: [{ auto: true }, "!.vite/**", "!node_modules/.vite/**"],
+        },
       },
       "build:source": { command: "vp build", cache: true },
     },

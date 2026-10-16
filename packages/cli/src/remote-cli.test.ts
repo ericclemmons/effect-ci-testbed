@@ -77,10 +77,10 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true, format = "text") => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+    const run = (userToken = "", explicit = true, format = "text", projectConfig = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, "run", "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
+        env: { ...process.env, EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
@@ -124,11 +124,20 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const mounted = await run("fixture-user-token", false)
     assert.equal(mounted.code, 0, mounted.output)
     assert.match(mounted.output, /Workflow completed/)
+    // A fresh workstation needs no exported URL: exercise the real CLI's files.
+    await writeFile(join(directory, ".gitignore"), ".env\n.env.local\n")
+    execFileSync("git", ["add", ".gitignore"], { cwd: directory })
+    execFileSync("git", ["commit", "-qm", "private workstation config"], { cwd: directory })
+    await writeFile(join(directory, ".env"), `EFFECT_CI_REMOTE_URL=${origin}${routePrefix}\n`)
+    await writeFile(join(directory, ".env.local"), "EFFECT_CI_REMOTE_TOKEN=fixture-api-token\n", { mode: 0o600 })
+    const configured = await run("fixture-user-token", false, "text", true)
+    assert.equal(configured.code, 0, configured.output)
+    assert.match(configured.output, /Workflow completed/)
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 7)
+    assert.equal(dispatches, 8)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

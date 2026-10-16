@@ -36,6 +36,11 @@ they do not require Cloudflare Access. Only direct `cf-ci run --remote` calls ne
 cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 ```
 
+The public worker URL is checked into `.env`. On a new computer, put your existing
+Effect CI API token in ignored `.env.local` as `EFFECT_CI_REMOTE_TOKEN=…`, with mode
+`600`, or use your private Effect CI remote profile. Access login alone does not
+provide that API token. Never use a Cloudflare deployment token here.
+
 </details>
 
 ## 1. Discover the project
