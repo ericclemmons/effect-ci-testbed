@@ -21,7 +21,7 @@ export async function runPreparedProjectTests(loader: WorkerLoader, trusted: Pre
     tools[path] = js
   }
   const toolDigest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(
-    JSON.stringify([trusted.mainModule, Object.entries(tools).sort(([a], [b]) => a.localeCompare(b))]),
+    JSON.stringify([trusted.mainModule, Object.entries(tools).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)]),
   ))), b => b.toString(16).padStart(2, "0")).join("")
   const tests: ProjectTestResult["tests"][number][] = []
   for (const [index, test] of request.tests.entries()) {

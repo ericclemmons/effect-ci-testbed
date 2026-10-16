@@ -59,6 +59,8 @@ test("bounded shared adapter executes genuine assertions, failures and fresh pro
     assert.deepEqual(denied.tests, [{ name: "filesystem", passed: false, assertions: 0, failure: "execution" }]);
     const unknown = await run({ "suite.js": "import secret from 'forbidden-parent-binding';export function test(e){e(secret).toBe(1)}" }, [{ name: "unprovided import", export: "test" }]);
     assert.deepEqual(unknown.tests, [{ name: "unprovided import", passed: false, assertions: 0, failure: "execution" }]);
+    const process = await run({ "suite.js": "import{execFileSync}from'node:child_process';export function test(e){e(execFileSync('/usr/bin/true')).toBe(undefined)}" }, [{ name: "native process", export: "test" }]);
+    assert.deepEqual(process.tests, [{ name: "native process", passed: false, assertions: 0, failure: "execution" }]);
     const invalid = await runtime.dispatchFetch("https://test.invalid", { method: "POST", body: JSON.stringify({ mainModule: "suite.js", modules: { "suite.js": "bad" }, tests: [], env: {} }) });
     assert.equal(invalid.status, 422);
   } finally { await runtime.dispose(); }

@@ -36,17 +36,21 @@ export class AssertionWorkflow extends WorkflowEntrypoint<{ LOADER: WorkerLoader
         throw new NonRetryableError("Execution boundary must reject");
       return { mode, validated: true };
     });
-    if (mode === "cpu-loop") {
+    if (["passing", "state-isolation", "cpu-loop"].includes(mode)) {
       await step.sleep("fixture:tail-settle", "2 seconds");
-      await step.do("fixture:cpu-tail-outcome", once, async () => {
-        const value = await capabilities.AssertionJournal.getByName(event.instanceId).read(0);
-        if (!value) throw new NonRetryableError("Native CPU tail receipt unavailable");
-        try {
-          if (value.owner !== event.instanceId || value.test !== 0 || value.outcome !== "exceededCpu")
-            throw new NonRetryableError("Native CPU limit outcome required");
-          return { owner: value.owner, test: value.test, outcome: value.outcome, cpuTime: value.cpuTime,
-            wallTime: value.wallTime, eventTimestamp: value.eventTimestamp };
-        } finally { value[Symbol.dispose]?.(); }
+      await step.do("fixture:tail-outcomes", once, async () => {
+        const outcomes = [];
+        for (let test = 0; test < report.tests.length; test++) {
+          const value = await capabilities.AssertionJournal.getByName(event.instanceId).read(test);
+          if (!value) throw new NonRetryableError("Native tail receipt unavailable");
+          try {
+            if (value.owner !== event.instanceId || value.test !== test || value.outcome !== (mode === "cpu-loop" ? "exceededCpu" : "ok"))
+              throw new NonRetryableError("Required native tail outcome missing");
+            outcomes.push({ owner: value.owner, test: value.test, outcome: value.outcome, cpuTime: value.cpuTime,
+              wallTime: value.wallTime, eventTimestamp: value.eventTimestamp });
+          } finally { value[Symbol.dispose]?.(); }
+        }
+        return { toolDigest: report.toolDigest, outcomes };
       });
     }
     // Retain the redacted report first; failing tests must not make a green CI run.

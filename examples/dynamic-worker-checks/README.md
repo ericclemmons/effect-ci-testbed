@@ -122,10 +122,14 @@ project author intentionally writing a vacuous passing assertion.
 
 The real local adapter test covers relative modules, genuine success/failure,
 fresh globals, missing exports, empty tests, excessive assertions, redaction,
-blocked network, denied host-file access and an unprovided import. Workerd may
+blocked network, denied host-file/native-process access and an unprovided import. Workerd may
 expose a `process` global; its mere presence/absence is not the capability fence.
 The tests check actual prohibited operations instead of assuming that name is
 absent. Native infinite-loop termination remains unverified.
+The separate real local Workflow/SQLite/RPC test requires actual successful tail
+receipts for passing/fresh-state cases and retains errored assertion/import/file
+cases. Only its trusted tooling preparation is local esbuild; it does not prove
+native runtime package bundling or CPU preemption.
 
 The prepared `AssertionWorkflow` adds the private
 `effect-ci-vitest-subset-checks` Workflow to this recipe's existing Worker, reusing
@@ -139,7 +143,7 @@ The Workflow accepts exactly one fixed mode: `passing`,
 `host-filesystem`. No actor source, path, destination, identity or policy input.
 The wrapper persists the redacted report before rejecting a failed test with a
 non-retryable error; negative cases must remain errored, not be made green.
-The CPU case additionally requires a real platform `exceededCpu` tail receipt;
+Passing/fresh-state cases require real `ok` tail receipts. The CPU case additionally requires a real platform `exceededCpu` tail receipt;
 an arbitrary execution error or outer timer is not CPU proof. After one fixed
 two-second settle it reads that same journal once and fails closed if unavailable.
 See the [tail outcome contract](https://developers.cloudflare.com/workers/runtime-apis/handlers/tail/),

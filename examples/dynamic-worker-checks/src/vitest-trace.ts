@@ -4,7 +4,7 @@ const validOwner = (owner: unknown): owner is string => typeof owner === "string
 export class AssertionJournal extends DurableObject {
   async record(value: Outcome) {
     if (!validOwner(value.owner) || !Number.isInteger(value.test) || value.test < 0 || value.test >= 16 ||
-        !["ok", "exception", "exceededCpu", "exceededMemory", "canceled", "unknown"].includes(value.outcome) ||
+        !["ok", "exception", "exceededCpu", "exceededMemory", "canceled", "unknown", "scriptNotFound", "responseStreamDisconnected"].includes(value.outcome) ||
         ![value.cpuTime, value.wallTime].every(n => Number.isFinite(n) && n >= 0 && n <= 300000) ||
         (value.eventTimestamp !== null && (!Number.isFinite(value.eventTimestamp) || value.eventTimestamp < 0))) throw Error("Invalid owned tail outcome");
     const data: Outcome = { owner: value.owner, test: value.test, outcome: value.outcome,
