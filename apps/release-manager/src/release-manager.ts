@@ -17,7 +17,7 @@ export interface ReleaseJournal {
   readonly leaseSeconds?: number
 }
 export interface ReleaseStore { read(): Promise<ReleaseJournal | undefined>; write(value: ReleaseJournal): Promise<void> }
-export interface DeploymentAPI { latest(): Promise<Deployment>; create(versions: ReadonlyArray<VersionAllocation>, message: string): Promise<Deployment> }
+export interface DeploymentAPI { latest(): Promise<Deployment>; create(versions: ReadonlyArray<VersionAllocation>, message: string, expected?: Deployment): Promise<Deployment> }
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)
 const sameAllocation = (left: ReadonlyArray<VersionAllocation>, right: ReadonlyArray<VersionAllocation>) =>
   left.length === right.length && left.every((entry) => right.some((other) => entry.version === other.version && Math.abs(entry.percentage - other.percentage) < 1e-8))
@@ -100,7 +100,7 @@ export class ReleaseManager {
     const intent: Intent = { sequence, expected: latest.id, versions, phase, rollback, message: `effect-ci-release:${journal.owner}:${sequence}` }
     const pending = { ...journal, pending: intent }
     await this.store.write(pending)
-    const deployed = await this.api.create(versions, intent.message)
+    const deployed = await this.api.create(versions, intent.message, latest)
     if (!validDeployment(deployed) || deployed.id === latest.id || deployed.message !== intent.message || !sameAllocation(deployed.versions, versions)) throw new Error("Ambiguous deployment acknowledgement; reconcile required")
     return this.accept(pending, deployed)
   }
@@ -140,7 +140,8 @@ export class ReleaseManager {
 }
 
 /** No caller-supplied URLs, credentials, force flag or automatic deployment-write retry. */
-export function deploymentAPI(token: () => string, transport: typeof fetch = fetch): DeploymentAPI {
+export function deploymentAPI(token: () => string, transport: typeof fetch = fetch,
+  options: { readonly wait?: (milliseconds: number) => Promise<void> } = {}): DeploymentAPI {
   const base = `https://api.cloudflare.com/client/v4/accounts/${RELEASE_ACCOUNT}/workers/scripts/${RELEASE_SCRIPT}/deployments`
   const request = async (method: string, body?: unknown) => {
     let status: number | undefined
@@ -191,11 +192,21 @@ export function deploymentAPI(token: () => string, transport: typeof fetch = fet
     }
   return {
     latest,
-    create: async (versions, message) => {
+    create: async (versions, message, expected) => {
       await request("POST", { strategy: "percentage", versions: versions.map((entry) => ({ version_id: entry.version, percentage: entry.percentage })), annotations: { "workers/message": message } })
       // Read back the active allocation. Write acknowledgements alone are not proof
       // of ownership or allocation; the journal validates this read's annotation.
-      return latest()
+      // Only an exact stale copy of the pre-write deployment permits another GET.
+      // Foreign/malformed reads or transport failures stop immediately. Never
+      // repeat POST, widen allocation matching, or use these reads as health proof.
+      const delays = [250, 500, 1000]
+      for (let attempt = 0; ; attempt++) {
+        const current = await latest()
+        if (!expected || current.id !== expected.id ||
+            current.message !== expected.message || !sameAllocation(current.versions, expected.versions) ||
+            attempt === delays.length) return current
+        await (options.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms))))(delays[attempt]!)
+      }
     },
   }
 }
