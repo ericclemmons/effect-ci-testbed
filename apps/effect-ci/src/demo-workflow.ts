@@ -51,6 +51,7 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     // Signed input identification must start from the owned immutable image.
     cache: false,
     slackLayout: "status-thread",
+    slackCommandOutput: "failed",
     container: { image: "workspace", instance: "standard-1" },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,

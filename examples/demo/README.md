@@ -167,6 +167,7 @@ branch's name). Subsequent pushes are just `git push`; never redirect to a deplo
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
 The parent card shows status and the preview link. Its thread holds step output.
+Failed command replies include bounded, redacted stdout/stderr and the exit code.
 Click **Details on that Slack parent card** for the same Cloudflare Workflow run.
 
 The host currently selects its fixed demo program, not uploaded `workflow.ts`.

@@ -63,6 +63,8 @@ export interface HostFinalization<A> {
 export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.WorkflowEntrypointOptions<Environment> {
   /** One live status line in Slack; per-step details and host review frames in its thread. */
   readonly slackLayout?: "status-thread"
+  /** Explicit destination opt-in: bounded, redacted failed-command output in step replies only. */
+  readonly slackCommandOutput?: "failed"
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
   readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
@@ -227,7 +229,9 @@ export const workflowEntrypoint = <A>(
       revision: event.payload.revision,
       slackApprovalsEnabled: Boolean(this.env.SLACK_SIGNING_SECRET && this.env.SLACK_APP_ID && this.env.SLACK_TEAM_ID && this.env.SLACK_APPROVER_IDS && this.env.SLACK_CHANNEL_ID),
       ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
-    })
+    }, options.slackCommandOutput === "failed" ? { failedCommandOutput: {
+      redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string"),
+    } } : {})
     const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
     const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
       step.do(`notification-provider:${provider}:${key}`, {
@@ -361,13 +365,15 @@ export const workflowEntrypoint = <A>(
           await reporter?.report(runtimeEvent)
           const key = runtimeEvent.type === "step.status"
               ? `${runtimeEvent.stepId}:${runtimeEvent.status}`
+              : runtimeEvent.type === "step.command.failed" ? `${runtimeEvent.stepId}:command-failed`
               : runtimeEvent.type === "approval.resolved"
                 ? `${runtimeEvent.requestId}:${runtimeEvent.decision}`
                 : runtimeEvent.type === "approval.requested"
                   ? `${runtimeEvent.requestId}:waiting`
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
-          const threadKey = runtimeEvent.type === "step.status" && !["planned", "queued"].includes(runtimeEvent.status) ? runtimeEvent.stepId :
+          const threadKey = runtimeEvent.type === "step.command.failed" ? runtimeEvent.stepId :
+            runtimeEvent.type === "step.status" && !["planned", "queued"].includes(runtimeEvent.status) ? runtimeEvent.stepId :
             runtimeEvent.type === "approval.requested" || runtimeEvent.type === "approval.resolved" ? runtimeEvent.stepId : undefined
           await notify(key, () => card.update(runtimeEvent), undefined, false,
             threadKey ?? (runtimeEvent.type === "workflow.completed" ? latestThread : undefined))

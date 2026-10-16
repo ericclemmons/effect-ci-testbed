@@ -7,6 +7,26 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("enrolled failure output stays in its step reply, redacted and bounded, never root or provider snapshot", () => {
+  const card = new RunCard(identity, { failedCommandOutput: { redactValues: ["owned-private-value"] } })
+  const failure: RuntimeEvent = { type: "step.command.failed", workflowId: "cf-ci-demo", stepId: "test", timestamp: "now",
+    diagnostics: { version: 1, stepId: "test", command: "pnpm test", cwd: "/fixture", exitCode: 1,
+      output: { stdout: "Expected hello\nReceived goodbye\nowned-private-value\n<!channel>\n" + "x".repeat(6000),
+        stderr: "Authorization: Bearer abc-private-token\nassertion failed\n", truncated: true } } }
+  assert.equal(card.update(failure), true)
+  card.update({ type: "step.status", workflowId: "cf-ci-demo", stepId: "test", status: "failed", optional: false, timestamp: "now" })
+  const rendered = card.render({ onlyStep: "test" })
+  assert.match(JSON.stringify(rendered), /assertion failed|Received goodbye/)
+  assert.match(rendered.text, /exit 1/)
+  assert.match(JSON.stringify(rendered), /truncated/)
+  assert.doesNotMatch(JSON.stringify(rendered), /owned-private-value|abc-private-token|<\!channel>/)
+  assert.ok(JSON.stringify(rendered).length < 12000)
+  assert.doesNotMatch(JSON.stringify(card.render({ statusOnly: true })), /assertion failed|Received goodbye/)
+  assert.doesNotMatch(JSON.stringify(card.snapshot()), /assertion failed|Received goodbye/)
+  const closed = new RunCard(identity)
+  assert.equal(closed.update(failure), false, "unenrolled hosts must not publish command output")
+})
+
 test("parent retains workflow, rotating status and latest evidence; replies contain only their step", () => {
   const card = new RunCard(identity)
   card.update(event("checkout", "complete")); card.update(event("build", "running"))

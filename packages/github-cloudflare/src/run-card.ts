@@ -1,5 +1,6 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
 import { copyHealthMetrics, type HealthMetrics } from "./health-metrics.ts"
+import { failedCommandOutput } from "./failed-command-output.ts"
 
 export type SlackBlock = Readonly<Record<string, unknown>>
 export interface RunHealth {
@@ -56,7 +57,7 @@ const sourceLinks = (identity: RunIdentity): string => {
   return `${link(url, repository.slice(0, 200))}@${link(url && commit ? `${url}/commit/${identity.revision}` : undefined, revision.slice(0, 100))}${safeUrl(identity.detailsUrl) ? ` • ${link(safeUrl(identity.detailsUrl), "Details")}` : ""}`
 }
 
-/** Reconstructed from runtime events on replay; never stores output or secrets. */
+/** Reconstructed on replay. Enrolled redacted failure presentation stays outside semantic snapshots. */
 export class RunCard {
   private workflowId = "Effect CI"
   private phase: "running" | "waiting" | "success" | "failure" = "running"
@@ -67,9 +68,12 @@ export class RunCard {
   private readonly identity: RunIdentity
   private readonly failures = new Map<string, string>()
   private resultLink: { label: string; url: string } | undefined
+  private readonly commandFailures = new Map<string, ReturnType<typeof failedCommandOutput>>()
+  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } }
 
-  constructor(identity: RunIdentity) {
+  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } } = {}) {
     this.identity = identity
+    this.options = options
   }
 
   private check(id: string) {
@@ -89,8 +93,18 @@ export class RunCard {
       case "step.status":
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
         if (event.status !== "failed") this.failures.delete(event.stepId)
+        if (["queued", "running"].includes(event.status)) this.commandFailures.delete(event.stepId)
 
         return true
+      case "step.command.failed": {
+        if (!this.options.failedCommandOutput || event.diagnostics.stepId !== event.stepId ||
+            (!this.commandFailures.has(event.stepId) && this.commandFailures.size >= 100)) return false
+        const output = failedCommandOutput(event.diagnostics, this.options.failedCommandOutput.redactValues)
+        if (!output) return false
+        this.check(event.stepId).status = "failed"
+        this.commandFailures.set(event.stepId, output)
+        return true
+      }
       case "dependency.added":
         this.check(event.stepId).dependencies.add(event.dependency)
 
@@ -242,6 +256,8 @@ export class RunCard {
       section += `${safe}\n`
     }
     blocks.push({ type: "section", text: { type: "mrkdwn", text: section || "Preparing checks…", verbatim: true } })
+    const commandFailure = options.onlyStep ? this.commandFailures.get(options.onlyStep) : undefined
+    if (commandFailure) blocks.push(...commandFailure.blocks)
     if (lines.length > 100) blocks.push({ type: "context", elements: [{ type: "plain_text", text: `${lines.length - 100} more checks; see Workflow history.` }] })
     if (this.health) {
       const evidence = this.health.evidenceSource === "experimental-native-wobs" ? "Native Worker outcomes (experimental SQL)" :
@@ -267,6 +283,6 @@ export class RunCard {
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
     const health = this.health ? `\nRelease ${this.health.phase}% · ${this.health.decision} · ${this.health.evidenceSource}` : ""
 
-    return { text: options.onlyStep ? `${lines.join("\n")}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
+    return { text: options.onlyStep ? `${lines.join("\n")}${commandFailure ? `\n${escape(commandFailure.text)}` : ""}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
   }
 }
