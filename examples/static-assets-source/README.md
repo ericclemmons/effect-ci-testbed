@@ -7,8 +7,10 @@ a private host service, verifies their Git blob identities and full raw SHA-256,
 and retains an immutable SQLite source revision. Its native Workflow uses the
 supported Assets upload API and a dedicated Worker version/deployment. No
 Container, `npm install`, project-code execution or CLI inside a DO is involved.
-**Live acceptance is still pending.** The matrix remains planned until a real run
-and independent served-byte verification pass.
+**Live native acceptance passed.** The actual three-action Workflow and
+independent served-byte, version/allocation and browser checks are recorded in
+the [native proof](./verification/native-20261016.md). Local full publication is
+still planned; the Local tests below do not grant that matrix cell.
 
 ## Dedicated resources and authority
 
@@ -72,8 +74,26 @@ cf workflows instances create effect-ci-static-assets-publish --body \
 
 Use a pushed `ericclemmons/effect-ci-testbed` commit containing this directory's
 three `site/` files. The only public target is
-`https://effect-ci-static-assets-demo.ericclemmons.workers.dev/`; it is not claimed
-live yet. After a completed run, open it and click **Verify interaction**.
+[the live Static Assets fixture](https://effect-ci-static-assets-demo.ericclemmons.workers.dev/).
+Open it and click **Verify interaction**.
+
+![Actual built-in browser after clicking Verify interaction](./verification/published/static-assets-5ba5791.png)
+
+If `cf deploy` uploads the bootstrap but errors afterward, inspect the actual
+version and hostname first. Do not deploy again blindly. For the recorded
+hostname-only partial failure, the owned helper uses the supported fixed-target
+API without another upload; its `enable` mode is only for the still-unbound
+bootstrap and requires a private create-only receipt directory:
+
+```sh
+node operator/hostname.mjs inspect
+node operator/hostname.mjs enable EXPECTED_BOOTSTRAP_VERSION /absolute/private-receipt-directory
+node operator/hostname.mjs readback /absolute/private-receipt-directory
+```
+
+Create that receipt directory with mode 700. If acknowledgement or propagation
+is uncertain, keep the intent and use **readback**, not another enable/deploy.
+The current published site is already enabled; do not run bootstrap recovery on it.
 
 ## Plan and failure boundaries
 
@@ -136,7 +156,7 @@ the committed Vite release or historical incidents.
 
 **Video:** Pending — no native feature clip yet.
 
-**Measured results:** Pending — no live timing or served-assets claim yet.
+**Measured results:** [Actual native run, preserved failure/recovery and served-byte proof](./verification/native-20261016.md).
 
 Use the [proof-page contract](../PROOF-PAGES.md). Local fake-API timing is not a
 deployment benchmark, and the existing DO/Dynamic Worker site is not evidence
