@@ -11,7 +11,7 @@ const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }))
 /** Native local Workflow+RPC/SQLite/WASM composition, mocked external systems.
  * Automated fixture decisions are NOT human approval or live Slack/Cloudflare deployment proof.
  */
-for (const scenario of ["approve", "force-regression", "deadline", "reject", "native-reject", "claim-failure"] as const) {
+for (const scenario of ["approve", "force-regression", "deadline", "reject", "native-reject", "claim-failure", "delivery-unavailable", "delivery-identity"] as const) {
 test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_000 }, async () => {
   const output = await build({ stdin: { contents: `
     import {WorkerEntrypoint} from "cloudflare:workers";
@@ -20,9 +20,12 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     export {HealthChartRenderer} from "./health-renderer.ts";
     export {PrivateSlackImages} from "./private-images.ts";
     export {PrivateSlackCards} from "./private-cards.ts";
-    export {HmdApprovals} from "./hmd-approval.ts";
+    import {HmdApprovals as ActualHmdApprovals} from "./hmd-approval.ts";
+    export class HmdApprovals extends ActualHmdApprovals {
+      async expire(...args){await super.expire(...args);deadlineExpirations++}
+    }
     const baseline="09593237-23b2-4873-bd04-88c8e8488840",candidate="c94cee12-0bf4-48fb-bb42-9235f7ab7a3c";
-    let phase=0,files=0,posts=0,updates=0,threadPosts=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0;
+    let phase=0,files=0,posts=0,updates=0,threadPosts=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0,deadlineExpirations=0;
     const promotions=[],frames=[],threadFrames=[],replyIds=new Set();
     const nativeRows=new Map();
     // Test-only clock for the deadline fence, restored before any Workflow starts.
@@ -74,6 +77,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
         }else posts++;
       }else if(target.endsWith("chat.update")){
         if(body.ts!==messageTs){if(!replyIds.has(body.ts))throw new Error("Wrong message");messageTs=body.ts}else updates++;
+        if(${JSON.stringify(scenario)}==="delivery-unavailable"&&body.ts==="1791685465.683799")return new Response("private upstream payload",{status:503});
+        if(${JSON.stringify(scenario)}==="delivery-identity"&&body.ts==="1791685465.683799")return Response.json({ok:true,channel:"OTHER",ts:body.ts});
         if(${JSON.stringify(scenario)}==="approve"&&body.blocks.some(b=>b.type==="image")&&validationRejects<2){validationRejects++;return Response.json({ok:false,error:"invalid_blocks"})}
       }
       else throw new Error("Unexpected Slack method");
@@ -121,7 +126,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
           submit:(cap,decision,reason,actor)=>this.ctx.exports.HmdApprovals.getByName(cap.owner).submit(cap,decision,reason,actor)
         });
         const instance=await workflow.get("local-hmd");
-        return Response.json({status:await instance.status(),phase,files,posts,updates,threadPosts,threadFrames,restores,promotions,frames,modal,validationRejects,nativeQueries,nativeRequests});
+        return Response.json({status:await instance.status(),phase,files,posts,updates,threadPosts,threadFrames,restores,promotions,frames,modal,validationRejects,nativeQueries,nativeRequests,deadlineExpirations});
       }
     }
   `, resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "native-hmd-probe.ts", loader: "ts" },
@@ -144,11 +149,11 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       PrivateSlackCards: { type: "durable-object", storage: "sqlite" }, HmdApprovals: { type: "durable-object", storage: "sqlite" } },
     env: { RELEASE_MANAGER: { type: "worker", worker: name, exportName: "Broker" }, ANALYTICS_SQL: { type: "worker", worker: name, exportName: "Analytics" }, SLACK_BOT_TOKEN: json("test-token"),
       SLACK_APP_ID: json("A1"), SLACK_TEAM_ID: json("T1"), SLACK_CHANNEL_ID: json("C1"), SLACK_SIGNING_SECRET: json("test-secret"), SLACK_APPROVER_IDS: json("U1"),
-      HMD_AUTO_PROGRESS_MINUTES: json(scenario === "deadline" ? "1" : "2") },
+      HMD_AUTO_PROGRESS_MINUTES: json(["deadline", "delivery-unavailable"].includes(scenario) ? "1" : "2") },
   } }] })
   const state = async () => (await runtime.dispatchFetch("https://probe.invalid/state")).json()
   const wait = async (predicate: (s: any) => boolean) => {
-    for (let i = 0; i < (["deadline", "native-reject"].includes(scenario) ? 1500 : 200); i++) {
+    for (let i = 0; i < (["deadline", "native-reject", "delivery-unavailable"].includes(scenario) ? 1500 : 200); i++) {
       const current = await state()
       if (predicate(current)) return current
       assert.notEqual(current.status.status, "errored", JSON.stringify({ error: current.status.error,
@@ -174,7 +179,34 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       const fence = await fenceResponse.json()
       assert.deepEqual(fence, { earlyRejected: true, consumedRejected: true, closed: true }, "native SQLite deadline fences pending decisions without bypassing consumed Reject")
     }
+    const started = Date.now()
     assert.equal((await runtime.dispatchFetch("https://probe.invalid/start")).status, 200)
+    if (scenario === "delivery-identity") {
+      const failed = await wait((s) => s.status.status === "errored")
+      assert.equal(failed.restores, 1); assert.deepEqual(failed.promotions, [10]); assert.equal(failed.phase, 0)
+      // Miniflare promotes a non-retryable checkpoint exception to this generic
+      // terminal error. Do not pretend its top-level message retains the cause.
+      assert.equal(failed.status.error.name, "WorkflowFatalError")
+      assert.match(failed.status.error.message, /NonRetryableError/)
+      assert.equal(failed.posts, 1); assert.equal(failed.updates, 1)
+      assert.ok(Date.now() - started < 45_000, "wrong owned identity must fail before the two-minute review wait")
+      return
+    }
+    if (scenario === "delivery-unavailable") {
+      const failed = await wait((s) => s.status.status === "errored")
+      assert.ok(Date.now() - started >= 55_000, "presentation outage cannot initiate immediate rollback; actual configured wait must elapse")
+      assert.equal(failed.posts, 1); assert.equal(failed.updates, 1, "pending acknowledgement prevents another update or post")
+      assert.equal(failed.threadPosts, 1, "unavailable parent never creates orphan replies")
+      assert.equal(failed.restores, 1); assert.deepEqual(failed.promotions, [10]); assert.equal(failed.phase, 0)
+      assert.equal(failed.deadlineExpirations, 1, "actual SQLite deadline fence completed before restoration")
+      assert.equal(failed.status.error.name, "WorkflowFatalError")
+      assert.match(failed.status.error.message, /NonRetryableError/)
+      const outputs = failed.status.__LOCAL_DEV_STEP_OUTPUTS
+      assert.ok(outputs.some((o: any) => o?.status === "unavailable" && o.failure === "delivery-unavailable"))
+      assert.ok(outputs.some((o: any) => o?.status === "unavailable" && o.failure === "delivery-pending"))
+      assert.ok(!JSON.stringify(outputs).includes("private upstream payload")); assert.ok(!JSON.stringify(outputs).includes("test-token"))
+      return
+    }
     if (scenario === "claim-failure") {
       const failed = await wait((s) => s.status.status === "errored")
       assert.equal(failed.posts, 1)

@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { publishOwnedSlackCard, ownedCardDestination, type OwnedCardEnvironment, type OwnedCardFrame, type OwnedCardReceipt, type OwnedCardStore } from
+import { publishOwnedSlackCard, ownedCardDestination, type OwnedCardEnvironment, type OwnedCardFrame, type OwnedCardReceipt, type OwnedCardStore, type OwnedCardResult } from
   "../../../packages/github-cloudflare/src/owned-slack-card.ts"
 
 /** One object per run. Binding and notification credentials stay outside containers. */
@@ -28,17 +28,20 @@ export class PrivateSlackCards extends DurableObject<OwnedCardEnvironment> {
   publish(owner: string, sequence: number, frame: OwnedCardFrame) {
     return publishOwnedSlackCard(owner, sequence, frame, this.env, this.#storeFor("card"))
   }
-  async publishExisting(owner: string, sequence: number, frame: OwnedCardFrame) {
+  async publishExisting(owner: string, sequence: number, frame: OwnedCardFrame): Promise<OwnedCardResult> {
     const parent = await this.ctx.storage.get<OwnedCardReceipt>("card")
-    if (!parent || parent.owner !== owner || parent.stage !== "complete" || !parent.ts ||
-      parent.destination !== await ownedCardDestination(this.env)) return { ok: false as const }
+    if (!parent || parent.owner !== owner || parent.destination !== await ownedCardDestination(this.env)) return { ok: false, failure: "identity" }
+    if (parent.stage === "pending") return this.publish(owner, sequence, frame)
+    if (parent.stage !== "complete" || !parent.ts) return { ok: false, failure: "identity" }
     return this.publish(owner, sequence, frame)
   }
-  async publishThread(owner: string, stage: string, sequence: number, frame: OwnedCardFrame) {
-    if (!/^(prepare|previous|10|25|75|100|restored)$/.test(stage)) return { ok: false as const }
+  async publishThread(owner: string, stage: string, sequence: number, frame: OwnedCardFrame): Promise<OwnedCardResult> {
+    if (!/^(prepare|previous|10|25|75|100|restored)$/.test(stage) || !Number.isSafeInteger(sequence) || sequence < 0)
+      return { ok: false, failure: "invalid-input" }
     const parent = await this.ctx.storage.get<OwnedCardReceipt>("card")
-    if (!parent || parent.owner !== owner || parent.stage !== "complete" || !parent.ts ||
-      parent.destination !== await ownedCardDestination(this.env)) return { ok: false as const }
+    if (!parent || parent.owner !== owner || parent.destination !== await ownedCardDestination(this.env)) return { ok: false, failure: "identity" }
+    if (parent.stage === "pending") return { ok: false, failure: sequence < parent.sequence ? "identity" : "delivery-pending" }
+    if (parent.stage !== "complete" || !parent.ts) return { ok: false, failure: "identity" }
     return publishOwnedSlackCard(owner, sequence, frame, this.env, this.#storeFor(`thread:${stage}`), fetch, undefined, parent.ts)
   }
   fetch() { return new Response("Not found", { status: 404 }) }
