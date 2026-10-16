@@ -30,6 +30,41 @@ JavaScript or Wasm APIs. Arbitrary project modules, native executables, and Vite
 toolchain compatibility remain separate work; this example runs a pinned formatter
 against untrusted source data.
 
+### Pinned Oxfmt / Oxlint compatibility finding
+
+The [independent investigation tests](./src/oxc-compatibility.test.mjs) use this
+recipe's own dev dependency on Vite+ 1.0.0 and its genuine Oxfmt 0.70.0 / Oxlint
+1.85.0 artifacts. They bundle tooling without executing it in Node, then load it
+in real **local** WorkerLoader children: empty bindings, no Node compatibility,
+`globalOutbound:null`, zero subrequests and 1,000 ms CPU. No process/FS shim,
+native addon, replacement formatter or child-process fallback is supplied.
+
+- Oxfmt's unchanged public `format` API fails child module initialization. A plain
+  bundle also encounters absent optional Prettier plugins; leaving those unused
+  imports unresolved does not remove the Node module/`createRequire` boundary.
+- Oxlint's public JavaScript entrypoint loads, but exports only `defineConfig`,
+  not a lint engine. Its CLI imports its native-binding loader and uses process
+  arguments. Loading a configuration helper is not successful lint execution.
+- Official registry GETs on October 16 returned 404 for
+  `@oxfmt/binding-wasm32-wasi` and `@oxlint/binding-wasm32-wasi`, both at these
+  versions and as package metadata. The generic
+  [upstream binding guidance](https://oxc.rs/docs/guide/troubleshooting.html)
+  is not evidence that these exact artifacts are published. The
+  [Oxfmt API guide](https://oxc.rs/docs/guide/usage/formatter/quickstart.html#node-js-api)
+  explicitly describes a Node API.
+
+```sh
+cd examples/dynamic-worker-checks
+pnpm install
+pnpm test:oxc-compatibility
+```
+
+These are reproducible **unsupported pinned-artifact findings**, not hosted
+Oxfmt/Oxlint support, a universal impossibility proof, CPU measurements or a new
+toolchain rollout. No hosted resource was created/redeployed for this investigation.
+Future Worker-compatible artifacts must be investigated afresh; do not substitute
+the existing Prettier proof or silently execute native tools.
+
 ## Owned containerless deployment
 
 This directory owns its [private Worker/config](./cloudflare.config.ts),

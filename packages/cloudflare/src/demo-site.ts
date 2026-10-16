@@ -55,9 +55,21 @@ export async function demoSite(revision: unknown, input: unknown): Promise<DemoS
 export function demoSiteUrl(site: Pick<DemoSite, "revision" | "digest">): string {
   return `${demoSiteOrigin}/r/${site.revision}/${site.digest}/index.html`;
 }
-export function siteResponse(site: DemoSite, path: string, head = false): Response {
+export async function siteResponse(site: DemoSite, path: string, head = false): Promise<Response> {
   if (!demoAssetNames.includes(path as keyof DemoAssets))
     return new Response("Not found", { status: 404 });
+  // Authorize only exact style-element bytes from this immutable HTML, never
+  // inline attributes, scripts, arbitrary nonces or an unsafe-inline wildcard.
+  const styleHashes: string[] = [];
+  if (path === "index.html") {
+    for (const match of site.assets["index.html"].matchAll(/<style>([\s\S]*?)<\/style\s*>/gi)) {
+      if (styleHashes.length >= 8) throw Error("Style element limit exceeded");
+      // HTML parsing normalizes these characters before CSP checks element text.
+      const text = match[1]!.replace(/\r\n?/g, "\n").replace(/\0/g, "\uFFFD");
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+      styleHashes.push(`'sha256-${btoa(String.fromCharCode(...digest))}'`);
+    }
+  }
   return new Response(head ? null : site.assets[path as keyof DemoAssets], {
     headers: {
       "content-type": path.endsWith(".html")
@@ -65,7 +77,7 @@ export function siteResponse(site: DemoSite, path: string, head = false): Respon
         : "text/javascript; charset=utf-8",
       "cache-control": "public, max-age=31536000, immutable",
       "content-security-policy":
-        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; connect-src 'none'",
+        `default-src 'none'; script-src 'self'; style-src 'self'${styleHashes.length ? " " + styleHashes.join(" ") : ""}; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; connect-src 'none'`,
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
       "x-site-revision": site.revision,

@@ -35,6 +35,14 @@ const credentials = (environment: Environment): GitHub.GitHubAppCredentials => (
   privateKey: environment.GITHUB_PRIVATE_KEY,
 })
 
+const hasInteractiveContent = (value: unknown): boolean => {
+  if (!value || typeof value !== "object") return false
+  if (Array.isArray(value)) return value.some(hasInteractiveContent)
+  const record = value as Record<string, unknown>
+  return record.type === "actions" || record.type === "button" || "action_id" in record ||
+    Object.values(record).some(hasInteractiveContent)
+}
+
 export interface HostFinalization<A> {
   readonly environment: Environment
   readonly parameters: WorkflowParameters
@@ -46,6 +54,8 @@ export interface HostFinalization<A> {
   readonly card: RunCard
   /** Update the SAME maintained message. Keys must be stable across Workflow replay. */
   readonly publish: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
+  /** Optional status/evidence only; no approval controls, missing ACK never creates another root. */
+  readonly observe?: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
 export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.WorkflowEntrypointOptions<Environment> {
@@ -363,6 +373,15 @@ export const workflowEntrypoint = <A>(
         await options.finalize({
           environment: this.env, parameters: event.payload, instanceId: event.instanceId,
           step, exports: this.ctx.exports, value: result.value, card,
+          observe: (key, presentation, threadKey) => {
+            if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key) ||
+                (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) ||
+                hasInteractiveContent(presentation?.blocks))
+              throw new Error("Invalid observational presentation")
+            if (!hasNotificationChannels(channels) || presentationBlocked ||
+                (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs)) return Promise.resolve()
+            return notify(`host-observe:${key}`, () => true, presentation, false, threadKey)
+          },
           publish: (key, presentation, threadKey) => {
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
             // Never create a replacement review card after a lost/failed build-card ACK.

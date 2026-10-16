@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { realpath } from "node:fs/promises";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { demoSite, demoSiteUrl } from "@effect-ci-testbed/cloudflare/demo-site";
 test(
   "real SQLite/RPC publishes once, persists across reload, and public HTTP cannot write",
@@ -48,7 +49,7 @@ test(
     };
     const runtime = new Miniflare({ workers: [{ config }] });
     const assets = {
-        "index.html": "<h1>Same Vite build</h1>",
+        "index.html": "<style>h1{color:red}</style><h1>Same Vite build</h1>",
         "app.js": "export const x=1",
         "message.js": 'export const message="hello"',
       },
@@ -76,6 +77,10 @@ test(
         assert.equal(response.status, 200);
         assert.equal(await response.text(), body);
         assert.equal(response.headers.get("x-site-digest"), record.digest);
+        const csp = response.headers.get("content-security-policy")!;
+        assert.match(csp, /connect-src 'none'/);
+        assert.ok(!csp.includes("unsafe-inline"));
+        if (path === "index.html") assert.ok(csp.includes(`'sha256-${createHash("sha256").update("h1{color:red}").digest("base64")}'`));
       }
       assert.equal((await runtime.dispatchFetch(record.url, { method: "HEAD" })).status, 200);
       assert.equal(
@@ -87,6 +92,10 @@ test(
         404,
       );
       assert.equal((await runtime.dispatchFetch(record.url + "?token=anything")).status, 404);
+      const excessive = await publish({ revision: "b".repeat(40), assets: { ...assets, "index.html": "<style>x{}</style>".repeat(9) } });
+      assert.equal(excessive.status, 200);
+      assert.equal((await runtime.dispatchFetch((await excessive.json()).url)).status, 503,
+        "Bounded CSP derivation failure stays inside the public handler's redacted failure response");
       assert.equal(
         (
           await runtime.dispatchFetch("https://site.invalid/publish", {
