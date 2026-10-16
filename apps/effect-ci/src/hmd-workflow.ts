@@ -106,7 +106,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
             return { owner: receipt.owner, phase: receipt.phase, snapshot: receipt.snapshot, token: receipt.token }
           })
           card.update({ type: "approval.requested", workflowId, stepId: `${current.phase}%`, requestId: current.snapshot,
-            approval: { title: `Progress past ${current.phase}%?`, summary: `${current.regressionDetected || current.decision.status === "regression" ? "Regression detected. Override, or restore at" : "Inconclusive. Auto-progress at"} ${new Date(current.expiresAt).toISOString().slice(11, 19)} UTC.${this.env.HMD_REQUIRE_RATIONALE === "true" ? " Rationale required." : ""}` }, timestamp })
+            approval: { title: `Progress past ${current.phase}%?`, summary: `${current.regressionDetected || current.decision.status === "regression" ? "Regression detected. Progress explicitly accepts risk; otherwise restore at" : "Inconclusive. Progress explicitly accepts risk; otherwise restore at"} ${new Date(current.expiresAt).toISOString().slice(11, 19)} UTC.${this.env.HMD_REQUIRE_RATIONALE === "true" ? " Rationale required." : ""}` }, timestamp })
         } else {
           capability = undefined
           await step.do(`review:slack-health-${suffix}`, once, () => reviews.close(owner))

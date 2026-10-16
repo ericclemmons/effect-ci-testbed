@@ -193,6 +193,8 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
         break
       }
       const current = await wait((s) => s.phase === phase && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
+      assert.doesNotMatch(JSON.stringify(current.frames), /Auto-progress at/)
+      assert.match(JSON.stringify(current.threadFrames), /Progress explicitly accepts risk; otherwise restore at/)
       const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (["reject", "deadline", "native-reject"].includes(scenario) ? "hmd_reject" : "hmd_approve"))
       const capability = JSON.parse(action.value)
       assert.equal(capability.phase, phase)
