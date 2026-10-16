@@ -20,7 +20,9 @@ export function accessIdentityVerifier(policy: AccessIdentityPolicy, options: {
     timeoutDuration: 5000, cooldownDuration: 30_000, cacheMaxAge: 300_000,
     [customFetch]: async (url, init) => {
       if (url !== certs) throw Error("Invalid Access key origin")
-      const response = await (options.fetch ?? fetch)(url, { ...init, credentials: "omit", redirect: "error" })
+      // Workers reject redirect:"error" before sending the request. Manual mode
+      // never follows a key redirect; the exact 200 check below denies all 3xx.
+      const response = await (options.fetch ?? fetch)(url, { ...init, credentials: "omit", redirect: "manual" })
       if (response.status !== 200 || !response.body) {
         await response.body?.cancel().catch(() => {})
         throw Error("Access keys unavailable")

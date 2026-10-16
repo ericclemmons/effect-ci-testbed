@@ -17,7 +17,7 @@ const fixture = (response: () => Response = () => Response.json({ keys: [jwk] })
   const urls: string[] = []
   const verify = accessIdentityVerifier(policy, { now: () => now, fetch: async (url, init) => {
     urls.push(String(url)); assert.equal(String(url), issuer + "/cdn-cgi/access/certs")
-    assert.equal(init?.redirect, "error"); assert.equal(init?.credentials, "omit")
+    assert.equal(init?.redirect, "manual"); assert.equal(init?.credentials, "omit")
     assert.equal(new Headers(init?.headers).has("authorization"), false)
     assert.equal(new Headers(init?.headers).has("cf-access-jwt-assertion"), false)
     return response()
@@ -54,6 +54,19 @@ test("JWT key URLs and unsupported algorithms never select a network destination
   const { verify, urls } = fixture()
   const none = Buffer.from('{"alg":"none","kid":"owned-key"}').toString("base64url") + ".e30.fake"
   assert.equal(await verify(request(none)), false); assert.equal(urls.length, 0)
+})
+
+test("Workers key fetch uses manual redirect handling and refuses a redirected JWKS without following it", async () => {
+  let requests = 0
+  const verify = accessIdentityVerifier(policy, { now: () => now, fetch: async (url, init) => {
+    requests++
+    assert.equal(String(url), issuer + "/cdn-cgi/access/certs")
+    // Actual workerd rejects `error` before network I/O, unlike Node fetch.
+    assert.equal(init?.redirect, "manual")
+    return new Response(null, { status: 302, headers: { location: "https://attacker.invalid/keys" } })
+  } })
+  assert.equal(await verify(request(await token())), false)
+  assert.equal(requests, 1, "a key redirect must never cause a follow-up request")
 })
 
 test("key failures, redirects, ambiguous keys and oversized key bodies deny without leaking exceptions", async () => {

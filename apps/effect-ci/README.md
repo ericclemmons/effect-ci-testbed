@@ -1102,7 +1102,9 @@ The enrollment is trusted host source in `demo-access-policy.ts`, derived from
 authenticated account/application metadata and an independently signature-verified
 existing owner session. It contains no email, bearer token or private key. JWKS
 are fetched only from the fixed team endpoint, without credentials or redirects,
-with five-second, 64-KiB and five-minute cache bounds. Removing the host adapter
+with five-second, 64-KiB and five-minute cache bounds. Key fetch uses Workers-compatible
+manual redirect handling and accepts only a direct `200`; it never follows a redirect.
+Removing the host adapter
 revokes this alternative path without deleting the Access app or rotating other
 credentials. No new resource, account permission, service token or paid provider
 is required. Verification uses ordinary Worker CPU and a bounded public JWKS
