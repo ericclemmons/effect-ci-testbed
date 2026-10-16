@@ -29,7 +29,7 @@ test("private real Workflow/RPC journal continues after rejection or timeout; bu
   const runtime = new Miniflare({ workers: [{ config }] });
   const call = async (p: unknown): Promise<any> => (await runtime.dispatchFetch("https://test.invalid/fixture", { method: "POST", body: JSON.stringify(p) })).json();
   try {
-    for (const mode of ["success", "business-failure", "provider-timeout", "invalid"] as const) {
+    for (const mode of ["success", "business-failure", "provider-timeout", "observer-success", "observer-business-failure", "invalid"] as const) {
       const id = "local-" + mode;
       await call({ op: "start", id, params: mode === "invalid" ? { mode: "success", destination: "forbidden" } : { mode } });
       let status: any;
@@ -38,7 +38,8 @@ test("private real Workflow/RPC journal continues after rejection or timeout; bu
         if (["complete", "errored"].includes(status.status)) break;
         await new Promise(resolve => setTimeout(resolve, 20));
       }
-      assert.equal(status.status, ["business-failure", "invalid"].includes(mode) ? "errored" : "complete", JSON.stringify(status));
+      const failed = mode === "business-failure" || mode === "observer-business-failure";
+      assert.equal(status.status, failed || mode === "invalid" ? "errored" : "complete", JSON.stringify(status));
       const outputs = status.__LOCAL_DEV_STEP_OUTPUTS;
       if (mode === "invalid") { assert.equal(outputs.length, 0); assert.equal(await call({ op: "journal", id }), null); continue; }
       const rejected = outputs.filter((o: any) => o?.provider === "rejecting");
@@ -54,11 +55,22 @@ test("private real Workflow/RPC journal continues after rejection or timeout; bu
       const journal = await call({ op: "journal", id });
       assert.equal(journal.owner, id); assert.ok(journal.updates > 1);
       assert.match(journal.version, /^worker-version:.+/); assert.ok(!journal.version.endsWith(":undefined"));
-      assert.equal(journal.phase, mode === "business-failure" ? "failure" : "success");
-      assert.equal(invoked.journal, journal.updates);
+      assert.equal(journal.phase, failed ? "failure" : "success");
+      const observerStatus = outputs.find((o: any) => o?.receipts && o?.invocations);
+      if (mode.startsWith("observer-")) {
+        assert.equal(observerStatus.invocations.rejecting, 1);
+        assert.equal(observerStatus.invocations.journal, invoked.journal);
+        assert.equal(observerStatus.droppedEvents, 0);
+        assert.equal(observerStatus.omittedReceipts, 0);
+        const rejecting = observerStatus.receipts.filter((r: any) => r.observer === "rejecting");
+        assert.equal(rejecting[0].status, "failed");
+        assert.ok(rejecting.slice(1).every((r: any) => r.status === "blocked"));
+        assert.ok(observerStatus.receipts.filter((r: any) => r.observer === "journal").every((r: any) => r.status === "delivered"));
+      } else assert.equal(observerStatus, undefined);
+      assert.equal(invoked.journal + (observerStatus?.invocations.journal ?? 0), journal.updates);
       assert.equal(outputs.find((o: any) => o?.workflow === "notification-isolation")?.conclusion, journal.phase);
       assert.ok(outputs.some((o: any) => o?.owner === id && o?.snapshot?.phase === journal.phase));
-      if (mode === "business-failure") assert.match(JSON.stringify(status.error), /Original owned business failure/);
+      if (failed) assert.match(JSON.stringify(status.error), /Original owned business failure/);
       else { assert.equal(status.output.value, "business succeeded"); assert.equal(typeof status.output.workerVersion, "string"); }
       assert.ok(!JSON.stringify(outputs).includes("Owned notification destination rejected"));
     }

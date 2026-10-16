@@ -12,7 +12,8 @@ implementation. It has no Container, shell command, secret, Slack/GitHub token,
 model, external destination, public URL, HTTP execution or reset route. The only
 runtime metadata binding identifies the actual Worker version; it is not a Git
 signature or copied source attestation. Dispatch accepts exactly one fixed mode:
-`success`, `business-failure` or `provider-timeout`. Actors cannot supply code,
+`success`, `business-failure`, `provider-timeout`, `observer-success` or
+`observer-business-failure`. Actors cannot supply code,
 destinations, identities, credentials, retry counts or policy overrides.
 
 ## Reproduce
@@ -55,7 +56,7 @@ status alone does not prove all destinations delivered. No model call is involve
 
 ## Permissions, costs, limits and cleanup
 
-The proposed host needs one private Worker, one Workflow, one SQLite DO class and
+The existing host uses one private Worker, one Workflow, one SQLite DO class and
 Worker-version metadata. It adds no account permission, secret or outbound binding.
 Its deliberate errors are not an enrolled repair source and cannot authorize an
 agent proposal. Verify the existing repair capture/admission scope independently
@@ -77,4 +78,15 @@ Local tests use genuine workerd/Workflow/SQLite/RPC and remain distinct from the
 three [native hosted results](./NATIVE.md). This is not a Slack outage, GitHub delivery proof, HMD
 approval or repair automation. Required state/check persistence and approval /
 deployment policy still fail closed. General raw runtime callbacks are not made
-optional by wrapping provider delivery; remaining #167 acceptance stays explicit.
+optional by wrapping provider delivery. The additive
+[`CI.makeRuntimeObservers` API](../../packages/ci/OBSERVERS.md) explicitly separates
+optional generic delivery from required `onEvent`/`onAttempt` persistence. It
+quarantines failed/uncertain destinations, supplies abort, and retains bounded,
+redacted diagnostics without changing approval, retry or rollback policy.
+
+The new `observer-success` / `observer-business-failure` modes exercise an actual
+rejecting loopback RPC plus a healthy SQLite observer alongside the provider layer.
+`observer-status` is persisted separately in a required zero-retry checkpoint.
+They are **local implementation tests until a separately recorded native rollout**;
+the three retained native cases above do not prove the new generic callbacks.
+No new resource, permission, secret or public route is required for that extension.
