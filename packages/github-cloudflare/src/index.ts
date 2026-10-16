@@ -65,6 +65,8 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.Workf
   readonly slackLayout?: "status-thread"
   /** Explicit destination opt-in: bounded, redacted failed-command output in step replies only. */
   readonly slackCommandOutput?: "failed"
+  /** Trusted display-only total. Unknown runtime steps disable the progress bar. */
+  readonly slackProgressSteps?: (parameters: WorkflowParameters) => ReadonlyArray<string>
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
   readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
@@ -229,9 +231,9 @@ export const workflowEntrypoint = <A>(
       revision: event.payload.revision,
       slackApprovalsEnabled: Boolean(this.env.SLACK_SIGNING_SECRET && this.env.SLACK_APP_ID && this.env.SLACK_TEAM_ID && this.env.SLACK_APPROVER_IDS && this.env.SLACK_CHANNEL_ID),
       ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
-    }, options.slackCommandOutput === "failed" ? { failedCommandOutput: {
+    }, { ...(options.slackCommandOutput === "failed" ? { failedCommandOutput: {
       redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string"),
-    } } : {})
+    } } : {}), ...(options.slackProgressSteps ? { progressSteps: options.slackProgressSteps(event.payload) } : {}) })
     const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
     const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
       step.do(`notification-provider:${provider}:${key}`, {
@@ -294,6 +296,14 @@ export const workflowEntrypoint = <A>(
           if ((channels.SLACK_BOT_TOKEN && !slackMessageTs) ||
               (channels.DISCORD_WEBHOOK_URL && !discordMessageId)) presentationBlocked = true
           console.warn("CI notification delivery failed; execution continues")
+        }
+        if (threaded && key === "workflow.started" && slackMessageTs && !result.failed) {
+          const details = card.renderDetails()
+          // A separate checkpointed first reply. Lost ACKs are preserved, never
+          // repaired by reposting the table or repeating any business action.
+          await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
+            { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! },
+            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }))
         }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
