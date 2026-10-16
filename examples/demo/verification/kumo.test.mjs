@@ -7,8 +7,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Button } from "@cloudflare/kumo/components/button";
 
 test("the genuine static Kumo button works without forbidden inline style attributes", () => {
-  const markup = renderToStaticMarkup(createElement(Button,
-    { id: "show", type: "button", variant: "secondary" }, "Test JavaScript"));
+  const markup = renderToStaticMarkup(
+    createElement(Button, { id: "show", type: "button", variant: "secondary" }, "Test JavaScript"),
+  );
   assert.match(markup, /data-kumo-component="Button"/);
   assert.match(markup, /text-kumo-default/);
   assert.ok(!/\sstyle=/.test(markup));
