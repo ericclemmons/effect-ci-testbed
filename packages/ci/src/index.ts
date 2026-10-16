@@ -8,6 +8,8 @@ import * as Exit from "effect/Exit"
 import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
+import type { RuntimeObservers } from "./observers.ts"
+export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
 
 export type WorkflowDuration =
@@ -345,11 +347,12 @@ const writeEvent = (event: RuntimeEvent): void => {
   writeSync(eventFileDescriptor, `${JSON.stringify(event)}\n`)
 }
 
-const makeEventEmitter = (handler?: RuntimeEventHandler) =>
+const makeEventEmitter = (handler?: RuntimeEventHandler, observers?: RuntimeObservers) =>
   (event: RuntimeEvent): Effect.Effect<void> => Effect.tryPromise({
     try: async () => {
       writeEvent(event)
       await handler?.(event)
+      await observers?.publish(event)
     },
     catch: (error) => error,
   }).pipe(Effect.orDie)
@@ -2248,7 +2251,10 @@ export interface RunOptions {
   readonly event?: WorkflowEventShape
   readonly mode?: WorkflowPlan["mode"]
   readonly onAttempt?: WorkflowAttemptHandler
+  /** Required event persistence/reporting. Failure remains authoritative. */
   readonly onEvent?: RuntimeEventHandler
+  /** Explicit, bounded presentation-only destinations. Never approval/persistence. */
+  readonly observers?: RuntimeObservers
   readonly output?: "inherit" | "silent"
   readonly rerun?: WorkflowRerun
   readonly secrets?: SecretResolver
@@ -2431,7 +2437,7 @@ const interpret = <A>(
   Effect.gen(function* () {
     const environment = options.env ?? "development"
     const event: WorkflowEventShape = options.event ?? { type: "workflow_dispatch" }
-    const emitEvent = makeEventEmitter(options.onEvent)
+    const emitEvent = makeEventEmitter(options.onEvent, options.observers)
     const startedAt = new Date().toISOString()
     const previous = options.rerun?.previous
 

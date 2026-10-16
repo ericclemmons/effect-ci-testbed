@@ -44,6 +44,18 @@ export class ProviderIsolation extends WorkflowEntrypoint<{ WORKER_METADATA: { i
     const card = new RunCard({ instanceId: event.instanceId, repository: "owned-notification-fixture",
       revision: `worker-version:${workerVersion}` });
     const invocations = { rejecting: 0, journal: 0 };
+    const observerInvocations = { rejecting: 0, journal: 0 };
+    const observers = mode.startsWith("observer-") ? CI.makeRuntimeObservers([
+      { id: "rejecting", deliver: async () => {
+        observerInvocations.rejecting++;
+        await capabilities.RejectingDestination().deliver();
+      } },
+      { id: "journal", deliver: async () => {
+        observerInvocations.journal++;
+        const receipt = await journal.deliver(card.snapshot());
+        receipt[Symbol.dispose]?.();
+      } },
+    ]) : undefined;
     const layer = notificationLayer([
       { id: "rejecting", deliver: () => {
         invocations.rejecting++;
@@ -57,12 +69,13 @@ export class ProviderIsolation extends WorkflowEntrypoint<{ WORKER_METADATA: { i
       }) },
     ], (provider, key, deliver) => step.do(`provider:${provider}:${key}`, once, deliver));
     const business = CI.action<string>("business", () => function* () {
-      if (mode === "business-failure") throw Error("Original owned business failure");
+      if (mode === "business-failure" || mode === "observer-business-failure") throw Error("Original owned business failure");
       return "business succeeded";
     });
     let sequence = 0;
     const result = await CI.runPromise(CI.workflow("notification-isolation", () => business()), {
       ci: true, env: "owned-notification-fixture", output: "silent",
+      ...(observers ? { observers } : {}),
       onEvent: async runtimeEvent => {
         if (++sequence > 64) throw Error("Owned event limit reached");
         card.update(runtimeEvent);
@@ -73,6 +86,7 @@ export class ProviderIsolation extends WorkflowEntrypoint<{ WORKER_METADATA: { i
         await step.do(`delivery-status:${sequence}`, once, async () => ({ phase: snapshot.phase, deliveries }));
       },
       onAttempt: async attempt => {
+        if (observers) await step.do("observer-status", once, async () => ({ ...observers.snapshot(), invocations: { ...observerInvocations } }));
         await step.do("business-result", once, async () => ({ conclusion: attempt.conclusion, workflow: attempt.workflowId }));
         await step.do("provider-invocations", once, async () => ({ ...invocations }));
         await step.do("journal:final", once, async () => {
