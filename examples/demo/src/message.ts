@@ -1,1 +1,1 @@
-export const message = "Check my work before I push";
+export const message = "Hello from the demo app.";

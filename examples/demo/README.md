@@ -6,6 +6,11 @@ This is a hands-on adoption guide, not a presentation script. Each step adds a
 capability: make the change, run the command, inspect the result. Stop or skip
 wherever you want. There is no three-minute schedule or prescribed narration.
 
+To try the existing hosted demo, go straight to [serve the checked build](#10-serve-the-checked-build)
+or [push a change through release](#11-release-the-checked-build-with-a-decision).
+Those steps use this repository's already-configured host; you do not need to
+create another repo or change the App installation to try them.
+
 ## 0. Start with a standalone Vite repo and ordinary GitHub Actions
 
 > Start with working CI. Adopt Effect CI without rewriting the application.
@@ -99,7 +104,7 @@ cf-ci run
 ```diff
 --- a/src/message.ts
 +++ b/src/message.ts
--export const message = "Check my work before I push";
+-export const message = "Hello from the demo app.";
 +export const message = "Checked locally, ready for CI";
 ```
 
@@ -453,41 +458,44 @@ cf-ci run --remote
 cf-ci run --remote
 ```
 
-Open the [live Vite build](https://effect-ci-demo-site.ericclemmons.workers.dev/r/b302e8cb0965cdbc7da2ab455d696385e782abf7/e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23/index.html) in the browser. Click **Show message**.
+Open the [currently released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
+The release preview displays the text from `src/message.ts` immediately. **Test
+JavaScript** checks that this build's browser code runs; its result says exactly
+what happened. You no longer have to click a vague button to discover the app's content.
 
 The enrolled demo host publishes through a private capability; project code gets
-no deployment token. This URL is the verified commit above, not a mutable latest
-alias or an HMD rollout. [Owned host setup](../../apps/demo-site/README.md).
+no deployment token. A remote run publishes a separate commit-pinned preview;
+it does not replace the released app. Step 11 promotes the checked build to the
+release URL. [Host configuration and publication evidence](../../apps/demo-site/README.md).
 
 ## 11. Release the checked build with a decision
 
 > Watch one build card. Inspect the actual candidate's graph. Decide what ships.
 
-**Owned testbed enrollment only**, from a clean checkout at `examples/demo`; new standalone repos
-still need the unfinished portable Cloudflare onboarding. Preserve the enrolled
-branch's history before making a new source change:
+In a clean checkout of **this repository**, from `examples/demo`:
 
 ```sh
-git fetch origin
+git fetch origin main demo/live
 git switch demo/live
 git merge --ff-only origin/demo/live
+git merge --no-edit origin/main
 ```
 
 In `src/message.ts`:
 
 ```diff
--export const message = "Check my work before I push";
-+export const message = "Ship the checked build";
+-export const message = "Hello from the demo app.";
++export const message = "Hello from the next release.";
 ```
 
 ```sh
 git add src/message.ts
-git commit -m "Change the demo message"
+git commit -m "Update the release message"
 git push origin HEAD:refs/heads/demo/live
 ```
 
-Open **#effect-ci** in Slack. The same card builds and checks the app, then shows
-the actual prepared candidate's graph. Inspect each snapshot and choose **Progress**
+Open **#effect-ci** in Slack. One updating status line tracks the current step;
+open its thread for step details and the candidate's release graphs. Inspect each snapshot and choose **Progress**
 or **Reject** at 10%, 25%, 75% and 100%. Sparse data stays uncertain; Progress is
 explicit risk acceptance, not a fabricated health pass. Each phase has a fixed
 two-minute settling interval before its cohort, then a five-minute decision window.
@@ -495,7 +503,7 @@ Reject or timeout restores the allocation captured at that run's start. The fina
 100% Progress commits it; success does not restore an older baseline.
 
 Open the [live release](https://effect-ci-hmd-demo.ericclemmons.workers.dev/) and
-click **Show message**. It redirects to the same checked immutable Vite build,
+look for **Hello from the next release.** under **Release message**. It redirects to the same checked immutable Vite build,
 not a second build or Workers Static Assets upload.
 
 **Live verified:** a genuine source push completed this full path with four
@@ -503,6 +511,10 @@ explicitly authorized browser-delegated **test** decisions, four real graphs and
 one maintained card, then left its candidate committed at 100%. This is not an
 independent human-review claim or general standalone onboarding proof.
 [Actual run, limits and read-only regression](../../apps/effect-ci/DEMO-RELEASE.md).
+
+For a separate repository, the portable Cloudflare action/enrollment is still
+unfinished. That is a different setup path, not a prerequisite for running this
+configured demo. Installing the GitHub App alone does not complete it.
 
 Automatic public HTTP 500 → WOBS alert → bounded repair → verified proposed PR
 remains unfinished. The [incident host](../../apps/effect-ci/README.md) has separate
