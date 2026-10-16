@@ -1419,3 +1419,8 @@ management remain follow-up slices.
 Hosted CI installs the [structured WOBS logger](../../packages/cloudflare/src/wobs-logging.md).
 Effect logs retain workflow, step and retry-attempt context; terminal failures
 still propagate. These diagnostics are not HMD health denominators.
+
+The native action adapter also distinguishes an
+[uncertain checkpoint acknowledgement](../../packages/cloudflare/src/action-checkpoints.md)
+from an unapplied external operation. Reconcile the exact retained artifact;
+neither an internal platform error nor an existing publication authorizes a blind retry.

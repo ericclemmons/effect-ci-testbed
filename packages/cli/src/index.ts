@@ -690,6 +690,14 @@ const classifyFailure = (error: unknown): CliFailure => {
     )
   }
 
+  if (error instanceof CI.CommandCheckpointError) {
+    return new CliFailure("CI_COMMAND_OUTCOME_UNKNOWN", ExitCode.workflowFailure, error.message, {
+      command: error.command, cwd: error.cwd, stepId: error.stepId,
+      stage: error.stage, processExitCode: null, effects: error.effects,
+      ...(error.checkpoint ? { checkpoint: error.checkpoint } : {}),
+    })
+  }
+
   if (error instanceof CI.CommandError) {
     return new CliFailure(
       "CI_COMMAND_FAILED",

@@ -6,7 +6,31 @@ import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
 import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts"
+import { ActionCheckpointError } from "../../../packages/cloudflare/src/action-checkpoint-error.ts"
 import rollbackWorkflow from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts"
+
+test("lost native ACK after a side effect stays failed and never reexecutes the body", async () => {
+  let writes = 0, boundaries = 0
+  const active = new Set<string>()
+  const step = { async do(_name: string, options: WorkflowStepConfig, callback: (context: { attempt: number }) => Promise<unknown>) {
+    boundaries++
+    assert.equal(options.retries?.limit, 0)
+    await callback({ attempt: 1 })
+    throw Object.assign(Error("Attempt failed due to internal workflows error"), { name: "WorkflowInternalError" })
+  } } as unknown as Pick<WorkflowStep, "do">
+  const action = CI.action<string>("publish", () => function* () { writes++; return "published" }, { retries: { limit: 0, delay: 0 } })
+  await assert.rejects(CI.runPromise(CI.workflow("unknown-ack", () => action()), {
+    output: "silent", actionExecutor: makeActionExecutor(step, active),
+  }), error => {
+    assert.ok(error instanceof ActionCheckpointError)
+    assert.equal(error.stepId, "publish")
+    assert.equal(error.effects, "unknown")
+    return true
+  })
+  assert.equal(writes, 1)
+  assert.equal(boundaries, 1)
+  assert.equal(active.size, 0)
+})
 
 test("failed action checkpoint stays failed while restoring both command streams", async () => {
   let calls = 0, failed = 0

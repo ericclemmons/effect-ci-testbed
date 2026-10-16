@@ -5,6 +5,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
+import * as CI from "@effect-ci-testbed/ci"
+import * as Effect from "effect/Effect"
+import { main } from "./index.ts"
 
 const failedCommand = (script: string, check: (output: any) => void) => {
   const root = mkdtempSync(join(tmpdir(), "effect-ci-failure-"))
@@ -43,4 +46,21 @@ test("agent failed-command output is bounded and explicitly marks retained tails
     assert.ok(output.stderr.endsWith('stderr-tail'))
     assert.equal(output.truncated, true)
   })
+})
+
+test("agent JSON distinguishes checkpoint uncertainty from a verified process exit", async () => {
+  const writes: string[] = [], original = process.stdout.write
+  process.stdout.write = ((value: string | Uint8Array) => { writes.push(String(value)); return true }) as typeof process.stdout.write
+  try {
+    const workflow = CI.workflow("unknown-command-fixture", () => Effect.fail(new CI.CommandCheckpointError("install", "pnpm install", "/workspace")))
+    const code = await main({ workflow }, ["run", "--format=json"])
+    assert.equal(code, 1, "CLI failure is not an observed child exit 1")
+    const value = JSON.parse(writes.join(""))
+    assert.equal(value.ok, false)
+    assert.equal(value.error.code, "CI_COMMAND_OUTCOME_UNKNOWN")
+    assert.deepEqual(value.error.details, { command: "pnpm install", cwd: "/workspace", stepId: "install",
+      stage: "checkpoint-ack", processExitCode: null, effects: "unknown" })
+    assert.equal("exitCode" in value.error.details, false)
+    assert.equal("output" in value.error.details, false)
+  } finally { process.stdout.write = original }
 })
