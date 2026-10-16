@@ -27,6 +27,19 @@ permission changes. Until that serving fix is deployed and visually checked,
 the Kumo rendering is not accepted. The unstyled screenshot stays in private
 failure evidence, not as a successful public feature image.
 
+The serving fix subsequently deployed as existing site version
+`0797942d-3a46-469f-92d5-cfd8995b4675`, and the phase-status host as
+`7df0880e-9e2e-4972-aa58-4e70a667b3d2`, both from exact 284-success head
+`84ce538ba104ddb3c1954d6e6f837763a2565839`. Exports, bindings, secrets, image,
+URLs, repair resources and committed traffic were independently unchanged.
+An initial GET/HEAD header read disagreed during deployment propagation; a
+later GET-only read verified both exact style hashes and unchanged HTML bytes.
+No upload was retried. Reloading the real browser then rendered the layout.
+The primary Kumo button still depended on forbidden style attributes, so the
+source now uses its ordinary secondary variant and rejects such attributes
+at build time. That new button still needs its normal source-driven publication;
+this document does not pass off the old low-contrast button as finished.
+
 An earlier main run `c6c016d0-c920-11f1-84a3-ccb51670aff6` failed after its promotion
 POST succeeded but immediate acknowledgement was ambiguous. Its history remains
 errored. GET-only reconciliation of that SAME intent, then an explicit broker

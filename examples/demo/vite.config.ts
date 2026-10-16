@@ -12,8 +12,10 @@ const kumoStyles = readFileSync(
   "utf8",
 );
 const kumoButton = renderToStaticMarkup(
-  createElement(Button, { id: "show", type: "button", variant: "primary" }, "Test JavaScript"),
+  createElement(Button, { id: "show", type: "button", variant: "secondary" }, "Test JavaScript"),
 );
+if (/\sstyle=/.test(kumoButton))
+  throw new Error("The static Kumo button must not require CSP-blocked style attributes");
 
 export default defineConfig({
   base: "./",
