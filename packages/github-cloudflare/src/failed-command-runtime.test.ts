@@ -3,6 +3,16 @@ import { realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import test from "node:test"
 
+test("failure-output presentation remains browser-safe without Node executors", async () => {
+  const require = createRequire(import.meta.url)
+  const plugin = realpathSync(new URL("../../../apps/effect-ci/node_modules/@cloudflare/vite-plugin", import.meta.url))
+  const { build } = require(require.resolve("esbuild", { paths: [plugin] }))
+  const bundle = await build({ entryPoints: [new URL("./failed-command-output.ts", import.meta.url).pathname],
+    bundle: true, write: false, format: "esm", platform: "browser" })
+  assert.equal(bundle.outputFiles.length, 1)
+  assert.doesNotMatch(bundle.outputFiles[0].text, /node:child_process|node:fs|node:path/)
+})
+
 test("native failure checkpoints deliver both streams to the same Slack step reply, not the parent", { timeout: 30000 }, async () => {
   const require = createRequire(import.meta.url)
   const plugin = realpathSync(new URL("../../../apps/effect-ci/node_modules/@cloudflare/vite-plugin", import.meta.url))

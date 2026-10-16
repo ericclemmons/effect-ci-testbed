@@ -1,4 +1,4 @@
-import { encodeCommandDiagnostics, type CommandDiagnostics } from "@effect-ci-testbed/ci"
+import { encodeCommandDiagnostics, type CommandDiagnostics } from "@effect-ci-testbed/ci/command-diagnostics"
 
 /** Presentation only. Never consumes host exception text or changes a run result. */
 export function failedCommandOutput(diagnostics: CommandDiagnostics, redactValues: ReadonlyArray<string>) {
