@@ -14,7 +14,9 @@ npm run verify:browser -- --negative
 
 The recipe owns its preview, browser config and test fixtures. The first command
 runs the real `cf-ci run build`, opens its built application in a fresh local
-Chromium context, clicks **Show message**, and asserts a nonempty visible result.
+Chromium context, checks the visible release message, clicks **Test JavaScript**,
+and asserts the explicit browser-code success result. Historical captures below
+retain the original **Show message** interaction; they are not footage of this UI.
 The second deliberately uses a wrong expectation: it must retain a failed E2E
 outcome and failed-run video. The verification wrapper succeeds only when that
 expected negative outcome is preserved; it does not relabel the application test.
