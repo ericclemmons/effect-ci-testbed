@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
-import { hasNotificationChannels, sendNotification, type NotificationChannels } from "./notifications.ts"
+import { hasNotificationChannels, sendNotification, type NotificationChannels, type NotificationResult } from "./notifications.ts"
 import { RunCard, type SlackBlock } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import {
@@ -202,6 +202,9 @@ export const workflowEntrypoint = <A>(
     let slackMessageTs: string | undefined
     let discordMessageId: string | undefined
     let notificationQueue = Promise.resolve()
+    // Unknown checkpoint/POST acknowledgements must not post another root.
+    // Additional providers still receive subsequent semantic snapshots.
+    let presentationBlocked = false
     const threadMessages = new Map<string, string>()
     const blockedThreads = new Set<string>()
     let latestThread: string | undefined
@@ -227,6 +230,27 @@ export const workflowEntrypoint = <A>(
           console.warn("CI notification provider delivery failed; execution continues")
         }
         if (!hasNotificationChannels(channels)) return
+        if (presentationBlocked) {
+          if (required) throw new Error("Host finalization notification needs reconciliation")
+          return
+        }
+        const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
+        const deliveryStep = async (name: string, deliver: () => Promise<NotificationResult>): Promise<NotificationResult | undefined> => {
+          try { return await step.do(name, policy, deliver) }
+          catch (error) {
+            presentationBlocked = true
+            if (required) throw error
+            // This receipt is observational, not approval or business authority.
+            // Do not expose upstream errors, which may contain webhook secrets.
+            try {
+              await step.do(`notification-delivery-failed:${name}`, policy, async () => ({
+                status: "failed", reason: "checkpoint", reconciliationRequired: true,
+              }))
+            } catch { /* presentation diagnostics cannot replace the business outcome */ }
+            console.warn("CI notification checkpoint failed; reconciliation required; execution continues")
+            return undefined
+          }
+        }
         const threaded = options.slackLayout === "status-thread" && Boolean(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)
         const presentation = threaded ? card.render({ statusOnly: true }) : override ?? card.render()
         const deliver = () => sendNotification(
@@ -238,9 +262,8 @@ export const workflowEntrypoint = <A>(
           discordMessageId,
           { privateImageValidation: required },
         )
-        const result = required
-          ? await step.do(`notification:${key}`, { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" }, deliver)
-          : await step.do(`notification:${key}`, deliver)
+        const result = await deliveryStep(`notification:${key}`, deliver)
+        if (!result) return
         if (required && ((slackMessageTs && result.slackMessageTs !== slackMessageTs) ||
             (discordMessageId && result.discordMessageId !== discordMessageId)))
           throw new Error("Host finalization notification identity mismatch")
@@ -248,28 +271,32 @@ export const workflowEntrypoint = <A>(
         discordMessageId = result.discordMessageId ?? discordMessageId
 
         if (result.failed && required) throw new Error("Host finalization notification needs reconciliation")
-        if (result.failed) console.warn("CI notification delivery failed; execution continues")
+        if (result.failed) {
+          // A root with no acknowledged identity is not safe to recreate later.
+          if ((channels.SLACK_BOT_TOKEN && !slackMessageTs) ||
+              (channels.DISCORD_WEBHOOK_URL && !discordMessageId)) presentationBlocked = true
+          console.warn("CI notification delivery failed; execution continues")
+        }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
           const failed = () => { blockedThreads.add(threadKey); if (required) throw new Error("Host finalization thread needs reconciliation") }
           if (blockedThreads.has(threadKey)) { failed(); return }
           const detail = override ?? card.render({ onlyStep: threadKey })
           const slack = { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! }
-          const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
           let ts = threadMessages.get(threadKey)
           if (!ts) {
             // Establish a known reply before uploading an image frame or exposing a capability.
             // A lost post ACK blocks this step permanently; never repost it on a later update.
-            const posted = await step.do(`notification:${key}:thread-post`, policy, () => sendNotification(slack,
+            const posted = await deliveryStep(`notification:${key}:thread-post`, () => sendNotification(slack,
               `Preparing ${threadKey}`, fetch, undefined, [{ type: "section", text: { type: "plain_text", text: `Preparing ${threadKey}`.slice(0, 3000) } }],
               undefined, { slackThreadTs: slackMessageTs! }))
-            if (posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
+            if (!posted || posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
             ts = posted.slackMessageTs
             threadMessages.set(threadKey, ts)
           }
-          const updated = await step.do(`notification:${key}:thread-update`, policy, () => sendNotification(slack,
+          const updated = await deliveryStep(`notification:${key}:thread-update`, () => sendNotification(slack,
             detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
-          if (updated.failed || updated.slackMessageTs !== ts) failed()
+          if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
         }
       })
 
@@ -338,6 +365,7 @@ export const workflowEntrypoint = <A>(
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
             // Never create a replacement review card after a lost/failed build-card ACK.
             if (!hasNotificationChannels(channels) ||
+                presentationBlocked ||
                 (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs) ||
                 (channels.SLACK_WEBHOOK_URL && !(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)))
               throw new Error("Host finalization requires an acknowledged maintained notification")

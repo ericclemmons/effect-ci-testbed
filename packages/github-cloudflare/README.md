@@ -68,3 +68,29 @@ required host review delivery fails closed. Only an acknowledged image update
 retains the existing narrowly bounded `invalid_blocks` exception. No new scope,
 channel or permission is needed. Webhook-only Slack and Discord retain their
 existing behavior. Existing historical messages are not rewritten or replayed.
+
+## Optional presentation failure isolation
+
+Ordinary maintained-card and thread checkpoints have zero retries and a
+20-second timeout. A checkpoint exception records a redacted
+`notification-delivery-failed:*` receipt when storage is available, blocks that
+uncertain presentation path for reconciliation, and leaves the business outcome
+unchanged. Additional notification providers still receive later semantic
+snapshots. An unacknowledged root is never posted again on a subsequent event.
+
+This does **not** suppress authoritative state/checkpoint failures, authorize an
+approval, or ignore required host review delivery: `finalize.publish` still fails
+closed. Failed review delivery retains the controller's configured recovery
+policy. Generic user `onEvent` callbacks and provider-level timeout/reconciliation
+contracts remain separate work in #167; this is not completion of that issue.
+
+```sh
+node --test packages/github-cloudflare/src/notification-isolation-runtime.test.ts
+```
+
+The local workerd/SQLite regression injects synchronous throws, rejected promises
+and an actual 20-second timeout inside the real durable notification checkpoint.
+It checks successful and failed business
+outcomes, a healthy second provider, no repeated destination attempt, the bounded
+policy and redacted receipt. Notification endpoints are fake; no live delivery
+or cloud failure-isolation proof is claimed.

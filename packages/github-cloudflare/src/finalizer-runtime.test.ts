@@ -122,6 +122,11 @@ test(
         );
         if (name === "MissingCard") {
           assert.equal(
+            result.messages.filter((m: any) => m.url.endsWith("/chat.postMessage")).length,
+            1,
+            "An unacknowledged root must not be posted again on later business events",
+          );
+          assert.equal(
             result.messages.filter((m: any) => m.body.text === "Release still running").length,
             0,
             "No replacement card after missing ACK",

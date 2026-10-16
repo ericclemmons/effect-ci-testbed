@@ -152,3 +152,53 @@ test("write confirmation reads the active allocation rather than trusting a mini
   assert.deepEqual(await api.latest(), { id: id(11), versions, message: "owned-operation" })
   assert.deepEqual(await api.create(versions, "owned-operation"), await api.latest())
 })
+
+function delayedReadHarness(mode: "converges" | "stale" | "foreign" | "malformed" | "transport" | "changed-previous") {
+  let journal: ReleaseJournal | undefined
+  let posts = 0, readsAfterWrite = 0
+  const waits: number[] = []
+  const old = { id: id(10), versions: previous.map(v => ({version_id:v.version,percentage:v.percentage})) }
+  let written: any
+  const api = deploymentAPI(() => "fake-token", (async (_url, init) => {
+    if (init?.method === "POST") {
+      posts++
+      const body = JSON.parse(String(init.body))
+      written = { id:id(11),versions:body.versions,annotations:body.annotations }
+      return Response.json({success:true,result:{id:written.id}})
+    }
+    if (!written) return Response.json({success:true,result:{deployments:[old]}})
+    readsAfterWrite++
+    if (mode === "transport") throw Error("secret network failure")
+    const value = mode === "foreign" ? {...written,id:id(99),annotations:{"workers/message":"foreign-owner"}} :
+      mode === "malformed" ? {...old,versions:[]} :
+      mode === "changed-previous" ? {...old,annotations:{"workers/message":"changed-previous"}} :
+      mode === "stale" || readsAfterWrite < 3 ? old : written
+    return Response.json({success:true,result:{deployments:[value]}})
+  }) as typeof fetch, {wait:async ms=>{waits.push(ms)}})
+  const manager = new ReleaseManager({read:async()=>structuredClone(journal),write:async value=>{journal=structuredClone(value)}},api)
+  return {manager,posts:()=>posts,reads:()=>readsAfterWrite,waits,journal:()=>journal!}
+}
+
+test("bounded stale-read confirmation accepts only the same intent, with exactly one deployment POST", async () => {
+  const h=delayedReadHarness("converges")
+  await h.manager.begin("delayed-read",id(3))
+  const result=await h.manager.promote("delayed-read",10)
+  assert.equal(result.deployment.id,id(11))
+  assert.equal(result.phase,0)
+  assert.equal(result.pending,undefined)
+  assert.equal(h.posts(),1)
+  assert.equal(h.reads(),3)
+  assert.deepEqual(h.waits,[250,500])
+})
+
+test("exhausted stale reads retain pending intent; foreign, changed, malformed and failed reads stop immediately", async () => {
+  for(const mode of ["stale","foreign","malformed","transport","changed-previous"] as const) {
+    const h=delayedReadHarness(mode)
+    await h.manager.begin("delayed-read",id(3))
+    await assert.rejects(h.manager.promote("delayed-read",10),error=>!String(error).includes("secret"))
+    assert.equal(h.posts(),1)
+    assert.ok(h.journal().pending)
+    assert.equal(h.reads(),mode==="stale"?4:1)
+    assert.deepEqual(h.waits,mode==="stale"?[250,500,1000]:[])
+  }
+})

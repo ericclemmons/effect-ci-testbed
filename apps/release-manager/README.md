@@ -36,6 +36,37 @@ every previous version and percentage. Ambiguous writes remain pending; recovery
 matches the deployment annotation and full allocation, never blindly retries POST.
 An unresolved intent requires operator review; the broker cannot reset it remotely.
 
+Deployment confirmation makes at most four GETs after its single POST. Only an
+exact stale copy of the pre-write deployment (ID, message and full allocation)
+permits another read after 250/500/1000 ms. A foreign or malformed read, transport
+failure, or exhausted bound retains the pending intent and stops; none retries
+the POST. The journal still requires the new ID, exact intent annotation and
+complete allocation. These are write-confirmation reads, not health sampling.
+
+### Retained main-release failure and recovery — October 16
+
+Normal merge source `c809b0fa8b5a9cc75ca0a95ac7f360869b4840f3` started native
+demo run `c6c016d0-c920-11f1-84a3-ccb51670aff6`. Its actual build/publication and
+candidate `e21c0ac8-b7f3-411e-85ed-a0a74ab1878a` succeeded. The first 10% write
+created deployment `02841dfe-6ff1-458d-b306-3f2564963f9b`, but immediate
+confirmation failed closed, as did the controller's attempted recovery while
+that intent was unresolved. No review decision or later promotion occurred.
+
+The later GET-only operator instance `coverage-main-release-reconcile-20261016-1`
+matched the SAME intent, deployment annotation and 90/10 allocation. Separate
+`coverage-main-release-restore-20261016-1` then restored the exact captured prior
+version `7aa076d2-23c6-4550-b197-d7754d4ae7df` at100%, independently read back in
+deployment `7936ce1e-a212-4f56-b838-efd4bc5548f5`. The original failed Workflow,
+candidate and journal history are preserved. This is operator recovery, not a
+completed main release or a retry of the old promotion.
+
+The exact mismatching immediate read was not retained; delayed list visibility
+is an inference from the later matching read, not a proven platform root cause.
+The regression reproduces an exact stale pre-write list response and verifies
+bounded read-only convergence, exhaustion, foreign drift and malformed reads,
+always one POST. The confirmation fix needs its own exact-source deployment and
+fresh native acceptance; this recovery does not prove it deployed.
+
 Dashboard/external deployment changes are detected before writes, not atomically
 fenced by Cloudflare's deployment API. Use this dedicated target with one operator;
 do not claim safety against racing external deployment tools. A controller lease
