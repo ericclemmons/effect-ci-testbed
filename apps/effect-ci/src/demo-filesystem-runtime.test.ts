@@ -29,11 +29,19 @@ test(
       import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
-      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false,publicationFailure=false;
+      import {workflowEntrypoint} from '@effect-ci-testbed/github-cloudflare';
+      import {makeDemoProgram} from './demo-program.ts';
+      // TEST-ONLY host for candidate diagnostics. Remote DemoCIWorkflow must
+      // never prepare a production candidate, including when this broker fails.
+      export const PrepareFailureWorkflow=workflowEntrypoint((env,p)=>makeDemoProgram({revision:p.revision,
+        publish:files=>env.DEMO_SITE.publish(p.revision,files),
+        prepare:(revision,digest)=>env.RELEASE_MANAGER.prepareCandidate(revision,digest)}).workflow,
+        {root:'examples/demo',cache:false});
+      const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false,publicationFailure=false,prepareCalls=0;
       const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
       export class Publisher extends WorkerEntrypoint {
         async publish(revision,files){if(publicationFailure)throw Error('Bearer fake-publication-secret');publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
-        async prepareCandidate(revision,digest){if(prepareFailure)throw Error('Candidate upload uncertain or rejected (identity, HTTP 200, version 11111111-1111-4111-8111-111111111111); reconcile the pending identity, never retry automatically');return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
+        async prepareCandidate(revision,digest){prepareCalls++;if(prepareFailure)throw Error('Candidate upload uncertain or rejected (identity, HTTP 200, version 11111111-1111-4111-8111-111111111111); reconcile the pending identity, never retry automatically');return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
       }
       const cwd="/workspace/repository/examples/demo";
       export class WorkspaceContainer extends DurableObject {
@@ -70,7 +78,7 @@ test(
         }
         if(path==="/prepare-failure"){
           missingLock=false;prepareFailure=true;
-          await ctx.exports.DemoCIWorkflow.create({id:"demo-prepare-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
+          await ctx.exports.PrepareFailureWorkflow.create({id:"demo-prepare-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
           return Response.json({started:true});
         }
         if(path==="/publication-failure"){
@@ -78,8 +86,8 @@ test(
           await ctx.exports.DemoCIWorkflow.create({id:"demo-publication-failure",params:{trigger:"remote",repository:"https://github.com/ericclemmons/effect-ci-testbed.git",revision:"a".repeat(40)}});
           return Response.json({started:true});
         }
-        if(path==="/status")return Response.json(await (await ctx.exports.DemoCIWorkflow.get(new URL(request.url).searchParams.has("publication")?"demo-publication-failure":new URL(request.url).searchParams.has("prepare")?"demo-prepare-failure":new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());
-        return Response.json({reads,exists,commands,cacheReads,snapshots,restores,publications});
+        if(path==="/status"){const prepare=new URL(request.url).searchParams.has('prepare');return Response.json(await (await (prepare?ctx.exports.PrepareFailureWorkflow:ctx.exports.DemoCIWorkflow).get(new URL(request.url).searchParams.has("publication")?"demo-publication-failure":prepare?"demo-prepare-failure":new URL(request.url).searchParams.has("missing")?"demo-missing-lock":"demo-filesystem")).status());}
+        return Response.json({reads,exists,commands,cacheReads,snapshots,restores,publications,prepareCalls});
       }};
     `,
       },
@@ -105,6 +113,7 @@ test(
             exports: {
               WorkspaceContainer: { type: "durable-object", storage: "sqlite" },
               DemoCIWorkflow: { type: "workflow", name: "demo-filesystem-probe" },
+              PrepareFailureWorkflow: { type: "workflow", name: "demo-prepare-failure-probe" },
               Publisher: { type: "worker" },
             },
             env: {
@@ -160,10 +169,11 @@ test(
         'npm run "build"',
         "node .cloudflare/ci/verify-build.ts",
       ]);
-      assert.equal(output.nodes.length, 11);
+      assert.equal(output.nodes.length, 10);
       assert.equal(state.publications.length, 1);
       assert.equal(state.publications[0].revision, "a".repeat(40));
-      assert.equal(output.nodes.at(-1).id, "prepare release");
+      assert.equal(output.nodes.at(-1).id, "publish site");
+      assert.equal(state.prepareCalls, 0, "remote CLI has no production candidate authority");
       assert.ok(state.snapshots.some((snapshot: any) => snapshot.name === "build-workspace"));
       assert.ok(
         state.snapshots.some((snapshot: any) => snapshot.name === "verify build-workspace"),

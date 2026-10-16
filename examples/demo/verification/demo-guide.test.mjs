@@ -66,6 +66,8 @@ test("authored orchestration requests goals, without claiming hosted parity or f
   assert.match(guide, /host currently selects its fixed demo program/);
   assert.match(guide, /Full test-suite reuse is not enrolled yet/);
   assert.match(guide, /deploymentPerformed: false/);
-  assert.ok(guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,
-    "keep technical evidence in linked maintainer docs");
+  assert.ok(
+    guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,
+    "keep technical evidence in linked maintainer docs",
+  );
 });
