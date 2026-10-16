@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./project": "./src/project-checks.ts", "./project-service": "./src/project-service.ts", "./local": "./src/local.ts" },
+  "exports": { ".": "./src/index.ts", "./project": "./src/project-checks.ts", "./tests": "./src/project-tests.ts", "./test-service": "./src/test-service.ts", "./project-service": "./src/project-service.ts", "./local": "./src/local.ts" },
   "scripts": { "check": "tsc --noEmit" },
   "dependencies": {
     "@cloudflare/worker-bundler": "0.2.4",

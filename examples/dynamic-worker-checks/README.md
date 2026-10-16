@@ -65,6 +65,119 @@ toolchain rollout. No hosted resource was created/redeployed for this investigat
 Future Worker-compatible artifacts must be investigated afresh; do not substitute
 the existing Prettier proof or silently execute native tools.
 
+### Genuine Vitest assertion subset
+
+The [assertion compatibility test](./src/vitest-compatibility.test.mjs) uses the
+actual pinned `@vitest/expect` 5.0.3 `JestChaiExpect` plugin and Chai. The tested
+subset is synchronous `toBe`, `toEqual` and `.not` assertions inside an awaited
+Worker fetch handler. A real unequal assertion returns `AssertionError`, not a
+manufactured passing result. Separate fresh children show no global-state leak;
+empty bindings, denied outbound fetch and denied `node:fs` host-file access are checked.
+
+```sh
+cd examples/dynamic-worker-checks
+pnpm install
+pnpm test:vitest-compatibility
+```
+
+Only trusted tool/source text is bundled in Node; the assertions execute in
+actual **local** WorkerLoader isolates without Node compatibility. Each child has
+an explicit 1,000 ms CPU setting, zero subrequests and `globalOutbound:null`.
+The fixed diagnostic bridge caps its tool bundle at 350,000 bytes. This is a
+compatibility investigation, not a production project-test protocol or proof
+that local CPU termination is enforced.
+
+The separate [native campaign](./NATIVE.md) now retains genuine passing,
+assertion-failure, fresh-state, forbidden-import, host-file and CPU-termination
+cases. Local tests alone do not establish hosted CPU enforcement. Test discovery,
+`describe`/`test` registration, mocks, snapshots, plugins, filesystem, Vite
+transforms, arbitrary npm modules and the full Vitest runner remain unsupported.
+
+### Bounded project-test adapter: native subset verified
+
+The reusable [`/tests` service](../../packages/cloudflare-dynamic-worker/src/project-tests.ts)
+bundles only the host-owned pinned assertion runtime. Project modules are then
+appended as raw child modules; they never enter the host bundler, resolver or
+JavaScript evaluator. Every named exported test gets a fresh WorkerLoader child
+and a narrow `expect` supporting `toBe`, `toEqual` and `.not`:
+
+```ts
+const report = yield* Tests.makeProjectTests(env.LOADER).run({
+  mainModule: "suite.js",
+  modules: { "suite.js": "export function sum(expect) { expect(2 + 3).toBe(5) }" },
+  tests: [{ name: "sum", export: "sum" }],
+});
+if (report.tests.some(test => !test.passed)) throw Error("Project tests failed");
+```
+
+This is a host API, not permission to accept arbitrary public execution. The
+protocol caps project modules/tests at 16 each and project UTF-8 source at 64 KiB.
+The separately trusted tool bundle is at most 16 modules / 512 KiB. Each test has
+at most 64 assertions, a 1,000 ms CPU setting, five-second outer deadline, no
+outbound or parent bindings, and at most 1 KiB returned text. Empty tests fail;
+errors return only assertion/execution classifications, never project exception
+messages or values. This is not signed reusable evidence or proof against a
+project author intentionally writing a vacuous passing assertion.
+
+The real local adapter test covers relative modules, genuine success/failure,
+fresh globals, missing exports, empty tests, excessive assertions, redaction,
+blocked network, denied host-file/native-process access and an unprovided import. Workerd may
+expose a `process` global; its mere presence/absence is not the capability fence.
+The tests check actual prohibited operations instead of assuming that name is
+absent. The native infinite-loop case has an actual `exceededCpu` tail receipt,
+not just an outer timeout. Its requested 1,000 ms CPU setting produced a recorded
+3,000 ms CPU / 3,123 ms wall termination; a hard one-second cutoff is **not** proved.
+The separate real local Workflow/SQLite/RPC test requires actual successful tail
+receipts for passing/fresh-state cases and retains errored assertion/import/file
+cases. Only its trusted tooling preparation is local esbuild; it does not prove
+native runtime package bundling or CPU preemption.
+
+The deployed `AssertionWorkflow` adds the private
+`effect-ci-vitest-subset-checks` Workflow to this recipe's existing Worker, reusing
+its existing `LOADER`. A private tail entrypoint and SQLite outcome journal retain
+only owner/test identity, platform outcome and timing metadata, at most 16
+immutable receipts per run. They never read/store logs, exceptions, request data
+or source and have no reset or public read/write route. The tail is configured by
+the host, not supplied by project/event input or exposed in the child environment.
+The Workflow accepts exactly one fixed mode: `passing`,
+`assertion-failure`, `state-isolation`, `cpu-loop`, `forbidden-import` or
+`host-filesystem`. No actor source, path, destination, identity or policy input.
+The wrapper persists the redacted report before rejecting a failed test with a
+non-retryable error; negative cases must remain errored, not be made green.
+Passing/fresh-state cases require real `ok` tail receipts. The CPU case additionally requires a real platform `exceededCpu` tail receipt;
+an arbitrary execution error or outer timer is not CPU proof. After one fixed
+two-second settle it reads that same journal once and fails closed if unavailable.
+See the [tail outcome contract](https://developers.cloudflare.com/workers/runtime-apis/handlers/tail/),
+[fresh child / tail API](https://developers.cloudflare.com/dynamic-workers/api-reference/)
+and [custom limits](https://developers.cloudflare.com/dynamic-workers/usage/limits/).
+Each report includes the actual tool-bundle digest and byte/module counts; it is
+not a signed attestation or a claim of local/native dependency-byte equivalence.
+
+The guarded rollout preserved the original formatter histories and checked
+exact-source CI, idle formatter instances, absent new Workflow, fixed repair
+automation and unchanged protected deployments. It added one private Workflow,
+tail export and SQLite class, without a public URL, secret, outbound binding or
+new account permission. [Deployment and retained cases](./NATIVE.md).
+
+Read the existing six cases; **do not dispatch them again for evidence**.
+The GET-only acceptance reader pins the independently recorded Workflow
+version and requires the same tool digest. A CPU
+execution failure without a successful `exceededCpu` journal checkpoint fails
+acceptance; a timeout alone is not sufficient. Its synthetic reader regressions
+are not native proof:
+
+```sh
+node --test examples/dynamic-worker-checks/src/vitest-evidence.test.ts
+LIVE_OWNED_VITEST=1 VITEST_WORKFLOW_VERSION=f7dc2e14-5fa4-4326-8311-f4d0bb7e1f70 CF_BIN=cf node --test examples/dynamic-worker-checks/src/vitest-live.test.ts
+```
+
+The reader's fixed identities are `owned-vitest-<mode>-20261016-1`; it never creates
+or retries them.
+Normal Workflow/Worker/bundler/child/tail execution and journal storage are metered; there is no Container,
+paid browser provider, model call or automatic repair enrollment. Retiring this
+new Workflow or journal requires explicit cleanup authority and retaining its negative
+histories, not deleting/restarting them for a fresh demo.
+
 ## Owned containerless deployment
 
 This directory owns its [private Worker/config](./cloudflare.config.ts),
@@ -96,9 +209,11 @@ examples/dynamic-worker-checks/node_modules/.bin/tsc -p examples/dynamic-worker-
 node packages/cli/src/bin.ts run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts --format=json
 ```
 
-The last command uses local Prettier, not WorkerLoader. Before deployment confirm
+The last command uses local Prettier, not WorkerLoader. For first-time formatter
+setup only, before deployment confirm
 Worker `effect-ci-source-formatter` and Workflow `effect-ci-source-formatter-checks`
-are absent. Stop if an existing resource is found; do not overwrite a shared host.
+are absent. This owned host and its assertion extension already exist;
+do not bootstrap or overwrite a shared host to reproduce retained proof.
 With existing authorized Workers/Workflows/WorkerLoader access:
 
 ```sh
@@ -121,8 +236,9 @@ there is no Container billing for this recipe. No new account permission, paid
 provider, GitHub App, Slack or AI integration is needed.
 
 Optional cleanup requires explicit owner authorization and retained evidence.
-In Cloudflare's dashboard remove only this owned Workflow and Worker. No bucket,
-Container or SQLite namespace is created. Never reset negative histories or remove
+In Cloudflare's dashboard remove only explicitly authorized owned resources. The
+original formatter creates no bucket, Container or SQLite namespace; the deployed
+assertion extension adds its separate immutable outcome journal. Never reset negative histories or remove
 the shared example host to hide failures. The older shared-host runs below are not relabeled.
 
 ### Fresh standalone native proof
