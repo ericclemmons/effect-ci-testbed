@@ -32,8 +32,25 @@ revision returned 422. The fix increases the host-owned, still finite retention
 policy to 256 without deleting any entry. The regression fills the old capacity,
 admits the 33rd, races four requests for the last two slots, rejects over-capacity
 and changed-byte writes, and preserves the original receipt across reload.
-This is local acceptance, not yet proof of a successful native publication after
-the capacity change.
+That regression is local acceptance, not native publication proof.
+
+The capacity fix was then deployed once from source
+`08e9058981957a2f25ed3d6fc9e4131dc06019ee` as Worker version
+`57e58f82-cada-4808-95d0-89f210cba9e5`, retaining the same three exports,
+bindings, public URLs and security behavior. Its exact-source checks had the
+same narrowly admitted full-registry publication failure; other checks passed.
+All three released asset hashes/CSP and protected deployments again matched.
+
+Native `owned-site-capacity-readback-20261016-1` then completed one metadata-only
+checkpoint, once with zero retries: **32 retained records, capacity 256**,
+released revision present and failed preview absent. Its Workflow version is
+`1e66c0b8-2bcd-4327-868b-4502e7d71ef8`; the original inspection version
+`3dcc6cee-2dfa-4625-ba54-011444644419` and 32/32 result remain unchanged.
+No old publication was retried, overwritten, evicted or relabeled successful.
+
+[Publication acceptance and current status](https://github.com/ericclemmons/effect-ci-testbed/pull/311)
+records the separate ordinary source-triggered preview and independent byte
+verification. Metadata readback alone does not prove that publication succeeds.
 
 No old failed publication should be blindly replayed. New ordinary source pushes
 must obtain their own immutable receipts; a full registry must not be hidden by

@@ -54,8 +54,10 @@ released `105ce02…` and failed-preview `4ae41a2…` revisions—never asset bo
 It adds one private Workflow, no binding, secret or public route. Its retained
 [native inspection](./PUBLICATION-DIAGNOSIS.md) found the original registry full
 at 32/32, with the released revision present and failed preview absent. The new
-256-revision retention policy is tested locally; native publication acceptance
-after that change is not yet claimed.
+256-revision retention policy also has native metadata readback preserving all
+32 old records. Metadata is not publication proof: see
+[publication acceptance and current status](https://github.com/ericclemmons/effect-ci-testbed/pull/311)
+for the separate source-triggered run and byte verification.
 
 ```sh
 cf workflows instances create effect-ci-demo-site-inspection --body '{"instance_id":"owned-site-inspection-20261016-1","params":{}}'
@@ -68,6 +70,13 @@ Workflow/DO reads, with zero retries and a 15-second checkpoint deadline. It doe
 not publish, evict, reset storage, restart a failed run or shift production traffic.
 Retain its history; removing the diagnostic Workflow needs deliberate cleanup
 authority and must leave the existing registry and immutable URLs intact.
+
+From the repository root, read the retained before/after inspections without creating or restarting anything:
+
+```sh
+LIVE_DEMO_SITE_CAPACITY=1 CF_BIN=apps/effect-ci/node_modules/.bin/cf \
+  node --test apps/demo-site/src/live-capacity.test.ts
+```
 
 Open the returned `/r/<commit>/<asset-digest>/index.html` URL in the browser.
 The release message is visible immediately. Click **Test JavaScript** to check
@@ -106,7 +115,10 @@ operator cleanup decision; no automatic destructive cleanup is provided.
 
 Local tests use real workerd/SQLite/RPC and fake small assets to cover concurrent
 publication, same-revision conflict, persisted reload, method/path/digest rejection
-and response bytes. They are not native Vite-build or live-browser evidence.
+and response bytes. The capacity regression admits the 33rd revision without
+eviction, races the last slots at 256, rejects overflow/conflicts and preserves
+old receipts across reload. These local tests are not native Vite-build or
+live-browser evidence.
 
 Native instance `14c8ceb0-840f-4f39-a565-a97cc9b76c71` completed on source
 `b302e8cb0965cdbc7da2ab455d696385e782abf7`: all ten actions passed, nine real
