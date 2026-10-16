@@ -35,3 +35,42 @@ test("Slack links to the same native run, and the retained Dashboard example is 
   assert.match(guide, /retained example, not your next run/);
   assert.match(guide, /\*\*on GitHub Actions\*\*, not Cloudflare/);
 });
+
+test("GitHub adoption replaces the actual manual job with the repository workflow reference", () => {
+  const baseline = readFileSync(
+    new URL("../.github/workflows/github.yml", import.meta.url),
+    "utf8",
+  );
+  const section = guide.split("## 5.")[1].split("## 6.")[0];
+  const diff = section.match(/```diff\n([\s\S]*?)```/)[1];
+  assert.match(diff, /--- a\/\.github\/workflows\/github.yml/);
+  const removed = diff
+    .split("\n")
+    .filter((line) => line.startsWith("-") && !line.startsWith("---"))
+    .map((line) => line.slice(1))
+    .join("\n");
+  assert.ok(baseline.includes(removed), "deleted job steps must match the actual baseline");
+  assert.match(
+    diff,
+    /\+    uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
+  );
+  const reference = readFileSync(
+    new URL("./effect-on-github.example.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    reference,
+    /uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
+  );
+});
+
+test("authored orchestration requests goals, without claiming hosted parity or full-suite reuse", () => {
+  const section = guide.split("## 6.")[1].split("## 7.")[0];
+  assert.match(section, /\+export \* from "\.\/actions.ts"/);
+  assert.match(section, /CI.parallel\(\[actions.test\(\), actions.build\(\)\]\)/);
+  assert.doesNotMatch(section, /\+  yield\* actions\.(lint|check|typecheck)\(\)/);
+  assert.match(section, /marker-free discovery currently runs its inferred script list serially/);
+  assert.match(guide, /this deployed host still\nselects its fixed inferred program/);
+  assert.match(guide, /Full test-suite reuse is not enrolled yet/);
+  assert.match(guide, /not a deploy/);
+});
