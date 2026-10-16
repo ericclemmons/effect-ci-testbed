@@ -30,6 +30,16 @@ test("ordinary branch pushes preview; main is production without a special ref o
   assert.doesNotMatch(guide, /git push[^\n`]*(?:HEAD|refs\/heads\/|:)/);
 });
 
+test("fresh demo endpoint is public config; Access is not an API token", () => {
+  const endpoint = readFileSync(new URL("../.env", import.meta.url), "utf8");
+  assert.match(
+    endpoint,
+    /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
+  );
+  assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
+  assert.match(guide, /Access login\nalone does not provide that API token/);
+});
+
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {
   assert.match(guide, /https:\/\/app\.slack\.com\/client\/TBXG40NPN\/C0C81FU4B5J/);
   assert.match(guide, /Details on that Slack parent card/);

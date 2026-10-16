@@ -36,6 +36,13 @@ they do not require Cloudflare Access. Only direct `cf-ci run --remote` calls ne
 cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 ```
 
+The public worker URL is checked into `.env`; `.env.local` may override the URL.
+On a new computer, the existing API credential belongs in your private Effect CI
+remote profile—not either project env file, which Vite can read. Access login
+alone does not provide that API token. Never use a Cloudflare deployment token.
+The default profile is `~/.config/effect-ci/remotes.json` (mode `600`); a CLI-only
+`EFFECT_CI_REMOTE_PROFILE` can select another private file.
+
 </details>
 
 ## 1. Discover the project

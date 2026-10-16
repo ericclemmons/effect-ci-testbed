@@ -3,8 +3,12 @@ name: GitHub Actions / Recipe checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'examples/demo/**'
   push:
     branches: [main]
+    paths-ignore:
+      - 'examples/demo/**'
 
 permissions:
   contents: read

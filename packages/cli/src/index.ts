@@ -10,6 +10,7 @@ import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/proj
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
+import { readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
@@ -203,14 +204,22 @@ const builtInRemote = async (
 ): Promise<unknown> => {
   const configuredRepository = gitOptional(root, "config", "--get", "remote.origin.url")
   const profile = configuredRepository ? readRemoteProfile(cloneUrl(configuredRepository)) : undefined
-  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL || profile?.url
-  const remoteUrl = configuredUrl ? remoteOrigin(configuredUrl) : undefined
+  const configured = resolveRemote(process.env, profile, readProjectRemote(root))
+  const remoteUrl = configured.url
 
   if (!remoteUrl) {
     throw new CliFailure(
       "CI_REMOTE_UNAVAILABLE",
       ExitCode.providerUnavailable,
-      "Set EFFECT_CI_REMOTE_URL or export a custom remote runner from the workflow module",
+      "No remote endpoint configured. Set EFFECT_CI_REMOTE_URL in .env.local (or your shell), configure a private remote profile, or export a custom remote runner.",
+    )
+  }
+
+  if (!configured.token) {
+    throw new CliFailure(
+      "CI_REMOTE_AUTH_REQUIRED",
+      ExitCode.providerUnavailable,
+      "Remote endpoint found, but its Effect CI API token is missing. Configure your private Effect CI remote profile, or set EFFECT_CI_REMOTE_TOKEN only for this CLI process. Keep credentials out of project env files. Cloudflare Access login is separate; do not use a deployment token.",
     )
   }
 
@@ -241,7 +250,7 @@ const builtInRemote = async (
   const revision = git(root, "rev-parse", "HEAD")
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
-  const headers = remoteHeaders(remoteUrl, profile?.url === remoteUrl ? profile.token : undefined)
+  const headers = remoteHeaders(remoteUrl, configured.token)
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
     redirect: "error",
