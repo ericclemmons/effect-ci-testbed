@@ -111,7 +111,7 @@ test(
       const inspected = await inspect("metadata-once", {});
       assert.equal(inspected.status, "complete");
       assert.deepEqual(inspected.output, ["105ce02b81915f845df75cbc20ecc383162b54f6", "4ae41a23fa6a0978c5f58ec60a135b07fc5addd2"].map(revision =>
-        ({ revision, count: 1, capacity: 32, present: false })));
+        ({ revision, count: 1, capacity: 256, present: false })));
       assert.equal((await inspect("reject-actor-source", { revision })).status, "errored");
       assert.equal((await runtime.dispatchFetch("https://site.invalid/inspect")).status, 404);
       assert.equal(await (await runtime.dispatchFetch(record.url)).text(), assets["index.html"], "Inspection leaves immutable assets unchanged");

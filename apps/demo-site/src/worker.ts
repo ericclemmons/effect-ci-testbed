@@ -3,6 +3,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 import {
   demoSite,
   demoSiteUrl,
+  demoSiteRevisionCapacity,
   siteRevision,
   siteResponse,
   type DemoSite,
@@ -14,7 +15,7 @@ export class DemoSiteRevisions extends DurableObject {
     const revisions = (await this.ctx.storage.get<string[]>("revisions")) ?? [];
     const value = await this.ctx.storage.get<DemoSite>(`site:${exact}`);
     // Metadata only: no assets, keys, arbitrary SQL, writes or reset capability.
-    return { revision: exact, count: revisions.length, capacity: 32, present: value !== undefined };
+    return { revision: exact, count: revisions.length, capacity: demoSiteRevisionCapacity, present: value !== undefined };
   }
   async publish(
     revision: string,
@@ -30,7 +31,7 @@ export class DemoSiteRevisions extends DurableObject {
         return checked;
       }
       const revisions = (await storage.get<string[]>("revisions")) ?? [];
-      if (revisions.length >= 32) throw Error("Site revision capacity reached");
+      if (revisions.length >= demoSiteRevisionCapacity) throw Error("Site revision capacity reached");
       await storage.put(`site:${candidate.revision}`, candidate);
       await storage.put("revisions", [...revisions, candidate.revision]);
       return candidate;

@@ -49,11 +49,13 @@ are rejected. There is no mutable `latest` route.
 
 `SiteInspectionWorkflow` is a fixed, read-only inspection of the same registry.
 Its empty payload cannot select source, SQL, destinations or policy. It returns
-only revision count, the unchanged capacity of 32, and presence of the fixed
+only revision count, the host-owned retention capacity, and presence of the fixed
 released `105ce02…` and failed-preview `4ae41a2…` revisions—never asset bodies.
-It adds one private Workflow, no binding, secret or public route. It is prepared
-for diagnosing the retained publication failure; no native inspection is claimed
-until its actual result is recorded.
+It adds one private Workflow, no binding, secret or public route. Its retained
+[native inspection](./PUBLICATION-DIAGNOSIS.md) found the original registry full
+at 32/32, with the released revision present and failed preview absent. The new
+256-revision retention policy is tested locally; native publication acceptance
+after that change is not yet claimed.
 
 ```sh
 cf workflows instances create effect-ci-demo-site-inspection --body '{"instance_id":"owned-site-inspection-20261016-1","params":{}}'
@@ -85,8 +87,12 @@ render without allowing arbitrary inline styles, inline scripts, style attribute
 network requests or `unsafe-inline`. Asset bodies/digests are not rewritten.
 
 The fixed file allowlist is `index.html`, `app.js`, `message.js`, each nonempty and
-at most256KiB, at most512KiB total. The registry accepts at most32 immutable
-revisions; it never evicts or overwrites one. These are UTF-8 text assets, not a
+at most256KiB, at most512KiB total. The registry accepts at most256 immutable
+revisions; it never evicts or overwrites one. This bounds logical asset payloads
+at 128MiB plus metadata/storage overhead; actual storage remains metered. The
+previous capacity of 32 exhausted during normal preview pushes; the increase
+retains every old revision and does not grant any actor a configurable quota.
+These are UTF-8 text assets, not a
 generic binary download service. Worker requests, DO compute/storage and the
 existing native build containers remain metered; there is no inference or paid
 browser provider here. GET recomputes stored byte identities before serving.
