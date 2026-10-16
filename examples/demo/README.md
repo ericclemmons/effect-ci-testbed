@@ -6,8 +6,8 @@ This is a hands-on adoption guide, not a presentation script. Each step adds a
 capability: make the change, run the command, inspect the result. Stop or skip
 wherever you want. There is no three-minute schedule or prescribed narration.
 
-To try the existing hosted demo, go straight to [serve the checked build](#10-serve-the-checked-build)
-or [push a change through release](#11-release-the-checked-build-with-a-decision).
+To see it working now, [open the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
+To change it yourself, [push a change through release](#11-release-the-checked-build-with-a-decision).
 Those steps use this repository's already-configured host; you do not need to
 create another repo or change the App installation to try them.
 
@@ -32,11 +32,6 @@ gh run list
 ```
 
 Open <https://github.com/ericclemmons/cf-ci-demo/actions> in the browser.
-
-Open <https://github.com/settings/installations/165265172> in the browser. For
-**Effect CI**, select **All repositories**, then **Save**. This extends the App's
-existing Contents/PR/Checks permissions to all repositories; it does not authorize
-automatic merging or deployment.
 
 [tiged subdirectory copying](https://github.com/tiged/tiged#specify-a-subdirectory) ·
 [GitHub repo creation](https://cli.github.com/manual/gh_repo_create) ·
@@ -458,10 +453,9 @@ cf-ci run --remote
 cf-ci run --remote
 ```
 
-Open the [currently released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
-The release preview displays the text from `src/message.ts` immediately. **Test
-JavaScript** checks that this build's browser code runs; its result says exactly
-what happened. You no longer have to click a vague button to discover the app's content.
+Open the [published preview](https://effect-ci-demo-site.ericclemmons.workers.dev/r/e7179eccf60c82d6f0cbf57c5d7a880cc4bab108/cbb7c3279acf7de80096837e389e7ad8cbcbb92fdafb76b9c9251407bda7419b/index.html).
+
+![Actual checked Vite build with a visible release message and explicit browser check](./verification/published/release-preview-e7179ec.png)
 
 The enrolled demo host publishes through a private capability; project code gets
 no deployment token. A remote run publishes a separate commit-pinned preview;
@@ -494,23 +488,25 @@ git commit -m "Update the release message"
 git push origin HEAD:refs/heads/demo/live
 ```
 
-Open **#effect-ci** in Slack. One updating status line tracks the current step;
-open its thread for step details and the candidate's release graphs. Inspect each snapshot and choose **Progress**
-or **Reject** at 10%, 25%, 75% and 100%. Sparse data stays uncertain; Progress is
-explicit risk acceptance, not a fabricated health pass. Each phase has a fixed
-two-minute settling interval before its cohort, then a five-minute decision window.
-Reject or timeout restores the allocation captured at that run's start. The final
-100% Progress commits it; success does not restore an older baseline.
+Open **#effect-ci** in Slack, then open the new run's thread. At 10%, 25%, 75% and
+100%, inspect the graph and choose **Progress** or **Reject**. The channel keeps
+one updating status line. Allow two minutes between phases; each decision expires
+after five minutes. Sparse data stays uncertain: Progress accepts that risk.
+Reject or timeout restores the prior version. The final Progress keeps the new
+build live at 100%.
 
 Open the [live release](https://effect-ci-hmd-demo.ericclemmons.workers.dev/) and
 look for **Hello from the next release.** under **Release message**. It redirects to the same checked immutable Vite build,
 not a second build or Workers Static Assets upload.
 
-**Live verified:** a genuine source push completed this full path with four
+**Live verified:** the preview above went through a genuine source push, all
+eleven build actions, one compact channel message, fifteen maintained thread
+replies, and four release graphs. It completed this full path with four
 explicitly authorized browser-delegated **test** decisions, four real graphs and
 one maintained card, then left its candidate committed at 100%. This is not an
 independent human-review claim or general standalone onboarding proof.
 [Actual run, limits and read-only regression](../../apps/effect-ci/DEMO-RELEASE.md).
+[Updated preview and threaded-release evidence](./verification/release-preview-20261016.md).
 
 For a separate repository, the portable Cloudflare action/enrollment is still
 unfinished. That is a different setup path, not a prerequisite for running this
