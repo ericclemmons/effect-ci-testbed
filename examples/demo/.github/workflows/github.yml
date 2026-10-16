@@ -11,15 +11,7 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: voidzero-dev/setup-vp@v1.21.2
-        with:
-          node-version: 24
-          cache: true
-          run-install: true
-      - run: npm run lint
-      - run: npm run check
-      - run: npm run typecheck
-      - run: npm run test
-      - run: npm run build
+    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
+    with:
+      workflow: examples/demo
+    secrets: inherit
