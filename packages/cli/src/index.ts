@@ -22,6 +22,7 @@ export interface Invocation {
   readonly format: OutputFormat
   readonly location: ExecutionLocation
   readonly target?: string
+  readonly targets?: ReadonlyArray<string>
   readonly workflow: CI.Workflow<unknown>
 }
 
@@ -213,11 +214,11 @@ const builtInRemote = async (
     )
   }
 
-  if (invocation.target) {
+  if (invocation.target || invocation.targets?.length) {
     throw new CliFailure(
       "CI_REMOTE_TARGET_UNAVAILABLE",
       ExitCode.providerUnavailable,
-      "The hosted runner currently executes the workflow suite, not individual exported actions",
+      "The hosted runner currently executes the workflow suite, not selected exported actions",
     )
   }
 
@@ -318,6 +319,7 @@ interface ParsedInvocation {
   readonly help: boolean
   readonly location: ExecutionLocation
   readonly target?: string
+  readonly targets: ReadonlyArray<string>
 }
 
 const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
@@ -362,24 +364,20 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
     )
   }
 
-  const [first, second, ...rest] = parsed.positionals
-
-  if (rest.length > 0) {
-    throw new CliFailure(
-      "CI_USAGE_ERROR",
-      ExitCode.usage,
-      `Unexpected arguments: ${rest.join(" ")}`,
-    )
-  }
-
+  const [first] = parsed.positionals
   const command = first === "list" || first === "plan" || first === "run"
     ? first
     : "run"
-  const target = command === "run" && first && first !== "run"
-    ? first
-    : second
+  const requested = command === "run" && first && first !== "run"
+    ? parsed.positionals
+    : parsed.positionals.slice(1)
+  if (requested.length > 32) throw new CliFailure(
+    "CI_USAGE_ERROR", ExitCode.usage, "Select at most 32 action targets",
+  )
+  const targets = [...new Set(requested)]
+  const target = targets.length === 1 ? targets[0] : undefined
 
-  if (command === "list" && target) {
+  if (command === "list" && targets.length) {
     throw new CliFailure(
       "CI_USAGE_ERROR",
       ExitCode.usage,
@@ -392,6 +390,7 @@ const parseInvocation = (args: ReadonlyArray<string>): ParsedInvocation => {
     format,
     help: parsed.values.help === true,
     location: parsed.values.remote ? "remote" : "local",
+    targets,
     ...(target ? { target } : {}),
   }
 }
@@ -400,20 +399,21 @@ const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
   cf-ci                         Show this help and project targets
-  cf-ci run [target] [--local|--remote] [--format=text|json]
-  cf-ci plan [target] [--local|--remote] [--format=text|json|mermaid]
+  cf-ci run [targets...] [--local|--remote] [--format=text|json]
+  cf-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
   cf-ci list [--format=text|json]
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
   cf-ci --workflow path/to/package [run|plan|list] [target]
 
 Commands:
-  run     Execute the default workflow, or one exported action when a target is given
+  run     Execute the default workflow, or fan out to the selected exported actions
   plan    Resolve the graph without executing commands
   list    List runnable commands for this project
 
 Examples:
   cf-ci run                     Execute the whole default workflow
+  cf-ci run test build          Run both goals with their shared dependencies
   cf-ci plan                    Inspect the whole workflow without executing
   cf-ci plan --format=mermaid    Print its Mermaid graph
   cf-ci list                    Discover exact commands to run
@@ -612,7 +612,7 @@ export const initializeJavaScriptProject = (
   if (invocation.help || invocation.command !== "run" || invocation.location !== "local") return undefined
   // Validate scripts and the requested target before writing anything or running scripts.
   const program = inferJavaScriptProgram(resolve(cwd))
-  selectedWorkflow(program, invocation.target)
+  selectedWorkflow(program, invocation.targets)
   for (const directory of [join(cwd, ".cloudflare"), join(cwd, ".cloudflare", "ci")]) {
     if (existsSync(directory)) {
       const entry = lstatSync(directory)
@@ -726,22 +726,21 @@ const classifyFailure = (error: unknown): CliFailure => {
 
 const selectedWorkflow = (
   program: Program,
-  target: string | undefined,
+  targets: ReadonlyArray<string>,
 ): CI.Workflow<unknown> => {
-  if (!target) return program.workflow
-
-  const action = actionTargets(program.actions)[target]
-
-  if (!action) {
-    throw new CliFailure(
-      "CI_UNKNOWN_TARGET",
-      ExitCode.usage,
-      `Unknown action target: ${target}`,
-      { available: Object.keys(actionTargets(program.actions)).sort() },
+  if (!targets.length) return program.workflow
+  const available = actionTargets(program.actions)
+  // Validate the entire selection before constructing or executing any action.
+  const actions = targets.map(target => {
+    const action = available[target]
+    if (!action) throw new CliFailure(
+      "CI_UNKNOWN_TARGET", ExitCode.usage, `Unknown action target: ${target}`,
+      { available: Object.keys(available).sort() },
     )
-  }
-
-  return CI.workflow(`${program.workflow.id}/${target}`, action)
+    return action
+  })
+  return CI.workflow(`${program.workflow.id}/${targets.join("+")}`,
+    actions.length === 1 ? actions[0]! : () => CI.parallel(actions.map(action => action())))
 }
 
 const list = (program: Program, format: OutputFormat): void => {
@@ -795,12 +794,13 @@ export const main = async (
       return ExitCode.success
     }
 
-    const workflow = selectedWorkflow(program, invocation.target)
+    const workflow = selectedWorkflow(program, invocation.targets)
     const request: Invocation = {
       command: invocation.command,
       format,
       location: invocation.location,
       ...(invocation.target ? { target: invocation.target } : {}),
+      ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
       workflow,
     }
 
@@ -816,6 +816,7 @@ export const main = async (
           command: invocation.command,
           location: invocation.location,
           ...(invocation.target ? { target: invocation.target } : {}),
+          ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
           workflow: workflow.id,
           result,
         })
@@ -854,6 +855,7 @@ export const main = async (
         command: invocation.command,
         location: invocation.location,
         ...(invocation.target ? { target: invocation.target } : {}),
+        ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
         workflow: workflow.id,
         plan: result.plan,
       })

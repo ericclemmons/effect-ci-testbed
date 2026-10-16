@@ -4,9 +4,11 @@ import { healthStatus } from "../fixtures/public-health.js";
  * from the request. Deployment and automatic admission must be enrolled before
  * the host enables this route; it is disabled in the production entrypoint.
  */
-export const PUBLIC_EMISSION_ID = "owned-public-health-500-v1";
+// One separately approved fresh test after the original expired admission.
+// The original v1 DO/claim/Issue/capture remain untouched; this is not a reset.
+export const PUBLIC_EMISSION_ID = "owned-public-health-500-v2";
 export const PUBLIC_ERROR_MESSAGE =
-  "Effect CI owned public health fixture returned 500 (owned-public-health-500-v1)";
+  "Effect CI public health check failed";
 // Actual fixed fixture bytes are checked by the local regression and pinned
 // together with the exact deployed version/source by the host enrollment.
 export const PUBLIC_FIXTURE_DIGEST =

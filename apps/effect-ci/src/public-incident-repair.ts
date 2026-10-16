@@ -1,5 +1,6 @@
 import { DurableObject, WorkerEntrypoint, WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
+import { publicIncidentTrigger } from "../../../packages/github/src/public-trigger.ts";
 import { assertPublicAdmission, PUBLIC_REPAIR_POLICY, PUBLIC_FIXTURE_DIGEST, PUBLIC_MODEL_RUN } from "../../../packages/github/src/public-proposal.ts";
 import { runPublicRepair, publicRepairRun, type PublicRepairResult } from "../../../packages/github/src/public-repair.ts";
 import { proposeRepair } from "../../../packages/github/src/repair.ts";
@@ -10,7 +11,7 @@ import type { PrivateSlackCards } from "./private-cards.ts";
 
 interface Environment {
   GITHUB_APP_ID: string; GITHUB_PRIVATE_KEY: string;
-  PUBLIC_ADMISSION: { readPublicAdmission(instance: string): Promise<any>; publicEnrollmentReadiness(version: string): Promise<any> };
+  PUBLIC_ADMISSION: { readPublicAdmission(instance: string): Promise<any>; publicEnrollmentReadiness(version: string): Promise<any>; publicActivationState(): Promise<{ state: string }> };
   PUBLIC_PROPOSAL: {
     startPublicProposal(instance: string): Promise<{ id: string }>;
     publicProposalStatus(instance: string): Promise<{ status: string }>;
@@ -30,8 +31,16 @@ export class PublicPipelineReadiness extends WorkerEntrypoint<Environment> {
       if (typeof channels[k] !== "string" || !channels[k]) throw rejected();
     const p = await this.env.PUBLIC_ADMISSION.publicEnrollmentReadiness(version);
     if (p.policy !== PUBLIC_REPAIR_POLICY || p.service !== "effect-ci-repair-incident" || p.version !== version ||
-        typeof p.source !== "string" || !/^[a-f0-9]{40}$/.test(p.source) || p.emission !== "owned-public-health-500-v1" ||
+        typeof p.source !== "string" || !/^[a-f0-9]{40}$/.test(p.source) ||
+        !["owned-public-health-500-v1", "owned-public-health-500-v2"].includes(p.emission) ||
         p.fixtureDigest !== PUBLIC_FIXTURE_DIGEST) throw rejected();
+    // Arming another source must never bypass a pending/used public admission
+    // or writer slot. Inspection is read-only; there is no reset/retry route.
+    if ((await this.env.PUBLIC_ADMISSION.publicActivationState()).state !== "absent") throw rejected();
+    const operations = (this.ctx.exports as unknown as {
+      PublicIncidentRepairOperations: DurableObjectNamespace<PublicIncidentRepairOperations>;
+    }).PublicIncidentRepairOperations;
+    if ((await operations.getByName(owner).inspect()).state !== "absent") throw rejected();
     const budget = await this.env.PUBLIC_PROPOSAL.publicProposalReadiness();
     if (budget.ready !== true || budget.run !== PUBLIC_MODEL_RUN || !Number.isSafeInteger(budget.reservedCents)) throw rejected();
     return { ready: true, policy: PUBLIC_REPAIR_POLICY, service: "effect-ci-repair-incident", version,
@@ -62,6 +71,12 @@ function plain(r: PublicRepairResult): PublicRepairResult {
  * No caller patch, repo, branch, command, token, verifier or reservation is used.
  */
 export class PublicIncidentRepairOperations extends DurableObject<Environment> {
+  async inspect() {
+    const raw: any = await this.ctx.storage.get(key);
+    if (raw === undefined) return { state: "absent" as const };
+    if (raw.version !== 1 || !["pending", "complete", "failed"].includes(raw.state)) throw rejected();
+    return { state: raw.state as "pending" | "complete" | "failed" };
+  }
   private store(): OperationStore {
     return {
       read: () => this.ctx.storage.get(key),
@@ -105,6 +120,12 @@ export class PublicIncidentRepairOperations extends DurableObject<Environment> {
  * public route exists; native administration is not event-activation proof.
  */
 export class PublicIncidentDispatcher extends WorkerEntrypoint<Environment> {
+  async trigger(event: unknown) {
+    const routed = publicIncidentTrigger(event);
+    // The event cannot nominate a workflow, fixture, prompt, source or model.
+    // A valid-shaped routing key alone is NOT authorization.
+    return this.startPublicIncident(routed.admissionId);
+  }
   async startPublicIncident(instance: string) {
     await admitted(this.env, instance);
     const workflow = (this.ctx.exports as unknown as { PublicIncidentRepairWorkflow: Workflow }).PublicIncidentRepairWorkflow;

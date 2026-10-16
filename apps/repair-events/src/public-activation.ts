@@ -8,7 +8,7 @@ import type { NotificationCaptures } from "./worker.ts";
 
 export interface PublicActivationEnvironment {
   PUBLIC_SOURCE?: { readPublicClaim(): Promise<unknown> };
-  PUBLIC_REPAIR?: { startPublicIncident(instance: string): Promise<{ id: string }> };
+  PUBLIC_REPAIR?: { trigger(event: { type: "observability_issue"; admissionId: string }): Promise<{ id: string }> };
 }
 const key = "public-incident-outbox-v1";
 const rejected = () => new Error("Public incident outbox unavailable; inspect before recovery");
@@ -18,6 +18,12 @@ const rejected = () => new Error("Public incident outbox unavailable; inspect be
  * policy, source, prompt, destination or paid-operation identity is an argument.
  */
 export class PublicIncidentActivations extends DurableObject<PublicActivationEnvironment> {
+  async inspect() {
+    const raw = await this.ctx.storage.get(key);
+    if (raw === undefined) return { state: "absent" as const };
+    const record = await readPublicIncidentOutbox(raw);
+    return { state: record.state, instance: record.instance };
+  }
   async readAdmission(instance: string) {
     if (!publicIncidentEnrollment) throw rejected();
     const record = await readPublicIncidentOutbox(await this.ctx.storage.get(key));
@@ -57,7 +63,7 @@ export class PublicIncidentActivations extends DurableObject<PublicActivationEnv
         await storage.put(key, { ...current, state: "dispatched" });
       }),
     }, admission, async instance => {
-      const ack = await this.env.PUBLIC_REPAIR!.startPublicIncident(instance);
+      const ack = await this.env.PUBLIC_REPAIR!.trigger({ type: "observability_issue", admissionId: instance });
       return { id: ack.id };
     });
   }
@@ -70,6 +76,13 @@ export class PublicIncidentActivations extends DurableObject<PublicActivationEnv
  * admit raw evidence, choose a fixture, reset an operation or call a model.
  */
 export class PublicIncidentAdmission extends WorkerEntrypoint {
+  async publicActivationState() {
+    const namespace = (this.ctx.exports as unknown as {
+      PublicIncidentActivations: DurableObjectNamespace<PublicIncidentActivations>;
+    }).PublicIncidentActivations;
+    const r = await namespace.getByName("owned-public-incident-v1").inspect();
+    return r.state === "absent" ? { state: r.state } : { state: r.state, instance: r.instance };
+  }
   async publicEnrollmentReadiness(version: string) {
     const p = publicIncidentEnrollment;
     if (!p || p.version !== version) throw rejected();

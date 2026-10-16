@@ -27,12 +27,14 @@ function validArm(value: PublicArmRecord | undefined, version: string): value is
 }
 interface PublicClaimRecord {
   version: 1;
+  emission?: string;
   producerVersion: string;
   claimedAt: number;
   fixtureDigest: string;
 }
 function validPublicClaim(value: PublicClaimRecord | undefined): value is PublicClaimRecord {
   return !!value && value.version === 1 &&
+    (value.emission === undefined || value.emission === "owned-public-health-500-v1" || value.emission === PUBLIC_EMISSION_ID) &&
     /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value.producerVersion) &&
     Number.isSafeInteger(value.claimedAt) && value.claimedAt >= 0 &&
     value.fixtureDigest === PUBLIC_FIXTURE_DIGEST;
@@ -65,7 +67,7 @@ export class PublicFailureClaim extends DurableObject<PublicEnvironment> {
     const record = await this.ctx.storage.get<PublicClaimRecord>("public-http-emission-v1");
     if (record === undefined) return { state: "absent" as const };
     if (!validPublicClaim(record)) throw new Error("Owned public claim unavailable");
-    return { emission: PUBLIC_EMISSION_ID, version: record.producerVersion,
+    return { emission: record.emission ?? "owned-public-health-500-v1", version: record.producerVersion,
       currentVersion: this.env.WORKER_METADATA.id, fixtureDigest: record.fixtureDigest,
       claimedAt: record.claimedAt };
   }
@@ -84,6 +86,7 @@ export class PublicFailureClaim extends DurableObject<PublicEnvironment> {
       // Claimed means possibly emitted, NOT confirmed Issue delivery. A crash or
       // lost ACK between this write and the exception cannot authorize a retry.
       const record: PublicClaimRecord = { version: 1,
+        emission: PUBLIC_EMISSION_ID,
         producerVersion: this.env.WORKER_METADATA.id, claimedAt: Date.now(),
         fixtureDigest: PUBLIC_FIXTURE_DIGEST };
       if (!validPublicClaim(record)) throw new Error("Owned public claim unavailable");
@@ -118,6 +121,15 @@ export class PublicIncidentArmWorkflow extends WorkflowEntrypoint<PublicEnvironm
  * service does not claim to read the Issues occurrence API or attest source.
  */
 export class PublicIncidentEvidence extends WorkerEntrypoint {
+  async readHistoricalPublicClaim() {
+    const namespace = (this.ctx.exports as unknown as {
+      PublicFailureClaim: DurableObjectNamespace<PublicFailureClaim>;
+    }).PublicFailureClaim;
+    const r = await namespace.getByName("owned-public-health-500-v1").inspect();
+    if ("state" in r) return { state: "absent" as const };
+    return { emission: r.emission, version: r.version, currentVersion: r.currentVersion,
+      fixtureDigest: r.fixtureDigest, claimedAt: r.claimedAt };
+  }
   async readPublicClaim() {
     const namespace = (
       this.ctx.exports as unknown as {

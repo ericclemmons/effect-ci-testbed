@@ -30,7 +30,9 @@ test("local public Workflow keeps one Slack card and proposes only after verific
       globalThis.localPublicVerified++;return {commit,sourceDigest:${JSON.stringify(actualDigest)},passed:this.env.FAIL_VERIFY!=='yes',evidenceId:'github_check_123'};}}
     export default class extends WorkerEntrypoint {async fetch(request){const path=new URL(request.url).pathname;
       if(path==='/ready'||path==='/wrong-ready'){try{const r=await this.ctx.exports.PublicPipelineReadiness({}).checkPublicPipeline(path==='/ready'?${JSON.stringify(f.view.admission.version)}:'22222222-2222-2222-2222-222222222222');return Response.json({ready:r.ready,version:r.version,source:r.source,fixtureDigest:r.fixtureDigest,budgetGuarded:r.budgetGuarded});}catch{return new Response('Not ready',{status:409});}}
-      if(path==='/start'){const r=await this.ctx.exports.PublicIncidentDispatcher({}).startPublicIncident(${JSON.stringify(f.view.instance)});return Response.json({id:r.id});}
+      if(path==='/unsupported'){try{await this.ctx.exports.PublicIncidentDispatcher({}).trigger({type:'push',admissionId:${JSON.stringify(f.view.instance)}});return new Response('unexpected',{status:500});}catch{return new Response('Rejected',{status:400});}}
+      if(path==='/unadmitted'){try{await this.ctx.exports.PublicIncidentDispatcher({}).trigger({type:'observability_issue',admissionId:'public-incident-'+ 'f'.repeat(64)});return new Response('unexpected',{status:500});}catch{return new Response('Rejected',{status:400});}}
+      if(path==='/start'){const r=await this.ctx.exports.PublicIncidentDispatcher({}).trigger({type:'observability_issue',admissionId:${JSON.stringify(f.view.instance)}});return Response.json({id:r.id});}
       if(path==='/status')return Response.json(await(await this.ctx.exports.PublicIncidentRepairWorkflow.get(${JSON.stringify(f.view.instance)})).status());
       if(path==='/replay'){try{const r=await this.ctx.exports.PublicIncidentRepairOperations.getByName('owned-public-http-repair-v1').propose(${JSON.stringify(f.view.instance)});return Response.json({replay:r.replay,url:r.url});}catch{return new Response('Rejected',{status:400});}}
       return Response.json({messages:globalThis.localPublicMessages,verified:globalThis.localPublicVerified,proposed:globalThis.localPublicProposed,model:await this.env.PUBLIC_PROPOSAL.stats()});
@@ -52,6 +54,7 @@ test("local public Workflow keeps one Slack card and proposes only after verific
     export default class extends WorkerEntrypoint {
       readPublicAdmission(id){if(this.env.GITHUB_PRIVATE_KEY)throw Error('Credential leaked');if(id!==${JSON.stringify(f.view.instance)})throw Error('Foreign admission');return ${JSON.stringify(f.view)};}
       publicEnrollmentReadiness(version){if(version!==${JSON.stringify(f.view.admission.version)})throw Error('Foreign source version');return ${JSON.stringify(f.view.admission)};}
+      publicActivationState(){return {state:'absent'};}
       publicProposalReadiness(){return {ready:true,run:'friday-flue-proposal-v1',reservedCents:50};}
       startPublicProposal(id){if(id!==${JSON.stringify(f.view.instance)})throw Error('Foreign start');starts++;return {id};}
       publicProposalStatus(){return {status:'complete'};}
@@ -74,6 +77,8 @@ test("local public Workflow keeps one Slack card and proposes only after verific
       const readiness = await (await call("/ready")).json();
       assert.equal(readiness.ready, true); assert.equal(readiness.version, f.view.admission.version);
       assert.equal((await call("/wrong-ready")).status, 409);
+      assert.equal((await call("/unsupported")).status, 400);
+      assert.equal((await call("/unadmitted")).status, 400);
       assert.equal((await call("/start")).status, 200);
       let terminal: any;
       for (let i = 0; i < 200; i++) {
@@ -92,6 +97,7 @@ test("local public Workflow keeps one Slack card and proposes only after verific
       assert.equal(replay.status, fail ? 400 : 200);
       const after = await (await call("/stats")).json();
       assert.equal(after.model.reads, 1); assert.equal(after.proposed, stats.proposed);
+      assert.equal((await call("/ready")).status, 409, "a used writer slot must prevent another arm");
       if (!fail) { assert.equal(terminal.output.deploymentPerformed, false); assert.equal(terminal.output.slackTs, "1792080000.123456"); }
     } finally { await runtime.dispose(); }
   }
