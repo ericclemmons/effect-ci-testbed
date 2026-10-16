@@ -53,6 +53,8 @@ export interface WorkerOptions {
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   /** Explicit host opt-in; selected goals must be consumed by its workflow factory. */
   readonly remoteTargets?: ReadonlyArray<string>
+  /** Declaration only; the trusted host must independently enforce each method. */
+  readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
   readonly github?: GitHubClient
   /** Trusted routing AFTER signature, App ownership and canonical webhook parsing. */
   readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
@@ -353,7 +355,9 @@ export const worker = (options: WorkerOptions = {}) => {
       const pathname = url.pathname.slice(prefix.length) || "/"
       if (request.method === "GET" && pathname === "/capabilities") {
         if (!isAuthorized(request, environment)) return new Response("Unauthorized", { status: 401 })
-        return Response.json({ protocol: "effect-ci-remote-v1", targets: remoteTargets }, {
+        return Response.json({ protocol: "effect-ci-remote-v1", targets: remoteTargets,
+          ...(options.remoteAuthentication ? { authentication: options.remoteAuthentication } : {}),
+        }, {
           headers: { "cache-control": "no-store" },
         })
       }

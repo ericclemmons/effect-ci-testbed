@@ -19,6 +19,17 @@ test("remote goals require explicit host enrollment; malformed or unsupported se
   assert.deepEqual(await capabilities.json(), { protocol: "effect-ci-remote-v1", targets: ["test", "build"] })
   assert.equal((await application.fetch(new Request("https://ci.invalid/demo/capabilities"), environment)).status, 401)
   assert.equal(created.length, 0)
+  const accessHost = worker({ routePrefix: "/demo", remoteTargets: ["test"],
+    remoteAuthentication: ["api-token", "cloudflare-access-identity"], workflow })
+  const advertised = await accessHost.fetch(new Request("https://ci.invalid/demo/capabilities", {
+    headers: { authorization: "Bearer fixture" },
+  }), environment)
+  assert.deepEqual(await advertised.json(), { protocol: "effect-ci-remote-v1", targets: ["test"],
+    authentication: ["api-token", "cloudflare-access-identity"] })
+  assert.equal((await accessHost.fetch(new Request("https://ci.invalid/demo/capabilities", {
+    headers: { "cf-access-jwt-assertion": "unverified" },
+  }), environment)).status, 401, "advertising an auth method does not implement or grant it")
+  assert.equal(created.length, 0)
   for (const selection of [{ targets: [] }, { targets: ["test", "test"] }, { targets: "test" },
     { targets: ["deploy"] }, { target: "build", targets: ["test"] }, { targets: ["test", 1] },
     { targets: Array.from({ length: 17 }, (_, i) => "goal" + i) }]) {

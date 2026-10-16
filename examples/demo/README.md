@@ -31,10 +31,10 @@ git switch -c demo/rehearsal
 ```
 
 **Finish remote setup before presenting.** `doctor` checks authentication and host
-capabilities without starting work. The URL is already in `.env`. The current host
-also requires your private API profile at `~/.config/effect-ci/remotes.json` (mode
-`600`). Access login alone does not provide that API token. Keep credentials out
-of project env files; never use a deployment token.
+capabilities without starting work. The URL is already in `.env`. The enrolled
+demo uses your existing Access login; no separate API profile is needed for your
+approved identity. Other API-token clients are unchanged. Keep credentials out of
+project env files; never use a deployment token.
 
 GitHub pushes use your normal GitHub login, not Access. Run `pnpm dev` to edit the app.
 

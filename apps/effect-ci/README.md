@@ -898,6 +898,10 @@ The service deliberately uses two independent trust boundaries:
 | `/webhooks/slack` (opt-in)                   | Slack                       | Slack HMAC, fresh timestamp, app/team/channel checks, reviewer allow-list, run-bound capability |
 | All other paths, including `/` and `/runs/*` | `cf-ci` and human reviewers | Cloudflare Access plus the Worker API token or a scoped approval token for execution            |
 
+The owned demo has one explicit exception: its pinned existing Access identity
+can use the exact `/demo` remote methods described below. This does not grant
+Access-only execution to the general `/runs/*` API or grant release approvals.
+
 The checked-in [`access.config.ts`](./access.config.ts) defines two Access application
 request bodies: a protected application covering the entire hostname, and a more
 specific bypass application covering only `/webhooks/github`. GitHub cannot complete
@@ -1050,6 +1054,19 @@ new execution is needed to validate this evidence.
 
 ### Local CLI credentials (operator setup, not a demo step)
 
+The owned demo's approved identity can instead use its existing Access login,
+then `cf-ci doctor --remote`, without a machine API profile. The host verifies
+the JWT signature, trusted issuer, application audience, expiry and pinned opaque
+subject digest. Only the enrolled origin's GET capabilities/status/events and
+POST run routes accept it; no approval, webhook, other identity or preview-alias
+access is added. The alternative rejects cross-origin browser requests, foreign
+Fetch Metadata and non-JSON POSTs before verification; API-token clients retain
+their existing behavior. The CLI requires authenticated capability enrollment before
+Access-only dispatch, including a default run. An old host fails before POST.
+JWTs remain in cloudflared's cache/process memory, never project env files.
+
+Other API clients retain their existing token boundary:
+
 `cf-ci run --remote` can read a private user-owned
 `~/.config/effect-ci/remotes.json` profile instead of requiring shell exports:
 
@@ -1076,9 +1093,23 @@ session using `cloudflared access token --app <origin>` once per invocation. Its
 subprocess receives no API, GitHub App or Slack secrets; token output stays in
 memory and is sent only to the selected origin. The CLI does not initiate login.
 When the session expires, the operator runs `cloudflared access login <origin>`
-and completes the browser login. Access and the Worker API token remain separate
-authentication boundaries. Delete the local profile to forget the local service
+and completes the browser login. Outside the explicitly enrolled demo identity,
+Access and the Worker API token remain separate authentication boundaries.
+Delete the local profile to forget the local service
 configuration; this does not revoke the server credential or remove any resources.
+
+The enrollment is trusted host source in `demo-access-policy.ts`, derived from
+authenticated account/application metadata and an independently signature-verified
+existing owner session. It contains no email, bearer token or private key. JWKS
+are fetched only from the fixed team endpoint, without credentials or redirects,
+with five-second, 64-KiB and five-minute cache bounds. Key fetch uses Workers-compatible
+manual redirect handling and accepts only a direct `200`; it never follows a redirect.
+Removing the host adapter
+revokes this alternative path without deleting the Access app or rotating other
+credentials. No new resource, account permission, service token or paid provider
+is required. Verification uses ordinary Worker CPU and a bounded public JWKS
+request on cache misses, not an AI call. The shared JOSE version was already
+pinned in this workspace.
 
 ### Enrolled demo syntax-check reuse
 
