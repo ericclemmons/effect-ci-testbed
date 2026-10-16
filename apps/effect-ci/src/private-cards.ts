@@ -28,6 +28,12 @@ export class PrivateSlackCards extends DurableObject<OwnedCardEnvironment> {
   publish(owner: string, sequence: number, frame: OwnedCardFrame) {
     return publishOwnedSlackCard(owner, sequence, frame, this.env, this.#storeFor("card"))
   }
+  async publishExisting(owner: string, sequence: number, frame: OwnedCardFrame) {
+    const parent = await this.ctx.storage.get<OwnedCardReceipt>("card")
+    if (!parent || parent.owner !== owner || parent.stage !== "complete" || !parent.ts ||
+      parent.destination !== await ownedCardDestination(this.env)) return { ok: false as const }
+    return this.publish(owner, sequence, frame)
+  }
   async publishThread(owner: string, stage: string, sequence: number, frame: OwnedCardFrame) {
     if (!/^(prepare|previous|10|25|75|100|restored)$/.test(stage)) return { ok: false as const }
     const parent = await this.ctx.storage.get<OwnedCardReceipt>("card")

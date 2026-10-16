@@ -42,6 +42,7 @@ test("local public Workflow keeps one Slack card and proposes only after verific
       builder.onResolve({ filter: /\/repair\.ts$/ }, (args: any) => args.importer.endsWith("/apps/effect-ci/src/public-incident-repair.ts")
         ? { path: "local-propose", namespace: "local-propose" } : undefined);
       builder.onLoad({ filter: /.*/, namespace: "local-propose" }, () => ({ loader: "js", contents: `
+        export function reconcileRepair(){throw Error('LOCAL fixture does not enroll reconciliation');}
         export async function proposeRepair(credentials,options,verify){
           if(credentials.appId!=='5089816'||options.runId!==${JSON.stringify(runId)}||options.proposedText!==${JSON.stringify(e.text)})throw Error('Foreign LOCAL proposal');
           const checked=await verify({commit:${JSON.stringify(candidate)}});

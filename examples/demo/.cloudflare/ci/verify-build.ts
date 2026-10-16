@@ -17,13 +17,13 @@ export function verifyBuild(directory = process.cwd()) {
       info.isSymbolicLink() ||
       realpathSync(absolute) !== absolute ||
       info.size === 0 ||
-      info.size > 2 * 1024 * 1024
+      info.size > 256 * 1024
     ) {
       throw new Error("Build output must contain bounded regular files");
     }
     const bytes = readFileSync(absolute);
     total += bytes.length;
-    if (total > 4 * 1024 * 1024) throw new Error("Build output exceeds its byte limit");
+    if (total > 512 * 1024) throw new Error("Build output exceeds its byte limit");
     return { path, size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
   });
   return { verified: true, files };

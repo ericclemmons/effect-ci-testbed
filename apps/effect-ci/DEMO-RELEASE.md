@@ -7,9 +7,13 @@ The new host policy is **`main` → reviewed production deployment** and
 preview link and same-run Cloudflare Dashboard link. Preview builds do not prepare
 a production candidate, request production approval or mutate traffic.
 
-Deployment and new native acceptance are pending. Retained proof below used
-`demo/live` under the previous enrollment; it remains historical evidence, not a
-claim that the new main/preview routing has already run.
+The policy is deployed in App version `0903a743-0e16-49e1-b614-0e6bf0521b0b`.
+An ordinary branch push of `dbdaf9870a9594290410dfe83a1a77743cfcdf06` completed
+native preview run `d1a3f800-c91b-11f1-82d2-28b492fc4aeb`: ten actions/eight commands,
+the same three checked assets published, and no production candidate or allocation
+write. The production allocation stayed unchanged. Fresh main-branch release
+acceptance is still pending; the completed release below used the historical
+`demo/live` enrollment.
 
 Cloudflare distinguishes [Previews](https://developers.cloudflare.com/workers/previews/)
 from [Version URLs](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/).

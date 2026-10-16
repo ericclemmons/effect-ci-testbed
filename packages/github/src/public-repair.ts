@@ -30,6 +30,15 @@ async function digest(e: PublicProposalEvidence) {
   return hash(JSON.stringify(["public-proposed-pr-only-v1", REPAIR_REPOSITORY, OWNED_BASE, REPAIR_PATH,
     OWNED_NODE_COMMAND, FIXED_SOURCE, publicRepairRun(e), e]));
 }
+/** A failed slot is inspectable, never reset or promoted by reconciliation. */
+export async function readFailedPublicRepair(value: unknown) {
+  const r = fields(value, ["version", "state", "digest", "evidence"]);
+  if (r.version !== 1 || r.state !== "failed") throw rejected();
+  const e = r.evidence as PublicProposalEvidence;
+  const evidence = await assertPublicProposalEvidence(e?.instance, e);
+  if (r.digest !== await digest(evidence)) throw rejected();
+  return { digest: r.digest as string, evidence };
+}
 async function result(value: unknown): Promise<RepairResult> {
   const r = fields(value, ["repository", "commit", "sourceDigest", "evidenceId", "pullRequest", "url", "created", "deploymentPerformed"]);
   if (r.repository !== REPAIR_REPOSITORY || typeof r.commit !== "string" || !/^[a-f0-9]{40}$/.test(r.commit) ||

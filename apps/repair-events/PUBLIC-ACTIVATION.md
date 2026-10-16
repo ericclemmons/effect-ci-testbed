@@ -1,12 +1,24 @@
 # Automatic public-incident activation (version-pinned preparation)
 
-## Next approved event test
+## Current v2 native result
+
+Issue `52da6a3f-87f0-49cd-865d-c7d7030a169b` came from one genuine public GET on
+the enrolled version below. Its authenticated capture automatically started one
+fresh Flue proposal, exact-commit native Node check and OPEN/UNMERGED PR4. The
+renamed-bot acknowledgement then failed; separately approved read-only operator
+reconciliation completed and updated the same Slack card. The original errored
+Workflow/failed writer record remain untouched. No second error, inference,
+Node command, code/PR write, merge or repair deployment occurred in reconciliation.
+[Exact evidence and read-only acceptance](../effect-ci/PUBLIC-REPAIR.md).
+
+## Approved v2 preparation (historical)
 
 The next HOST enrollment pins `owned-public-health-500-v2` to source
 `f8eb61a874ccf972fceed25ed6889978608d87bc` and independently deployed producer
 `9c829b54-985d-4811-b806-690f93338284`. Eric explicitly approved this ONE fresh
 bounded test after the event-routing correction. It is not a replay/reset of the
-expired v1 claim. Native activation/PR acceptance is still pending.
+expired v1 claim. The resulting native execution and acknowledgement failure are
+recorded above, not relabeled as a clean automatic Workflow success.
 
 The receiver now sends the private canonical `.trigger` event only after durable
 admission. The CI host re-reads admission before selecting its fixed repair

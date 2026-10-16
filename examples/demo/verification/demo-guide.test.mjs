@@ -6,11 +6,16 @@ import test from "node:test";
 const guide = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const shell = [...guide.matchAll(/```sh\n([\s\S]*?)```/g)].map((match) => match[1]);
 
-test("demo starts on an ordinary branch with PATH and Access setup before the walkthrough", () => {
+test("demo starts with only install and build; optional CLI preparation stays separate", () => {
   const start = shell[0];
-  assert.match(start, /git switch -c demo\/rehearsal origin\/main/);
-  assert.match(start, /export PATH="\$PWD\/node_modules\/\.bin:\$PATH"/);
-  assert.match(start, /cloudflared access login .*\ncd examples\/demo\npnpm build/);
+  assert.equal(start, "pnpm install\npnpm build\n");
+  assert.match(guide, /git switch -c demo\/rehearsal\n/);
+  assert.match(
+    guide,
+    /export PATH="\$\(git rev-parse --show-toplevel\)\/node_modules\/\.bin:\$PATH"/,
+  );
+  assert.match(guide, /Only direct `cf-ci run --remote` calls need:/);
+  assert.match(guide, /<details>[\s\S]*cloudflared access login[\s\S]*<\/details>/);
   assert.doesNotMatch(start, /git worktree|tiged|gh repo create|npm ci|--frozen-lockfile/);
   assert.ok(shell.every((block) => !/^(?:time )?(?:npm|npx)(?: |$)/m.test(block)));
 });
@@ -18,9 +23,11 @@ test("demo starts on an ordinary branch with PATH and Access setup before the wa
 test("ordinary branch pushes preview; main is production without a special ref or merge dance", () => {
   const release = guide.indexOf("## 11. Release from main");
   assert.ok(release > 0);
-  assert.match(guide, /git push -u origin HEAD/);
+  assert.match(guide, /git push -u origin demo\/rehearsal/);
+  assert.match(guide, /git commit -m "Rehearse the demo"\ngit push\n/);
   assert.match(guide.slice(release), /gh pr create --base main --fill/);
   assert.doesNotMatch(guide, /demo\/live|git worktree|git merge|git push --force|git reset --hard/);
+  assert.doesNotMatch(guide, /git push[^\n`]*(?:HEAD|refs\/heads\/|:)/);
 });
 
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {

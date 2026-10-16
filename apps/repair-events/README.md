@@ -1,5 +1,13 @@
 # Authenticated Issue notification capture
 
+Current v2 result: one public HTTP500 produced an authentic Issue/capture and
+automatically started fresh Flue → exact-commit native Node check → unmerged PR4.
+The renamed-bot acknowledgement failed afterward; approved read-only reconciliation
+updated the SAME Slack card while preserving the failed Workflow/writer record.
+[Verified result and read-only command](../effect-ci/PUBLIC-REPAIR.md).
+
+## Historical v1 preparation and capture
+
 The separate [public-incident automatic activation preparation](PUBLIC-ACTIVATION.md)
 now has descriptor-safe source corroboration and a durable single-slot outbox,
 with actual local workerd/SQLite lost-ACK and reload tests. Its HOST enrollment
