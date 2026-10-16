@@ -90,3 +90,16 @@ rejecting loopback RPC plus a healthy SQLite observer alongside the provider lay
 They are **local implementation tests until a separately recorded native rollout**;
 the three retained native cases above do not prove the new generic callbacks.
 No new resource, permission, secret or public route is required for that extension.
+The separate GET-only reader requires independently recorded new Worker and
+Workflow version pins; it must not be pointed at the older provider campaign:
+
+```sh
+node --test apps/notification-isolation/src/observer-evidence.test.ts
+LIVE_RUNTIME_OBSERVERS=1 OBSERVER_WORKER_VERSION=<recorded-worker-version> OBSERVER_WORKFLOW_VERSION=<recorded-workflow-version> CF_BIN=cf node --test apps/notification-isolation/src/observer-live.test.ts
+```
+
+Its fixed IDs are `owned-observer-success-20261016-1` and
+`owned-observer-business-failure-20261016-1`. The first command uses explicitly
+synthetic reader fixtures, not native evidence. The opt-in command reads only;
+it never creates, retries or resets either operation. Do not enable it until the
+separate native campaign and independent version receipts actually exist.
