@@ -67,7 +67,7 @@ The matrix labels proven paths and planned paths separately. Reading source in a
 or building one artifact in an isolate does not classify the rest of the pipeline.
 The existing DO-source recipe still materializes its files into a Container.
 
-The next optimization path is **static files with no build**, then **a static build
+The next optimization path is [static files with no build](./static-assets-source), then **a static build
 in an isolate**. A trusted host retrieves commit-pinned GitHub files; a DO stores
 immutable revisions and deployment receipts. For the second recipe, a bounded
 Dynamic Worker transforms source into assets without receiving deployment secrets.

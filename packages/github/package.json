@@ -8,7 +8,10 @@
     "./recorded-proposal": "./src/recorded-proposal.ts",
     "./incident-proposal": "./src/incident-proposal.ts",
     "./incident-evidence": "./src/incident-evidence.ts",
-    "./incident-repair-operation": "./src/incident-repair-operation.ts"
+    "./incident-repair-operation": "./src/incident-repair-operation.ts",
+    "./public-incident": "./src/public-incident.ts",
+    "./public-proposal": "./src/public-proposal.ts",
+    "./public-repair": "./src/public-repair.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

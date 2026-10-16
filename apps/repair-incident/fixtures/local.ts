@@ -3,6 +3,9 @@ import { OwnedIncidentWorkflow } from "../src/worker.ts";
 export {
   OwnedFaultSource,
   OwnedFaultOnce,
+  PublicFailureClaim,
+  PublicIncidentEvidence,
+  PublicIncidentArmWorkflow,
   OwnedIncidentWorkflow,
 } from "../src/worker.ts";
 /** LOCAL test adapter only. Production HTTP remains 404. */

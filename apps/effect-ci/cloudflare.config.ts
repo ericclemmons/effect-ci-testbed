@@ -19,7 +19,12 @@ export default defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
+      PublicIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
+      PublicIncidentDispatcher: exports.worker(),
+      PublicPipelineReadiness: exports.worker(),
+      PublicIncidentRepairWorkflow: exports.workflow({ name: "effect-ci-public-incident-repair" }),
       DemoCandidateRecoveryWorkflow: exports.workflow({ name: "effect-ci-demo-candidate-recovery" }),
       DemoRoutingDiagnosticWorkflow: exports.workflow({ name: "effect-ci-demo-routing-diagnostic" }),
       GitCheckoutOutbound: exports.worker(),
@@ -47,6 +52,8 @@ export default defineConfig({
       }),
     },
     env: {
+      PUBLIC_ADMISSION: bindings.worker({ worker: "effect-ci-repair-events", exportName: "PublicIncidentAdmission" }),
+      PUBLIC_PROPOSAL: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "PublicProposalDriver" }),
       DEMO_SITE: bindings.worker({
         worker: "effect-ci-demo-site",
         exportName: "DemoSitePublisher",

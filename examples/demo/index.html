@@ -3,13 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Effect CI demo</title>
+    <title>Release preview · Effect CI</title>
   </head>
   <body>
     <main>
-      <h1>A Vite app, before CI</h1>
-      <button id="show" type="button">Show message</button>
-      <p id="message" role="status" aria-live="polite"></p>
+      <h1>Release preview</h1>
+      <p>A small Vite app you can change, check, and release.</p>
+      <h2 id="release-label">Release message</h2>
+      <p id="message" aria-labelledby="release-label">Loading this build's message…</p>
+      <p>Edit <code>src/message.ts</code> to give your next release a recognizable message.</p>
+      <h2>Browser check</h2>
+      <button id="show" type="button">Test JavaScript</button>
+      <p id="interaction" role="status" aria-live="polite">
+        Ready to test this page's browser code.
+      </p>
     </main>
     <script type="module" src="/src/app.ts"></script>
   </body>

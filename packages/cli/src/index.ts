@@ -6,8 +6,11 @@ import { parseArgs } from "node:util"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/project-service"
+import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
+import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -138,6 +141,7 @@ const cloneUrl = (value: string): string => {
 }
 
 const describeEvent = (event: WorkflowInstanceEvent): string => {
+  const errorMessage = remoteErrorMessage(event.error?.message)
   switch (event.type) {
     case "step_started": return `→ ${event.stepName}`
     case "step_completed": {
@@ -155,10 +159,10 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
       return `✓ ${event.stepName}${logs ? `\n${logs}` : ""}`
     }
     case "step_errored": return `✗ ${event.stepName}`
-    case "attempt_errored": return `↻ ${event.stepName} attempt ${event.attempt} failed${event.error?.message ? `: ${event.error.message}` : ""}`
+    case "attempt_errored": return `↻ ${event.stepName} attempt ${event.attempt} failed${errorMessage ? `: ${errorMessage}` : ""}`
     case "wait_started": return `… ${event.stepName}`
     case "workflow_completed": return "✓ Workflow completed"
-    case "workflow_errored": return `✗ Workflow failed${event.error?.message ? `: ${event.error.message}` : ""}`
+    case "workflow_errored": return `✗ Workflow failed${errorMessage ? `: ${errorMessage}` : ""}`
     case "workflow_terminated": return "✗ Workflow terminated"
     default: return event.type
   }
@@ -292,7 +296,7 @@ const builtInRemote = async (
       "CI_WORKFLOW_FAILED",
       ExitCode.workflowFailure,
       describeEvent(terminal),
-      { instanceId: run.instanceId, events },
+      { instanceId: run.instanceId, events, diagnostics: remoteCommandDiagnostics(events) },
     )
   }
 
@@ -669,6 +673,7 @@ const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
 
 const classifyFailure = (error: unknown): CliFailure => {
   if (error instanceof CliFailure) return error
+  if (error instanceof LocalIsolateUnavailable) return new CliFailure(error.code, ExitCode.providerUnavailable, error.message)
 
   if (error instanceof CI.ApprovalError) {
     return new CliFailure(
@@ -824,9 +829,11 @@ export const main = async (
       ? program.local({ root: projectRoot(workflowPath), workflowPath })
       : program.local ?? {}
     const configured: CI.RunConfiguration = { ...defaults, ...overrides }
+    const isolate = makeLocalProjectChecks()
+    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(Effect.provideService(ProjectChecks, isolate.service)) }
     const result = await (async () => {
       try {
-        return await CI.runPromise(workflow, {
+        return await CI.runPromise(localWorkflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
           ...(format === "json" || format === "mermaid"
@@ -836,7 +843,7 @@ export const main = async (
             : {}),
         })
       } finally {
-        await configured.dispose?.()
+        try { await isolate.dispose() } finally { await configured.dispose?.() }
       }
     })()
 

@@ -1,0 +1,13 @@
+FROM node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315
+
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends bash ca-certificates python3 \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476f7d8ad39fe97c57965f044e4b0a0dcc93eac06 \
+  /usr/local/bin/sandbox-shim \
+  /usr/local/bin/sandbox-shim
+
+RUN mkdir -p /workspace
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

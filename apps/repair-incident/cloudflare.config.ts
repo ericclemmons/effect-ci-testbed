@@ -1,11 +1,13 @@
-import { defineConfig, exports } from "cf/config";
+import { bindings, defineConfig, exports } from "cf/config";
 export default defineConfig({
   worker: {
     name: "effect-ci-repair-incident",
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
-    workersDev: false,
+    workersDev: true,
     previewUrls: false,
+    env: { WORKER_METADATA: bindings.versionMetadata(),
+      PUBLIC_READINESS: bindings.worker({ worker: "effect-ci-github-cloudflare", exportName: "PublicPipelineReadiness" }) },
     observability: {
       enabled: true,
       headSamplingRate: 1,
@@ -14,6 +16,9 @@ export default defineConfig({
     exports: {
       OwnedFaultSource: exports.worker(),
       OwnedFaultOnce: exports.durableObject({ storage: "sqlite" }),
+      PublicFailureClaim: exports.durableObject({ storage: "sqlite" }),
+      PublicIncidentEvidence: exports.worker(),
+      PublicIncidentArmWorkflow: exports.workflow({ name: "effect-ci-public-incident-arm" }),
       OwnedIncidentWorkflow: exports.workflow({
         name: "effect-ci-owned-incident",
       }),

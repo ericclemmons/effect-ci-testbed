@@ -695,6 +695,37 @@ importers:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
+  examples/durable-object-source:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
   examples/dynamic-project-checks:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -707,21 +738,33 @@ importers:
         specifier: 4.0.0-beta.19
         version: 4.0.0-beta.19
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
       '@cloudflare/workers-types':
         specifier: 5.20261001.1
         version: 5.20261001.1
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/dynamic-worker-checks:
     dependencies:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare-dynamic-worker':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare-dynamic-worker
       '@effect-ci-testbed/source-tools':
         specifier: workspace:*
         version: link:../../packages/source-tools
@@ -732,15 +775,24 @@ importers:
         specifier: 3.6.2
         version: 3.6.2
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
       '@cloudflare/workers-types':
         specifier: 5.20261001.1
         version: 5.20261001.1
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/exported-actions:
     devDependencies:
@@ -756,6 +808,37 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  examples/gitlab-source:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/github-cloudflare-ci:
     dependencies:
@@ -847,6 +930,37 @@ importers:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
+  examples/r2-source:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
   examples/runner-selection: {}
 
   examples/snapshot-fanout:
@@ -886,6 +1000,37 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  examples/static-assets-source:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/system-package: {}
 
@@ -978,6 +1123,9 @@ importers:
       '@effect-ci-testbed/ci':
         specifier: workspace:*
         version: link:../ci
+      '@effect-ci-testbed/cloudflare-dynamic-worker':
+        specifier: workspace:*
+        version: link:../cloudflare-dynamic-worker
       '@vercel/detect-agent':
         specifier: 1.2.5
         version: 1.2.5
@@ -1022,6 +1170,12 @@ importers:
       effect:
         specifier: 4.0.0-beta.19
         version: 4.0.0-beta.19
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      miniflare:
+        specifier: 5.20260930.0-alpha
+        version: 5.20260930.0-alpha(@types/node@26.6.3)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1

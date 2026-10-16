@@ -45,10 +45,12 @@ export interface HostFinalization<A> {
   readonly value: A
   readonly card: RunCard
   /** Update the SAME maintained message. Keys must be stable across Workflow replay. */
-  readonly publish: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }) => Promise<void>
+  readonly publish: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
 export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.WorkflowEntrypointOptions<Environment> {
+  /** One live status line in Slack; per-step details and host review frames in its thread. */
+  readonly slackLayout?: "status-thread"
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
   readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
@@ -200,6 +202,9 @@ export const workflowEntrypoint = <A>(
     let slackMessageTs: string | undefined
     let discordMessageId: string | undefined
     let notificationQueue = Promise.resolve()
+    const threadMessages = new Map<string, string>()
+    const blockedThreads = new Set<string>()
+    let latestThread: string | undefined
     const channels = options.notificationChannels?.(this.env, event.payload) ?? this.env
     const card = new RunCard({
       instanceId: event.instanceId,
@@ -211,7 +216,7 @@ export const workflowEntrypoint = <A>(
     const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
     const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
       step.do(`notification-provider:${provider}:${key}`, deliver))
-    const notify = (key: string, update: () => boolean, override?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, required = false): Promise<void> => {
+    const notify = (key: string, update: () => boolean, override?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, required = false, threadKey?: string): Promise<void> => {
       notificationQueue = notificationQueue.then(async () => {
         if (!update()) return
         const deliveries = await Effect.runPromise(Effect.gen(function*() {
@@ -222,7 +227,8 @@ export const workflowEntrypoint = <A>(
           console.warn("CI notification provider delivery failed; execution continues")
         }
         if (!hasNotificationChannels(channels)) return
-        const presentation = override ?? card.render()
+        const threaded = options.slackLayout === "status-thread" && Boolean(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)
+        const presentation = threaded ? card.render({ statusOnly: true }) : override ?? card.render()
         const deliver = () => sendNotification(
           channels,
           presentation.text,
@@ -243,6 +249,28 @@ export const workflowEntrypoint = <A>(
 
         if (result.failed && required) throw new Error("Host finalization notification needs reconciliation")
         if (result.failed) console.warn("CI notification delivery failed; execution continues")
+        if (threaded && threadKey && slackMessageTs) {
+          latestThread = threadKey
+          const failed = () => { blockedThreads.add(threadKey); if (required) throw new Error("Host finalization thread needs reconciliation") }
+          if (blockedThreads.has(threadKey)) { failed(); return }
+          const detail = override ?? card.render({ onlyStep: threadKey })
+          const slack = { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! }
+          const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
+          let ts = threadMessages.get(threadKey)
+          if (!ts) {
+            // Establish a known reply before uploading an image frame or exposing a capability.
+            // A lost post ACK blocks this step permanently; never repost it on a later update.
+            const posted = await step.do(`notification:${key}:thread-post`, policy, () => sendNotification(slack,
+              `Preparing ${threadKey}`, fetch, undefined, [{ type: "section", text: { type: "plain_text", text: `Preparing ${threadKey}`.slice(0, 3000) } }],
+              undefined, { slackThreadTs: slackMessageTs! }))
+            if (posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
+            ts = posted.slackMessageTs
+            threadMessages.set(threadKey, ts)
+          }
+          const updated = await step.do(`notification:${key}:thread-update`, policy, () => sendNotification(slack,
+            detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
+          if (updated.failed || updated.slackMessageTs !== ts) failed()
+        }
       })
 
       return notificationQueue
@@ -256,7 +284,7 @@ export const workflowEntrypoint = <A>(
             card.setReviewUrl(url)
 
             return true
-          })),
+          }, undefined, false, card.snapshot().checks.find(check => check.status === "waiting")?.id)),
         ci: true,
         env: "cloudflare",
         event: {
@@ -286,7 +314,10 @@ export const workflowEntrypoint = <A>(
                   ? `${runtimeEvent.requestId}:waiting`
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
-          await notify(key, () => card.update(runtimeEvent))
+          const threadKey = runtimeEvent.type === "step.status" && !["planned", "queued"].includes(runtimeEvent.status) ? runtimeEvent.stepId :
+            runtimeEvent.type === "approval.requested" || runtimeEvent.type === "approval.resolved" ? runtimeEvent.stepId : undefined
+          await notify(key, () => card.update(runtimeEvent), undefined, false,
+            threadKey ?? (runtimeEvent.type === "workflow.completed" ? latestThread : undefined))
         },
         output: "silent",
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
@@ -303,14 +334,15 @@ export const workflowEntrypoint = <A>(
         await options.finalize({
           environment: this.env, parameters: event.payload, instanceId: event.instanceId,
           step, exports: this.ctx.exports, value: result.value, card,
-          publish: (key, presentation) => {
+          publish: (key, presentation, threadKey) => {
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
             // Never create a replacement review card after a lost/failed build-card ACK.
             if (!hasNotificationChannels(channels) ||
                 (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs) ||
                 (channels.SLACK_WEBHOOK_URL && !(channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID)))
               throw new Error("Host finalization requires an acknowledged maintained notification")
-            return notify(`host-finalize:custom:${key}`, () => true, presentation, true)
+            if (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) throw new Error("Invalid host thread key")
+            return notify(`host-finalize:custom:${key}`, () => true, presentation, true, threadKey ?? key)
           },
         })
         await reporter?.report(deferredCompletion)
@@ -326,7 +358,7 @@ export const workflowEntrypoint = <A>(
         notificationQueue = notificationQueue.catch(() => undefined)
         // A distinct terminal update to a known message is safe; never re-create an unacknowledged root.
         if (slackMessageTs || discordMessageId) {
-          try { await notify("host-finalize:failed", () => card.update(failure), undefined, true) } catch { /* retain original */ }
+          try { await notify("host-finalize:failed", () => card.update(failure), undefined, true, latestThread) } catch { /* retain original */ }
         }
       }
       if (deferredCompletion) {

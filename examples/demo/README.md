@@ -6,6 +6,11 @@ This is a hands-on adoption guide, not a presentation script. Each step adds a
 capability: make the change, run the command, inspect the result. Stop or skip
 wherever you want. There is no three-minute schedule or prescribed narration.
 
+To try the existing hosted demo, go straight to [serve the checked build](#10-serve-the-checked-build)
+or [push a change through release](#11-release-the-checked-build-with-a-decision).
+Those steps use this repository's already-configured host; you do not need to
+create another repo or change the App installation to try them.
+
 ## 0. Start with a standalone Vite repo and ordinary GitHub Actions
 
 > Start with working CI. Adopt Effect CI without rewriting the application.
@@ -44,8 +49,9 @@ Start with an existing Vite/Vite+ package with a lockfile and ordinary
 `lint`, `test`, and `build` scripts. This checked-in fixture is a small Vite+
 web application: HTML entrypoint, TypeScript source, lint, types, tests and build.
 The build also retains an exported message module for the existing verification
-harness. Making every hosted stage below operate on this same application remains
-work to finish—not a reason to substitute unrelated historical runs.
+harness. Hosted build, serving and reviewed release below now use this same
+application. Portable Cloudflare onboarding and automatic repair remain unfinished;
+unrelated historical runs do not substitute for them.
 
 The CLI and libraries are currently private workspace packages, not a published
 npm onboarding path. In this testbed, from the repository root:
@@ -98,7 +104,7 @@ cf-ci run
 ```diff
 --- a/src/message.ts
 +++ b/src/message.ts
--export const message = "Check my work before I push";
+-export const message = "Hello from the demo app.";
 +export const message = "Checked locally, ready for CI";
 ```
 
@@ -160,7 +166,16 @@ not trust, permissions, execution location, or whether a check passed.
 Local command failures include `error.details.output.stdout` and `.stderr` from
 that same attempt. Each retains its last 32K characters; `truncated` explicitly
 marks clipping. No text-mode rerun is needed. Adapters with an existing combined
-diagnostic expose it as `output.text`; remote native history remains separate.
+diagnostic expose it as `output.text`.
+
+With the updated native host, remote failures include
+`error.details.diagnostics`: step, command, directory, exit code and both output
+tails. Native tails are at most8K characters per stream and may shrink further
+to keep the entire error transport within32KiB UTF-8; `truncated` marks either
+limit. The failed checkpoint still throws and configured retries are unchanged.
+See [verification boundaries](verification/README.md#native-command-diagnostics)
+for the currently tested environment; older deployed hosts may have only a
+combined error message, not invented separate streams.
 
 ## 4. Reuse task output, then invalidate it
 
@@ -321,11 +336,12 @@ For the owned testbed's enrolled `demo/live` branch, push a new source change:
 git push origin HEAD:refs/heads/demo/live
 ```
 
-Open **#effect-ci** in Slack. The same build card changes from Running to Passed
-as the native checks finish, including publishing the checked site and preparing
-its candidate. This enrollment is specific to the owned host, not standalone
-Cloudflare onboarding. The human-release gate remains off; a passed build does
-not mean traffic was promoted. [Host enrollment](../../apps/effect-ci/DEMO-RELEASE.md).
+Open **#effect-ci** in Slack. The same card shows the build, then the enrolled
+GitHub flow waits for the release decisions in [step 11](#11-release-the-checked-build-with-a-decision).
+It reaches Passed only after the release commits. Remote CLI runs remain quiet,
+build-only runs: they publish/prepare but never shift traffic. This enrollment is
+specific to the owned host, not standalone Cloudflare onboarding.
+[Host enrollment and actual evidence](../../apps/effect-ci/DEMO-RELEASE.md).
 
 **Live verified:** `cf-ci run --remote` from clean commit
 `2c8a27600b168655c2fd989e4abb200d60f3ffb8` completed all seven nodes in native
@@ -442,28 +458,68 @@ cf-ci run --remote
 cf-ci run --remote
 ```
 
-Open the [live Vite build](https://effect-ci-demo-site.ericclemmons.workers.dev/r/b302e8cb0965cdbc7da2ab455d696385e782abf7/e9fad7f0e6117c0a33f76d9d9891ebefb2c34519364179e464857a2780efcb23/index.html) in the browser. Click **Show message**.
+Open the [currently released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
+The release preview displays the text from `src/message.ts` immediately. **Test
+JavaScript** checks that this build's browser code runs; its result says exactly
+what happened. You no longer have to click a vague button to discover the app's content.
 
 The enrolled demo host publishes through a private capability; project code gets
-no deployment token. This URL is the verified commit above, not a mutable latest
-alias or an HMD rollout. [Owned host setup](../../apps/demo-site/README.md).
+no deployment token. A remote run publishes a separate commit-pinned preview;
+it does not replace the released app. Step 11 promotes the checked build to the
+release URL. [Host configuration and publication evidence](../../apps/demo-site/README.md).
 
-## 11. Add controlled release, human decisions, and repair
+## 11. Release the checked build with a decision
 
-Next integrations, each with its own genuine execution requirement:
+> Watch one build card. Inspect the actual candidate's graph. Decide what ships.
 
-- [Health-mediated rollout](../health-mediated-release): upload a candidate,
-  shift traffic, observe each cohort, roll back the exact prior allocation on failure.
-- [Human approval](../health-mediated-approval): request a real decision, bind it to
-  the exact release phase, and resume only after the authorized human responds.
-- [Incident repair host](../../apps/effect-ci/README.md): authentic Worker Issue →
-  bounded proposal → exact-commit native Node verification → proposed PR.
+In a clean checkout of **this repository**, from `examples/demo`:
 
-These have separate hosted ingredient proofs, not one verified end-to-end
-brownfield onboarding run. The existing incident PR was an authenticated operator
-continuation; automatic webhook activation remains unfinished. Never self-approve
-a human gate or merge/deploy a proposed repair to manufacture a complete demo.
-No new failure or paid model call is needed just to replay old evidence.
+```sh
+git fetch origin main demo/live
+git switch demo/live
+git merge --ff-only origin/demo/live
+git merge --no-edit origin/main
+```
+
+In `src/message.ts`:
+
+```diff
+-export const message = "Hello from the demo app.";
++export const message = "Hello from the next release.";
+```
+
+```sh
+git add src/message.ts
+git commit -m "Update the release message"
+git push origin HEAD:refs/heads/demo/live
+```
+
+Open **#effect-ci** in Slack. One updating status line tracks the current step;
+open its thread for step details and the candidate's release graphs. Inspect each snapshot and choose **Progress**
+or **Reject** at 10%, 25%, 75% and 100%. Sparse data stays uncertain; Progress is
+explicit risk acceptance, not a fabricated health pass. Each phase has a fixed
+two-minute settling interval before its cohort, then a five-minute decision window.
+Reject or timeout restores the allocation captured at that run's start. The final
+100% Progress commits it; success does not restore an older baseline.
+
+Open the [live release](https://effect-ci-hmd-demo.ericclemmons.workers.dev/) and
+look for **Hello from the next release.** under **Release message**. It redirects to the same checked immutable Vite build,
+not a second build or Workers Static Assets upload.
+
+**Live verified:** a genuine source push completed this full path with four
+explicitly authorized browser-delegated **test** decisions, four real graphs and
+one maintained card, then left its candidate committed at 100%. This is not an
+independent human-review claim or general standalone onboarding proof.
+[Actual run, limits and read-only regression](../../apps/effect-ci/DEMO-RELEASE.md).
+
+For a separate repository, the portable Cloudflare action/enrollment is still
+unfinished. That is a different setup path, not a prerequisite for running this
+configured demo. Installing the GitHub App alone does not complete it.
+
+Automatic public HTTP 500 → WOBS alert → bounded repair → verified proposed PR
+remains unfinished. The [incident host](../../apps/effect-ci/README.md) has separate
+ingredient proofs; its earlier operator continuation is not automatic activation.
+Never merge/deploy a proposed repair or replay a paid inference to manufacture a demo.
 
 ## 12. Let your agent migrate the next project
 

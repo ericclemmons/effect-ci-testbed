@@ -7,6 +7,19 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("channel status is one line; individual thread details omit sibling checks", () => {
+  const card = new RunCard(identity)
+  card.update(event("checkout", "complete")); card.update(event("build", "running"))
+  card.setHealth({ phase: 25, decision: "uncertain", evidenceSource: "native-wobs" }, "FPRIVATE")
+  const root = card.render({ statusOnly: true })
+  assert.equal(root.blocks.length, 1)
+  assert.match(root.text, /Running · build/)
+  assert.doesNotMatch(JSON.stringify(root), /checkout|FPRIVATE|uncertain|divider|header/)
+  const detail = card.render({ onlyStep: "build" })
+  assert.doesNotMatch(detail.text, /checkout/)
+  assert.match(JSON.stringify(detail.blocks), /FPRIVATE/)
+})
+
 test("reverted presentation omits skipped checks without deleting semantic history", () => {
   const card = new RunCard({ instanceId: "rollback", repository: "owner/repo", revision: "abcdef123" })
   for (const [stepId, status] of [["10%", "failed"], ["25%", "skipped"], ["75%", "skipped"], ["Restore previous version", "complete"]] as const) {

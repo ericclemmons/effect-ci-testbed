@@ -32,6 +32,10 @@ Use a package-manager declaration or lockfile so installation can be resolved.
 Human terminals default to text; detected direct agents default to JSON.
 Detection uses `@vercel/detect-agent`, including the `AI_AGENT` convention; no
 agent flag is needed. Explicit `--format` remains available as an override.
+Local JSON command failures retain bounded stdout/stderr from the same attempt.
+Updated native hosts also preserve both streams across failed checkpoints;
+remote JSON exposes them at `error.details.diagnostics`, with explicit truncation.
+These diagnostics do not retry a command or authorize execution/reuse.
 Run the build again to inspect Vite+ task reuse, then change source to check
 invalidation. A cache hit is not signed verification evidence, and a small cached
 task is not necessarily faster than executing it. Follow the
@@ -194,7 +198,7 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Choose where CI runs](./examples/runner-selection) | ✅ | ✅ | ✅ | — |
 | [Run CI on Blacksmith](./examples/blacksmith) | 🔜 | ✅ | 🔜 | — |
 | [Format code without a container](./examples/dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless |
-| [Test untrusted code without a container](./examples/dynamic-project-checks) | — | 🔜 | — | ✅ · containerless |
+| [Test untrusted code without a container](./examples/dynamic-project-checks) | — | ✅ | — | ✅ · containerless |
 
 ### Toolchains and container images
 
@@ -267,7 +271,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | Deploy an app to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
-| Deploy a static site without a build or container | — | 🔜 | — | 🔜 · containerless |
+| [Deploy a static site without a build or container](./examples/static-assets-source) | — | 🔜 | — | ✅ · containerless |
 | [Build and serve a static site without a container](./examples/containerless-site) | — | 🔜 | — | ✅ · containerless |
 | [Deploy apps in dependency order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Migrate D1 before deploying a Worker](./examples/d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |

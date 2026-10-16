@@ -2,6 +2,11 @@
 
 > How do I keep source and pull requests on GitHub while every CI run is a native Cloudflare Workflow instance?
 
+The [owned public incident repair implementation](PUBLIC-REPAIR.md) now connects
+admission, a fresh bounded proposal, native verification and a proposed-PR Slack
+card in host source. Native end-to-end acceptance is still pending; both source
+and enrollment remain disabled and repair proposals remain unmerged.
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]
@@ -29,9 +34,12 @@ This run used the Worker API token as well as Access; it did not deploy a releas
 ## Experience
 
 The same-build candidate controller is documented in
-[Demo release integration](./DEMO-RELEASE.md). It is locally verified but remains
-host-disabled pending the real human window and authenticated push enrollment;
-the historical HMD lab below is not that live acceptance.
+[Demo release integration](./DEMO-RELEASE.md). The enrolled `demo/live` flow is
+now live-verified: real push, checked Vite build, one maintained Slack card, four
+actual graphs and explicitly authorized browser-delegated test decisions, then
+the same prepared candidate committed at 100%. These are not independent human
+reviews or general standalone enrollment. The historical HMD lab below remains
+separate evidence; its old baseline-reset scripts must not reset this committed target.
 
 1. Install the Effect CI GitHub App on a repository.
 2. Push a commit or update a pull request.
@@ -930,11 +938,13 @@ and a native container rooted at `examples/demo`. It is mounted at `/demo` on
 the existing Access-protected host; `/runs`, GitHub and Slack callbacks and all
 existing Workflow/DO namespaces keep their original behavior.
 
-Deploy this integration only after its exact-head CI passes and it is merged.
+Deploy this integration only from exact merged source after fresh current-resource,
+security and idle-controller preflight; periodically audit actual main CI outcomes.
 Use the existing host build/deploy setup, preserve all existing secrets and
 bindings, and rebuild from that exact merged revision. No extra secret, App
-installation, provider, public execution endpoint without authentication or
-human approval is required. The new export creates one Workflow resource;
+installation, provider or public execution endpoint without authentication is
+required. Remote builds never promote or request a release decision; the enrolled
+GitHub release requires its separately authenticated phase decisions. The demo export creates one Workflow resource;
 native runs use ordinary container, snapshot, storage and npm network costs,
 not Workers AI or another paid inference service.
 

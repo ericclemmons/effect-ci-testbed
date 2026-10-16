@@ -24,6 +24,12 @@ test(
       format: "esm",
       platform: "neutral",
       external: ["cloudflare:workers", "cloudflare:workflows"],
+      // Preserve the historical capture-only host regression independently of
+      // the production public-incident enrollment and its private capabilities.
+      plugins: [{ name: "local-capture-only-host", setup(builder: any) {
+        builder.onLoad({ filter: /public-enrollment\.ts$/ }, () => ({ loader: "ts",
+          contents: "export const publicIncidentEnrollment = undefined;" }));
+      } }],
     });
     const code = compiled.outputFiles[0].text;
     const secret = "a".repeat(64);
@@ -162,6 +168,9 @@ test(
       assert.equal(single.result.quarantined, true);
       assert.equal(single.result.incidentDedupeVerified, false);
       assert.deepEqual(single.steps, ["notification:read"]);
+      assert.equal((await runtime.dispatchFetch("https://owned.invalid/local-inspection", {
+        method: "POST", body: JSON.stringify({ mode: "public-source" }),
+      })).status, 400); // Missing private capability cannot read or fabricate a claim.
       await runtime.setOptions({
         workers: [
           { config: real(code + "\n// local reload\n") },

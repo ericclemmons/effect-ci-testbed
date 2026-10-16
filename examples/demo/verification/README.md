@@ -14,7 +14,9 @@ npm run verify:browser -- --negative
 
 The recipe owns its preview, browser config and test fixtures. The first command
 runs the real `cf-ci run build`, opens its built application in a fresh local
-Chromium context, clicks **Show message**, and asserts a nonempty visible result.
+Chromium context, checks the visible release message, clicks **Test JavaScript**,
+and asserts the explicit browser-code success result. Historical captures below
+retain the original **Show message** interaction; they are not footage of this UI.
 The second deliberately uses a wrong expectation: it must retain a failed E2E
 outcome and failed-run video. The verification wrapper succeeds only when that
 expected negative outcome is preserved; it does not relabel the application test.
@@ -94,6 +96,63 @@ metadata, downloaded bytes/digests and original manifest against the receipt.
 This is an explicit read-only network check; normal unit tests do not fetch media
 or dispatch CI. Missing/replaced media and source drift fail verification rather
 than silently refreshing the proof. It does not recertify playback or privacy.
+
+## Native command diagnostics
+
+The diagnostics implementation has actual LOCAL workerd Workflow tests for both
+command and policy-bearing action checkpoints. A test-only outer catcher exposes
+the failed checkpoint error for inspection; production CI does not catch it into
+a successful Workflow. Both output streams and exit7 survive message-only error
+serialization with one command execution. Pure retry, rollback and timeout
+regressions remain separate. The actual CLI also consumes a fake authenticated
+remote NDJSON stream and emits one JSON diagnostic for duplicated step/terminal
+errors, without a second dispatch or text-mode rerun.
+
+The versioned transport includes only known command metadata and bounded output,
+never arbitrary host causes. Its total UTF-8 error message is limited to32KiB;
+streams are tail-clipped, initially at8K characters each, and carry an explicit
+truncation flag. Malformed, oversized, context-mismatched and unknown frames are
+not promoted to structured command evidence. Output is descriptive untrusted data,
+not a command to execute, check-cache proof, retry permission or release approval.
+
+Actual native/remote JSON transport was then verified on October15 with one
+normal `AI_AGENT=true cf-ci run --remote` from a clean managed checkout. Exact
+host `c57576e09e319b0da5fb611a9e17c0b395ef0957` was built179modules and deployed
+once as Worker `478e387d-3973-4108-bb4f-d5e9f0d9db43`, preserving23exports,
+19bindings, secret names, Docker image and the committed release.
+
+The dedicated negative source `4005974fd8fb85765008428e21a75e6792cc3fca` produced
+Workflow `edbdb213-1ce2-44d2-84ab-40688db4dcb1`, still **ERRORED**. Its new fixture
+unexpectedly failed lint first: three real `no-undef` diagnostics for Node globals
+were on stdout while stderr contained npm notices. The planned exit7 script did
+not run, so its original acceptance flag remains false. Independent full failed
+checkpoint output and the actual CLI JSON agree exactly on lint exit1, both
+streams, one attempt and zero retries. This proves diagnostics transport, not an
+exit7 run or a successful build. No publication, candidate preparation, approval,
+Slack message, traffic change or model call followed.
+
+The diagnostics identified the fixture bug without a text-mode rerun. Explicit
+Node imports in `47dd64b01b52d9e271780a74ae2f48326e621359` pass local lint; that
+fix remains only on `codex/native-command-negative-fixture`, not main/demo/live.
+It was **not remotely redispatched** for a prettier result. Both original and
+fixed fixture histories are retained; never merge its deliberate failing package
+script into the normal demo or replay the consumed public incident for evidence.
+
+Read-only native regression (ordinary CI skips):
+
+```sh
+LIVE_NATIVE_COMMAND_DIAGNOSTICS=1 CF_BIN=path/to/installed/cf node --test apps/effect-ci/src/live-command-diagnostics.test.ts
+```
+
+An optional `LIVE_NATIVE_COMMAND_CLI_RECEIPT` points to the private original CLI
+receipt for equality against independent full native output. The unsigned receipt
+is supporting evidence, not reusable trust. The test does not hit a failing URL,
+dispatch, execute, publish, approve, spend or write anything remotely.
+
+```sh
+node --test packages/ci/src/command-diagnostics.test.ts packages/cli/src/remote-diagnostics.test.ts
+node --test packages/cli/src/remote-cli.test.ts apps/example-runner/src/command-diagnostics-runtime.test.ts
+```
 
 Use the [proof-page contract](../../PROOF-PAGES.md) for exact revision/environment,
 assertions, video/transcript, outcome and cold/warm timings. See the

@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
+import { nativeCommandError, restoreCommandError } from "./command-error.ts"
 
 type HandleData = { readonly provider: string; readonly value: any }
 
@@ -81,7 +82,7 @@ export const makeActionExecutor = (
           const timed = request.options.timeout === undefined ? body : body.pipe(Effect.timeout(request.options.timeout))
           const exit = await Effect.runPromiseExit(timed.pipe(Effect.provideServices(services)))
           // Preserve original errors, including a provider's NonRetryableError.
-          if (Exit.isFailure(exit)) throw Cause.squash(exit.cause)
+          if (Exit.isFailure(exit)) throw nativeCommandError(Cause.squash(exit.cause))
           const result = exit.value
           return {
             commands: result.commands,
@@ -93,7 +94,7 @@ export const makeActionExecutor = (
           activeBodies.delete(request.stepId)
         }
       }),
-      catch: (error) => error,
+      catch: (error) => restoreCommandError(error, { stepId: request.stepId }),
     })
     return {
       commands: result.commands,

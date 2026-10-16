@@ -1,5 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci"
 import type { WorkflowStep, WorkflowStepConfig } from "cloudflare:workers"
+import { commandFailure, nativeCommandError, restoreCommandError } from "./command-error.ts"
 
 /** One sequence per action, reset when the Workflow interpreter is replayed. */
 export const makeCommandStepExecutor = (step: Pick<WorkflowStep, "do">) => {
@@ -28,11 +29,11 @@ export const executeCommandStep = async (
   return step.do(checkpointName, config, async () => {
     const result = await execute()
     if (result.exitCode !== 0) {
-      throw new CI.CommandError(request.stepId, request.command, request.workspace.cwd,
-        result.exitCode, result.stderr || result.stdout)
+      throw nativeCommandError(commandFailure(request, result))
     }
     return result
   }).catch((error: unknown) => {
+    error = restoreCommandError(error, { stepId: request.stepId, command: request.command, cwd: request.workspace.cwd })
     if (error instanceof CI.CommandError) throw error
     // Workflow failures cross a serialization boundary. Restore command error
     // metadata from our own exact message format rather than replacing exit 7

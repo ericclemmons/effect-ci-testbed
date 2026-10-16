@@ -3,7 +3,7 @@
 The demo finalizer now connects its actual workflow result to
 `@effect-ci-testbed/cloudflare/reviewed-release`, the existing private release
 broker, private review records, graph renderer and the maintained build card.
-It is **armed for the owned test branch, but not yet live-release-accepted**.
+It is **live-accepted for the owned test branch with explicitly delegated test approvals**.
 Eric explicitly authorized browser-delegated test approvals while away. These
 must be recorded as delegated tests, not independent human review.
 `demoReviewedReleaseEnabled` in `src/demo-release.ts` is now `true`.
@@ -53,7 +53,7 @@ diagnostic below observed delayed convergence with both keyed and unkeyed
 traffic. Two minutes is a conservative measured test policy, not a platform SLA;
 every release still measures its own actual cohort and fails closed on missing data.
 
-Every stage requires real authenticated human Progress, even when health looks
+Every stage requires authenticated Progress, even when health looks
 good. Sparse observations remain uncertain, never a fabricated health pass.
 Missing attribution or conclusive regression cannot be overridden. Reject,
 timeout, stale decisions, notification failure or controller failure restore the
@@ -90,6 +90,73 @@ the private SQLite review object. An actor string or arbitrary event is not
 authority. No test-only decision path is deployed.
 
 ## Actual push/build acceptance — October 15
+
+### Same-card push → graph → four delegated decisions → committed 100%
+
+A genuine feature-fix push of `867c7db95770f8f74a1d7124a2717998176a6c49`
+to `demo/live` triggered native instance `5531ae60-c8ae-11f1-9c16-9654df11c69b`.
+Merged host `a76c186` built the actual Vite app, verified and published its same
+three checked files, and prepared version `ef0d65a2-e720-4fa1-8806-93bb3bb4d585`.
+All eleven build actions and nine commands completed once; all twelve native
+GitHub checks independently read back successful after release completion.
+
+The built-in browser observed the same Slack card
+[`1792078658.255589`](https://ryanflorencefanclub.slack.com/archives/C0C81FU4B5J/p1792078658255589)
+through build, graph review, each decision and Passed. Eric explicitly delegated
+these **owned-test** approvals: four actual normal Progress clicks sent signed
+Slack callbacks. Each resumed the matching Workflow wait and read its matching
+consumed private decision record before advancing. These were not fabricated
+events, an automatic deadline decision, or independent human review.
+
+| Phase | Actual candidate observations / 100 | Observed failures | Verdict and decision |
+| --- | ---: | ---: | --- |
+| 10% | 7 | 0 | Uncertain; delegated risk acceptance |
+| 25% | 27 | 0 | Uncertain; delegated risk acceptance |
+| 75% | 82 | 0 | Uncertain; delegated risk acceptance |
+| 100% | 100 | 0 | Uncertain; delegated risk acceptance, then commit |
+
+The native baseline plus four fixed cohorts requested 500 total health reads,
+with no unknown attribution. All four real PNGs were privately uploaded. All 43
+card-delivery checkpoints acknowledged that same timestamp. Five explicit
+`invalid_blocks` rejections used the bounded identical-frame validation exception;
+the native checkpoints themselves still completed in one attempt. No ambiguous
+delivery or root message was retried.
+
+The broker's final receipt is `complete`, with candidate 100% at deployment
+`0cb01356-6942-458d-a7cb-8b93ec67832a`. Exactly four traffic writes (10/25/75/100)
+were independently read back, and there is no success-cleanup rollback. The
+captured prior allocation was baseline `09593237-23b2-4873-bd04-88c8e8488840`
+at 100%; it is **not** the current target allocation anymore. Do not run old
+baseline-reset or historical lab scripts against this committed release.
+
+An independent production GET returned the exact candidate/source/digest health
+identity. The production root returned 302 to this workflow's immutable Vite URL;
+all three raw file hashes/sizes matched the native verifier. The built-in browser
+followed that production redirect and Show message rendered “Check my work before
+I push”. Invalid-digest HTTP GET independently returned 404. The browser's
+negative navigation was blocked by its client before loading, so it is not claimed
+as a successful browser 404 assertion. Private screenshots are retained; no new
+video or public Slack media is claimed.
+
+```sh
+# Retained historical proof; GET-only and safe after a later legitimate release:
+LIVE_DEMO_RELEASE=1 CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-release.test.ts
+
+# Additionally assert this retained version is still the CURRENT production allocation:
+LIVE_DEMO_RELEASE=1 LIVE_DEMO_RELEASE_CURRENT=1 \
+  CF_BIN="$PWD/apps/effect-ci/node_modules/.bin/cf" \
+  node --test apps/effect-ci/src/live-demo-release.test.ts
+```
+
+Both retained-history and current-allocation assertions actually passed without
+dispatching, approving, uploading or deploying again. Queue/execution/total were
+2.948/901.301/904.249 seconds, one orchestration sample including fixed eight
+minutes of settling and delegated decision time—not a benchmark. Zero observed
+pointer-health failures are not conclusive app SLO, real-user telemetry or WOBS
+completeness. The original failed histories remain failed and preserved.
+
+### Earlier build-only acceptance (gate was off)
 
 A normal fast-forward push of genuine diagnostic changes, revision
 `198726b4de236d5eff6c74d0a099a28001b01b82`, to `demo/live` generated signed
@@ -177,8 +244,11 @@ Reproduce the local fake-service contract:
 node --test apps/effect-ci/src/demo-routing-diagnostic.test.ts apps/effect-ci/src/demo-routing-diagnostic-runtime.test.ts
 ```
 
-After a merged host build/deploy and fresh idle-controller/allocation/security
-preflight, the authenticated operator may create ONE uniquely named instance:
+The following records the original diagnostic setup, not a command to replay now.
+The target has since committed a new baseline; this diagnostic pins the historical
+`09593237` baseline. Do not rerun it unchanged against the current release.
+A genuinely new diagnosis needs a separately reviewed host pin and fresh
+idle-controller/allocation/security preflight, then ONE uniquely named instance:
 
 ```sh
 cf workflows instances create effect-ci-demo-routing-diagnostic \

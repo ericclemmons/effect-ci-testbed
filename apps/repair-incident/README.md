@@ -1,6 +1,73 @@
 # Owned failure signal
 
-Private, standalone deterministic failure source for the Friday incident loop. No public URL, secrets, AI, GitHub, repair writer, arbitrary prompt, or deployment binding. An authenticated native Workflow may inspect or emit ONE owned error. A SQLite claim precedes `console.error(new Error(...))`; completed calls replay the same 500 receipt without logging again. Pending/uncertain state fails closed and has no reset API. The private RPC returns an actual 500 Response; ordinary HTTP remains 404.
+Standalone deterministic failure source for the Friday incident loop. Its historical private RPC path remains separate from the new one-shot public test below. No secrets, AI, GitHub, repair writer, arbitrary prompt or deployment binding reaches the source. The historical authenticated Workflow/SQLite emission is preserved unchanged; never replay it to stand in for a new public incident.
+
+## Public HTTP one-shot (native attempt retained)
+
+The source below was deployed, privately armed once and loaded once in the
+built-in browser on October15. It produced a genuine uncaught fetch exception,
+Issue `a077ace1-d3b3-4c70-83eb-7e2178164871` and authenticated notification capture.
+Admission stopped on the actual WOBS title's token masking before any model or
+repair Workflow. The exact-title regression is fixed; the original event is
+expired and is not replayed. Its permanent claim remains consumed. See the
+[retained failure boundary and read-only native regression](../repair-events/PUBLIC-ACTIVATION.md).
+This is not native automatic-repair completion and not a resettable rehearsal URL.
+
+The next end-to-end test needs a genuine public fetch exception, not another replay
+of that completed private RPC. `src/public-fault.ts` implements an owned `/failure`
+GET using the exact fixed `fixtures/public-health.js` bytes (the broken
+`healthStatus()` fixture, SHA256 `6e3a3627b9fd217104ff0b7d73aba6968d2422558539af3aac2f5f2625ef6dd6`). A separate `PublicFailureClaim`
+SQLite object durably claims the attempt **before** the uncaught HTTP exception.
+Concurrent/later GETs return410 without logging or returning a cached500. Claim or
+acknowledgement uncertainty returns409 and never retries; a claim is NOT proof the
+exception occurred or an Issue was delivered. There is no reset endpoint. Root,
+queries, other methods and declared prefetch requests do not consume the claim.
+An ordinary deliberate browser GET can consume it once after activation; this is
+a test source, not an authentication or approval endpoint.
+
+The new private read-only `PublicIncidentEvidence.readPublicClaim()` returns the
+claimed version/time/fixture digest plus the current native `WORKER_METADATA`
+version. It cannot emit or reset. Deployment adds native version metadata and a
+narrow private read-only App readiness binding, not an API token. The consumer must pin the exact deployed version to
+independently retained source evidence and reject version drift. This trusted
+source corroboration is **not** an Issues occurrence-API read or source attestation.
+The local regression supplies clearly fake metadata; only native deployment
+readback establishes the actual version pinned in the receiver guide.
+
+The new authenticated `PublicIncidentArmWorkflow` accepts only
+`{mode:"arm-public-once"}` and emits no error/inference. The source DO obtains
+readiness itself from that fixed private App capability; a payload cannot supply
+a fake approval. It pins the durable arm to the actual source version and holds
+on version drift. Until armed, even an enabled `/failure` returns409 without
+consuming its claim. Arm only the final version after exact receiver enrollment
+and real budget/price/resource preflight; there is no reset or automatic re-arm.
+The local workerd test exercises the actual arming Workflow, denied readiness,
+unarmed requests, idempotent arm, claimed-version preservation and current-version
+drift with clearly fake readiness/metadata. See [the full setup boundary](../effect-ci/PUBLIC-REPAIR.md).
+
+The host route and workers.dev are enabled in source. Before the native attempt,
+the absent durable arm made `/failure` return409 without consuming its claim.
+The exact-version enrollment and private readiness were checked before arming.
+The retained native attempt above then consumed the separate claim. No inference
+or repair was triggered. The existing historical RPC emission/journal is not read/reset
+by the new record. Actual local workerd tests exercise eight concurrent GETs
+(one500/seven410), module reload (still410), the unchanged old RPC record and the
+production unarmed409 and consumed410 gates. They do not prove native WOBS delivery or automatic repair.
+
+Do not arm the public test merely to collect an error. First finish the
+authenticated receiver's bounded automatic activation/outbox and independently
+enroll the exact producer version/source, private fixture base/path/bytes and
+existing budget policy. Preserve the old capture/admission/proposal records.
+Then use exact merged-source build, fresh resource/secret/controller preflight,
+create-only intent and independent deployment readback before arming
+and deliberately loading `/failure` once. No error/Issue identity may select a
+repository, prompt, model, paid slot or writer destination. Proposed repairs remain
+unmerged and undeployed. Necessary resources are one additional SQLite class,
+the arming Workflow, native metadata and the read-only readiness binding on this
+existing owned Worker; no new secret, paid dispatcher authority or account scope.
+Costs are ordinary Worker/Workflow/RPC/SQLite/Issues operations; this preparation makes no AI
+call. Safe stop is to keep the source gate and workers.dev disabled, retaining the
+claim and all evidence rather than resetting/deleting it for rehearsal.
 
 `observability.issues.enabled` is explicitly configured. [Cloudflare Issues](https://developers.cloudflare.com/workers/observability/issues/) documents handled error logging and 5xx detection. A completed emission is NOT proof that an Issue was ingested, that a Notification was delivered, or that a repair happened. `issueVerified:false` remains explicit until independent native evidence exists.
 
