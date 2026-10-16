@@ -1,1 +1,1 @@
-export const message = "Hello from the demo app.";
+export const message = "Built, checked, and previewed with Effect CI.";
