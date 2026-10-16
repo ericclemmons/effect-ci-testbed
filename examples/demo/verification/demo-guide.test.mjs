@@ -88,3 +88,10 @@ test("authored orchestration requests goals, without claiming hosted parity or f
     "keep technical evidence in linked maintainer docs",
   );
 });
+
+test("remote goals distinguish negotiated computation from the default preview workflow", () => {
+  assert.match(guide, /cf-ci run test build --remote/);
+  assert.match(guide, /checks host capabilities before dispatch/);
+  assert.match(guide, /selected hosted goals share installation and never\npublish or release/);
+  assert.match(guide, /Prepared, not yet deployed/);
+});

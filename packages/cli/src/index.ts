@@ -223,14 +223,6 @@ const builtInRemote = async (
     )
   }
 
-  if (invocation.target || invocation.targets?.length) {
-    throw new CliFailure(
-      "CI_REMOTE_TARGET_UNAVAILABLE",
-      ExitCode.providerUnavailable,
-      "The hosted runner currently executes the workflow suite, not selected exported actions",
-    )
-  }
-
   if (invocation.command !== "run") {
     throw new CliFailure(
       "CI_REMOTE_COMMAND_UNAVAILABLE",
@@ -251,11 +243,37 @@ const builtInRemote = async (
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
   const headers = remoteHeaders(remoteUrl, configured.token)
+  const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
+  if (targets) {
+    if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
+      throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
+    // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
+    // selected-goal invocation can never silently execute the default suite.
+    let available: unknown
+    try {
+      const capability = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
+      if (capability.status === 401 || capability.status === 403)
+        throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
+          "The remote host denied authentication. Refresh Cloudflare Access and check the private API profile. No run was dispatched.")
+      if (capability.ok) available = await capability.json()
+    } catch (error) {
+      if (error instanceof CliFailure) throw error
+      /* Availability/protocol failure is not dispatch authority. */
+    }
+    const descriptor = available as { protocol?: unknown; targets?: unknown } | undefined
+    const enrolled = descriptor?.targets
+    if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(enrolled) || enrolled.length > 16 ||
+        enrolled.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
+        targets.some(target => !enrolled.includes(target))) {
+      throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+        "This host has not enrolled every requested goal. No run was dispatched; update/select a compatible host or run these goals locally.")
+    }
+  }
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
     redirect: "error",
     headers,
-    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}) }),
+    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}) }),
   })
 
   if (!response.ok) {
@@ -817,7 +835,10 @@ export const main = async (
       return ExitCode.success
     }
 
-    const workflow = selectedWorkflow(program, invocation.targets)
+    // A built-in hosted invocation selects from the host's enrolled goals, not
+    // an absent/stale local module. Custom remote handlers retain local validation.
+    const workflow = invocation.location === "remote" && !program.remote
+      ? program.workflow : selectedWorkflow(program, invocation.targets)
     const request: Invocation = {
       command: invocation.command,
       format,

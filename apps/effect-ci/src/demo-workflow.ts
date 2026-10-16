@@ -1,6 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed } from "./demo-policy.ts";
+import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed, demoRemoteSelection } from "./demo-policy.ts";
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
@@ -12,6 +12,10 @@ import { finalizeDemoRun } from "./demo-run-finalizer.ts";
 // and package scripts still execute in the native workspace, never in the host.
 const Base = GitHubCloudflare.workflowEntrypoint(
   (environment, parameters) => {
+    if (parameters.trigger === "remote") {
+      const selection = demoRemoteSelection(parameters);
+      if (selection) return makeDemoProgram(undefined, selection).workflow;
+    }
     const publisher = (
       environment as unknown as {
         DEMO_SITE?: {

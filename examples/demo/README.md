@@ -179,6 +179,17 @@ Click **Details on that Slack parent card** for the same Cloudflare Workflow run
 The host currently selects its fixed demo program, not uploaded `workflow.ts`.
 Local authored goals and the hosted program are separate until remote parity lands.
 
+### Select hosted goals
+
+```sh
+cf-ci run test build --remote
+```
+
+Prepared, not yet deployed: selected hosted goals share installation and never
+publish or release. The CLI checks host capabilities before dispatch; an older
+host rejects the command without starting the default workflow. Without targets,
+`cf-ci run --remote` runs the hosted suite and publishes a preview.
+
 ## 8. Verify previously checked work
 
 > Trust exact evidence, not an agent saying “tests passed.”

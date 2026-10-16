@@ -20,6 +20,7 @@ export interface RemoteWorkflowParameters {
   readonly ref?: string
   readonly revision: string
   readonly target?: string
+  readonly targets?: ReadonlyArray<string>
 }
 
 export type WorkflowParameters = GitHubWorkflowParameters | RemoteWorkflowParameters
@@ -50,6 +51,8 @@ export interface WorkerOptions {
   readonly routePrefix?: string
   /** Optional trusted host enrollment, checked after authentication and before creation. */
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
+  /** Explicit host opt-in; selected goals must be consumed by its workflow factory. */
+  readonly remoteTargets?: ReadonlyArray<string>
   readonly github?: GitHubClient
   /** Trusted routing AFTER signature, App ownership and canonical webhook parsing. */
   readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
@@ -65,6 +68,17 @@ export interface RemoteRunRequest {
   readonly revision: string
   readonly ref?: string
   readonly target?: string
+  readonly targets?: ReadonlyArray<string>
+}
+
+const selectedTargets = (input: { readonly target?: unknown; readonly targets?: unknown }): ReadonlyArray<string> | undefined => {
+  if (input.target === undefined && input.targets === undefined) return undefined
+  if (input.target !== undefined && input.targets !== undefined) throw Error("Invalid remote goals")
+  const values = input.targets === undefined ? [input.target] : input.targets
+  if (!Array.isArray(values) || values.length < 1 || values.length > 16 ||
+      values.some(value => typeof value !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(value)) ||
+      new Set(values).size !== values.length) throw Error("Invalid remote goals")
+  return Object.freeze([...values])
 }
 
 const defaultGitHubClient: GitHubClient = {
@@ -177,12 +191,15 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
 
   if (record.ref !== undefined && typeof record.ref !== "string") return undefined
   if (record.target !== undefined && typeof record.target !== "string") return undefined
+  let selection: ReadonlyArray<string> | undefined
+  try { selection = selectedTargets(record) } catch { return undefined }
 
   return {
     repository: record.repository,
     revision: record.revision,
     ...(record.ref ? { ref: record.ref } : {}),
     ...(record.target ? { target: record.target } : {}),
+    ...(record.targets === undefined ? {} : { targets: selection! }),
   }
 }
 
@@ -190,7 +207,7 @@ const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
   workflow: Workflow<WorkflowParameters>,
-  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed"> = {},
+  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets"> = {},
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -199,6 +216,10 @@ const remoteRun = async (
   const input = await readRemoteRun(request)
 
   if (!input) return new Response("Invalid remote run", { status: 400 })
+  const selection = selectedTargets(input)
+  if (selection && (!options.remoteTargets || selection.some(target => !options.remoteTargets!.includes(target)))) {
+    return new Response("Remote goals are not enrolled", { status: 403 })
+  }
   if (options.remoteRunAllowed && !options.remoteRunAllowed(input)) {
     return new Response("Remote workflow is not enrolled for these inputs", { status: 403 })
   }
@@ -303,6 +324,7 @@ const resolveApproval = async (
 
 export const worker = (options: WorkerOptions = {}) => {
   const prefix = options.routePrefix ?? ""
+  const remoteTargets = options.remoteTargets === undefined ? Object.freeze([] as string[]) : selectedTargets({ targets: options.remoteTargets })!
   if (prefix !== "" && !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(prefix)) {
     throw new Error("Invalid workflow route prefix")
   }
@@ -329,6 +351,12 @@ export const worker = (options: WorkerOptions = {}) => {
         return new Response("Not found", { status: 404 })
       }
       const pathname = url.pathname.slice(prefix.length) || "/"
+      if (request.method === "GET" && pathname === "/capabilities") {
+        if (!isAuthorized(request, environment)) return new Response("Unauthorized", { status: 401 })
+        return Response.json({ protocol: "effect-ci-remote-v1", targets: remoteTargets }, {
+          headers: { "cache-control": "no-store" },
+        })
+      }
       const workflow = getWorkflow(environment, context)
 
       if (request.method === "POST" && pathname === "/webhooks/slack") {
@@ -350,7 +378,7 @@ export const worker = (options: WorkerOptions = {}) => {
       }
 
       if (request.method === "POST" && pathname === "/runs") {
-        return remoteRun(request, environment, workflow, options)
+        return remoteRun(request, environment, workflow, { ...options, remoteTargets })
       }
 
       const eventRoute = pathname.match(/^\/runs\/([^/]+)\/events$/)

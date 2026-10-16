@@ -20,6 +20,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let failWorkflow = false
   let diagnosticFailure = false
   let routePrefix = ""
+  let supportsTargets = true
+  const selections: unknown[] = []
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
     for (const args of [
@@ -42,11 +44,17 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(request.headers["cf-access-client-id"], "fixture-access-id")
         assert.equal(request.headers["cf-access-client-secret"], "fixture-access-secret")
       }
+      if (request.url === `${routePrefix}/capabilities`) {
+        response.writeHead(supportsTargets ? 200 : 404, { "content-type": "application/json" })
+        response.end(JSON.stringify({ protocol: "effect-ci-remote-v1", targets: ["test", "build"] }))
+        return
+      }
       if (request.url === `${routePrefix}/runs`) {
         dispatches++
         let body = ""
         for await (const chunk of request) body += chunk
         assert.match(JSON.parse(body).revision, /^[a-f0-9]{40}$/)
+        selections.push(JSON.parse(body).targets)
         response.writeHead(202, { "content-type": "application/json" })
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture` }))
       } else {
@@ -78,8 +86,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true, format = "text", projectConfig = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, "run", "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
+    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = []) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [bin, "run", ...targets, "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
         env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
@@ -142,11 +150,24 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const configured = await run("fixture-user-token", false, "text", true)
     assert.equal(configured.code, 0, configured.output)
     assert.match(configured.output, /Workflow completed/)
+    const selected = await run("fixture-user-token", false, "text", true, ["test", "build"])
+    assert.equal(selected.code, 0, selected.output)
+    assert.deepEqual(selections.at(-1), ["test", "build"])
+    const single = await run("fixture-user-token", false, "text", true, ["build"])
+    assert.equal(single.code, 0, single.output)
+    assert.deepEqual(selections.at(-1), ["build"])
+    for (const targets of [["test", "deploy"], ["test", "build"]]) {
+      if (targets[1] === "build") supportsTargets = false
+      const denied = await run("fixture-user-token", false, "json", true, targets)
+      assert.equal(denied.code, 3, denied.output)
+      assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
+      assert.equal(dispatches, 10, "unknown goals and older hosts must not dispatch the default suite")
+    }
     await writeFile(join(directory, "uncommitted.txt"), "must not be silently ignored")
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 8)
+    assert.equal(dispatches, 10)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })
