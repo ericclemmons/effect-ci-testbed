@@ -188,10 +188,13 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     }
     for (const phase of [10, 25, 75, 100]) {
       if (scenario === "deadline" && phase === 10) {
-        await wait((s) => s.phase === 25 && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
-        continue
+        // Actual local wait elapsed with no scripted decision. Never treat a
+        // native timeout as independent review or advance into the next phase.
+        break
       }
       const current = await wait((s) => s.phase === phase && s.frames.at(-1)?.blocks.some((b: any) => b.elements?.some((a: any) => a.action_id === "hmd_approve")))
+      assert.doesNotMatch(JSON.stringify(current.frames), /Auto-progress at/)
+      assert.match(JSON.stringify(current.threadFrames), /Progress explicitly accepts risk; otherwise restore at/)
       const action = current.frames.at(-1).blocks.flatMap((b: any) => b.elements ?? []).find((a: any) => a.action_id === (["reject", "deadline", "native-reject"].includes(scenario) ? "hmd_reject" : "hmd_approve"))
       const capability = JSON.parse(action.value)
       assert.equal(capability.phase, phase)
@@ -208,7 +211,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       assert.equal(failed.files, 0, "default status does not render or upload a graph")
       assert.equal(failed.restores, 1)
       assert.equal(failed.phase, 0)
-      assert.deepEqual(failed.promotions, scenario === "deadline" ? [10, 10, 25] : [10], "deadline progresses once; rejection stops further progression")
+      assert.deepEqual(failed.promotions, [10], "deadline and rejection both stop further progression")
       if (scenario === "native-reject") {
         assert.equal(failed.nativeQueries, 3, "delayed baseline ingestion re-reads the same receipts before candidate query")
         assert.equal(failed.nativeRequests, 200, "ingestion wait did not generate replacement traffic")
@@ -217,12 +220,11 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
       }
       assert.match(failed.frames.at(-1).text, /↩️ Rolled back/)
       assert.match(failed.threadFrames.at(-1).text, /↩️ Restore previous version/)
-      assert.match(failed.threadFrames.at(-1).text, scenario === "deadline" ? /10%\n/ : /10% — failed/)
-      if (scenario === "deadline") assert.match(failed.threadFrames.at(-1).text, /25% — failed/)
-      else assert.ok(!failed.frames.at(-1).text.includes("25%"))
+      assert.match(failed.threadFrames.at(-1).text, /10% — failed/)
+      assert.ok(!failed.frames.at(-1).text.includes("25%"))
       assert.ok(!JSON.stringify(failed.frames.at(-1)).includes("skipped"), "reverted card omits unexecuted stages")
       assert.match(failed.threadFrames.at(-1).text, /Restore previous version/)
-      assert.match(failed.threadFrames.at(-1).text, /> Human rejected the release/)
+      assert.match(failed.threadFrames.at(-1).text, scenario === "deadline" ? /> (Health review expired|Release operation failed; see Details\.)/ : /> Human rejected the release/)
       assert.ok(failed.threadPosts <= 4, "sampling edits bounded stage replies rather than posting repeatedly")
       assert.equal(failed.frames.at(-1).blocks.length, 2, "terminal root is title and identity only")
       assert.ok(!failed.frames.at(-1).text.includes("queued"), "future phases cannot remain queued after rejection")

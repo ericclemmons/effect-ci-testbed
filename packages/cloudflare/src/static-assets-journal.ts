@@ -1,36 +1,63 @@
 import { DurableObject } from "cloudflare:workers"
 import { prepareStaticAssets, staticAssetsTarget, staticAssetsPolicy } from "./static-assets-source.ts"
+import { prepareBuiltStaticAssets, type StaticBuildProvenance } from "./static-assets-build.ts"
 
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value)
 const validRevision = (revision: string) => { if (typeof revision !== "string" || !/^[a-f0-9]{40}$/.test(revision)) throw Error("Invalid static source revision"); return revision }
 const sourceKey = (revision: string) => `source:${validRevision(revision)}`
-interface Source { manifestDigest: string; bytes: Uint8Array }
+interface Source { manifestDigest: string; bytes: Uint8Array; build?: { provenance: StaticBuildProvenance; bytes: Uint8Array } }
 interface Publication { revision: string; assetDigest: string; steps: Record<string, string>; pending?: string; complete?: StaticAssetReceipt }
-export interface StaticAssetReceipt { revision: string; manifestDigest: string; assetDigest: string; version: string; deployment: string; target: typeof staticAssetsTarget; policy: typeof staticAssetsPolicy }
+export interface StaticAssetReceipt { revision: string; manifestDigest: string; assetDigest: string; version: string; deployment: string; target: typeof staticAssetsTarget; policy: typeof staticAssetsPolicy; build?: StaticBuildProvenance }
 
 /** Private source/journal only. No reset, overwrite, public fetch, credential or network API. */
 export class StaticAssetRevisions extends DurableObject {
   async put(revision: string, manifestDigest: string, input: Uint8Array) {
-    const key = sourceKey(revision)
+    sourceKey(revision)
     if (!(input instanceof Uint8Array) || input.length > 96 * 1024) throw Error("Invalid static source bytes")
     const bytes = new Uint8Array(input)
     const prepared = await prepareStaticAssets(revision, bytes, manifestDigest)
+    return this.#store(revision, manifestDigest, bytes, prepared.assetDigest)
+  }
+  async putBuild(revision: string, sourceManifestDigest: string, input: Uint8Array, result: unknown) {
+    sourceKey(revision)
+    if (!(input instanceof Uint8Array) || input.length > 96 * 1024) throw Error("Invalid static build bytes")
+    const sourceBytes = new Uint8Array(input)
+    const prepared = await prepareBuiltStaticAssets(revision, sourceBytes, sourceManifestDigest, result)
+    const receipt = await this.#store(revision, prepared.manifestDigest, prepared.bytes, prepared.assetDigest,
+      { provenance: prepared.build, bytes: sourceBytes })
+    return { ...receipt, build: prepared.build }
+  }
+  async #store(revision: string, manifestDigest: string, bytes: Uint8Array, assetDigest: string, build?: Source["build"]) {
+    const key = sourceKey(revision)
     return this.ctx.storage.transaction(async tx => {
       const existing = await tx.get<Source>(key)
       if (existing) {
-        if (existing.manifestDigest !== manifestDigest || existing.bytes.length !== bytes.length || existing.bytes.some((byte, index) => byte !== bytes[index])) throw Error("Immutable static source conflict")
-        return { revision, manifestDigest, assetDigest: prepared.assetDigest, created: false }
+        if (existing.manifestDigest !== manifestDigest || existing.bytes.length !== bytes.length || existing.bytes.some((byte, index) => byte !== bytes[index]) ||
+            Boolean(existing.build) !== Boolean(build) || (build && (JSON.stringify(existing.build!.provenance) !== JSON.stringify(build.provenance) ||
+              existing.build!.bytes.length !== build.bytes.length || existing.build!.bytes.some((byte, index) => byte !== build.bytes[index]))))
+          throw Error("Immutable static source conflict")
+        return { revision, manifestDigest, assetDigest, created: false }
       }
       if ((await tx.list({ prefix: "source:", limit: 32 })).size >= 32) throw Error("Static source revision limit exceeded")
-      await tx.put(key, { manifestDigest, bytes })
-      return { revision, manifestDigest, assetDigest: prepared.assetDigest, created: true }
+      await tx.put(key, { manifestDigest, bytes, ...(build ? { build } : {}) } satisfies Source)
+      return { revision, manifestDigest, assetDigest, created: true }
     })
   }
   async get(revision: string) {
     const source = await this.ctx.storage.get<Source>(sourceKey(revision))
     if (!source) throw Error("Static source not found")
     const prepared = await prepareStaticAssets(revision, source.bytes, source.manifestDigest)
-    return { revision, manifestDigest: source.manifestDigest, assetDigest: prepared.assetDigest, bytes: new Uint8Array(source.bytes) }
+    if (source.build) {
+      const provenance = source.build.provenance
+      const code = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(prepared.assets.find(a => a.path === "app.js")!.base64), c => c.charCodeAt(0)))
+      const checked = await prepareBuiltStaticAssets(revision, source.build.bytes, provenance.sourceManifestDigest,
+        { runtime: "dynamic-worker", containers: 0, tool: provenance.tool, code,
+          sourceDigest: provenance.sourceDigest, outputDigest: provenance.outputDigest, toolDigest: provenance.toolDigest })
+      if (checked.manifestDigest !== source.manifestDigest || JSON.stringify(checked.build) !== JSON.stringify(provenance))
+        throw Error("Static build provenance mismatch")
+    }
+    return { revision, manifestDigest: source.manifestDigest, assetDigest: prepared.assetDigest, bytes: new Uint8Array(source.bytes),
+      ...(source.build ? { build: { ...source.build.provenance } } : {}) }
   }
   async begin(revision: string) {
     const source = await this.get(revision)
@@ -88,7 +115,8 @@ export class StaticAssetRevisions extends DurableObject {
       if (!record || record.pending || !record.steps.session || record.steps.version !== version || record.steps.deployment !== deployment) throw Error("Static completion has no matching acknowledged mutations")
       if (record.complete) return record.complete
       if (await tx.get("active") !== revision) throw Error("Static publication ownership mismatch")
-      const receipt: StaticAssetReceipt = { revision, manifestDigest: source.manifestDigest, assetDigest: source.assetDigest, version, deployment, target: staticAssetsTarget, policy: staticAssetsPolicy }
+      const receipt: StaticAssetReceipt = { revision, manifestDigest: source.manifestDigest, assetDigest: source.assetDigest, version, deployment, target: staticAssetsTarget, policy: staticAssetsPolicy,
+        ...(source.build ? { build: source.build } : {}) }
       await tx.put(`publication:${revision}`, { ...record, complete: receipt })
       await tx.delete("active")
       return receipt

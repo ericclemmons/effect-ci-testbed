@@ -67,7 +67,7 @@ test("containerless stays a Cloudflare capability with verified and planned scop
     );
   assert.equal(plannedSites.length, 2);
   assert.ok(
-    plannedSites.find((line) => line.includes("without a build"))!.endsWith("✅ · containerless |"),
+    plannedSites.find((line) => line.includes("](./examples/static-assets-source)"))!.endsWith("✅ · containerless |"),
   );
   assert.ok(
     plannedSites

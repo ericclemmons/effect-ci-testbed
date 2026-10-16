@@ -1,12 +1,13 @@
 import { prepareStaticAssets } from "./static-assets-source.ts"
+import { prepareStaticBuildSource } from "./static-assets-build.ts"
 
 const base = "https://api.github.com/repos/ericclemmons/effect-ci-testbed/git/"
-const prefix = "examples/static-assets-source/"
-const paths = ["site/app.js", "site/index.html", "site/style.css"]
 const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("")
 
 /** Closed immutable Git API reads through a host-owned, already-scoped GET capability. */
-export async function readStaticAssetsGitHub(revision: string, request: typeof fetch) {
+async function readStaticFilesGitHub(revision: string, request: typeof fetch, build: boolean) {
+  const prefix = "examples/static-assets-source/" + (build ? "build-site/" : "site/")
+  const paths = [build ? "app.ts" : "app.js", "index.html", "style.css"]
   if (typeof revision !== "string" || !/^[a-f0-9]{40}$/.test(revision)) throw Error("Invalid static source revision")
   const read = async (path: string, limit: number): Promise<any> => {
     const response = await request(base + path, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(10_000) })
@@ -40,10 +41,15 @@ export async function readStaticAssetsGitHub(revision: string, request: typeof f
     const header = new TextEncoder().encode(`blob ${data.length}\0`), gitBytes = new Uint8Array(header.length + data.length)
     gitBytes.set(header); gitBytes.set(data, header.length)
     if (hex(await crypto.subtle.digest("SHA-1", gitBytes)) !== entry.sha) throw Error("Static blob byte identity mismatch")
-    files.push({ path, base64, executable: false })
+    files.push({ path: "site/" + path, base64, executable: false })
   }
   const bytes = new TextEncoder().encode(JSON.stringify({ version: 1, files }))
   const manifestDigest = hex(await crypto.subtle.digest("SHA-256", bytes))
-  await prepareStaticAssets(revision, bytes, manifestDigest)
+  if (build) await prepareStaticBuildSource(revision, bytes, manifestDigest)
+  else await prepareStaticAssets(revision, bytes, manifestDigest)
   return { revision, manifestDigest, bytes }
 }
+
+export const readStaticAssetsGitHub = (revision: string, request: typeof fetch) => readStaticFilesGitHub(revision, request, false)
+/** Separate fixed build fixture, not an actor-selected directory or file list. */
+export const readStaticBuildAssetsGitHub = (revision: string, request: typeof fetch) => readStaticFilesGitHub(revision, request, true)

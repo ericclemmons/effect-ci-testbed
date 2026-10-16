@@ -1065,6 +1065,9 @@ importers:
       '@effect-ci-testbed/cloudflare':
         specifier: workspace:*
         version: link:../../packages/cloudflare
+      '@effect-ci-testbed/cloudflare-dynamic-worker':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare-dynamic-worker
       effect:
         specifier: 4.0.0-beta.19
         version: 4.0.0-beta.19

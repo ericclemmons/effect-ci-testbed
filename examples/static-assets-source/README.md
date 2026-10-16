@@ -1,4 +1,4 @@
-# Deploy a static site without a build or container
+# Publish static files, or compile TypeScript without a container
 
 > Can a DO retain checked, commit-pinned files and publish them through the real Workers Static Assets API?
 
@@ -11,6 +11,57 @@ Container, `npm install`, project-code execution or CLI inside a DO is involved.
 independent served-byte, version/allocation and browser checks are recorded in
 the [native proof](./verification/native-20261016.md). Local full publication is
 still planned; the Local tests below do not grant that matrix cell.
+
+The additional `build` mode compiles a fixed TypeScript fixture in a fresh
+Dynamic Worker before using the same publication journal. **Native build and
+browser acceptance passed.** See the [actual build proof](./verification/native-build-20261016.md).
+This is a bounded TypeScript transform, not a Vite build or arbitrary package installation.
+
+## Bounded build
+
+Use a pushed commit containing `build-site/app.ts`, `build-site/index.html` and
+`build-site/style.css`. The private reader authenticates those exact Git blobs;
+the Workflow checkpoints their raw manifest before compiling `app.ts` to
+`site/app.js`. HTML and CSS pass through unchanged.
+
+```sh
+cf workflows instances create effect-ci-static-assets-publish --body \
+  '{"instance_id":"my-static-build-checks","params":{"mode":"build-checks","revision":"FULL_40_CHARACTER_COMMIT"}}'
+cf workflows instances create effect-ci-static-assets-publish --body \
+  '{"instance_id":"my-static-build-run","params":{"mode":"build","revision":"FULL_40_CHARACTER_COMMIT"}}'
+```
+
+These are operator commands, not instructions to repeat completed evidence.
+First deploy the exact-green App's updated private reader and the broker's
+`LOADER` binding using the guarded procedure below. Existing deployments use
+`cf deploy --prebuilt` to preserve secrets; the secret-file command below is
+**initial provisioning only**. Keep the existing token unchanged.
+
+The compiler is pinned Sucrase 3.35.1, with no project configuration, plugins,
+environment bindings or outbound network. Input and emitted JavaScript are each
+limited to 32 KiB; the host rechecks source, output and compiler digests. The
+child receives a requested 1-second CPU limit and a 5-second host timeout.
+Exact CPU enforcement has not been measured; no hard one-second claim is made.
+
+`build-checks` publishes nothing. It checks type erasure, malformed/oversized
+input rejection, fresh child state, and denial of network, native process and
+known parent-only bundle access. Its revision is a claim, not authentication:
+independently bind the deployed Worker/Workflow version to the checked commit.
+
+Builds share the **same 32-revision journal, active-operation fence and pending
+mutation history** as no-build publications. SQLite retains bounded raw source
+and emitted manifests (at most 96 KiB each) with immutable provenance. A changed
+compiler identity conflicts even if emitted bytes match. There is no reset,
+eviction, parallel budget or escape from an uncertain upload acknowledgement.
+Only the trusted publisher receives the deployment credential; the compiler
+receives source text only. A completed receipt binds raw source, compiler and
+emitted bytes, but digests alone do not authenticate a Git commit.
+
+Open the [built fixture](https://effect-ci-static-assets-demo.ericclemmons.workers.dev/)
+and click **Verify compiled JavaScript**. The live URL now serves this build;
+the older no-build screenshot below remains historical evidence, not its current UI.
+
+![Actual browser running the emitted JavaScript](./verification/published/static-build-36d7a3b.png)
 
 ## Dedicated resources and authority
 
@@ -52,7 +103,7 @@ cd ..
 cf build
 ```
 
-Provision only `STATIC_ASSETS_DEPLOY_TOKEN` on the private broker through the
+For initial provisioning only, supply `STATIC_ASSETS_DEPLOY_TOKEN` on the private broker through the
 supported file-based deployment flag, never via a command argument containing
 the value. Confirm that the ignored file contains only that assignment, and do
 not pass it to the public target or App:
@@ -75,7 +126,9 @@ cf workflows instances create effect-ci-static-assets-publish --body \
 Use a pushed `ericclemmons/effect-ci-testbed` commit containing this directory's
 three `site/` files. The only public target is
 [the live Static Assets fixture](https://effect-ci-static-assets-demo.ericclemmons.workers.dev/).
-Open it and click **Verify interaction**.
+In `publish` mode its no-build fixture has **Verify interaction**. The current
+live `build` fixture instead has **Verify compiled JavaScript**; do not republish
+the old fixture just to reproduce its historical screenshot.
 
 ![Actual built-in browser after clicking Verify interaction](./verification/published/static-assets-5ba5791.png)
 
@@ -130,10 +183,13 @@ mode on the same revision, not permission to upload again.
 
 ```sh
 node --test ../../packages/cloudflare/src/static-assets-source.test.ts \
+  ../../packages/cloudflare/src/static-assets-build.test.ts \
   ../../packages/cloudflare/src/static-assets-github.test.ts \
   ../../packages/cloudflare/src/static-assets-publish.test.ts \
   ../../apps/effect-ci/src/static-assets-read.test.ts \
   ../../apps/effect-ci/src/static-assets-journal-runtime.test.ts
+node --test src/runtime.test.ts
+VERIFY_STATIC_BUILD_BUNDLE=1 node --test src/compiled-runtime.test.ts
 cf-ci plan --workflow .cloudflare/ci/workflow.ts
 ```
 
@@ -141,6 +197,13 @@ The real local workerd/SQLite test covers concurrency, pending intents across
 reload, immutable replay and capacity. API/source tests use fake responses and
 credentials: success, lost ACKs, foreign uploads, target drift, corrupt served
 bytes, token revocation and redaction. They are **not** native deployment proof.
+The build runtime tests use real local WorkerLoader children and SQLite, with
+mocked Git/API responses and locally prepared compiler modules. They do not
+prove hosted compiler preparation, account limits or a native Assets upload.
+The opt-in compiled-broker test builds and loads the actual production bundle,
+including worker-bundler/WASM and public pinned compiler dependencies, with no
+Git reader or deployment credential. It verifies local preparation and the
+eight isolation checks; it is not a native publication.
 
 ## Cost and cleanup
 
@@ -157,6 +220,8 @@ the committed Vite release or historical incidents.
 **Video:** Pending — no native feature clip yet.
 
 **Measured results:** [Actual native run, preserved failure/recovery and served-byte proof](./verification/native-20261016.md).
+The [native TypeScript build](./verification/native-build-20261016.md) additionally
+records compiler isolation, immutable provenance and browser behavior.
 
 Use the [proof-page contract](../PROOF-PAGES.md). Local fake-API timing is not a
 deployment benchmark, and the existing DO/Dynamic Worker site is not evidence

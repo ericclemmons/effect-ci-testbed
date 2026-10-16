@@ -15,7 +15,10 @@ export function staticAssetHostError(error: unknown): Error {
   const stages = ["Static deployment allocation mismatch", "Static version identity mismatch", "Static version binding mismatch",
     "Static target deployment drift; no traffic write", "Static served asset unavailable", "Static serving policy mismatch",
     "Static served bytes mismatch", "Static served identity unavailable", "Static served identity mismatch",
-    "Static publication requires reconciliation", "Static source read unavailable", "Static reconciliation identity mismatch"]
+    "Static publication requires reconciliation", "Static source read unavailable", "Static reconciliation identity mismatch",
+    "Static compiler preparation failed", "Static build failed; no output authorized for publication",
+    "Static build byte identity mismatch", "Static build provenance mismatch", "Immutable static source conflict",
+    "Static publication already active", "Static source revision limit exceeded"]
   return new Error(typeof message === "string" && (stages.includes(message) || /^Static Assets API unavailable(?: \(HTTP [1-5]\d\d\))?$/.test(message))
     ? message : "Static Assets host operation failed")
 }
