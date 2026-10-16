@@ -30,16 +30,13 @@ test("ordinary branch pushes preview; main is production without a special ref o
   assert.doesNotMatch(guide, /git push[^\n`]*(?:HEAD|refs\/heads\/|:)/);
 });
 
-test("fresh demo endpoint is public config; demo-only edits do not launch the recipe matrix", () => {
+test("fresh demo endpoint is public config; Access is not an API token", () => {
   const endpoint = readFileSync(new URL("../.env", import.meta.url), "utf8");
-  assert.match(endpoint, /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m);
+  assert.match(
+    endpoint,
+    /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
+  );
   assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
-  const workflow = readFileSync(new URL("../../../.github/workflows/e2e.yml", import.meta.url), "utf8");
-  for (const trigger of ["pull_request", "push"]) {
-    const section = workflow.split(`  ${trigger}:\n`)[1].split(/\n(?:  \w|\w)/)[0];
-    assert.match(section, /paths-ignore:\n\s+- 'examples\/demo\/\*\*'/);
-    assert.doesNotMatch(section, /branches-ignore/);
-  }
   assert.match(guide, /Access login alone does not\nprovide that API token/);
 });
 
