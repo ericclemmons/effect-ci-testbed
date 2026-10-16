@@ -112,3 +112,23 @@ test("a bounded provider timeout leaves healthy delivery available without a lat
   assert.equal(first[0]?.status, "failed"); assert.equal(last[0]?.status, "failed")
   assert.equal(attempts, 1); assert.equal(healthy, 2)
 })
+
+test("quarantine is checked when a preconstructed Effect runs, not when it is built", async () => {
+  let attempts = 0
+  const layer = notificationLayer([{ id: "broken", deliver: () => {
+    attempts++; return Effect.fail(Error("private-destination"))
+  } }])
+  const publish = (key: string) => Effect.gen(function*() {
+    return yield* (yield* Notifications).publish(key, card().snapshot())
+  }).pipe(Effect.provide(layer))
+  const first = publish("first"), later = publish("later")
+  // Also preconstruct the service-level publish Effects before executing either.
+  await Effect.runPromise(Effect.gen(function*() {
+    const service = yield* Notifications
+    const a = service.publish("constructed-a", card().snapshot())
+    const b = service.publish("constructed-b", card().snapshot())
+    yield* a; yield* b
+  }).pipe(Effect.provide(layer)))
+  await Effect.runPromise(first); await Effect.runPromise(later)
+  assert.equal(attempts, 1)
+})

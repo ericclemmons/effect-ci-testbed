@@ -47,7 +47,7 @@ export const notificationLayer = (
     return { provider, status: "failed" }
   }
   return Layer.succeed(Notifications)({
-    publish: (key, run) => Effect.all(registered.map((provider) => {
+    publish: (key, run) => Effect.all(registered.map((provider) => Effect.suspend(() => {
       if (blocked.has(provider.id)) return Effect.succeed<Delivery>({ provider: provider.id, status: "failed" })
       return Effect.tryPromise({
         try: async (signal) => {
@@ -64,7 +64,7 @@ export const notificationLayer = (
         // Transport/checkpoint exceptions may include credentials. Never expose them.
         catch: () => undefined,
       }).pipe(Effect.timeout(timeoutMs), Effect.catchCause(() => Effect.succeed(failed(provider.id))))
-    }), { concurrency: "unbounded" }),
+    })), { concurrency: "unbounded" }),
   })
 }
 
