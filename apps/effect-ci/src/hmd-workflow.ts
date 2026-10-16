@@ -11,6 +11,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts"
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts"
 import { nativeHmdSource } from "../../example-runner/src/hmd-native-source.ts"
 import { hmdFailureReason } from "../../example-runner/src/hmd-failure.ts"
+import type { OwnedCardResult } from "../../../packages/github-cloudflare/src/owned-slack-card.ts"
 
 export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string; readonly profile?: "healthy" | "regression"; readonly telemetry?: "experimental-native-wobs" }
 interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; ANALYTICS_SQL?: AnalyticsSQLBinding; HMD_REQUIRE_RATIONALE?: string; HMD_AUTO_PROGRESS_MINUTES?: string }
@@ -48,6 +49,14 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     let restored = false
     let activePhase: 10 | 25 | 75 | 100 | undefined
     let capability: HmdCapability | undefined
+    const deliveryReceipt = (receipt: OwnedCardResult, sequence: number) => {
+      if (receipt.ok) return { status: "delivered" as const, ts: receipt.ts, sequence }
+      if (receipt.failure === "delivery-unavailable" || receipt.failure === "delivery-pending")
+        return { status: "unavailable" as const, failure: receipt.failure, sequence }
+      // Invalid identity or failed receipt/intent persistence is authoritative,
+      // not presentation availability. Unknown RPC/checkpoint errors also escape.
+      throw new NonRetryableError(`HMD card validation failed (${receipt.failure})`)
+    }
     const publish = async (_card: RunCard, checkpoint: string) => {
       // Keep the full semantic history, but reverted releases need only the
       // executed stages and restoration in their operator-facing checklist.
@@ -62,25 +71,23 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       const currentSequence = sequence++
       await step.do(checkpoint, once, async () => {
         const receipt = await cards.publish(owner, currentSequence, { text: frame.text, blocks })
-        if (!receipt.ok) throw new NonRetryableError(`HMD card needs delivery reconciliation${receipt.error ? ` (${receipt.error})` : ""}`)
-        return { ts: receipt.ts, sequence: currentSequence }
+        return deliveryReceipt(receipt, currentSequence)
       })
       // One maintained reply per stage, not a new reply for every sampling tick.
-      // Thread delivery is separately checkpointed and cannot fail the release.
+      // Thread availability is isolated; owned identity/state failures are not.
       const stage = restored ? "restored" : activePhase ? String(activePhase) : "prepare"
       const health = card.snapshot().health
       const metrics = health?.metrics
       const metric = (sample: NonNullable<typeof metrics>["previous"]) =>
         `${sample.interval ? `${(sample.interval.rate * 100).toFixed(2)}%` : "unavailable"} (${sample.failures}/${sample.trials})${sample.sampling === "weighted" ? " · weighted" : sample.completeThrough < sample.to ? " · incomplete" : ""}`
       await step.do(`${checkpoint}:thread`, once, async () => {
-        try {
-          return await cards.publishThread(owner, stage, currentSequence, { text: detail.text.slice(0, 3000),
+          const receipt = await cards.publishThread(owner, stage, currentSequence, { text: detail.text.slice(0, 3000),
             blocks: [...detail.blocks.filter(block => block.type !== "actions" && block.type !== "image"),
               ...(metrics ? [{ type: "section", text: { type: "plain_text", text:
                 `Previous: ${metric(metrics.previous)}\nNew: ${metric(metrics.current)}\n${health!.decision} · error-rate limit ${(metrics.maxErrorRate * 100).toFixed(2)}% · historical evidence, not a forecast` } }] : []),
               { type: "context", elements: [{ type: "plain_text", text:
                 `${native ? "Native outcomes demo (experimental)" : "HTTP demo"} · Progress accepts risk · restores afterward` }] }] })
-        } catch { return { ok: false as const } }
+          return deliveryReceipt(receipt, currentSequence)
       })
     }
     const graph = hmdCardObserver(owner, step, card, {
@@ -147,7 +154,9 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         await publish(card, "notification:hmd-restored")
       }
     }
-    // Establish the one owned card before acquiring any deployment authority.
+    // Attempt the one owned card before deployment authority. An unavailable
+    // presentation keeps its pending intent and the configured review deadline;
+    // it does not approve, repost, or immediately roll back a healthy candidate.
     await publish(card, "notification:hmd-start")
     try {
       return await runHumanReviewedHmd(owner, step, this.env.RELEASE_MANAGER, undefined,

@@ -200,3 +200,35 @@ test("initial posts and non-validation failures are never retried, even with a p
     assert.equal(JSON.stringify(result).includes(env.SLACK_BOT_TOKEN), false)
   }
 })
+
+test("delivery availability, owned identity and authoritative state failures are distinct redacted outcomes", async () => {
+  const result = async (mode: string) => {
+    const f = fixture(mode === "receipt");
+    const store = mode === "reserve" ? { ...f.store, reserve: async () => { throw Error(env.SLACK_BOT_TOKEN) } } : f.store;
+    const transport: typeof fetch = async (url, init) => {
+      await f.transport(url, init);
+      if (mode === "throw") throw Error(env.SLACK_BOT_TOKEN);
+      if (mode === "http") return new Response(env.SLACK_BOT_TOKEN, { status: 503 });
+      if (mode === "rejection") return Response.json({ ok: false, error: env.SLACK_BOT_TOKEN });
+      return Response.json({ ok: true, channel: mode === "identity" ? "OTHER" : "CHANNEL", ts: "1791685465.683799" });
+    };
+    const value = await publishOwnedSlackCard("run", 0, frame, env, store, transport);
+    assert.equal(value.ok, false); assert.ok(!JSON.stringify(value).includes(env.SLACK_BOT_TOKEN));
+    return value as { ok: false; failure: string };
+  };
+  for (const mode of ["throw", "http", "rejection"]) assert.equal((await result(mode)).failure, "delivery-unavailable", mode);
+  for (const mode of ["reserve", "receipt"]) assert.equal((await result(mode)).failure, "state", mode);
+  assert.equal((await result("identity")).failure, "identity");
+});
+
+test("same-owner ambiguous delivery stays held while foreign, stale and conflicting claims remain fatal identities", async () => {
+  const f = fixture();
+  const lost: typeof fetch = async (url, init) => { await f.transport(url, init); throw Error("Lost ACK") };
+  const send = (owner: string, sequence: number, content = frame) => publishOwnedSlackCard(owner, sequence, content, env, f.store, lost);
+  assert.equal((await send("run", 0) as any).failure, "delivery-unavailable");
+  assert.equal((await send("run", 0) as any).failure, "delivery-pending");
+  assert.equal((await send("run", 1, { ...frame, text: "new phase" }) as any).failure, "delivery-pending");
+  assert.equal((await send("other", 1) as any).failure, "identity");
+  assert.equal((await send("run", 0, { ...frame, text: "conflicting same sequence" }) as any).failure, "identity");
+  assert.equal(f.calls.length, 1); assert.equal(f.receipt()?.stage, "pending");
+});

@@ -247,7 +247,9 @@ full checklist is attached by default. One maintained reply per stage holds its
 numbered checklist, previous/new metric text and host-safe quoted failure reason.
 Sampling updates that reply instead of adding messages to the thread. Root and
 thread receipts are separate; ambiguous replies are not blindly reposted and a
-thread delivery failure cannot fail the release. Identical frames reuse receipts.
+thread presentation outages retain the configured review wait/deadline rather
+than failing the release immediately. Identity or state-persistence failures
+remain fatal. Identical frames reuse receipts.
 Detailed windows, bounds and policy remain in native history and the semantic
 observation. Images are opt-in detail; the trusted renderer supports compact,
 shared-scale sparklines without slide-like titles or subtitles. Missing evidence
@@ -589,6 +591,18 @@ There is deliberately no automatic reconciliation or claim of exactly-once Slack
 delivery. The existing CI notifier is unchanged; the dedicated HMD Workflow now
 uses this owner. Ambiguous delivery still requires operator recovery. Local workerd tests
 exercise the actual SQLite ledger with a simulated Slack transport, not live Slack.
+
+The dedicated lab now classifies unavailable/pending observational delivery
+separately from invalid input, owned-message identity and authoritative SQLite
+state failures. Only the two availability categories become bounded redacted
+checkpoint receipts; unknown RPC/checkpoint errors and required state failures
+still propagate. A held acknowledgement never posts again or creates orphan
+thread replies. If review controls cannot be delivered, the existing deadline
+still expires the exact capability and restores; silence is never approval.
+Local actual Workflow/SQLite/RPC tests include a real one-minute unavailable-card
+deadline and a wrong-channel acknowledgement that fails before the review wait.
+These are mocked Slack/deployment tests, not a live Slack outage or a newly
+deployed host claim.
 
 The host-only `PrivateSlackImages` SQLite Durable Object atomically reserves a
 run/snapshot/destination identity before allocation, records each upload stage,
