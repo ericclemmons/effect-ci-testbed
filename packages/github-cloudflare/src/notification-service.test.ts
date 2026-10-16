@@ -28,7 +28,7 @@ test("one Effect service fans out independent presentations and reuses provider 
   assert.ok(!JSON.stringify(first).includes("secret"))
 })
 
-test("checkpoint replay restores receipts without posting and failure preserves prior receipt", async () => {
+test("checkpoint replay restores receipts and an uncertain failure blocks later writes, including after replay", async () => {
   let calls = 0
   const history = new Map<string, Delivery>()
   const makeLayer = () => notificationLayer([{ id: "slack", deliver: (_run, previous) => Effect.sync(() => {
@@ -52,8 +52,11 @@ test("checkpoint replay restores receipts without posting and failure preserves 
   await publish(replay, "started")
   assert.equal(calls, 1)
   assert.equal((await publish(replay, "running"))[0]?.status, "failed")
-  assert.equal((await publish(replay, "complete"))[0]?.status, "delivered")
-  assert.equal(calls, 3)
+  assert.equal((await publish(replay, "complete"))[0]?.status, "failed")
+  const restored = makeLayer()
+  assert.equal((await publish(restored, "running"))[0]?.status, "failed")
+  assert.equal((await publish(restored, "complete"))[0]?.status, "failed")
+  assert.equal(calls, 2, "Failed delivery needs reconciliation, not another external POST")
 })
 
 test("semantic snapshot excludes output and approval capabilities and cannot mutate the card", () => {
@@ -74,4 +77,38 @@ test("duplicate or unsafe checkpoint provider IDs fail configuration", () => {
   const provider = { id: "slack", deliver: () => Effect.succeed({}) }
   assert.throws(() => notificationLayer([provider, provider]), /unique/)
   assert.throws(() => notificationLayer([{ ...provider, id: "../secret" }]), /unique/)
+  for (const timeoutMs of [0, -1, 20_001, NaN, Infinity])
+    assert.throws(() => notificationLayer([provider], undefined, { timeoutMs }), /deadline/)
+})
+
+test("an uncertain checkpoint exception blocks only that provider for the run", async () => {
+  let attempts = 0, healthy = 0
+  const layer = notificationLayer([
+    { id: "uncertain", deliver: () => Effect.succeed({ message: "must-not-repost" }) },
+    { id: "healthy", deliver: () => Effect.sync(() => ({ message: String(++healthy) })) },
+  ], async (provider, _key, deliver) => {
+    if (provider === "uncertain") { attempts++; throw Error("private-transport-capability") }
+    return deliver()
+  })
+  const publish = (key: string) => Effect.runPromise(Effect.gen(function*() {
+    return yield* (yield* Notifications).publish(key, card().snapshot())
+  }).pipe(Effect.provide(layer)))
+  const first = await publish("start"), last = await publish("complete")
+  assert.equal(attempts, 1); assert.equal(healthy, 2)
+  assert.equal(first[0]?.status, "failed"); assert.equal(last[0]?.status, "failed")
+  assert.ok(!JSON.stringify([first, last]).includes("private-transport"))
+})
+
+test("a bounded provider timeout leaves healthy delivery available without a later retry", { timeout: 2000 }, async () => {
+  let attempts = 0, healthy = 0
+  const layer = notificationLayer([
+    { id: "stalled", deliver: () => { attempts++; return Effect.never } },
+    { id: "healthy", deliver: () => Effect.sync(() => ({ message: String(++healthy) })) },
+  ], undefined, { timeoutMs: 20 })
+  const publish = (key: string) => Effect.runPromise(Effect.gen(function*() {
+    return yield* (yield* Notifications).publish(key, card().snapshot())
+  }).pipe(Effect.provide(layer)))
+  const first = await publish("start"), last = await publish("complete")
+  assert.equal(first[0]?.status, "failed"); assert.equal(last[0]?.status, "failed")
+  assert.equal(attempts, 1); assert.equal(healthy, 2)
 })

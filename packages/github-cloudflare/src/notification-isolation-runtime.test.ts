@@ -22,19 +22,22 @@ test(
       import * as CI from '@effect-ci-testbed/ci';
       import * as Effect from 'effect/Effect';
       import {workflowEntrypoint} from './index.ts';
-      const observations=[];let posts=0,attempts=0;const policies=[];
+      const observations=[];let posts=0,attempts=0,providerAttempts=0;const policies=[],providerPolicies=[];
       globalThis.fetch=async()=>{posts++;throw Error('Unexpected notification retry');};
       export class WorkspaceContainer extends DurableObject{}
       const make=(fails,mode='throw')=>{
         const action=CI.action('business',()=>function*(){observations.push('business');if(fails)throw Error('Original business failure');return 'done';});
         const Base=workflowEntrypoint(CI.workflow('isolation',()=>action()),{
           cache:false,
-          notificationProviders:()=>[{id:'healthy',deliver:(run)=>Effect.sync(()=>{observations.push(run.phase);return {message:'one'};})}],
+          notificationProviders:()=>[
+            ...(mode==='provider-timeout'?[{id:'stalled',deliver:()=>{providerAttempts++;return Effect.never;}}]:[]),
+            {id:'healthy',deliver:(run)=>Effect.sync(()=>{observations.push(run.phase);return {message:'one'};})}],
         });
         return class extends Base {
           async run(event,step){
             const wrapped=new Proxy(step,{get(target,key){
               if(key==='do')return (...args)=>{
+                if(args[0].startsWith('notification-provider:'))providerPolicies.push(args[1]);
                 if(args[0].startsWith('notification:')){
                   policies.push(args[1]);
                   return target.do(args[0],args[1],()=>{
@@ -52,11 +55,11 @@ test(
           }
         };
       };
-      export const Success=make(false),Failure=make(true),Rejected=make(false,'reject'),TimedOut=make(false,'timeout');
+      export const Success=make(false),Failure=make(true),Rejected=make(false,'reject'),TimedOut=make(false,'timeout'),ProviderTimedOut=make(false,'provider-timeout');
       export default {async fetch(request,env,ctx){const p=await request.json();
-        if(p.op==='start'){observations.length=0;policies.length=0;posts=0;attempts=0;await ctx.exports[p.name].create({id:p.name.toLowerCase(),params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40)}});return Response.json({started:true});}
+        if(p.op==='start'){observations.length=0;policies.length=0;providerPolicies.length=0;posts=attempts=providerAttempts=0;await ctx.exports[p.name].create({id:p.name.toLowerCase(),params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40)}});return Response.json({started:true});}
         if(p.op==='status')return Response.json(await(await ctx.exports[p.name].get(p.name.toLowerCase())).status());
-        return Response.json({observations,posts,attempts,policies});
+        return Response.json({observations,posts,attempts,policies,providerPolicies,providerAttempts});
       }};`,
       },
       bundle: true,
@@ -83,6 +86,7 @@ test(
               Failure: { type: "workflow", name: "failure" },
               Rejected: { type: "workflow", name: "rejected" },
               TimedOut: { type: "workflow", name: "timed-out" },
+              ProviderTimedOut: { type: "workflow", name: "provider-timed-out" },
             },
             env: {
               SLACK_BOT_TOKEN: { type: "text", value: "fake-local-token" },
@@ -100,7 +104,7 @@ test(
         })
       ).json();
     try {
-      for (const name of ["Success", "Failure", "Rejected", "TimedOut"]) {
+      for (const name of ["Success", "Failure", "Rejected", "TimedOut", "ProviderTimedOut"]) {
         await call({ op: "start", name });
         let status: any;
         for (let n = 0; n < 1500; n++) {
@@ -116,6 +120,10 @@ test(
         const state = await call({});
         assert.equal(state.attempts, 1, "uncertain delivery blocks later channel attempts");
         assert.equal(state.posts, 0);
+        assert.ok(state.providerPolicies.length > 0);
+        assert.ok(state.providerPolicies.every((policy: any) => policy?.retries?.limit === 0 && policy.timeout === "20 seconds"));
+        assert.equal(state.providerAttempts, name === "ProviderTimedOut" ? 1 : 0,
+          "An uncertain provider timeout cannot retry delivery on a later event");
         assert.deepEqual(state.policies, [
           { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" },
         ]);
