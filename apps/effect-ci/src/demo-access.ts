@@ -18,8 +18,14 @@ export const demoRemoteAccessRoute = (request: Request): boolean => {
  */
 export async function demoAccessRequest(request: Request, apiToken: string | undefined,
   verify: (request: Request) => Promise<boolean> = verifyIdentity): Promise<Request> {
-  if (!apiToken || request.headers.has("authorization") || !demoRemoteAccessRoute(request) ||
-    !request.headers.has("cf-access-jwt-assertion") || !await verify(request)) return request;
+  if (!apiToken || request.headers.has("authorization") || !demoRemoteAccessRoute(request)) return request;
+  // Access can authenticate browser cookies too. Do not let a cross-origin form
+  // or fetch turn that ambient identity into a CLI workflow dispatch.
+  const origin = request.headers.get("origin"), site = request.headers.get("sec-fetch-site");
+  if ((origin !== null && origin !== demoAccessOrigin) ||
+    (site !== null && !["none", "same-origin"].includes(site)) ||
+    (request.method === "POST" && request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json")) return request;
+  if (!request.headers.has("cf-access-jwt-assertion") || !await verify(request)) return request;
   const headers = new Headers(request.headers);
   headers.set("authorization", `Bearer ${apiToken}`);
   return new Request(request, { headers });

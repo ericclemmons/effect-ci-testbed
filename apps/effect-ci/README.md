@@ -1059,7 +1059,9 @@ then `cf-ci doctor --remote`, without a machine API profile. The host verifies
 the JWT signature, trusted issuer, application audience, expiry and pinned opaque
 subject digest. Only the enrolled origin's GET capabilities/status/events and
 POST run routes accept it; no approval, webhook, other identity or preview-alias
-access is added. The CLI requires authenticated capability enrollment before
+access is added. The alternative rejects cross-origin browser requests, foreign
+Fetch Metadata and non-JSON POSTs before verification; API-token clients retain
+their existing behavior. The CLI requires authenticated capability enrollment before
 Access-only dispatch, including a default run. An old host fails before POST.
 JWTs remain in cloudflared's cache/process memory, never project env files.
 

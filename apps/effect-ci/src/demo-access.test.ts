@@ -7,7 +7,8 @@ import { worker, type WorkerEnvironment } from "@effect-ci-testbed/github-cloudf
 import { demoRunAllowed, demoRemoteTargets } from "./demo-policy.ts";
 
 const request = (path: string, method = "GET", headers: Record<string, string> = {}) =>
-  new Request(demoAccessOrigin + path, { method, headers: { "cf-access-jwt-assertion": "signed-owner-fixture", ...headers },
+  new Request(demoAccessOrigin + path, { method, headers: { "cf-access-jwt-assertion": "signed-owner-fixture",
+    ...(method === "POST" ? { "content-type": "application/json" } : {}), ...headers },
     ...(method === "POST" ? { body: '{"repository":"fixed","revision":"actual"}' } : {}) });
 
 test("only the approved demo capability/run/status/event methods may use the pinned Access identity", async () => {
@@ -31,6 +32,26 @@ test("only the approved demo capability/run/status/event methods may use the pin
   }
 });
 
+test("Access-only browser requests cannot turn a cross-origin cookie into a workflow dispatch", async () => {
+  for (const headers of [{ origin: "https://attacker.invalid" }, { origin: "null" },
+    { origin: demoAccessOrigin + "/" },
+    { "sec-fetch-site": "cross-site" }, { "sec-fetch-site": "same-site" },
+    { "sec-fetch-site": "unknown" },
+    { "content-type": "text/plain" }, { "content-type": "application/x-www-form-urlencoded" }]) {
+    const original = request("/demo/runs", "POST", headers);
+    assert.equal(await demoAccessRequest(original, "internal-host-key", async () => { throw Error("Browser context must be rejected before key lookup"); }), original,
+      "untrusted browser context must not receive the internal bearer");
+  }
+  const missingType = request("/demo/runs", "POST");
+  missingType.headers.delete("content-type");
+  assert.equal(await demoAccessRequest(missingType, "internal-host-key", async () => true), missingType);
+  for (const headers of [{ origin: demoAccessOrigin }, { "sec-fetch-site": "none" }, { "sec-fetch-site": "same-origin" },
+    { "content-type": "Application/JSON; charset=utf-8" }, {}]) {
+    const original = request("/demo/runs", "POST", headers);
+    assert.notEqual(await demoAccessRequest(original, "internal-host-key", async () => true), original);
+  }
+});
+
 test("real signature verification composes with the existing demo enrollment gate without forwarding auth to workflow parameters", async () => {
   const issuer = "https://composed-fixture.cloudflareaccess.com", audience = "a".repeat(64), subject = "owned-fixture-user";
   const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048,
@@ -49,7 +70,7 @@ test("real signature verification composes with the existing demo enrollment gat
     remoteAuthentication: ["api-token", "cloudflare-access-identity"], remoteRunAllowed: demoRunAllowed,
     workflow: () => ({ create: async (value: unknown) => { created.push(value); return { id: "fixture-instance" }; } }) as unknown as Workflow });
   const call = async (path: string, method = "GET", body?: unknown) => {
-    const original = new Request(demoAccessOrigin + path, { method, headers: { "cf-access-jwt-assertion": token },
+    const original = new Request(demoAccessOrigin + path, { method, headers: { "cf-access-jwt-assertion": token, "content-type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}) });
     return app.fetch(await demoAccessRequest(original, environment.EFFECT_CI_API_TOKEN, verify), environment);
   };
@@ -69,7 +90,7 @@ test("missing, rejected or conflicting credentials never gain an internal bearer
   const noAssertion = new Request(demoAccessOrigin + "/demo/capabilities");
   assert.equal(await demoAccessRequest(noAssertion, "internal-host-key", async () => { throw Error("missing JWT"); }), noAssertion);
   for (const authorization of ["Bearer existing-client-key", "Bearer invalid", ""]) {
-    const original = request("/demo/capabilities", "GET", { authorization });
+    const original = request("/demo/capabilities", "GET", { authorization, origin: "https://existing-api-client.invalid" });
     assert.equal(await demoAccessRequest(original, "internal-host-key", async () => { throw Error("API client must not fall back"); }), original);
     assert.equal(original.headers.get("authorization"), authorization);
   }
