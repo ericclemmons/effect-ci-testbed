@@ -1,0 +1,142 @@
+import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+import test from "node:test";
+
+// Exercise the actual provider class. Only the platform container/storage are
+// simulated: Node cannot construct a Cloudflare Container or force its failure.
+const require = createRequire(import.meta.url);
+const plugin = realpathSync(new URL("../node_modules/@cloudflare/vite-plugin", import.meta.url));
+const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
+const compiled = await build({
+  stdin: {
+    resolveDir: new URL(".", import.meta.url).pathname,
+    contents: 'export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare";',
+    loader: "ts",
+  },
+  bundle: true, write: false, format: "esm", platform: "node", target: "esnext",
+  plugins: [{ name: "platform-fixture", setup(b: any) {
+    b.onResolve({ filter: /^cloudflare:workers$/ }, () => ({ path: "workers", namespace: "fixture" }));
+    b.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: `
+      export class DurableObject { constructor(ctx,env){this.ctx=ctx;this.env=env;} }
+      export class WorkerEntrypoint extends DurableObject {}
+      export class WorkflowEntrypoint extends DurableObject {}
+    ` }));
+  } }],
+});
+const { WorkspaceContainer } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
+
+function fixture() {
+  const stored = new Map<string, any>([["activeCheckpoint", revision]]);
+  const snapshots = new Map<string, string[]>([["checkout", ["package.json"]]]);
+  let files = ["package.json"], captures = 0, starts = 0, commands = 0;
+  let failSnapshot: "none" | "running" | "stopped" = "none", failRelease = false, failStorageAck = false;
+  const container = {
+    running: true, images: {},
+    start(options: any) { starts++; const saved = snapshots.get(options.containerSnapshot.id); if (!saved) throw Error("Ancestor snapshot unavailable"); files = [...saved]; this.running = true; },
+    async destroy() { this.running = false; if (failRelease) { failRelease = false; throw Error("Lost release acknowledgement"); } },
+    async snapshotContainer({ name }: any) {
+      captures++;
+      if (failSnapshot !== "none") {
+        if (failSnapshot === "stopped") this.running = false;
+        failSnapshot = "none";
+        throw Error("The container snapshot could not be completed due to an internal error");
+      }
+      const snapshot = { id: "snapshot-" + captures, name, size: files.length };
+      snapshots.set(snapshot.id, [...files]); return snapshot;
+    },
+    async exec(command: string[]) {
+      let exitCode = 0;
+      if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
+      else if (command[0] === "test") exitCode = command.at(-1) === "." || files.includes(command.at(-1)!) ? 0 : 1;
+      return { output: async () => ({ exitCode, stdout: new Uint8Array(), stderr: new Uint8Array() }) };
+    },
+  };
+  const ctx = { container, storage: {
+    get: async (key: string) => stored.get(key),
+    put: async (key: string | Record<string, any>, value: any) => {
+      if (typeof key === "string") stored.set(key, structuredClone(value));
+      else {
+        for (const [k, v] of Object.entries(key)) stored.set(k, structuredClone(v));
+        if (failStorageAck && key["committed:install-workspace"]) { failStorageAck = false; throw Error("Lost storage acknowledgement"); }
+      }
+    },
+  } };
+  let workspace = new WorkspaceContainer(ctx, {});
+  const commit = (release = false) => workspace.checkpoint("install-workspace", release,
+    { cwd: "/workspace/repository", stepId: "install", revision });
+  return {
+    install: () => workspace.execute("npm ci", "/workspace/repository", "install", revision),
+    commit, restart: () => { workspace = new WorkspaceContainer(ctx, {}); },
+    fail: (mode: typeof failSnapshot) => { failSnapshot = mode; },
+    releaseFailure: () => { failRelease = true; },
+    storageFailure: () => { failStorageAck = true; },
+    stop: () => { container.running = false; },
+    counts: () => ({ captures, starts, commands }),
+    contents: (snapshot: any) => snapshots.get(snapshot.id),
+    foreignStep: () => workspace.exists(".", "/workspace/repository", "other", revision),
+    foreignRevision: () => workspace.exists(".", "/workspace/repository", "install", { ...revision, id: "foreign" }),
+    importSource: () => workspace.materializeSource([{ path: "health.js", base64: "MjAw" }]),
+    dropAncestor: () => snapshots.delete("checkout"),
+    foreignCommit: () => workspace.checkpoint("install-workspace", false,
+      { cwd: "/workspace/repository", stepId: "install", revision: { ...revision, id: "foreign" } }),
+  };
+}
+
+test("a snapshot retry keeps the same still-running install, including after provider-object restart", async () => {
+  for (const restart of [false, true]) {
+    const f = fixture(); await f.install(); f.fail("running");
+    await assert.rejects(f.commit(), /snapshot could not/);
+    if (restart) f.restart();
+    const saved = await f.commit();
+    assert.ok(f.contents(saved)?.includes("node_modules/.bin/vpr"), "retry must capture installed files, not the checkout ancestor");
+    assert.equal(f.counts().commands, 1, "snapshot recovery never reruns installation");
+  }
+});
+
+test("a failed snapshot followed by container loss cannot acknowledge an ancestor as a successful install", async () => {
+  for (const restart of [false, true]) {
+    const f = fixture(); await f.install(); const starts = f.counts().starts; f.fail("stopped");
+    await assert.rejects(f.commit(), /snapshot could not/);
+    if (restart) f.restart();
+    await assert.rejects(f.commit(), /uncheckpointed|uncommitted/i);
+    assert.equal(f.counts().captures, 1);
+    assert.equal(f.counts().starts, starts, "lost mutations cannot be replaced with an ancestor");
+    assert.equal(f.counts().commands, 1);
+  }
+});
+
+test("a committed install survives a lost release acknowledgement without recapturing the ancestor", async () => {
+  const f = fixture(); await f.install(); f.releaseFailure();
+  await assert.rejects(f.commit(true), /release acknowledgement/);
+  f.restart(); f.dropAncestor(); const saved = await f.commit(true);
+  assert.ok(f.contents(saved)?.includes("node_modules/.bin/vpr"));
+  assert.equal(f.counts().captures, 1, "return the existing immutable commit after acknowledgement loss");
+  assert.equal(f.counts().commands, 1);
+});
+
+test("uncommitted action state cannot be replaced by another step after object restart", async () => {
+  const f = fixture(); await f.install(); const starts = f.counts().starts; f.restart();
+  await assert.rejects(f.foreignStep(), /uncheckpointed|uncommitted/i);
+  assert.equal(f.counts().starts, starts);
+  await assert.rejects(f.foreignRevision(), /uncheckpointed|uncommitted/i);
+  assert.equal(f.counts().starts, starts);
+});
+
+test("a saved snapshot survives a lost storage acknowledgement, not just a lost release acknowledgement", async () => {
+  const f = fixture(); await f.install(); f.storageFailure();
+  await assert.rejects(f.commit(), /storage acknowledgement/);
+  f.restart(); f.dropAncestor(); const saved = await f.commit();
+  assert.ok(f.contents(saved)?.includes("node_modules/.bin/vpr"));
+  assert.equal(f.counts().captures, 1);
+  assert.equal(f.counts().commands, 1);
+  await assert.rejects(f.foreignCommit(), /another action or input revision/);
+});
+
+test("source materialization also records uncheckpointed changes before a container can disappear", async () => {
+  const f = fixture(); await f.importSource(); const starts = f.counts().starts;
+  f.stop(); f.restart();
+  await assert.rejects(f.foreignStep(), /uncheckpointed/i);
+  assert.equal(f.counts().starts, starts);
+});

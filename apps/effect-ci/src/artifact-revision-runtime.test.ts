@@ -24,7 +24,7 @@ test("restored artifact reads retain the artifact revision, not its ancestor wor
         async restore(snapshot){this.restored=snapshot.id;}
         async readFile(_path,_cwd,_step,revision){return JSON.stringify({restored:this.restored,requested:revision.id});}
         async exists(_path,_cwd,_step,revision){this.materialized=revision?.id;return true;}
-        async checkpoint(name){return {id:'published-'+this.materialized,name,size:2};}
+        async checkpoint(name,_release,commit){if(name.endsWith('-workspace')&&!commit)throw Error('Final action commits must be immutable');if(commit){if(commit.stepId!=='pass-through')throw Error('Wrong commit owner');this.materialized=commit.revision?.id;}return {id:'published-'+this.materialized,name,size:2};}
       }
       export default {async fetch(request,env,ctx){
         let lookups=0;

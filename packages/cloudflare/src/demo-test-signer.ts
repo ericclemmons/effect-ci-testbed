@@ -20,16 +20,18 @@ import {
 /** Exact-commit Vitest signer. Docker receives only public committed inputs;
  * the existing operator key is read locally only after successful execution. */
 export async function attestDemoTests() {
+  const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
   const git = (...args: string[]) =>
-    execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   const clean = () => !git("status", "--porcelain", "--untracked-files=normal");
   const repository = git("config", "--get", "remote.origin.url")
     .replace(/^git@github.com:/, "https://github.com/")
     .replace(/\.git$/, "");
   if (repository !== testRepository || !clean())
     throw Error("Test attestation requires the clean committed enrolled repository");
-  const revision = git("rev-parse", "HEAD"),
-    root = git("rev-parse", "--show-toplevel");
+  const revision = git("rev-parse", "HEAD");
   let existing = false;
   try {
     git("notes", `--ref=${testNotesRef}`, "show", revision);
@@ -51,7 +53,7 @@ export async function attestDemoTests() {
       throw Error("Nonregular committed test input");
     const target = join(snapshot, testRoot, path);
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, execFileSync("git", ["show", object]), { flag: "wx", mode: 0o644 });
+    writeFileSync(target, execFileSync("git", ["show", object], { cwd: root }), { flag: "wx", mode: 0o644 });
   }
   const docker = (command: string, network: "none" | "bridge") =>
     execFileSync(
@@ -146,6 +148,7 @@ export async function attestDemoTests() {
     { flag: "wx", mode: 0o600 },
   );
   execFileSync("git", ["notes", `--ref=${testNotesRef}`, "add", "-F", "-", revision], {
+    cwd: root,
     input: note,
     stdio: ["pipe", "pipe", "pipe"],
   });
