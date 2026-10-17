@@ -20,7 +20,7 @@ Use Node 24.11+ or Node 26+. Stay in `examples/demo` and prepare this shell:
 
 ```sh
 export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
-cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
+cloudflared access login --quiet https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 cf-ci doctor --remote
 ```
 
@@ -30,13 +30,13 @@ If you are on `main`, create a rehearsal branch; otherwise keep your branch:
 git switch -c demo/rehearsal
 ```
 
-**Finish remote setup before presenting.** `doctor` checks authentication and host
-capabilities without starting work. The URL is already in `.env`. The enrolled
+Run `doctor` before presenting: it checks authentication and host capabilities
+without starting work. The URL is in `.env`. The enrolled
 demo uses your existing Access login; no separate API profile is needed for your
 approved identity. Other API-token clients are unchanged. Keep credentials out of
 project env files; never use a deployment token.
 
-GitHub pushes use your GitHub login. Run `pnpm dev` to edit.
+Run `pnpm dev` to edit.
 
 ## 1. Discover the project
 
@@ -168,12 +168,13 @@ For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
 branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The parent card shows status and the preview link. Its thread holds step output.
+The parent card shows status and the preview link. Its thread holds step output;
+long failures attach a redacted text snippet with a short inline excerpt.
 Failed command replies include bounded, redacted stdout/stderr and the exit code.
-Click **Details on that Slack parent card** for the same Cloudflare Workflow run.
+Click **Dashboard** on that card for the same Cloudflare Workflow run.
+The first thread reply is a live Status/Step table; each linked step opens its reply.
 
 The host currently selects its fixed demo program, not uploaded `workflow.ts`.
-Local authored goals and the hosted program are separate until remote parity lands.
 
 ### Select hosted goals
 
@@ -182,8 +183,7 @@ cf-ci run test build --remote
 ```
 
 Live verified: selected hosted goals share installation and never
-publish or release. The CLI checks host capabilities before dispatch; an older
-host rejects the command without starting the default workflow. Without targets,
+publish or release. The CLI checks host capabilities before dispatch. Without targets,
 `cf-ci run --remote` runs the hosted suite and publishes a preview.
 
 ## 8. Verify previously checked work
@@ -229,7 +229,7 @@ It is not an external deployment. Hosted publication uses the private publisher 
 
 > The browser receives the same checked build, not a second build.
 
-Open **Open preview** on your Slack card. Edit the release message, commit and
+Open **Preview** on your Slack card. Edit the release message, commit and
 `git push` again to publish a new commit-pinned preview. Production stays unchanged.
 
 These are static previews of this Vite app, not resource-isolated Workers Previews.

@@ -72,6 +72,16 @@ export class RunCard {
   private readonly failures = new Map<string, string>()
   private resultLink: { label: string; url: string } | undefined
   private readonly commandFailures = new Map<string, ReturnType<typeof failedCommandOutput>>()
+  private readonly attachedLogs = new Set<string>()
+
+  commandLog(stepId: string): string | undefined {
+    const output = this.commandFailures.get(stepId)
+    return output && output.text.length > 1200 ? output.snippetText : undefined
+  }
+
+  attachCommandLog(stepId: string, fileId: string): void {
+    if (/^F[A-Z0-9]+$/.test(fileId) && this.commandFailures.has(stepId)) this.attachedLogs.add(stepId)
+  }
   private lastCompletedStep: string | undefined
   private readonly progressSteps: ReadonlyArray<string> | undefined
   private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } }
@@ -102,7 +112,10 @@ export class RunCard {
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
         if (["complete", "reused", "verified", "warning"].includes(event.status)) this.lastCompletedStep = event.stepId
         if (event.status !== "failed") this.failures.delete(event.stepId)
-        if (["queued", "running"].includes(event.status)) this.commandFailures.delete(event.stepId)
+        if (["queued", "running"].includes(event.status)) {
+          this.commandFailures.delete(event.stepId)
+          this.attachedLogs.delete(event.stepId)
+        }
 
         return true
       case "step.command.failed": {
@@ -291,7 +304,8 @@ export class RunCard {
       section += `${safe}\n`
     }
     blocks.push({ type: "section", text: { type: "mrkdwn", text: section || "Preparing checks…", verbatim: true } })
-    const commandFailure = options.onlyStep ? this.commandFailures.get(options.onlyStep) : undefined
+    const output = options.onlyStep ? this.commandFailures.get(options.onlyStep) : undefined
+    const commandFailure = output && options.onlyStep && this.attachedLogs.has(options.onlyStep) ? output.compact : output
     if (commandFailure) blocks.push(...commandFailure.blocks)
     if (lines.length > 100) blocks.push({ type: "context", elements: [{ type: "plain_text", text: `${lines.length - 100} more checks; see Workflow history.` }] })
     if (this.health) {

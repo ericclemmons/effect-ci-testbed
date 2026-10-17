@@ -48,7 +48,10 @@ test("fresh demo endpoint is public config; only the enrolled identity avoids an
 
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {
   assert.match(guide, /https:\/\/app\.slack\.com\/client\/TBXG40NPN\/C0C81FU4B5J/);
-  assert.match(guide, /Details on that Slack parent card/);
+  assert.match(guide, /Click \*\*Dashboard\*\* on that card/);
+  assert.match(guide, /live Status\/Step table/);
+  assert.match(guide, /Open \*\*Preview\*\* on your Slack card/);
+  assert.doesNotMatch(guide, /Details on that Slack parent card|\*\*Open preview\*\*/);
   assert.match(guide, /\*\*on GitHub Actions\*\*, not Cloudflare/);
 });
 
