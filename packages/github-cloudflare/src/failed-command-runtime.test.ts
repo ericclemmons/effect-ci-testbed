@@ -53,10 +53,11 @@ test("native failure checkpoints deliver both streams to the same Slack step rep
     const { sent, runs } = await call("inspect")
     assert.equal(runs, 1, "output presentation must not rerun the failed action")
     const posts = sent.filter((body: any) => !body.ts)
-    assert.equal(posts.length, 2, "one root and one maintained step reply")
-    const root = "1.000001", reply = "2.000001"
-    assert.equal(posts[1].thread_ts, root)
-    assert.equal(posts[1].reply_broadcast, false)
+    assert.equal(posts.length, 3, "one root, one details table and one maintained step reply")
+    const root = "1.000001", reply = "3.000001"
+    assert.equal(posts[1].blocks[0].type, "table")
+    assert.equal(posts[2].thread_ts, root)
+    assert.equal(posts[2].reply_broadcast, false)
     const latestReply = sent.filter((body: any) => body.ts === reply).at(-1)
     assert.match(JSON.stringify(latestReply), /Expected hello/)
     assert.match(JSON.stringify(latestReply), /Received goodbye/)

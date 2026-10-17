@@ -126,6 +126,8 @@ Change `src/message.ts` and repeat. Inspect Vite+'s actual hit/miss output.
 
 This reference runs **on GitHub Actions**, not Cloudflare. It uses this repo's
 configured App secrets; it is not a standalone-repo installer.
+Replace the whole job: a reusable-workflow job has no `runs-on` or `steps`.
+[Complete adopted YAML](./verification/effect-on-github.example.yml).
 
 ## 6. Make dependencies explicit inside actions
 

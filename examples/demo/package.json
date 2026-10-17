@@ -11,6 +11,7 @@
     "typecheck": "vpr typecheck:source",
     "pretest": "vpr typecheck",
     "test": "vpr test:source",
+    "test:verification": "node --test verification/*.test.mjs verification/*.test.ts",
     "prebuild": "vpr typecheck && vpr lint",
     "build": "vpr build:source",
     "verify:browser": "node verification/run.mjs",

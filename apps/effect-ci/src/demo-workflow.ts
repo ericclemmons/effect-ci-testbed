@@ -52,6 +52,8 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     cache: false,
     slackLayout: "status-thread",
     slackCommandOutput: "failed",
+    slackProgressSteps: (parameters) => ["checkout", "syntax", "install", "lint", "check", "typecheck", "test", "build", "verify build", "publish site",
+      ...(parameters.trigger === "github" && demoProductionAllowed(parameters) ? ["prepare release", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])],
     container: { image: "workspace", instance: "standard-1" },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,
