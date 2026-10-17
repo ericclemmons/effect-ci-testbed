@@ -26,3 +26,13 @@ test("preformatted output retains redaction, bounds, truncation and empty-stream
   assert.match(empty.text, /No stdout or stderr was captured/)
   assert.equal(empty.blocks.length, 2)
 })
+
+test("snippet excerpts cap lines as well as characters, without dropping retained output", () => {
+  const stderr = Array.from({ length: 150 }, (_, index) => `assertion context ${index}`).join("\n")
+  const frame = failedCommandOutput({ version: 1, stepId: "test", command: "pnpm test", cwd: "/fixture", exitCode: 1,
+    output: { stdout: "", stderr, truncated: false } }, [])!
+  assert.ok(frame.compact.text.split("\n").length <= 9)
+  assert.match(frame.compact.text, /assertion context 0/)
+  assert.doesNotMatch(frame.compact.text, /assertion context 149/)
+  assert.match(frame.snippetText, /assertion context 149/)
+})

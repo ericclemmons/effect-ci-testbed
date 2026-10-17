@@ -31,7 +31,10 @@ export function failedCommandOutput(diagnostics: CommandDiagnostics, redactValue
   ] }))
   const captured = [header, ...(diagnostics.output.truncated ? ["Captured tails; process output was truncated."] : []),
     ...(stdout ? [`stdout\n${stdout}`] : []), ...(stderr ? [`stderr\n${stderr}`] : [])].join("\n\n")
-  const excerpt = [header, ...(stderr ? [`stderr (excerpt)\n${stderr.slice(-500)}`] : stdout ? [`stdout (excerpt)\n${stdout.slice(-500)}`] : []),
+  // A short diff can still contain dozens of lines. Bound both dimensions so
+  // the snippet, not a second inline log wall, owns the detailed assertion.
+  const preview = (value: string) => value.split("\n").filter(line => line.trim()).slice(0, 6).join("\n").slice(0, 500)
+  const excerpt = [header, ...(stderr ? [`stderr (excerpt)\n${preview(stderr)}`] : stdout ? [`stdout (excerpt)\n${preview(stdout)}`] : []),
     "Captured output attached in this thread." ]
   return { text: streams.join("\n"), blocks: blocks(streams),
     snippetText: captured, compact: { text: excerpt.join("\n"), blocks: blocks(excerpt) } }
