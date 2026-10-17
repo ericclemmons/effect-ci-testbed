@@ -7,10 +7,10 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
     uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
     with:
       workflow: examples/demo
