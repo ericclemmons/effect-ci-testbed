@@ -18,6 +18,7 @@ test("actual authenticated checkout never passes a credential to VM commands and
   const token = "private-installation-canary"
   const commands: string[][] = []
   const props: { capability: string; workspaceId: string }[] = []
+  const storageWrites: unknown[] = []
   let origin = ""
   let fail = false
   let workspace: any
@@ -45,7 +46,11 @@ test("actual authenticated checkout never passes a credential to VM commands and
       return { async output() { return { exitCode, stdout: new Uint8Array(), stderr: new TextEncoder().encode(exitCode ? token : "") } } }
     },
   }
-  workspace = new WorkspaceContainer({ container, id: { toString: () => "workspace-id" }, storage: { put() { assert.fail("token must never be stored") } }, exports: {
+  workspace = new WorkspaceContainer({ container, id: { toString: () => "workspace-id" }, storage: { put(key: string, value: unknown) {
+    assert.equal(key, "workingMutation", "checkout may persist only its credential-free mutation marker")
+    assert.deepEqual(value, { stepId: undefined, revisionId: undefined }, "no token, host capability or extra field may be persisted")
+    storageWrites.push({ key, value })
+  } }, exports: {
     GitCheckoutOutbound({ props: value }: { props: { capability: string; workspaceId: string } }) { props.push(value); assert.ok(!JSON.stringify(value).includes(token)); return {} },
   } }, {})
   try {
@@ -58,5 +63,8 @@ test("actual authenticated checkout never passes a credential to VM commands and
     await assert.rejects(workspace.checkout("https://github.com/owner/private.git", "c".repeat(40), undefined, {}, token), /^Error: Authenticated git clone failed$/)
     assert.equal((await workspace.gitCheckoutFetch(request(), props.at(-1)!.capability)).status, 403, "failure also revokes")
     assert.ok(commands.some(command => command.includes("http://github-checkout.ci/owner/private.git")))
+    assert.equal(storageWrites.length, 3)
+    assert.ok(!JSON.stringify(storageWrites).includes(token))
+    assert.ok(!JSON.stringify(storageWrites).includes(btoa(`x-access-token:${token}`)))
   } finally { globalThis.fetch = originalFetch }
 })
