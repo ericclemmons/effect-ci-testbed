@@ -168,7 +168,8 @@ For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
 branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The parent card shows status and the preview link. Its thread holds step output.
+The parent card shows status and the preview link. Its thread holds step output;
+long failures attach a redacted text snippet with a short inline excerpt.
 Failed command replies include bounded, redacted stdout/stderr and the exit code.
 Click **Dashboard** on that card for the same Cloudflare Workflow run.
 The first thread reply is a live Status/Step table; each linked step opens its reply.

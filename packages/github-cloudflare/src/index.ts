@@ -65,6 +65,13 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.Workf
   readonly slackLayout?: "status-thread"
   /** Explicit destination opt-in: bounded, redacted failed-command output in step replies only. */
   readonly slackCommandOutput?: "failed"
+  /** Host-owned, journaled file upload. Only receives bounded, redacted output;
+   * an unavailable upload keeps the inline failure excerpt. Never project code.
+   */
+  readonly slackCommandLog?: (context: {
+    readonly exports: unknown; readonly instanceId: string; readonly stepId: string
+    readonly threadTs: string; readonly text: string
+  }) => Promise<{ ok: true; fileId: string } | { ok: false }>
   /** Trusted display-only total. Unknown runtime steps disable the progress bar. */
   readonly slackProgressSteps?: (parameters: WorkflowParameters) => ReadonlyArray<string>
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
@@ -315,7 +322,6 @@ export const workflowEntrypoint = <A>(
           latestThread = threadKey
           const failed = () => { blockedThreads.add(threadKey); if (required) throw new NotificationDeliveryUnavailable() }
           if (blockedThreads.has(threadKey)) { failed(); return }
-          const detail = override ?? card.render({ onlyStep: threadKey })
           const slack = { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! }
           let ts = threadMessages.get(threadKey)
           if (!ts) {
@@ -335,6 +341,16 @@ export const workflowEntrypoint = <A>(
               if (permalink) stepPermalinks.set(threadKey, permalink)
             } catch { /* navigation cannot block evidence or approval delivery */ }
           }
+          const log = !override && card.commandLog(threadKey)
+          if (log && options.slackCommandLog) {
+            try {
+              const receipt = await step.do(`notification:command-log:${threadKey}`, { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" },
+                () => options.slackCommandLog!({ exports: this.ctx.exports, instanceId: event.instanceId,
+                  stepId: threadKey, threadTs: slackMessageTs!, text: log }))
+              if (receipt.ok) card.attachCommandLog(threadKey, receipt.fileId)
+            } catch { /* journaled uncertainty retains inline output, never blocks the run */ }
+          }
+          const detail = override ?? card.render({ onlyStep: threadKey })
           const updated = await deliveryStep(`notification:${key}:thread-update`, () => sendNotification(slack,
             detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
           if (updated && !updated.failed && updated.slackMessageTs !== ts && required)
