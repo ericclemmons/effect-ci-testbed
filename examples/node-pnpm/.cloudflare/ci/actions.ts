@@ -27,16 +27,17 @@ export const format = CI.action("format", () => function* () {
   return yield* pnpm.run("format")
 })
 
-export const test = CI.action("test", () => function* () {
+export const test = CI.action("test", function* () {
   const workspace = yield* install()
+  yield* CI.parallel([lint(), CI.optional(format())])
   const pnpm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return yield* pnpm.run("test")
+  return () => pnpm.run("test")
 })
 
-export const build = CI.action("build", () => function* () {
-  const workspace = yield* install()
+export const build = CI.action("build", function* () {
+  const workspace = yield* test()
   const pnpm = yield* CI.PackageManager.JavaScript(workspace)
 
-  return yield* pnpm.run("build")
+  return () => pnpm.run("build")
 })

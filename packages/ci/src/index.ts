@@ -2158,6 +2158,12 @@ const makeRuntime = (
               workflowId,
               workspace,
             }).pipe(
+              // Adapters normally throw CommandError themselves (native runners
+              // must fail before checkpointing). Never trust a returned nonzero
+              // result as success or record reusable evidence for it.
+              Effect.flatMap((result) => result.exitCode === 0 ? Effect.succeed(result) :
+                Effect.fail(new CommandError(stepId, command, workspace.cwd, result.exitCode,
+                  undefined, boundedCommandOutput(result.stdout, result.stderr)))),
               Effect.tap(() => checkCache && checkCacheRequest
                 ? checkCache.record(checkCacheRequest).pipe(Effect.ignore)
                 : Effect.void),
