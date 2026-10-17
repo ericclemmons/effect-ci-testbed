@@ -239,7 +239,7 @@ export class RunCard {
       // A host-declared step total is a presentation contract, not a forecast.
       // If execution discovers another step, stop claiming that total.
       const total = this.progressSteps?.length && ordered.every(id => this.progressSteps!.includes(id)) ? this.progressSteps.length : undefined
-      const count = total ? `${"▰".repeat(Math.floor(8 * done / total))}${"▱".repeat(8 - Math.floor(8 * done / total))} ${done}/${total} steps` :
+      const count = total ? `${"▰".repeat(done)}${"▱".repeat(total - done)} ${done}/${total}` :
         done ? `${done} step${done === 1 ? "" : "s"} done` : undefined
       const symbol = { running: "►", waiting: "∗", success: "✓", failure: "✗" }[this.phase]
       const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")

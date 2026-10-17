@@ -58,14 +58,29 @@ test("declared step progress is discrete work, not time or health; unknown steps
   const card = new RunCard(identity, { progressSteps: ["install", "test", "build"] })
   card.update(event("install", "complete")); card.update(event("test", "running"))
   const snapshot = card.snapshot()
-  assert.equal(card.render({ statusOnly: true }).text, "► build · test · ▰▰▱▱▱▱▱▱ 1/3 steps")
+  assert.equal(card.render({ statusOnly: true }).text, "► build · test · ▰▱▱ 1/3")
   assert.deepEqual(card.snapshot(), snapshot, "presentation cannot alter semantic status")
   card.update(event("test", "complete")); card.update(event("build", "complete"))
   card.update({ type: "workflow.completed", workflowId: "build", conclusion: "success", timestamp: "now" })
-  assert.equal(card.render({ statusOnly: true }).text, "✓ build · build · ▰▰▰▰▰▰▰▰ 3/3 steps")
+  assert.equal(card.render({ statusOnly: true }).text, "✓ build · build · ▰▰▰ 3/3")
   card.update(event("new dynamic step", "running"))
   assert.doesNotMatch(card.render({ statusOnly: true }).text, /▰|▱|3\/3/)
   assert.throws(() => new RunCard(identity, { progressSteps: ["test", "test"] }))
+})
+
+test("each progress segment represents exactly one declared step, without a redundant steps label", () => {
+  const ids = Array.from({ length: 15 }, (_, index) => `step-${index + 1}`)
+  const card = new RunCard(identity, { progressSteps: ids })
+  assert.match(card.render({ statusOnly: true }).text, new RegExp(`${"▱".repeat(15)} 0/15$`))
+  for (const id of ids.slice(0, 14)) card.update(event(id, "complete"))
+  card.update(event(ids[14]!, "running"))
+  const title = card.render({ statusOnly: true }).text
+  assert.equal((title.match(/▰/g) ?? []).length, 14)
+  assert.equal((title.match(/▱/g) ?? []).length, 1)
+  assert.match(title, /14\/15$/)
+  assert.doesNotMatch(title, /\bsteps\b/)
+  card.update(event(ids[14]!, "complete"))
+  assert.match(card.render({ statusOnly: true }).text, new RegExp(`${"▰".repeat(15)} 15/15$`))
 })
 
 test("the first reply is a live linked step table, not repeated metadata", () => {
