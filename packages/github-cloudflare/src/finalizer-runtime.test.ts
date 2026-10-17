@@ -197,11 +197,13 @@ test(
         assert.ok(roots.every((m: any) => m.body.blocks.length === 2));
         assert.ok(roots.every((m: any) => !JSON.stringify(m.body.blocks).includes("Release still running")));
         const posts = result.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(posts.length, 2, "one build reply, one host review reply; no repost on lost ACK");
+        assert.equal(posts.length, 3, "one details table, one build reply, one host review reply; no repost on lost ACK");
+        assert.equal(posts[0].body.blocks[0].type, "table");
+        assert.equal(posts.filter((m: any) => m.body.blocks?.some((b: any) => b.type === "table")).length, 1);
         assert.ok(posts.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         if (name === "LostReply") {
           assert.ok(!result.messages.some((m: any) => m.body.text === "Release still running"));
-          assert.match(roots.at(-1).body.text, /Failed/);
+          assert.match(roots.at(-1).body.text, /^✗ /);
         } else assert.ok(result.messages.some((m: any) => m.body.ts !== "123.456" && m.body.text === "Release still running"));
       }
     } finally {

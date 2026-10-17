@@ -7,30 +7,95 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("enrolled failure output stays in its step reply, redacted and bounded, never root or provider snapshot", () => {
+  const card = new RunCard(identity, { failedCommandOutput: { redactValues: ["owned-private-value"] } })
+  const failure: RuntimeEvent = { type: "step.command.failed", workflowId: "cf-ci-demo", stepId: "test", timestamp: "now",
+    diagnostics: { version: 1, stepId: "test", command: "pnpm test", cwd: "/fixture", exitCode: 1,
+      output: { stdout: "Expected hello\nReceived goodbye\nowned-private-value\n<!channel>\n" + "x".repeat(6000),
+        stderr: "Authorization: Bearer abc-private-token\nassertion failed\n", truncated: true } } }
+  assert.equal(card.update(failure), true)
+  card.update({ type: "step.status", workflowId: "cf-ci-demo", stepId: "test", status: "failed", optional: false, timestamp: "now" })
+  const rendered = card.render({ onlyStep: "test" })
+  assert.match(JSON.stringify(rendered), /assertion failed|Received goodbye/)
+  assert.match(rendered.text, /exit 1/)
+  assert.match(JSON.stringify(rendered), /truncated/)
+  assert.doesNotMatch(JSON.stringify(rendered), /owned-private-value|abc-private-token|<\!channel>/)
+  assert.ok(JSON.stringify(rendered).length < 12000)
+  assert.doesNotMatch(JSON.stringify(card.render({ statusOnly: true })), /assertion failed|Received goodbye/)
+  assert.doesNotMatch(JSON.stringify(card.snapshot()), /assertion failed|Received goodbye/)
+  const closed = new RunCard(identity)
+  assert.equal(closed.update(failure), false, "unenrolled hosts must not publish command output")
+})
+
 test("parent retains workflow, rotating status and latest evidence; replies contain only their step", () => {
   const card = new RunCard(identity)
   card.update(event("checkout", "complete")); card.update(event("build", "running"))
   card.setHealth({ phase: 25, decision: "uncertain", evidenceSource: "native-wobs" }, "FPRIVATE")
   const root = card.render({ statusOnly: true })
   assert.equal(root.blocks.length, 3)
-  assert.match(root.text, /^build · ▶️ Running · build$/)
+  assert.equal(root.text, "► build · build · 1 step done")
   assert.doesNotMatch(JSON.stringify(root), /checkout|divider|header/)
   assert.match(JSON.stringify(root), /FPRIVATE/)
   assert.ok(!root.blocks.some(block => block.type === "actions"))
   const detail = card.render({ onlyStep: "build" })
-  assert.match(detail.text, /^▶️ build — running/)
+  assert.match(detail.text, /^► build — running/)
   assert.doesNotMatch(detail.text, /checkout|Run:|1\./)
   assert.doesNotMatch(JSON.stringify(detail.blocks), /owner\/repo|Details|header|divider|1\. /)
   assert.match(JSON.stringify(detail.blocks), /FPRIVATE/)
   card.update(event("build", "complete"))
   card.update(event("Release 25%", "running"))
-  assert.match(card.render({ statusOnly: true }).text, /Running · Release 25%$/)
+  assert.match(card.render({ statusOnly: true }).text, /^► build · Release 25% · 2 steps done$/)
   card.setHealth({ phase: 75, decision: "uncertain", evidenceSource: "native-wobs" }, "FLATEST")
+  card.update(event("Release 25%", "complete"))
   card.update({ type: "workflow.completed", workflowId: "cf-ci-demo", conclusion: "success", timestamp: "now" })
   const final = card.render({ statusOnly: true })
-  assert.equal(final.text, "cf-ci-demo · ✅ Passed")
+  assert.equal(final.text, "✓ cf-ci-demo · Release 25% · 3 steps done")
   assert.match(JSON.stringify(final.blocks), /FLATEST/)
   assert.doesNotMatch(JSON.stringify(final.blocks), /FPRIVATE|actions|1\. /)
+})
+
+test("declared step progress is discrete work, not time or health; unknown steps disable the bar", () => {
+  const card = new RunCard(identity, { progressSteps: ["install", "test", "build"] })
+  card.update(event("install", "complete")); card.update(event("test", "running"))
+  const snapshot = card.snapshot()
+  assert.equal(card.render({ statusOnly: true }).text, "► build · test · ▰▰▱▱▱▱▱▱ 1/3 steps")
+  assert.deepEqual(card.snapshot(), snapshot, "presentation cannot alter semantic status")
+  card.update(event("test", "complete")); card.update(event("build", "complete"))
+  card.update({ type: "workflow.completed", workflowId: "build", conclusion: "success", timestamp: "now" })
+  assert.equal(card.render({ statusOnly: true }).text, "✓ build · build · ▰▰▰▰▰▰▰▰ 3/3 steps")
+  card.update(event("new dynamic step", "running"))
+  assert.doesNotMatch(card.render({ statusOnly: true }).text, /▰|▱|3\/3/)
+  assert.throws(() => new RunCard(identity, { progressSteps: ["test", "test"] }))
+})
+
+test("the first details reply is a bounded native table with no mrkdwn interpolation or unsafe link", () => {
+  const card = new RunCard({ ...identity, repository: "<@everyone>", detailsUrl: "javascript:alert(1)" })
+  const frame = card.renderDetails()
+  assert.equal(frame.blocks.length, 1); assert.equal(frame.blocks[0]!.type, "table")
+  const encoded = JSON.stringify(frame.blocks)
+  assert.match(encoded, /raw_text/); assert.doesNotMatch(encoded, /mrkdwn|javascript:|actions/)
+  assert.ok(encoded.length < 10000)
+  const revision = "a".repeat(40), detailsUrl = "https://dash.cloudflare.com/account/workflows/instance/owned-run"
+  const compact = new RunCard({ ...identity, repository: "owner/repo", revision, detailsUrl }).renderDetails()
+  const table = JSON.stringify(compact.blocks)
+  assert.match(table, /"text":"aaaaaaa"/)
+  assert.match(table, /"text":"repo"/)
+  assert.ok(table.includes(`https://github.com/owner/repo/commit/${revision}`))
+  assert.ok(table.includes(detailsUrl))
+  assert.ok(!table.includes('"text":"https://'), "URLs are link targets, not wide visible cells")
+})
+
+test("waiting and failure retain explicit state; successful parallel work retains the last completed step", () => {
+  const card = new RunCard(identity)
+  card.update(event("build", "running")); card.update(event("test", "complete")); card.update(event("build", "complete"))
+  card.update({ type: "workflow.completed", workflowId: "demo", conclusion: "success", timestamp: "now" })
+  assert.match(card.render({ statusOnly: true }).text, /^✓ demo · build/)
+  assert.doesNotMatch(card.render({ statusOnly: true }).text, /Passed/)
+  card.update({ type: "approval.requested", workflowId: "demo", stepId: "Release 10%", requestId: "review",
+    approval: { title: "Review", summary: "Uncertain data" }, timestamp: "now" })
+  assert.match(card.render({ statusOnly: true }).text, /^∗ demo · Release 10% · Awaiting review/)
+  card.update({ type: "approval.resolved", workflowId: "demo", stepId: "Release 10%", requestId: "review", decision: "rejected", timestamp: "now" })
+  assert.match(card.render({ statusOnly: true }).text, /^✗ demo · Release 10%/)
 })
 
 test("reverted presentation omits skipped checks without deleting semantic history", () => {

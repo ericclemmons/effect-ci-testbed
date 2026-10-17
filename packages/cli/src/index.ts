@@ -10,6 +10,7 @@ import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/proj
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
+import { readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
@@ -197,30 +198,64 @@ const streamRemoteEvents = async (
   return events
 }
 
-const builtInRemote = async (
-  invocation: Invocation,
-  root: string,
-): Promise<unknown> => {
+const remoteConnection = (root: string) => {
   const configuredRepository = gitOptional(root, "config", "--get", "remote.origin.url")
   const profile = configuredRepository ? readRemoteProfile(cloneUrl(configuredRepository)) : undefined
-  const configuredUrl = process.env.EFFECT_CI_REMOTE_URL || profile?.url
-  const remoteUrl = configuredUrl ? remoteOrigin(configuredUrl) : undefined
+  const configured = resolveRemote(process.env, profile, readProjectRemote(root))
+  const remoteUrl = configured.url
 
   if (!remoteUrl) {
     throw new CliFailure(
       "CI_REMOTE_UNAVAILABLE",
       ExitCode.providerUnavailable,
-      "Set EFFECT_CI_REMOTE_URL or export a custom remote runner from the workflow module",
+      "No remote endpoint configured. Set EFFECT_CI_REMOTE_URL in .env.local (or your shell), configure a private remote profile, or export a custom remote runner.",
     )
   }
 
-  if (invocation.target || invocation.targets?.length) {
+  const headers = remoteHeaders(remoteUrl, configured.token)
+  const accessOnly = !configured.token && headers.has("cf-access-token")
+  if (!configured.token && !accessOnly) {
     throw new CliFailure(
-      "CI_REMOTE_TARGET_UNAVAILABLE",
+      "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      "The hosted runner currently executes the workflow suite, not selected exported actions",
+      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
     )
   }
+
+  return { remoteUrl, headers, accessOnly }
+}
+
+const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType<typeof remoteConnection>) => {
+  let available: unknown
+  try {
+    const response = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
+    if (response.status === 401 || response.status === 403)
+      throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
+        "The remote host denied authentication. Refresh Cloudflare Access and check the private API profile. No run was dispatched.")
+    if (response.ok) available = await response.json()
+  } catch (error) {
+    if (error instanceof CliFailure) throw error
+  }
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown } | undefined
+  const targets = descriptor?.targets
+  if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
+      targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
+      new Set(targets).size !== targets.length)
+    throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+      "The remote host did not return compatible capabilities. No run was dispatched; check the endpoint and Access login, or update the host.")
+  if (accessOnly && (!Array.isArray(descriptor.authentication) ||
+    !descriptor.authentication.includes("cloudflare-access-identity")))
+    throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
+      "This host has not enrolled Access-only remote authentication. Configure its private API profile; no run was dispatched.")
+  return targets as string[]
+}
+
+const builtInRemote = async (
+  invocation: Invocation,
+  root: string,
+): Promise<unknown> => {
+  const connection = remoteConnection(root)
+  const { remoteUrl, headers } = connection
 
   if (invocation.command !== "run") {
     throw new CliFailure(
@@ -241,12 +276,24 @@ const builtInRemote = async (
   const revision = git(root, "rev-parse", "HEAD")
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
-  const headers = remoteHeaders(remoteUrl, profile?.url === remoteUrl ? profile.token : undefined)
+  const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
+  if (!targets && connection.accessOnly) await remoteCapabilities(connection)
+  if (targets) {
+    if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
+      throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
+    // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
+    // selected-goal invocation can never silently execute the default suite.
+    const enrolled = await remoteCapabilities(connection)
+    if (targets.some(target => !enrolled.includes(target))) {
+      throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+        "This host has not enrolled every requested goal. No run was dispatched; update/select a compatible host or run these goals locally.")
+    }
+  }
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
     redirect: "error",
     headers,
-    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}) }),
+    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}) }),
   })
 
   if (!response.ok) {
@@ -314,7 +361,7 @@ const builtInRemote = async (
 }
 
 interface ParsedInvocation {
-  readonly command: "list" | "plan" | "run"
+  readonly command: "list" | "plan" | "run" | "doctor"
   readonly format: OutputFormat
   readonly help: boolean
   readonly location: ExecutionLocation
@@ -371,7 +418,7 @@ const parseInvocation = (
   }
 
   const [first] = parsed.positionals
-  const command = first === "list" || first === "plan" || first === "run"
+  const command = first === "list" || first === "plan" || first === "run" || first === "doctor"
     ? first
     : "run"
   const requested = command === "run" && first && first !== "run"
@@ -382,6 +429,9 @@ const parseInvocation = (
   )
   const targets = [...new Set(requested)]
   const target = targets.length === 1 ? targets[0] : undefined
+
+  if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid"))
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Use cf-ci doctor --remote [--format=text|json]; it checks access without running work")
 
   if (command === "list" && targets.length) {
     throw new CliFailure(
@@ -408,6 +458,7 @@ Usage:
   cf-ci run [targets...] [--local|--remote] [--format=text|json]
   cf-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
   cf-ci list [--format=text|json]
+  cf-ci doctor --remote [--format=text|json]
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
   cf-ci --workflow path/to/package [run|plan|list] [target]
@@ -808,7 +859,18 @@ export const main = async (
       return ExitCode.success
     }
 
-    const workflow = selectedWorkflow(program, invocation.targets)
+    if (invocation.command === "doctor") {
+      const targets = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets, dispatched: false }
+      if (format === "json") printJson(result)
+      else console.log(`Remote access ready. Enrolled goals: ${targets.join(", ") || "default workflow only"}. No workflow started.`)
+      return ExitCode.success
+    }
+
+    // A built-in hosted invocation selects from the host's enrolled goals, not
+    // an absent/stale local module. Custom remote handlers retain local validation.
+    const workflow = invocation.location === "remote" && !program.remote
+      ? program.workflow : selectedWorkflow(program, invocation.targets)
     const request: Invocation = {
       command: invocation.command,
       format,
@@ -911,6 +973,18 @@ export const runCli = async (
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
+    // Readiness must not import project modules, initialize markers, inspect a
+    // dirty tree as execution input, or create a remote workflow.
+    if (!explicit) {
+      const invocation = parseInvocation(args, value => { format = value })
+      if (invocation.command === "doctor") {
+        process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
+          resolve(cwd, ".cloudflare/ci/workflow.ts"))
+        return
+      }
+    } else if (args[0] === "doctor") {
+      throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "doctor checks the current project's remote configuration; do not pass a workflow path")
+    }
     if (!explicit && !findWorkflow(cwd)) {
       const invocation = parseInvocation(args, value => { format = value })
       if (invocation.location === "remote" && invocation.command === "run") {

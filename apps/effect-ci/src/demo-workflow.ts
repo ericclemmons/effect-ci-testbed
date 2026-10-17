@@ -1,6 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed } from "./demo-policy.ts";
+import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed, demoRemoteSelection } from "./demo-policy.ts";
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
@@ -12,6 +12,10 @@ import { finalizeDemoRun } from "./demo-run-finalizer.ts";
 // and package scripts still execute in the native workspace, never in the host.
 const Base = GitHubCloudflare.workflowEntrypoint(
   (environment, parameters) => {
+    if (parameters.trigger === "remote") {
+      const selection = demoRemoteSelection(parameters);
+      if (selection) return makeDemoProgram(undefined, selection).workflow;
+    }
     const publisher = (
       environment as unknown as {
         DEMO_SITE?: {
@@ -47,6 +51,9 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     // Signed input identification must start from the owned immutable image.
     cache: false,
     slackLayout: "status-thread",
+    slackCommandOutput: "failed",
+    slackProgressSteps: (parameters) => ["checkout", "syntax", "install", "lint", "check", "typecheck", "test", "build", "verify build", "publish site",
+      ...(parameters.trigger === "github" && demoProductionAllowed(parameters) ? ["prepare release", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])],
     container: { image: "workspace", instance: "standard-1" },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,

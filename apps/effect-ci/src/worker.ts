@@ -5,7 +5,8 @@ import { notificationChannels } from "./notification-policy.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
-import { demoRouteAllowed, demoRunAllowed, demoGitHubAllowed } from "./demo-policy.ts";
+import { demoRouteAllowed, demoRunAllowed, demoGitHubAllowed, demoRemoteTargets } from "./demo-policy.ts";
+import { demoAccessRequest } from "./demo-access.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
 export { StaticAssetSourceReader } from "./static-assets-source.ts";
 export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicIncidentRepairWorkflow, PublicPipelineReadiness } from "./public-incident-repair.ts";
@@ -36,6 +37,8 @@ const ci = GitHubCloudflare.worker({
 });
 const demo = GitHubCloudflare.worker({
   routePrefix: "/demo",
+  remoteTargets: demoRemoteTargets,
+  remoteAuthentication: ["api-token", "cloudflare-access-identity"],
   remoteRunAllowed: demoRunAllowed,
   workflow: (_environment, context) => {
     const binding = (context?.exports as unknown as {
@@ -50,7 +53,7 @@ export default {
     const pathname = new URL(request.url).pathname;
     if (pathname === "/demo" || pathname.startsWith("/demo/")) {
       if (!demoRouteAllowed(pathname)) return new Response("Not found", { status: 404 });
-      return demo.fetch(request, environment, context);
+      return demo.fetch(await demoAccessRequest(request, environment.EFFECT_CI_API_TOKEN), environment, context);
     }
     if (request.method === "POST" && new URL(request.url).pathname === "/webhooks/slack") {
       const body = await request.clone().text();

@@ -9,6 +9,7 @@ import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
 import type { RuntimeObservers } from "./observers.ts"
+import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
 
@@ -233,6 +234,13 @@ export type RuntimeEvent =
       readonly stepId: string
       readonly status: PlanNode["status"]
       readonly optional: boolean
+      readonly timestamp: string
+    }
+  | {
+      readonly type: "step.command.failed"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly diagnostics: CommandDiagnostics
       readonly timestamp: string
     }
   | {
@@ -886,23 +894,28 @@ export const JavaScript = (
     // a different lockfile. A workspace root with its own manifest stays recursive.
     const standalonePnpm = name === "pnpm" && !(yield* workspace.exists("pnpm-workspace.yaml"))
     const executable = name === "pnpm" && standalonePnpm ? "pnpm --ignore-workspace" : name
+    // Changing a local pnpm store rewrites node_modules metadata and makes the
+    // user's next ordinary pnpm command request a purge/reinstall. Remote and
+    // CI workspaces retain the runner-owned, transportable package cache.
 
     const command = (
       operation: "install" | "run" | "exec",
       value?: string,
       frozenLockfile = false,
       offline = false,
+      runnerCache = workspace.kind === "remote",
     ) => {
       switch (operation) {
         case "install": {
           const offlineFlag = offline ? " --offline" : ""
+          const pnpmStore = runnerCache ? " --store-dir .effect-ci/cache/pnpm" : ""
 
           if (!frozenLockfile) {
             switch (name) {
               case "npm":
                 return `npm_config_cache=.effect-ci/cache/npm npm install${offlineFlag}`
               case "pnpm":
-                return `${executable} install --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+                return `${executable} install${pnpmStore}${offlineFlag}`
               case "yarn":
                 return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install${offlineFlag}`
               case "bun":
@@ -914,7 +927,7 @@ export const JavaScript = (
             case "npm":
               return `npm_config_cache=.effect-ci/cache/npm npm ci${offlineFlag}`
             case "pnpm":
-              return `${executable} install --frozen-lockfile --store-dir .effect-ci/cache/pnpm${offlineFlag}`
+              return `${executable} install --frozen-lockfile${pnpmStore}${offlineFlag}`
             case "yarn":
               return `YARN_CACHE_FOLDER=.effect-ci/cache/yarn yarn install --immutable${offlineFlag}`
             case "bun":
@@ -942,6 +955,7 @@ export const JavaScript = (
           undefined,
           frozenLockfile,
           options?.offline ?? false,
+          workspace.kind === "remote" || runtime.ci,
         ))
       }),
       run: (script: string) => workspace.exec(command("run", script)),
@@ -1876,7 +1890,7 @@ const makeRuntime = (
             node.status = origin && origin !== id ? "skipped" : "failed"
             if (!origin) failureOrigins.set(error, id)
 
-            return emitEvent({
+            const status = emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
@@ -1884,6 +1898,18 @@ const makeRuntime = (
               optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
             })
+            // A native action checkpoint can restore a CommandError without
+            // rerunning its body. Emit only the failing command's typed data,
+            // once at its origin, before status observers render the failure.
+            if (error instanceof CommandError && error.stepId === id && error.output && node.status === "failed") {
+              const output = boundedCommandOutput(error.output.stdout, error.output.stderr)
+              return emitEvent({ type: "step.command.failed", workflowId, stepId: id,
+                diagnostics: { version: 1, stepId: id, command: error.command, cwd: error.cwd,
+                  exitCode: error.exitCode, output: { ...output, truncated: output.truncated || error.output.truncated } },
+                timestamp: new Date().toISOString(),
+              }).pipe(Effect.andThen(status))
+            }
+            return status
           }),
         )
       },

@@ -3,7 +3,7 @@ import test from "node:test";
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
 import { fileURLToPath } from "node:url";
-import { demoProgram } from "./demo-program.ts";
+import { demoProgram, makeDemoProgram } from "./demo-program.ts";
 import { demoRouteAllowed, demoRunAllowed } from "./demo-policy.ts";
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 
@@ -46,7 +46,7 @@ test("native demo enrollment selects the same package suite as local discovery, 
   assert.ok(result.plan.nodes.every((node) => !node.approval));
 });
 
-test("demo enrollment rejects foreign repositories, mutable revisions and actor-selected targets", () => {
+test("demo enrollment rejects foreign repositories, mutable revisions and unenrolled targets", () => {
   const valid = {
     repository: "https://github.com/ericclemmons/effect-ci-testbed.git",
     revision: "a".repeat(40),
@@ -61,16 +61,36 @@ test("demo enrollment rejects foreign repositories, mutable revisions and actor-
     { revision: "main" },
     { revision: "a".repeat(39) },
     { target: "release" },
-    { target: "build" },
   ]) {
     assert.equal(demoRunAllowed({ ...valid, ...change }), false);
   }
+});
+
+test("remote test/build goals share preparation and cannot invoke the default publisher or release", async () => {
+  const root = fileURLToPath(new URL("../../../examples/demo/", import.meta.url));
+  const program = makeDemoProgram({ revision: "a".repeat(40),
+    publish: async () => { throw Error("Selected goals cannot publish"); },
+    prepare: async () => { throw Error("Selected goals cannot prepare a release"); },
+  }, ["test", "build"]);
+  const result = await CI.runPromise(program.workflow, { mode: "plan", output: "silent", ci: true,
+    source: { checkout: () => Effect.succeed(CI.Workspace.local(root)) },
+  });
+  assert.deepEqual(new Set(result.plan.nodes.map(node => node.id)), new Set(["checkout", "install", "test", "build"]));
+  assert.equal(result.plan.nodes.filter(node => node.id === "install").length, 1);
+  assert.throws(() => makeDemoProgram(undefined, ["release"]), /goal/);
+  assert.throws(() => makeDemoProgram(undefined, []), /goal/);
+  assert.throws(() => makeDemoProgram(undefined, ["test", "test"]), /goal/);
+  const input = { repository: "https://github.com/ericclemmons/effect-ci-testbed.git", revision: "a".repeat(40) };
+  assert.equal(demoRunAllowed({ ...input, targets: ["test", "build"] }), true);
+  assert.equal(demoRunAllowed({ ...input, target: "build" }), true);
+  assert.equal(demoRunAllowed({ ...input, targets: ["test", "deploy"] }), false);
 });
 
 test("demo mount exposes only remote dispatch/status/events, not webhook or approval routes", () => {
   for (const path of [
     "/demo",
     "/demo/",
+    "/demo/capabilities",
     "/demo/runs",
     "/demo/runs/owned_123",
     "/demo/runs/owned_123/events",

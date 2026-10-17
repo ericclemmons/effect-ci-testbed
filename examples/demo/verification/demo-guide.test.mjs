@@ -6,7 +6,7 @@ import test from "node:test";
 const guide = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const shell = [...guide.matchAll(/```sh\n([\s\S]*?)```/g)].map((match) => match[1]);
 
-test("demo starts with only install and build; optional CLI preparation stays separate", () => {
+test("step zero builds simply and checks remote readiness before the walkthrough", () => {
   const start = shell[0];
   assert.equal(start, "pnpm install\npnpm build\n");
   assert.match(guide, /git switch -c demo\/rehearsal\n/);
@@ -14,8 +14,10 @@ test("demo starts with only install and build; optional CLI preparation stays se
     guide,
     /export PATH="\$\(git rev-parse --show-toplevel\)\/node_modules\/\.bin:\$PATH"/,
   );
-  assert.match(guide, /Only direct `cf-ci run --remote` calls need:/);
-  assert.match(guide, /<details>[\s\S]*cloudflared access login[\s\S]*<\/details>/);
+  const setup = guide.split("## 1.")[0];
+  assert.match(setup, /cloudflared access login[^\n]*\ncf-ci doctor --remote/);
+  assert.doesNotMatch(setup, /<details>/);
+  assert.match(setup, /without starting work/);
   assert.doesNotMatch(start, /git worktree|tiged|gh repo create|npm ci|--frozen-lockfile/);
   assert.ok(shell.every((block) => !/^(?:time )?(?:npm|npx)(?: |$)/m.test(block)));
 });
@@ -30,6 +32,20 @@ test("ordinary branch pushes preview; main is production without a special ref o
   assert.doesNotMatch(guide, /git push[^\n`]*(?:HEAD|refs\/heads\/|:)/);
 });
 
+test("fresh demo endpoint is public config; only the enrolled identity avoids an API profile", () => {
+  const endpoint = readFileSync(new URL("../.env", import.meta.url), "utf8");
+  assert.match(
+    endpoint,
+    /^EFFECT_CI_REMOTE_URL=https:\/\/effect-ci-github-cloudflare\.ericclemmons\.workers\.dev\/demo$/m,
+  );
+  assert.doesNotMatch(endpoint, /EFFECT_CI_REMOTE_TOKEN/);
+  assert.match(
+    guide,
+    /existing Access login; no separate API profile is needed for your\napproved identity/,
+  );
+  assert.match(guide, /Other API-token clients are unchanged/);
+});
+
 test("Slack links to the same native run without adding another manual Dashboard identifier", () => {
   assert.match(guide, /https:\/\/app\.slack\.com\/client\/TBXG40NPN\/C0C81FU4B5J/);
   assert.match(guide, /Details on that Slack parent card/);
@@ -37,10 +53,7 @@ test("Slack links to the same native run without adding another manual Dashboard
 });
 
 test("GitHub adoption replaces the actual manual job with the repository workflow reference", () => {
-  const baseline = readFileSync(
-    new URL("../.github/workflows/github.yml", import.meta.url),
-    "utf8",
-  );
+  const baseline = readFileSync(new URL("./github-baseline.example.yml", import.meta.url), "utf8");
   const section = guide.split("## 5.")[1].split("## 6.")[0];
   const diff = section.match(/```diff\n([\s\S]*?)```/)[1];
   assert.match(diff, /--- a\/\.github\/workflows\/github.yml/);
@@ -50,6 +63,7 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
     .map((line) => line.slice(1))
     .join("\n");
   assert.ok(baseline.includes(removed), "deleted job steps must match the actual baseline");
+  assert.match(removed, /runs-on: ubuntu-latest/);
   assert.match(
     diff,
     /\+    uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
@@ -62,6 +76,8 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
     reference,
     /uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
   );
+  assert.doesNotMatch(reference, /^    (?:runs-on|steps):/m);
+  assert.match(reference, /checks: write/);
 });
 
 test("authored orchestration requests goals, without claiming hosted parity or full-suite reuse", () => {
@@ -77,4 +93,11 @@ test("authored orchestration requests goals, without claiming hosted parity or f
     guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,
     "keep technical evidence in linked maintainer docs",
   );
+});
+
+test("remote goals distinguish negotiated computation from the default preview workflow", () => {
+  assert.match(guide, /cf-ci run test build --remote/);
+  assert.match(guide, /checks host capabilities before dispatch/);
+  assert.match(guide, /selected hosted goals share installation and never\npublish or release/);
+  assert.match(guide, /Live verified: selected hosted goals/);
 });

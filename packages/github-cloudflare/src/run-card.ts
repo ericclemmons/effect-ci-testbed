@@ -1,5 +1,6 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
 import { copyHealthMetrics, type HealthMetrics } from "./health-metrics.ts"
+import { failedCommandOutput } from "./failed-command-output.ts"
 
 export type SlackBlock = Readonly<Record<string, unknown>>
 export interface RunHealth {
@@ -36,6 +37,9 @@ const symbols: Record<PlanNode["status"] | "waiting" | "approved" | "rejected", 
   reused: "♻️", verified: "✅", warning: "⚠️", failed: "❌", skipped: "➖",
   waiting: "⏳", approved: "✅", rejected: "❌",
 }
+const plainSymbols = { planned: "∗", queued: "∗", running: "►", complete: "✓", reused: "✓", verified: "✓",
+  warning: "!", failed: "✗", skipped: "–", waiting: "∗", approved: "✓", rejected: "✗" } as const
+const finished = new Set(["complete", "reused", "verified", "warning", "failed", "skipped", "approved", "rejected"])
 const escape = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 const safeUrl = (value: string | undefined): string | undefined => {
   if (!value) return undefined
@@ -56,7 +60,7 @@ const sourceLinks = (identity: RunIdentity): string => {
   return `${link(url, repository.slice(0, 200))}@${link(url && commit ? `${url}/commit/${identity.revision}` : undefined, revision.slice(0, 100))}${safeUrl(identity.detailsUrl) ? ` • ${link(safeUrl(identity.detailsUrl), "Details")}` : ""}`
 }
 
-/** Reconstructed from runtime events on replay; never stores output or secrets. */
+/** Reconstructed on replay. Enrolled redacted failure presentation stays outside semantic snapshots. */
 export class RunCard {
   private workflowId = "Effect CI"
   private phase: "running" | "waiting" | "success" | "failure" = "running"
@@ -67,9 +71,17 @@ export class RunCard {
   private readonly identity: RunIdentity
   private readonly failures = new Map<string, string>()
   private resultLink: { label: string; url: string } | undefined
+  private readonly commandFailures = new Map<string, ReturnType<typeof failedCommandOutput>>()
+  private lastCompletedStep: string | undefined
+  private readonly progressSteps: ReadonlyArray<string> | undefined
+  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } }
 
-  constructor(identity: RunIdentity) {
+  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; progressSteps?: ReadonlyArray<string> } = {}) {
     this.identity = identity
+    this.options = options
+    if (options.progressSteps && (options.progressSteps.length > 100 || new Set(options.progressSteps).size !== options.progressSteps.length ||
+        options.progressSteps.some(id => !id.trim() || id.length > 200 || /[\r\n]/.test(id)))) throw Error("Invalid progress steps")
+    this.progressSteps = options.progressSteps ? Object.freeze([...options.progressSteps]) : undefined
   }
 
   private check(id: string) {
@@ -88,9 +100,20 @@ export class RunCard {
       case "workflow.started": return true
       case "step.status":
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
+        if (["complete", "reused", "verified", "warning"].includes(event.status)) this.lastCompletedStep = event.stepId
         if (event.status !== "failed") this.failures.delete(event.stepId)
+        if (["queued", "running"].includes(event.status)) this.commandFailures.delete(event.stepId)
 
         return true
+      case "step.command.failed": {
+        if (!this.options.failedCommandOutput || event.diagnostics.stepId !== event.stepId ||
+            (!this.commandFailures.has(event.stepId) && this.commandFailures.size >= 100)) return false
+        const output = failedCommandOutput(event.diagnostics, this.options.failedCommandOutput.redactValues)
+        if (!output) return false
+        this.check(event.stepId).status = "failed"
+        this.commandFailures.set(event.stepId, output)
+        return true
+      }
       case "dependency.added":
         this.check(event.stepId).dependencies.add(event.dependency)
 
@@ -172,6 +195,25 @@ export class RunCard {
     })
   }
 
+  /** A native table in the first thread reply, never a capability or raw payload. */
+  renderDetails(): { text: string; blocks: ReadonlyArray<SlackBlock> } {
+    const repository = this.identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
+    const repositoryUrl = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ? `https://github.com/${repository}` : undefined
+    const commitUrl = repositoryUrl && /^[a-f0-9]{7,64}$/i.test(this.identity.revision) ? `${repositoryUrl}/commit/${this.identity.revision}` : undefined
+    const cell = (text: string, url?: string) => url ? { type: "rich_text", elements: [{ type: "rich_text_section",
+      elements: [{ type: "link", url, text: text.slice(0, 80) }] }] } : { type: "raw_text", text: text.slice(0, 80) }
+    const rows = [["Field", "Value"], ["Workflow", this.workflowId], ["Repository", repository],
+      ["Commit", this.identity.revision], ["Run", this.identity.instanceId],
+      ...(safeUrl(this.identity.detailsUrl) ? [["Dashboard", safeUrl(this.identity.detailsUrl)!]] : [])]
+    return { text: rows.slice(1).map(([key, value]) => `${key}: ${value!.slice(0, 500)}`).join("\n"), blocks: [
+      { type: "table", column_settings: [{ is_wrapped: false }, { is_wrapped: true }],
+        rows: [[cell("Field"), cell("Value")], [cell("Workflow"), cell(this.workflowId)],
+          [cell("Repository"), cell(repositoryUrl ? repository.split("/")[1]! : repository, repositoryUrl)],
+          [cell("Commit"), cell(this.identity.revision.slice(0, 7), commitUrl)],
+          [cell("Run"), cell(this.identity.instanceId.slice(0, 8), safeUrl(this.identity.detailsUrl))]] },
+    ] }
+  }
+
   render(options: { hideSkipped?: boolean; rollbackStep?: string; minimal?: boolean; currentStep?: string; statusOnly?: boolean; onlyStep?: string } = {}): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const ordered: Array<string> = []
     const visited = new Set<string>()
@@ -188,11 +230,18 @@ export class RunCard {
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     if (options.statusOnly) {
-      const current = ordered.find(id => this.checks.get(id)!.status === "waiting") ??
-        ordered.find(id => this.checks.get(id)!.status === "failed") ??
+      const current = (this.phase === "success" ? this.lastCompletedStep : undefined) ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
+        ordered.find(id => ["failed", "rejected"].includes(this.checks.get(id)!.status)) ??
         ordered.find(id => this.checks.get(id)!.status === "running") ??
         ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
-      const title = `${this.workflowId} · ${headline}${this.phase !== "success" && current ? ` · ${current}` : ""}`.replace(/[\r\n]/g, " ").slice(0, 250)
+      const done = ordered.filter(id => finished.has(this.checks.get(id)!.status)).length
+      // A host-declared step total is a presentation contract, not a forecast.
+      // If execution discovers another step, stop claiming that total.
+      const total = this.progressSteps?.length && ordered.every(id => this.progressSteps!.includes(id)) ? this.progressSteps.length : undefined
+      const count = total ? `${"▰".repeat(Math.floor(8 * done / total))}${"▱".repeat(8 - Math.floor(8 * done / total))} ${done}/${total} steps` :
+        done ? `${done} step${done === 1 ? "" : "s"} done` : undefined
+      const symbol = { running: "►", waiting: "∗", success: "✓", failure: "✗" }[this.phase]
+      const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")
       return { text: title, blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
@@ -224,7 +273,7 @@ export class RunCard {
     const lines = ordered.filter(id => (!options.onlyStep || id === options.onlyStep) && (!options.hideSkipped || this.checks.get(id)!.status !== "skipped")).map((id, index) => {
       const check = this.checks.get(id)!
 
-      return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : symbols[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
+      return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : (options.onlyStep ? plainSymbols : symbols)[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
     })
     const blocks: Array<SlackBlock> = options.onlyStep ? [] : [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },
@@ -242,6 +291,8 @@ export class RunCard {
       section += `${safe}\n`
     }
     blocks.push({ type: "section", text: { type: "mrkdwn", text: section || "Preparing checks…", verbatim: true } })
+    const commandFailure = options.onlyStep ? this.commandFailures.get(options.onlyStep) : undefined
+    if (commandFailure) blocks.push(...commandFailure.blocks)
     if (lines.length > 100) blocks.push({ type: "context", elements: [{ type: "plain_text", text: `${lines.length - 100} more checks; see Workflow history.` }] })
     if (this.health) {
       const evidence = this.health.evidenceSource === "experimental-native-wobs" ? "Native Worker outcomes (experimental SQL)" :
@@ -267,6 +318,6 @@ export class RunCard {
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
     const health = this.health ? `\nRelease ${this.health.phase}% · ${this.health.decision} · ${this.health.evidenceSource}` : ""
 
-    return { text: options.onlyStep ? `${lines.join("\n")}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
+    return { text: options.onlyStep ? `${lines.join("\n")}${commandFailure ? `\n${escape(commandFailure.text)}` : ""}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
   }
 }
