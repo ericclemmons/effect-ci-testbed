@@ -20,7 +20,7 @@ Use Node 24.11+ or Node 26+. Stay in `examples/demo` and prepare this shell:
 
 ```sh
 export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
-cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
+cloudflared access login --quiet https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 cf-ci doctor --remote
 ```
 
