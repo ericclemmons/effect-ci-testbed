@@ -23,6 +23,7 @@ test(
     import{workflowEntrypoint}from'./index.ts';
     const messages=[],finalizations=[];let missingCard=false,failedNotice=false,lostReply=false,failedObservation=false,failedSummary=false,threadCount=0;
     globalThis.fetch=async(input,init)=>{const url=String(input);if(!url.startsWith('https://slack.com/api/'))throw Error('Unexpected external request');
+      if(url.includes('/chat.getPermalink?'))return Response.json({ok:false});
       const body=JSON.parse(init.body);messages.push({url,body});if(failedSummary&&body.ts==='123.000001')throw Error('private-summary-error');if(failedObservation&&body.text==='Settling status')throw Error('private-upstream-error');if(lostReply&&body.thread_ts)return Response.json({ok:true});return Response.json({ok:!missingCard&&!(failedNotice&&body.text==='Release still running'),ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});};
     export class WorkspaceContainer extends DurableObject{}
     const make=(failBuild=false)=>{const build=CI.action('build',()=>function*(){if(failBuild)throw Error('Build fixture failed');return {version:'candidate-1'};});return CI.workflow('release-fixture',function*(){return yield*build();});};

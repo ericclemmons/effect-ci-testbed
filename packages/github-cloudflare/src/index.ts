@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
-import { hasNotificationChannels, sendNotification, type NotificationChannels, type NotificationResult } from "./notifications.ts"
+import { hasNotificationChannels, sendNotification, slackPermalink, type NotificationChannels, type NotificationResult } from "./notifications.ts"
 import { RunCard, type SlackBlock } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import { NotificationDeliveryUnavailable } from "./notification-delivery.ts"
@@ -222,6 +222,7 @@ export const workflowEntrypoint = <A>(
     // Additional providers still receive subsequent semantic snapshots.
     let presentationBlocked = false
     const threadMessages = new Map<string, string>()
+    const stepPermalinks = new Map<string, string>()
     let detailsMessageTs: string | undefined
     let detailsBlocked = false
     const blockedThreads = new Set<string>()
@@ -328,6 +329,11 @@ export const workflowEntrypoint = <A>(
             if (!posted || posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
             ts = posted.slackMessageTs
             threadMessages.set(threadKey, ts)
+            try {
+              const permalink = await step.do(`notification:${key}:thread-permalink`, policy,
+                () => slackPermalink(channels.SLACK_BOT_TOKEN!, channels.SLACK_CHANNEL_ID!, ts!))
+              if (permalink) stepPermalinks.set(threadKey, permalink)
+            } catch { /* navigation cannot block evidence or approval delivery */ }
           }
           const updated = await deliveryStep(`notification:${key}:thread-update`, () => sendNotification(slack,
             detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
@@ -336,12 +342,8 @@ export const workflowEntrypoint = <A>(
           if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
         }
         if (threaded && detailsMessageTs && !detailsBlocked) {
-          const links = new Map<string, string>()
           const channel = channels.SLACK_CHANNEL_ID!
-          if (/^[CG][A-Z0-9]+$/.test(channel)) for (const [id, ts] of threadMessages) {
-            if (/^\d+\.\d+$/.test(ts)) links.set(id, `https://slack.com/archives/${channel}/p${ts.replace(".", "")}`)
-          }
-          const details = card.renderDetails(links)
+          const details = card.renderDetails(stepPermalinks)
           const updated = await deliveryStep(`notification:${key}:details-update`, () => sendNotification(
             { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channel },
             details.text, fetch, detailsMessageTs, details.blocks), true)

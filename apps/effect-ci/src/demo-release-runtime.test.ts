@@ -36,6 +36,7 @@ test(
     export class PrivateSlackImages extends DurableObject{upload(){images++;return {ok:true,fileId:'F123'};}}
     globalThis.fetch=async(input,init)=>{
       const url=String(input);
+      if(url.includes('/chat.getPermalink?')){const u=new URL(url),channel=u.searchParams.get('channel'),ts=u.searchParams.get('message_ts');return Response.json({ok:true,channel,permalink:'https://fixture.slack.com/archives/'+channel+'/p'+ts.replace('.','')});}
       if(url.startsWith('https://slack.com/api/')){if(failObservationNow){observationFailures++;failedObservationTargets.push({method:url.split('/').at(-1),ts:JSON.parse(init.body).ts});throw Error('private-presentation-token');}const body=JSON.parse(init.body),button=body.blocks?.find(b=>b.type==='actions')?.elements?.find(e=>e.action_id==='hmd_approve'),p=button?JSON.parse(button.value).phase:0,rejected=p&&!rejectedPhases.has(p);messages.push({url,body,accepted:!rejected});if(rejected){rejectedPhases.add(p);return Response.json({ok:false,error:'invalid_blocks'});}return Response.json({ok:true,ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});}
       if(url.startsWith('https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
       throw Error('Unexpected outbound request');
@@ -191,7 +192,7 @@ test(
         const indexUpdates = state.messages.filter((m: any) => m.body.ts === "123.000001");
         assert.ok(indexUpdates.length > 0);
         assert.equal(indexUpdates.at(-1).body.blocks[0].type, "table");
-        assert.match(JSON.stringify(indexUpdates.at(-1).body), /https:\/\/slack.com\/archives\/C1\/p123000002/);
+        assert.match(JSON.stringify(indexUpdates.at(-1).body), /https:\/\/fixture.slack.com\/archives\/C1\/p123000002/);
         assert.ok(!JSON.stringify(indexUpdates).includes('"text":"Field"'));
         assert.ok(replies.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         assert.ok(state.messages.some((m: any) => m.body.ts !== "123.456" && m.body.blocks.some((b: any) => b.type === "image")));

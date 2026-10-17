@@ -23,7 +23,7 @@ test("native failure checkpoints deliver both streams to the same Slack step rep
     import * as CI from '@effect-ci-testbed/ci';import * as Effect from 'effect/Effect';
     import {workflowEntrypoint} from './index.ts';
     const sent=[];let sequence=0,runs=0;
-    globalThis.fetch=async(url,init)=>{const body=JSON.parse(init.body);sent.push(body);
+    globalThis.fetch=async(url,init)=>{if(String(url).includes('/chat.getPermalink?')){const u=new URL(url),channel=u.searchParams.get('channel'),ts=u.searchParams.get('message_ts');return Response.json({ok:true,channel,permalink:'https://fixture.slack.com/archives/'+channel+'/p'+ts.replace('.','')+'?thread_ts=1.000001&cid='+channel});}const body=JSON.parse(init.body);sent.push(body);
       return Response.json({ok:true,ts:body.ts??String(++sequence)+'.000001'});};
     export class WorkspaceContainer extends DurableObject{}
     const action=CI.action('test',()=>function*(){runs++;return yield* Effect.fail(new CI.CommandError('test','pnpm test','/fixture',1,undefined,
@@ -66,7 +66,7 @@ test("native failure checkpoints deliver both streams to the same Slack step rep
     const summary = sent.filter((body: any) => body.ts === "2.000001").at(-1)
     assert.equal(summary.blocks[0].type, "table")
     assert.match(summary.text, /test: failed/)
-    assert.match(JSON.stringify(summary), /https:\/\/slack.com\/archives\/COWNED\/p3000001/)
+    assert.match(JSON.stringify(summary), /https:\/\/fixture.slack.com\/archives\/COWNED\/p3000001/)
     assert.doesNotMatch(JSON.stringify(summary), /Expected hello|Assertion failed|Field|Value/)
     assert.doesNotMatch(JSON.stringify(sent), /owned-private-value|effect-ci-command-error-v1/)
     for (const body of sent.filter((body: any) => body.ts === root))
