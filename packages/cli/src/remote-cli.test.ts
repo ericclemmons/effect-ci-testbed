@@ -50,7 +50,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(request.headers["cf-access-client-secret"], "fixture-access-secret")
       }
       if (request.url === `${routePrefix}/capabilities`) {
-        response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json" })
+        response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json",
+          ...([302,307].includes(capabilityStatus) ? {location:"https://fixture.cloudflareaccess.com/cdn-cgi/access/login?token=never-reflect-login-token"} : {}) })
         response.end(JSON.stringify({ protocol: capabilityProtocol, targets: ["test", "build"] }))
         return
       }
@@ -178,11 +179,12 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       assert.equal(dispatches, 10, "unknown goals and older hosts must not dispatch the default suite")
     }
     supportsTargets = true
-    for (const status of [401, 403]) {
+    for (const status of [401, 403, 302, 307]) {
       capabilityStatus = status
       const denied = await run("fixture-user-token", false, "json", true, ["test", "build"])
       assert.equal(denied.code, 3, denied.output)
       assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
+      assert.doesNotMatch(denied.output, /never-reflect-login-token/)
       assert.equal(dispatches, 10, "capability authentication failure must not dispatch")
     }
     capabilityStatus = 200

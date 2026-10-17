@@ -11,7 +11,7 @@ const { privateKey } = generateKeyPairSync("rsa", {
 const credentials = { appId: "5089816", privateKey };
 const url =
   "https://api.github.com/repos/ericclemmons/effect-ci-testbed/git/ref/notes/effect-ci-hosted-checks-v1";
-const harness = (permissions: Record<string, string> = { contents: "read", metadata: "read" }) => {
+const harness = (permissions: Record<string, string> = { contents: "read", metadata: "read" }, expectedUrl = url) => {
   let revoked = 0,
     reads = 0;
   const transport: typeof fetch = async (input, init) => {
@@ -32,7 +32,7 @@ const harness = (permissions: Record<string, string> = { contents: "read", metad
       revoked++;
       return new Response(null, { status: 204 });
     }
-    assert.equal(input, url);
+    assert.equal(input, expectedUrl);
     assert.equal(init?.method, "GET");
     assert.equal(init?.redirect, "manual");
     reads++;
@@ -51,6 +51,12 @@ test("demo evidence uses only one-repository Contents-read authority and revokes
     true,
   );
   assert.deepEqual(h.state(), { revoked: 1, reads: 1 });
+});
+test("the additional exact test namespace uses the same narrowed read and mandatory revocation", async () => {
+  const target=url.replace("effect-ci-hosted-checks-v1","effect-ci-demo-tests-v1");
+  const h=harness(undefined,target);
+  assert.equal(await withDemoEvidenceRead(credentials,async request=>(await request(target)).ok,h.transport),true);
+  assert.deepEqual(h.state(),{revoked:1,reads:1});
 });
 test("foreign endpoints, writes, extra permissions and operation failures revoke and fail closed", async () => {
   for (const [target, method] of [

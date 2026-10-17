@@ -40,3 +40,15 @@ Linux image before signing. Keep its private key outside containers and project
 code. Existing exact-commit notes are create-only: inspect conflicts, do not force
 an overwrite. Only the enrolled check may be verified; builds and other actions
 still execute. Advisory `refs/notes/effect-ci-verification` is not reuse authority.
+
+The hosted demo additionally enrolls its exact Vitest suite under a separate
+test identity using the same local operator key. Run `node .cloudflare/ci/attest-tests.ts`
+and push `refs/notes/effect-ci-demo-tests-v1` before `cf-ci run test build --remote`.
+This command copies committed public inputs, installs the pinned dependencies
+without host credentials, runs Vitest with networking disabled, and verifies
+unchanged source/dependency/runtime identities before reading the local key.
+Typecheck executes as a prerequisite; its result is not included in this signature.
+Changing the suite/config/dependencies or using a nonliteral demo message makes
+the policy ineligible and leaves ordinary test execution intact. Do not overwrite
+existing notes, weaken the policy to force a hit, or call a local signature a
+verified hosted hit. No build, deployment or other check is authorized by it.

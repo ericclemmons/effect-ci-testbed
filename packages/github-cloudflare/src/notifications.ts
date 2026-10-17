@@ -22,6 +22,37 @@ export interface NotificationResult {
   readonly slackImageValidationRetries?: number
 }
 
+/** Read-only, optional navigation. Never construct workspace/thread permalinks. */
+export async function slackPermalink(token: string, channel: string, ts: string, transport: typeof fetch = fetch): Promise<string | null> {
+  if (!/^[CG][A-Z0-9]+$/.test(channel) || !/^\d+\.\d+$/.test(ts)) return null
+  try {
+    const url = new URL("https://slack.com/api/chat.getPermalink")
+    url.searchParams.set("channel", channel); url.searchParams.set("message_ts", ts)
+    const response = await transport(url.href, { headers: { authorization: `Bearer ${token}` }, redirect: "manual", signal: AbortSignal.timeout(5000) })
+    if (!response.ok || !response.body) return null
+    const reader = response.body.getReader(), chunks: Uint8Array[] = []
+    let size = 0
+    try {
+      for (;;) {
+        const part = await reader.read()
+        if (part.done) break
+        size += part.value.byteLength
+        if (size > 8192) { await reader.cancel(); return null }
+        chunks.push(part.value)
+      }
+    } finally { reader.releaseLock() }
+    const bytes = new Uint8Array(size)
+    let offset = 0
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
+    const body = JSON.parse(new TextDecoder().decode(bytes))
+    if (body.ok !== true || body.channel !== channel || typeof body.permalink !== "string" || body.permalink.length > 2048) return null
+    const link = new URL(body.permalink)
+    if (link.protocol !== "https:" || !/^[a-z0-9-]+\.slack\.com$/.test(link.hostname) || link.username || link.password || link.port ||
+        link.pathname !== `/archives/${channel}/p${ts.replace(".", "")}`) return null
+    return link.href
+  } catch { return null }
+}
+
 /** Deliberately excludes command output, payloads, credentials, and error bodies. */
 export const notificationText = (event: RuntimeEvent): string | undefined => {
   switch (event.type) {
