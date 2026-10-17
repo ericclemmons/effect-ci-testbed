@@ -10,6 +10,12 @@ const recipes = readdirSync("examples", { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+test("remote goal documentation describes host negotiation, not blanket rejection", () => {
+  assert.doesNotMatch(root, /built-in remote runner still rejects target selection/);
+  assert.match(root, /cf-ci doctor --remote/);
+  assert.match(root, /host.*advertis|advertis.*host/i);
+});
+
 test("every runnable recipe is discoverable in the matrix and reading guide", () => {
   const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
     .map((match) => match[1])

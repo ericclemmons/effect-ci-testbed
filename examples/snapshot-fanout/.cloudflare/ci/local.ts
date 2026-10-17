@@ -63,8 +63,10 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
     snapshots.set(value, copy(materialize(workspace, stepId)))
     return { provider, value }
   }
-  const file = (workspace: CI.Workspace, path: string, stepId: string) =>
-    join(materialize(workspace, stepId), inside(workspace.cwd, path))
+  const file = (workspace: CI.Workspace, path: string, stepId: string) => {
+    const suffix = inside(workspace.cwd, path)
+    return join(materialize(workspace, stepId), suffix)
+  }
 
   return {
     env: "file-snapshots",

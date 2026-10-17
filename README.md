@@ -89,7 +89,8 @@ Workflows and exported actions serve different entrypoints:
   targets, without executing or initializing a project.
 - `cf-ci run test build` creates an on-demand parallel workflow from exported
   actions, sharing their declared prerequisites once. All targets are validated
-  before execution; the built-in remote runner still rejects target selection.
+  before execution. Remote goals must be advertised by the host; the demo supports
+  test/build. Check access and available goals with `cf-ci doctor --remote`.
 - Running `cf-ci run` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.
@@ -175,7 +176,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
-| [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | ✅ |
+| [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |
 | [Roll back after a failed action](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |

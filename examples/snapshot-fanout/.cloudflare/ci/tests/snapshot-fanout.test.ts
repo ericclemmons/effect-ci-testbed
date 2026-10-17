@@ -16,7 +16,9 @@ const recipe = join(root, "examples/snapshot-fanout")
 test("the real CLI fans out from one snapshot without modifying the checkout", () => {
   const directory = mkdtempSync(join(tmpdir(), "effect-ci-fanout-cli-"))
   try {
-    cpSync(join(recipe, ".cloudflare"), join(directory, ".cloudflare"), { recursive: true })
+    mkdirSync(join(directory, ".cloudflare/ci"), { recursive: true })
+    for (const file of ["workflow.ts", "actions.ts", "local.ts"])
+      cpSync(join(recipe, ".cloudflare/ci", file), join(directory, ".cloudflare/ci", file))
     cpSync(join(recipe, "app"), join(directory, "app"), { recursive: true })
     writeFileSync(join(directory, "package.json"), '{"type":"module"}')
     symlinkSync(join(root, "node_modules"), join(directory, "node_modules"), "dir")

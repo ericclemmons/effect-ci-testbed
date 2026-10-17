@@ -67,7 +67,19 @@ cf workflows instances create effect-ci-example-snapshot-fanout \
   --body '{"instance_id":"fanout-1","params":{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"COMMIT_SHA"}}'
 ```
 
-Hosted verification: `coverage-snapshot-fanout-20261008-1` completed against
+## Verified runs
+
+GitHub source `3305adef308102d82a258219d981cc86fa3812ea` passed the actual
+[Effect CI execution](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39056001284/job/117463981220)
+and [plan](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39056001284/job/117463981261).
+The four action checks passed once. The separate
+[filesystem regressions](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39056001284/job/117463979990)
+verified distinct branch results, unchanged prepared bytes, restoration, a genuine
+failed-command negative, and excluded root metadata/links. The
+[Cloudflare-local run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39056001284/job/117463980028)
+also passed; it is Local coverage, not a new deployed Cloudflare proof.
+
+Historical hosted verification: `coverage-snapshot-fanout-20261008-1` completed against
 `55be3e8c7bff809aa9a8a910f888bc86613922e0`. Native history shows one prepared
 checkpoint and both branch commands starting at the same instant. Both wrote the
 same filename and passed their own assertions with live workspace reuse disabled.
