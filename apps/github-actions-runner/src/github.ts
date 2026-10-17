@@ -5,7 +5,7 @@ export class GitHub {
   readonly policy: Enrollment;
   readonly privateKey: string;
   readonly request: typeof fetch;
-  constructor(policy: Enrollment, privateKey: string, request: typeof fetch = fetch) {
+  constructor(policy: Enrollment, privateKey: string, request: typeof fetch = (input, init) => fetch(input, init)) {
     this.policy = policy; this.privateKey = privateKey; this.request = request;
   }
 

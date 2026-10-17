@@ -145,7 +145,15 @@ service; it does not register a runner or execute a real GitHub job.
 Native GitHub step/log behavior still requires an approved selected-repository
 App installation and one live job. No live registration or deployment is claimed.
 
-Local verification: 17 tests passed, including actual workerd/SQLite reload;
+Local verification: 18 tests passed, including actual workerd/SQLite reload and
+the real native-fetch GitHub client boundary;
 TypeScript and `cf build` passed. The built Linux/amd64 image ran the official
 runner as the unprivileged `runner` user and reported `2.336.0`, with networking
 disabled. This is an image smoke test, not a completed Actions job.
+
+The first live smoke run was admitted but did not register a runner: the client
+called native `fetch` as an object method, which workerd rejects with `Illegal
+invocation`. The added real-workerd regression reproduced this before the fix;
+the default transport now calls `fetch` through a lexical wrapper. Its original
+delivery, queued run and durable admission are preserved rather than reset or
+relabeled as successful. A fresh completed native job is still required.
