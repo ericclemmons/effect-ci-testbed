@@ -64,6 +64,13 @@ required). Deploy is separate:
    workflow in the enrolled repository. `GET /health` reports enrollment, not a
    proof that credentials or runners work.
 
+For the first live proof, copy [`examples/smoke.yml`](./examples/smoke.yml) to
+`.github/workflows/cloudflare-runner-smoke.yml` in that private repository and
+push the ordinary `runner-smoke` branch. It needs no checkout or package install.
+Verify both named steps and their stdout/stderr in the native GitHub job, its
+`effect-ci-…` runner identity, and subsequent removal of that registration and
+container. A green health endpoint or a queued job is not a completed proof.
+
 If using this repo's reusable workflow, its existing input already accepts
 `runs-on: '["effect-ci-cloudflare"]'`. No change to that reusable workflow is needed.
 
@@ -95,6 +102,24 @@ If using this repo's reusable workflow, its existing input already accepts
   `services:` and Docker builds are **not supported** by this initial image.
   Sandbox/Docker-in-Docker is a future optional image capability, not a reason
   to change Effect CI's native execution model.
+
+## Costs and shutdown
+
+This uses the account's paid Workers, Durable Objects, container registry and
+Containers allowances. No container is started while enrollment is disabled.
+When enabled, capacity is one `standard-2` container with the configured lifetime;
+GitHub jobs may still consume GitHub's storage and other account allowances.
+The lifetime limits each runner, not the total number of future pushes. Disable
+enrollment to stop admitting more work; do not treat it as an account spend cap.
+
+To retire the deployment, set `enabled: false` and deploy that change first.
+Allow any existing lease to finish or hit its deadline, then inspect its durable
+journal and confirm its container and exact GitHub registration are gone. Cleanup
+failure or quarantine requires inspection, not deletion of the journal to free
+capacity. Only after cleanup, remove the dedicated App installation and the
+runner Worker/Container application using the account's normal resource tools.
+Never remove the existing Effect CI App or its native Workers. Keep the journal
+until you no longer need its replay protection and audit history.
 
 ## Verification
 
