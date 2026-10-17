@@ -80,14 +80,20 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
   assert.match(reference, /checks: write/);
 });
 
-test("authored orchestration requests goals, without claiming hosted parity or full-suite reuse", () => {
+test("authored orchestration keeps hosted parity honest and explains exact-suite reuse boundaries", () => {
   const section = guide.split("## 6.")[1].split("## 7.")[0];
   assert.match(section, /\+export \* from "\.\/actions.ts"/);
   assert.match(section, /CI.parallel\(\[actions.test\(\), actions.build\(\)\]\)/);
   assert.doesNotMatch(section, /\+  yield\* actions\.(lint|check|typecheck)\(\)/);
   assert.match(section, /Marker-free script discovery is still conservative and serial/);
   assert.match(guide, /host currently selects its fixed demo program/);
-  assert.match(guide, /Full test-suite reuse is not enrolled yet/);
+  const reuse = guide.split("## 8.")[1].split("## 9.")[0];
+  assert.match(reuse, /node \.cloudflare\/ci\/attest-tests.ts/);
+  assert.match(reuse, /git push origin refs\/notes\/effect-ci-demo-tests-v1/);
+  assert.match(reuse, /enrolled local signing key and Docker/);
+  assert.match(reuse, /Only `test` can be reused; typecheck and build still run/);
+  assert.match(reuse, /invalid evidence runs the tests normally/);
+  assert.match(reuse, /not arbitrary tests or another computer's unregistered key/);
   assert.match(guide, /deploymentPerformed: false/);
   assert.ok(
     guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,

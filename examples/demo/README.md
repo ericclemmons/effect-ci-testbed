@@ -36,7 +36,7 @@ demo uses your existing Access login; no separate API profile is needed for your
 approved identity. Other API-token clients are unchanged. Keep credentials out of
 project env files; never use a deployment token.
 
-GitHub pushes use your normal GitHub login, not Access. Run `pnpm dev` to edit the app.
+GitHub pushes use your GitHub login. Run `pnpm dev` to edit.
 
 ## 1. Discover the project
 
@@ -198,8 +198,8 @@ git push origin refs/notes/effect-ci-demo-tests-v1
 cf-ci run test build --remote
 ```
 
-The signer runs the actual Vitest suite in the pinned Linux image before signing.
-The host independently checks the commit, suite, dependency bytes and runtime.
+The signer runs Vitest in pinned Linux before signing.
+The host independently checks commit, suite, dependency bytes and runtime.
 Only `test` can be reused; typecheck and build still run. Missing, changed or
 invalid evidence runs the tests normally. This enrollment is for this demo's
 exact suite, not arbitrary tests or another computer's unregistered key.
@@ -255,10 +255,10 @@ Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
 
 > HTTP failure → authenticated event → Flue proposal → exact-commit test → unmerged PR.
 
-The new public500 automatically reached Flue, passed the exact-commit native Node
-check and opened [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
-Its renamed-bot acknowledgement error is preserved. Approved read-only
-reconciliation confirmed that existing PR and updated the same Slack card.
+A real public500 reached Flue, passed native verification and opened
+[unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
+Its acknowledgement failure is preserved; read-only reconciliation confirmed the
+PR and updated the same Slack card.
 [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 
