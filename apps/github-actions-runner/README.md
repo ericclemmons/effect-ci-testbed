@@ -137,6 +137,12 @@ until you no longer need its replay protection and audit history.
 
 ## Verification
 
+The [ordinary adoption run](https://github.com/ericclemmons/effect-ci-private-github-fixture/actions/runs/39007331087)
+passed `actions/checkout`, pnpm/Node setup, `pnpm install` and `pnpm build` on the
+Cloudflare runner. Steps and stdout/stderr appear natively in GitHub Actions.
+Its ephemeral registration was removed and its exact container stopped with exit
+code 0. The existing GitHub App was reused; native CI and production were unchanged.
+
 `pnpm test` covers authentication/policy, narrowed App tokens, exact-name cleanup,
 duplicate delivery, lost acknowledgements, restart boundaries and deadline cleanup.
 The local workerd test uses actual SQLite Durable Objects and a fake GitHub

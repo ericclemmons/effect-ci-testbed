@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
+import { uploadRecordedSlackLog } from "../../../packages/github-cloudflare/src/slack-log-snippets.ts"
 import { uploadRecordedPrivateImage, type ImageReceipt, type ImageReceiptStore, type ImageStage } from
   "../../../packages/github-cloudflare/src/private-image-receipts.ts"
 
@@ -34,6 +35,11 @@ export class PrivateSlackImages extends DurableObject<ImageEnvironment> {
     const { SLACK_APP_ID: app, SLACK_TEAM_ID: team, SLACK_CHANNEL_ID: channel, SLACK_BOT_TOKEN: token } = this.env
     if (!app || !team || !channel || !token) return Promise.resolve({ ok: false as const })
     return uploadRecordedPrivateImage({ runId, snapshot, destination: `${app}:${team}:${channel}` }, token, png, this.#store)
+  }
+  uploadLog(runId: string, stepId: string, threadTs: string, text: string) {
+    const { SLACK_APP_ID: app, SLACK_TEAM_ID: team, SLACK_CHANNEL_ID: channel, SLACK_BOT_TOKEN: token } = this.env
+    if (!app || !team || !channel || !token) return Promise.resolve({ ok: false as const })
+    return uploadRecordedSlackLog({ runId, stepId, threadTs, channel, destination: `${app}:${team}:${channel}` }, token, text, this.#store)
   }
   fetch() { return new Response("Not found", { status: 404 }) }
 }

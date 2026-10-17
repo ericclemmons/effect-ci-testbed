@@ -9,12 +9,8 @@ const workflow = CI.workflow("node-pnpm", function* () {
     return
   }
 
-  yield* CI.parallel([
-    actions.lint(),
-    CI.optional(actions.format()),
-  ])
-  yield* actions.test()
   return yield* actions.build()
 })
 
 export default workflow
+export { lint, format, test, build } from "./actions.ts"

@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
-import { hasNotificationChannels, sendNotification, type NotificationChannels, type NotificationResult } from "./notifications.ts"
+import { hasNotificationChannels, sendNotification, slackPermalink, type NotificationChannels, type NotificationResult } from "./notifications.ts"
 import { RunCard, type SlackBlock } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import { NotificationDeliveryUnavailable } from "./notification-delivery.ts"
@@ -65,6 +65,13 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.Workf
   readonly slackLayout?: "status-thread"
   /** Explicit destination opt-in: bounded, redacted failed-command output in step replies only. */
   readonly slackCommandOutput?: "failed"
+  /** Host-owned, journaled file upload. Only receives bounded, redacted output;
+   * an unavailable upload keeps the inline failure excerpt. Never project code.
+   */
+  readonly slackCommandLog?: (context: {
+    readonly exports: unknown; readonly instanceId: string; readonly stepId: string
+    readonly threadTs: string; readonly text: string
+  }) => Promise<{ ok: true; fileId: string } | { ok: false }>
   /** Trusted display-only total. Unknown runtime steps disable the progress bar. */
   readonly slackProgressSteps?: (parameters: WorkflowParameters) => ReadonlyArray<string>
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
@@ -222,6 +229,9 @@ export const workflowEntrypoint = <A>(
     // Additional providers still receive subsequent semantic snapshots.
     let presentationBlocked = false
     const threadMessages = new Map<string, string>()
+    const stepPermalinks = new Map<string, string>()
+    let detailsMessageTs: string | undefined
+    let detailsBlocked = false
     const blockedThreads = new Set<string>()
     let latestThread: string | undefined
     const channels = options.notificationChannels?.(this.env, event.payload) ?? this.env
@@ -255,11 +265,11 @@ export const workflowEntrypoint = <A>(
           return
         }
         const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
-        const deliveryStep = async (name: string, deliver: () => Promise<NotificationResult>): Promise<NotificationResult | undefined> => {
+        const deliveryStep = async (name: string, deliver: () => Promise<NotificationResult>, observational = false): Promise<NotificationResult | undefined> => {
           try { return await step.do(name, policy, deliver) }
           catch (error) {
-            presentationBlocked = true
-            if (required) throw new NotificationDeliveryUnavailable()
+            if (!observational) presentationBlocked = true
+            if (required && !observational) throw new NotificationDeliveryUnavailable()
             // This receipt is observational, not approval or business authority.
             // Do not expose upstream errors, which may contain webhook secrets.
             try {
@@ -301,15 +311,17 @@ export const workflowEntrypoint = <A>(
           const details = card.renderDetails()
           // A separate checkpointed first reply. Lost ACKs are preserved, never
           // repaired by reposting the table or repeating any business action.
-          await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
+          const posted = await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
             { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! },
-            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }))
+            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }), true)
+          if (posted && !posted.failed && posted.slackMessageTs && posted.slackMessageTs !== slackMessageTs)
+            detailsMessageTs = posted.slackMessageTs
+          else detailsBlocked = true
         }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
           const failed = () => { blockedThreads.add(threadKey); if (required) throw new NotificationDeliveryUnavailable() }
           if (blockedThreads.has(threadKey)) { failed(); return }
-          const detail = override ?? card.render({ onlyStep: threadKey })
           const slack = { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! }
           let ts = threadMessages.get(threadKey)
           if (!ts) {
@@ -323,12 +335,35 @@ export const workflowEntrypoint = <A>(
             if (!posted || posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
             ts = posted.slackMessageTs
             threadMessages.set(threadKey, ts)
+            try {
+              const permalink = await step.do(`notification:${key}:thread-permalink`, policy,
+                () => slackPermalink(channels.SLACK_BOT_TOKEN!, channels.SLACK_CHANNEL_ID!, ts!))
+              if (permalink) stepPermalinks.set(threadKey, permalink)
+            } catch { /* navigation cannot block evidence or approval delivery */ }
           }
+          const log = !override && card.commandLog(threadKey)
+          if (log && options.slackCommandLog) {
+            try {
+              const receipt = await step.do(`notification:command-log:${threadKey}`, { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" },
+                () => options.slackCommandLog!({ exports: this.ctx.exports, instanceId: event.instanceId,
+                  stepId: threadKey, threadTs: slackMessageTs!, text: log }))
+              if (receipt.ok) card.attachCommandLog(threadKey, receipt.fileId)
+            } catch { /* journaled uncertainty retains inline output, never blocks the run */ }
+          }
+          const detail = override ?? card.render({ onlyStep: threadKey })
           const updated = await deliveryStep(`notification:${key}:thread-update`, () => sendNotification(slack,
             detail.text, fetch, ts, detail.blocks, undefined, { privateImageValidation: required }))
           if (updated && !updated.failed && updated.slackMessageTs !== ts && required)
             throw new Error("Host finalization thread identity mismatch")
           if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
+        }
+        if (threaded && detailsMessageTs && !detailsBlocked) {
+          const channel = channels.SLACK_CHANNEL_ID!
+          const details = card.renderDetails(stepPermalinks)
+          const updated = await deliveryStep(`notification:${key}:details-update`, () => sendNotification(
+            { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channel },
+            details.text, fetch, detailsMessageTs, details.blocks), true)
+          if (!updated || updated.failed || updated.slackMessageTs !== detailsMessageTs) detailsBlocked = true
         }
       })
 

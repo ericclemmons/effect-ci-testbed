@@ -14,10 +14,9 @@ flowchart LR
   step_checkout --> step_install
   step_install --> step_format
   step_install --> step_lint
+  step_format --> step_test
   step_install --> step_test
   step_lint --> step_test
-  step_format -.-> step_test
-  step_install --> step_build
   step_test --> step_build
 ```
 
@@ -47,10 +46,17 @@ Compare:
 - [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts): how each action
   runs and which earlier action is a true blocker.
 
-`cf-ci` discovers `.cloudflare/ci/workflow.ts`, which exposes the same default workflow
-and named action targets as the npm example. Text/JSON formats and local/remote
-selection belong to the CLI; the inferred package-manager resource is the only runtime
-difference.
+`cf-ci` discovers `.cloudflare/ci/workflow.ts`. It exports `lint`, `format`, `test`
+and `build`; checkout and installation stay private. From this directory:
+
+```sh
+pnpm exec cf-ci list
+pnpm exec cf-ci run test build
+```
+
+`test` owns lint and optional formatting; `build` owns test. Request either goal
+or both: installation and shared checks run once. The default workflow only
+selects the build goal for supported events; it does not repeat that ordering.
 
 ```bash
 NODE_ENV=staging pnpm ci:node-pnpm:dry-run
@@ -71,12 +77,8 @@ Runner setup installs the pinned pnpm binary; the action stays portable.
 
 ## Verification proof
 
-**Video:** Pending — no same-run recording has been published for this recipe.
+**Video:** Pending.
 
-**Measured results:** Pending — no structured per-environment timing summary has
-been published here. Existing recorded runs and coverage claims remain as documented;
-missing media or measurements do not imply those runs failed or were never verified.
+**Measured results:** Pending.
 
-Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
-assertions, video/transcript, outcome and cold/warm timings. See the
-[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
+[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).
