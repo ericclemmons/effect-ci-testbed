@@ -1,6 +1,6 @@
 # Owned public failure to proposed repair
 
-## Current native result: PR exists; acknowledgement failed
+## Current result: repair verified; final bot-identity check failed
 
 One ordinary public GET returned500 and produced Issue
 `52da6a3f-87f0-49cd-865d-c7d7030a169b` with one occurrence. Its authenticated
@@ -9,6 +9,12 @@ The fresh Flue proposal completed, and exact commit
 `390e1eb0fb1c29263a3ec329c6db9049b881c66a` passed native Node check
 `116806821705` before [PR #4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4)
 was created. It remains OPEN and UNMERGED; nothing deployed the repair.
+
+The separate failed `hosted-ci` checkout checks on that PR are not the repair
+test. An unenrolled repository accidentally fell through to this host's default
+demo pipeline. The host now declines those events before creating a token, check
+or Workflow. Installing the App does not enroll every repository in that pipeline;
+the separate GitHub Actions runner keeps its own routing.
 
 The automatic repair Workflow then **errored** during final PR identity validation:
 the App had been renamed from `effect-ci-testbed` to `effect-ci`. Historical PR3

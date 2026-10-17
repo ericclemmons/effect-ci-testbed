@@ -258,7 +258,7 @@ Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
 
 A real public500 reached Flue, passed native verification and opened
 [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
-Its acknowledgement failure is preserved; read-only reconciliation confirmed the
+Its bot-identity failure remains; read-only reconciliation confirmed the
 PR and updated the same Slack card.
 [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).

@@ -56,9 +56,10 @@ export interface WorkerOptions {
   /** Declaration only; the trusted host must independently enforce each method. */
   readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
   readonly github?: GitHubClient
-  /** Trusted routing AFTER signature, App ownership and canonical webhook parsing. */
+  /** Trusted routing AFTER signature/App validation. False declines the event;
+   * undefined keeps the default workflow for hosts without explicit enrollment. */
   readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
-    { readonly workflow: Workflow<WorkflowParameters>; readonly detailsUrl?: string } | undefined
+    { readonly workflow: Workflow<WorkflowParameters>; readonly detailsUrl?: string } | false | undefined
   readonly workflow?: (
     environment: WorkerEnvironment,
     context: ExecutionContext | undefined,
@@ -492,6 +493,9 @@ export const worker = (options: WorkerOptions = {}) => {
         revision: payload.check_suite.head_sha,
       })
       const selection = options.githubRun?.(identity, environment, context)
+      if (selection === false) {
+        return Response.json({ accepted: false, reason: "workflow not enrolled" }, { status: 202 })
+      }
       const selectedWorkflow = selection?.workflow ?? workflow
       const checkDetailsUrl = selection?.detailsUrl ?? detailsUrl(environment.EFFECT_CI_DETAILS_URL, deliveryId)
       if (checkDetailsUrl) {
