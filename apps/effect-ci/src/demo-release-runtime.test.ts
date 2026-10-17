@@ -111,7 +111,10 @@ test(
     async function reviewAt(phase: number) {
       for (let n = 0; n < 200; n++) {
         const state = await call({});
-        const frame = state.messages.filter((m: any) => m.accepted).at(-1)?.body;
+        // The observational step index may update after the decision reply.
+        // Find the accepted capability frame, not the last unrelated message.
+        const frame = state.messages.filter((m: any) => m.accepted && m.body.blocks
+          ?.some((b: any) => b.type === "actions" && b.elements?.some((e: any) => e.action_id === "hmd_approve"))).at(-1)?.body;
         const button = frame?.blocks
           ?.find((b: any) => b.type === "actions")
           ?.elements?.find((e: any) => e.action_id === "hmd_approve");
@@ -161,10 +164,10 @@ test(
         assert.equal(state.commits, id !== "reject" ? 1 : 0);
         assert.equal(state.rollbacks, id !== "reject" ? 0 : 1);
         assert.equal(state.journal.status, id !== "reject" ? "complete" : "rolled-back");
-        assert.equal(state.observationFailures, id === "accept-observation-failure" ? 2 : 0,
-          "one attempt each for the known parent and existing reply, not a repost");
+        assert.equal(state.observationFailures, id === "accept-observation-failure" ? 3 : 0,
+          "one attempt each for the known parent, existing reply and observational index, not a repost");
         if (id === "accept-observation-failure") {
-          assert.equal(new Set(state.failedObservationTargets.map((t: any) => t.ts)).size, 2);
+          assert.equal(new Set(state.failedObservationTargets.map((t: any) => t.ts)).size, 3);
           assert.ok(state.failedObservationTargets.every((t: any) => t.method === "chat.update" && typeof t.ts === "string"));
         }
         assert.ok(!JSON.stringify(outcome).includes("private-presentation-token"));
@@ -184,8 +187,12 @@ test(
         assert.ok(replyUpdates.every((m: any) => !m.body.blocks.some((b: any) => ["header", "context", "divider"].includes(b.type))), "step replies omit repeated run chrome");
         const replies = state.messages.filter((m: any) => m.body.thread_ts);
         assert.equal(replies.length, 2 + state.images, "one details table, one build reply and one reply per reviewed phase");
-        assert.equal(replies[0].body.blocks[0].type, "table");
-        assert.equal(replies.filter((m: any) => m.body.blocks.some((b: any) => b.type === "table")).length, 1);
+        assert.equal(replies[0].body.text, "Preparing steps…");
+        const indexUpdates = state.messages.filter((m: any) => m.body.ts === "123.000001");
+        assert.ok(indexUpdates.length > 0);
+        assert.equal(indexUpdates.at(-1).body.blocks[0].type, "table");
+        assert.match(JSON.stringify(indexUpdates.at(-1).body), /https:\/\/slack.com\/archives\/C1\/p123000002/);
+        assert.ok(!JSON.stringify(indexUpdates).includes('"text":"Field"'));
         assert.ok(replies.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         assert.ok(state.messages.some((m: any) => m.body.ts !== "123.456" && m.body.blocks.some((b: any) => b.type === "image")));
         assert.ok(!state.messages.at(-1).body.blocks.some((b: any) => b.type === "actions"));
