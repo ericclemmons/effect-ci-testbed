@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  symlinkSync,
+  chmodSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
@@ -66,9 +73,31 @@ test("inspector rejects dependency links outside its isolated prepared tree", ()
 test("generated cache is not a required input, but changed real dependencies are", () => {
   const f = fixture(),
     before = f.inspect();
-  mkdirSync(join(f.cwd, "node_modules/.vite"));
-  writeFileSync(join(f.cwd, "node_modules/.vite/vitest.json"), "generated");
+  mkdirSync(join(f.cwd, "node_modules/.vite/vitest"), { recursive: true });
+  writeFileSync(join(f.cwd, "node_modules/.vite/vitest/results.json"), "generated");
   assert.equal(f.inspect().dependencies, before.dependencies);
+});
+
+test("dependency executable permissions are part of the identity", () => {
+  const f = fixture(),
+    path = join(f.cwd, "node_modules/dependency.js");
+  chmodSync(path, 0o644);
+  const before = f.inspect();
+  chmodSync(path, 0o755);
+  assert.notEqual(f.inspect().dependencies, before.dependencies);
+});
+
+test("unexpected code under cache-like names is still an input", () => {
+  for (const directory of [".vite", ".cache"]) {
+    const f = fixture(),
+      before = f.inspect();
+    mkdirSync(join(f.cwd, "node_modules", directory));
+    writeFileSync(
+      join(f.cwd, "node_modules", directory, "compiled.js"),
+      "unexpected executable code",
+    );
+    assert.notEqual(f.inspect().dependencies, before.dependencies);
+  }
 });
 test("identity rejects altered suite, incomplete runtime and malformed descriptors", async () => {
   const v = linux(fixture().inspect()),
