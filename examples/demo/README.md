@@ -93,7 +93,8 @@ Change `src/message.ts` and repeat. Inspect Vite+'s actual hit/miss output.
 
 > Keep package scripts. Replace their YAML execution steps with one workflow reference.
 
-[`.github/workflows/github.yml`](./.github/workflows/github.yml):
+Already adopted here. Compare the [original job](./verification/github-baseline.example.yml)
+with the [current workflow](./.github/workflows/github.yml):
 
 ```diff
 --- a/.github/workflows/github.yml

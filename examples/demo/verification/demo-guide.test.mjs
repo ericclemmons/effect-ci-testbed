@@ -55,7 +55,7 @@ test("Slack links to the same native run without adding another manual Dashboard
   assert.match(guide, /\*\*on GitHub Actions\*\*, not Cloudflare/);
 });
 
-test("GitHub adoption replaces the actual manual job with the repository workflow reference", () => {
+test("GitHub adoption shows the original job and matches the current adopted workflow", () => {
   const baseline = readFileSync(new URL("./github-baseline.example.yml", import.meta.url), "utf8");
   const section = guide.split("## 5.")[1].split("## 6.")[0];
   const diff = section.match(/```diff\n([\s\S]*?)```/)[1];
@@ -81,6 +81,10 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
   );
   assert.doesNotMatch(reference, /^    (?:runs-on|steps):/m);
   assert.match(reference, /checks: write/);
+  assert.match(section, /Already adopted here/);
+  assert.match(section, /verification\/github-baseline\.example\.yml/);
+  const current = readFileSync(new URL("../.github/workflows/github.yml", import.meta.url), "utf8");
+  assert.equal(current.slice(current.indexOf("permissions:")), reference.slice(reference.indexOf("permissions:")));
 });
 
 test("authored orchestration keeps hosted parity honest and explains exact-suite reuse boundaries", () => {
