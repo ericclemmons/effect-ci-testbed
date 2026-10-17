@@ -73,7 +73,7 @@ export const withDemoEvidenceRead = async (
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (
         !url.startsWith(base) ||
-        !/^(?:ref\/notes\/effect-ci-hosted-checks-v1|commits\/[a-f0-9]{40}|trees\/[a-f0-9]{40}\?recursive=1|blobs\/[a-f0-9]{40})$/.test(
+        !/^(?:ref\/notes\/effect-ci-(?:hosted-checks-v1|demo-tests-v1)|commits\/[a-f0-9]{40}|trees\/[a-f0-9]{40}\?recursive=1|blobs\/[a-f0-9]{40})$/.test(
           url.slice(base.length),
         ) ||
         (init?.method ?? "GET") !== "GET"

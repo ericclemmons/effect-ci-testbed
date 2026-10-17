@@ -30,3 +30,22 @@ test("the owned workflow rejects a GitHub URL instead of guessing another provid
   assert.equal(run.step_count, 0)
   assert.match(run.error.message, /Artifacts repository name/)
 })
+
+test("the private repository-root fixture uses the owned binding and exact snapshot", {
+  skip: process.env.LIVE_PRIVATE_ROOT_ARTIFACTS !== "1",
+}, () => {
+  const run = get("coverage-artifacts-private-root-20261012-1")
+  assert.equal(run.status, "complete")
+  assert.equal(run.success, true)
+  assert.equal(run.versionId, "88285523-ea4a-477c-ac9c-8b8f0334fcd9")
+  assert.equal(run.params.revision, "5d063b0c6f57635c77195f19f560ea7fe3edf40e")
+  assert.equal(run.params.directory, undefined, "source was copied as a repository root")
+  assert.deepEqual(run.steps.map((step: { name: string }) => step.name), [
+    "source:artifacts-1", "checkout:commit-1", "verify Artifacts source:read-source-txt-1",
+  ])
+  assert.ok(run.steps.every((step: { success: boolean; attempts: unknown[] }) => step.success && step.attempts.length === 1))
+  assert.equal(JSON.parse(run.steps[1].output).id, "c99cd865-25d6-4209-8e0e-1bac28c61faa")
+  assert.ok(run.output.nodes.every((node: { status: string; commands: unknown[]; secrets: unknown[] }) =>
+    node.status === "complete" && node.commands.length === 0 && node.secrets.length === 0))
+  // Do not copy private fixture bytes into this public regression or its output.
+})

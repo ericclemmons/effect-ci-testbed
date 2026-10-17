@@ -21,9 +21,10 @@ test(
     import{DurableObject}from'cloudflare:workers';
     import*as CI from'@effect-ci-testbed/ci';
     import{workflowEntrypoint}from'./index.ts';
-    const messages=[],finalizations=[];let missingCard=false,failedNotice=false,lostReply=false,failedObservation=false,threadCount=0;
+    const messages=[],finalizations=[];let missingCard=false,failedNotice=false,lostReply=false,failedObservation=false,failedSummary=false,threadCount=0;
     globalThis.fetch=async(input,init)=>{const url=String(input);if(!url.startsWith('https://slack.com/api/'))throw Error('Unexpected external request');
-      const body=JSON.parse(init.body);messages.push({url,body});if(failedObservation&&body.text==='Settling status')throw Error('private-upstream-error');if(lostReply&&body.thread_ts)return Response.json({ok:true});return Response.json({ok:!missingCard&&!(failedNotice&&body.text==='Release still running'),ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});};
+      if(url.includes('/chat.getPermalink?'))return Response.json({ok:false});
+      const body=JSON.parse(init.body);messages.push({url,body});if(failedSummary&&body.ts==='123.000001')throw Error('private-summary-error');if(failedObservation&&body.text==='Settling status')throw Error('private-upstream-error');if(lostReply&&body.thread_ts)return Response.json({ok:true});return Response.json({ok:!missingCard&&!(failedNotice&&body.text==='Release still running'),ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});};
     export class WorkspaceContainer extends DurableObject{}
     const make=(failBuild=false)=>{const build=CI.action('build',()=>function*(){if(failBuild)throw Error('Build fixture failed');return {version:'candidate-1'};});return CI.workflow('release-fixture',function*(){return yield*build();});};
     const options=(fail=false)=>({cache:false,finalize:async(ctx)=>{
@@ -40,6 +41,7 @@ test(
     export const Default=workflowEntrypoint(make(),{cache:false});
     export const Threaded=workflowEntrypoint(make(),{...options(),slackLayout:'status-thread'});
     export const LostReply=workflowEntrypoint(make(),{...options(),slackLayout:'status-thread'});
+    export const FailedSummary=workflowEntrypoint(make(),{...options(),slackLayout:'status-thread'});
     const observing=(invalid=0)=>({cache:false,finalize:async(ctx)=>{
       if(invalid){await ctx.observe('bad',{text:'Not a decision',blocks:[invalid===2?{type:'section',accessory:{type:'button',url:'https://test.invalid'}}:{type:'actions',elements:[]}]});return;}
       await ctx.observe('settling',{text:'Settling status',blocks:[{type:'section',text:{type:'plain_text',text:'Settling status'}}]});
@@ -50,7 +52,7 @@ test(
     export const ObservedActions=workflowEntrypoint(make(),observing(1));
     export const ObservedAccessory=workflowEntrypoint(make(),observing(2));
     export default{async fetch(request,env,ctx){const p=await request.json();
-      if(p.op==='start'){messages.length=0;finalizations.length=0;threadCount=0;missingCard=p.name==='MissingCard'||p.name==='ObservedMissing';failedObservation=p.name==='ObservedFailed';failedNotice=p.name==='FailedNotice';lostReply=p.name==='LostReply';await ctx.exports[p.name].create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40)}});return Response.json({started:true});}
+      if(p.op==='start'){messages.length=0;finalizations.length=0;threadCount=0;failedSummary=p.name==='FailedSummary';missingCard=p.name==='MissingCard'||p.name==='ObservedMissing';failedObservation=p.name==='ObservedFailed';failedNotice=p.name==='FailedNotice';lostReply=p.name==='LostReply';await ctx.exports[p.name].create({id:p.id,params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40)}});return Response.json({started:true});}
       if(p.op==='status')return Response.json(await(await ctx.exports[p.name].get(p.id)).status());
       return Response.json({messages,finalizations});
     }};`,
@@ -85,6 +87,7 @@ test(
                   "Default",
                   "Threaded",
                   "LostReply",
+                  "FailedSummary",
                   "Observed",
                   "ObservedMissing",
                   "ObservedFailed",
@@ -189,17 +192,23 @@ test(
         assert.match(last, failed ? /failed|failure/i : /passed|success|succeeded/i);
         if (failed) assert.ok(!result.messages.some((m: any) => /CI succeeded/.test(m.body.text)));
       }
-      for (const name of ["Threaded", "LostReply"]) {
+      for (const name of ["Threaded", "LostReply", "FailedSummary"]) {
         const result = await run(name);
-        assert.equal(result.status.status, name === "Threaded" ? "complete" : "errored");
+        assert.equal(result.status.status, name === "LostReply" ? "errored" : "complete");
         const roots = result.messages.filter((m: any) => !m.body.thread_ts && (!m.body.ts || m.body.ts === "123.456"));
         assert.equal(roots.filter((m: any) => m.url.endsWith("chat.postMessage")).length, 1);
         assert.ok(roots.every((m: any) => m.body.blocks.length === 2));
         assert.ok(roots.every((m: any) => !JSON.stringify(m.body.blocks).includes("Release still running")));
         const posts = result.messages.filter((m: any) => m.body.thread_ts);
         assert.equal(posts.length, 3, "one details table, one build reply, one host review reply; no repost on lost ACK");
-        assert.equal(posts[0].body.blocks[0].type, "table");
-        assert.equal(posts.filter((m: any) => m.body.blocks?.some((b: any) => b.type === "table")).length, 1);
+        assert.equal(posts[0].body.text, "Preparing steps…");
+        const summaries = result.messages.filter((m: any) => m.body.ts === "123.000001");
+        if (name === "Threaded") {
+          assert.ok(summaries.some((m: any) => m.body.blocks?.some((b: any) => b.type === "table")));
+          assert.match(summaries.at(-1).body.text, /build: complete/);
+          assert.ok(summaries.every((m: any) => m.url.endsWith("chat.update")), "summary updates never repost");
+        } else assert.equal(summaries.length, name === "FailedSummary" ? 1 : 0,
+          "a failed index is never reposted or retried, and cannot block release finalization");
         assert.ok(posts.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         if (name === "LostReply") {
           assert.ok(!result.messages.some((m: any) => m.body.text === "Release still running"));

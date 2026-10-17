@@ -4,118 +4,66 @@
 
 > Experimental prototype. The examples are the product specification.
 
-**CI isn't a pipeline. It's a flywheel.** Run checks, retain trustworthy evidence,
-release deliberately, observe what happens, and use failures to propose verified
-repairs. This testbed asks an agent to prove those customer needs with standalone
-recipes—not to declare an entire CI product finished.
+**CI isn't a pipeline. It's a flywheel.** Check a change, reuse trustworthy
+evidence, release it, observe it, and turn failures into verified repair proposals.
 
 ## Try it locally
 
-Use Node 24.11+ or Node 26+ and the repository's pnpm version. From a clone:
+Use Node 24.11+ or Node 26+. From a clone:
 
 ```sh
 pnpm install
+pnpm build
 export PATH="$PWD/node_modules/.bin:$PATH"
 cd examples/demo
-cf-ci
 cf-ci list
-cf-ci plan --format=mermaid
-cf-ci run
-AI_AGENT=demo cf-ci run build
+cf-ci plan test build --format=mermaid
+cf-ci run test build
 ```
 
-The demo starts without a CI marker. Help, list and plan infer normal package
-scripts without creating files. An explicit local `cf-ci run` creates an empty
-`.cloudflare/ci/ci.ts` and discovers conventional package scripts. Existing
-workflows take precedence; `plan`, `list`, and remote dispatch do not create files.
-Use a package-manager declaration or lockfile so installation can be resolved.
-Human terminals default to text; detected direct agents default to JSON.
-Detection uses `@vercel/detect-agent`, including the `AI_AGENT` convention; no
-agent flag is needed. Explicit `--format` remains available as an override.
-Local JSON command failures retain bounded stdout/stderr from the same attempt.
-Updated native hosts also preserve both streams across failed checkpoints;
-remote JSON exposes them at `error.details.diagnostics`, with explicit truncation.
-These diagnostics do not retry a command or authorize execution/reuse.
-Run the build again to inspect Vite+ task reuse, then change source to check
-invalidation. A cache hit is not signed verification evidence, and a small cached
-task is not necessarily faster than executing it. Follow the
-[incremental adoption guide](./examples/demo/README.md) for expected
-results and intentional failures.
+Keep your package scripts. Help, list and plan inspect them without creating
+files. The first local run adds an empty CI marker; an authored workflow takes
+precedence. Humans get text, detected agents get JSON. Use `--format` to override.
 
-Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
-a different Source adapter while preserving the actions. Want hosted execution?
-Use the [Cloudflare app setup](./apps/effect-ci/README.md); `--remote` dispatches the
-configured hosted workflow, not arbitrary local code. Trusted exact-commit reuse
-is a separate capability—not a promise that remote runs, pushes, builds or
-deployments become no-ops.
-
-Each recipe includes an execution plan and a **Verification proof** section.
-Videos and measured results remain explicitly pending until actual E2E runs
-produce them. The [proof-page contract](./examples/PROOF-PAGES.md) defines what
-future agents must record. Existing coverage evidence stays valid; missing video
-does not erase it. Observability-driven repair and full GitLab runner parity are
-roadmap work, not completed features.
+[Walk through the demo](./examples/demo/README.md) for remote setup, Slack,
+previews, test attestation and the real error-to-unmerged-PR proof.
+[Browse recipes](./examples/README.md) for one focused capability at a time.
 
 ## Execution model
 
-Effect CI is an agent-first execution and verification layer. It runs one pipeline
-locally, in the background on compute selected by a GitHub job, or in a Cloudflare
-Workflow, and aims to avoid repeating work already proven for the same inputs. Actions
-own their required dependencies; workflows coordinate sequencing, parallelism,
-optional work, recovery, approval, and deployment.
+Actions own prerequisites. Workflows request goals:
 
-The consumer model is intentionally small:
+```ts
+import * as CI from "@effect-ci-testbed/ci"
+import * as actions from "./actions.ts"
 
-- An action returns the next logical `CI.Workspace` by default. The runner checkpoints
-  that revision; a non-workspace result must be explicit, such as `CI.action<void>`.
-- Capabilities such as `CI.PackageManager.JavaScript(workspace)` remain separate from
-  the workspace instead of turning it into a platform-specific god object.
-- A durable checkpoint restores one exact action revision. A reusable cache restores
-  only its owned paths into the current revision and must never replace dependency
-  lineage.
-- Runner capabilities are supplied at the entrypoint, not inside the workflow. GitHub
-  YAML provides its runner and `actions/cache`; a Cloudflare Worker provides Workflow,
-  Container, checkpoint, and snapshot-cache implementations. The same
-  `.cloudflare/ci/{actions,workflow}.ts` files import neither platform.
-- Event adapters normalize repository and revision into `CI.WorkflowEvent` and provide
-  the matching `CI.Source`; `source.checkout()` therefore has no repository path or URL
-  argument. Non-source events, such as an observability issue, may omit source entirely
-  and route directly to diagnosis or healing actions.
-- `CI.Source` is a materialization capability, not a synonym for Git. A runner may
-  restore the same logical revision from a local directory, GitHub, R2, a Durable
-  Object snapshot, or a previously published artifact. Actions should not know which
-  provider satisfied `source.checkout()`.
-- Retry and timeout policy lives on an action and is lowered by the runner: Effect
-  handles it locally, while Cloudflare receives native `step.do` options.
-- `CI.when` is the small, serializable condition algebra for branches operators must
-  inspect. Ordinary Effect control flow remains available for runtime-only decisions.
-- Actions own rollback behavior; terminal failure unwinds completed actions in reverse order.
-- `CI.Secret` returns a redacted host-side capability; `CI.Artifact` publishes a
-  runner-owned checkpoint only when output must cross a workload boundary.
-- Side-effect-free `CI.check` values return `void` and may opt into runner reuse. A
-  `CheckCache` can verify signed commit evidence or a trusted remote-cache hit; missing
-  or invalid evidence always falls back to execution.
-- Eligible source-only actions should run in lightweight isolates before Effect CI
-  escalates to a container. The workflow describes the capability it needs; the runner
-  chooses the least expensive compatible execution tier.
+export { test, build } from "./actions.ts"
 
-Each focused example separates the program from its tests and its platform adapter:
-
-```text
-.cloudflare/ci/actions.ts                 reusable action definitions
-.cloudflare/ci/workflow.ts                default workflow and intentional public targets
-.cloudflare/ci/tests/*.test.ts            ordinary SDK assertions
-.github/workflows/github.yml              conventional GitHub Actions comparison
-.github/workflows/effect-on-github.yml    the same workflow.ts on a GitHub runner
+export default CI.workflow("project", function* () {
+  return yield* CI.parallel([actions.test(), actions.build()])
+})
 ```
 
-Tests never launch CI. Locally, a developer or agent runs `cf-ci run`; the CLI discovers
-`.cloudflare/ci/workflow.ts` by walking up from the current directory. On GitHub, the
-thin Effect caller passes that same module to the reusable runner. The
-conventional YAML is intentionally independent so every example shows the native
-GitHub approach beside the portable Effect approach.
+- Shared prerequisites run once. Parallelism is explicit.
+- Source and runner adapters change where work runs, not the action definitions.
+- Caching reuses task output. Attestation verifies exact committed inputs; they
+  are different capabilities.
+- Failed commands retain bounded stdout/stderr. A nonzero exit code is failure,
+  including when a custom executor returns it instead of throwing.
+- Remote runs select an enrolled hosted program; they do not upload local code.
+
+[SDK and adapter contracts](./packages/ci/README.md) ·
+[Hosted setup](./apps/effect-ci/README.md) ·
+[Proof requirements](./examples/PROOF-PAGES.md)
 
 ## Deployable apps
+
+[`apps/github-actions-runner`](./apps/github-actions-runner/README.md) is an optional
+GitHub Actions runner on Cloudflare Containers: change `runs-on`, keep native YAML
+steps and logs. It is separate from Effect CI's native Workflow runner and reuses
+the existing GitHub App with optional runner permissions. Its private-fixture
+[live proof](./apps/github-actions-runner/README.md#verification) includes
+checkout, Node/pnpm setup, install, build, native logs and ephemeral cleanup.
 
 [`apps/effect-ci`](./apps/effect-ci/README.md) contains the self-hosted Cloudflare
 service and step-by-step setup: `cf` deployment, GitHub App integration, Cloudflare

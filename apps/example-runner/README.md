@@ -348,8 +348,6 @@ third-party token, TLS interception, or total outbound network confinement. Loca
 regressions cover denied destinations/operations, redirect rejection, and suppression
 of reflected credentials and errors.
 
-### Artifacts-backed source proof
-
 ### Fail-once retry proof
 
 `coverage-retry-20261010-1` completed one native step, `action:"flaky test"-1`:

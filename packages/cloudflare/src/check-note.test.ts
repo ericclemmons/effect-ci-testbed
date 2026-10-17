@@ -39,6 +39,20 @@ test("reader pins notes commit and validates blob bytes for flat and fanout Git 
   }
 })
 
+test("a host-selected test namespace stays separate from syntax notes and rejects unsafe refs", async () => {
+  const notesRef = "refs/notes/effect-ci-demo-tests-v1"
+  const replies = fixture(); replies[0] = { ref: notesRef, object: { type: "commit", sha: notesCommit } }
+  const r = reader(replies)
+  assert.deepEqual(await readGitHubCheckNote({ ...r.options, notesRef }, revision), { notesCommit, blobSha, text })
+  assert.ok(r.calls[0].endsWith("ref/notes/effect-ci-demo-tests-v1"))
+  assert.equal(await readGitHubCheckNote(reader(fixture()).options, revision) !== undefined, true)
+  for (const unsafe of ["refs/heads/main", "refs/notes/effect-ci-../secret", "refs/notes/effect-ci-demo-tests-v1?other"]){
+    const blocked = reader(fixture())
+    assert.equal(await readGitHubCheckNote({ ...blocked.options, notesRef: unsafe }, revision), undefined)
+    assert.equal(blocked.calls.length, 0)
+  }
+})
+
 test("unknown revisions, unsafe repositories and missing/auth failures return misses", async () => {
   const { options, calls } = reader(fixture())
   assert.equal(await readGitHubCheckNote(options, "main"), undefined)

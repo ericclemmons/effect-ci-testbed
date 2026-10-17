@@ -28,7 +28,7 @@ checkout → npm ci → cf build → cf deploy --prebuilt --dry-run
 Run the generic hook locally:
 
 ```sh
-EFFECT_CI_EVENT=deploy_hook pnpm exec cf-ci
+EFFECT_CI_EVENT=deploy_hook pnpm exec cf-ci run
 ```
 
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml)
@@ -50,12 +50,8 @@ the TypeScript config nor the locked dependencies can rely on the monorepo root.
 
 ## Verification proof
 
-**Video:** Pending — no same-run recording has been published for this recipe.
+**Video:** Pending.
 
-**Measured results:** Pending — no structured per-environment timing summary has
-been published here. Existing recorded runs and coverage claims remain as documented;
-missing media or measurements do not imply those runs failed or were never verified.
+**Measured results:** Pending.
 
-Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
-assertions, video/transcript, outcome and cold/warm timings. See the
-[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
+[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -20,7 +20,7 @@ Use Node 24.11+ or Node 26+. Stay in `examples/demo` and prepare this shell:
 
 ```sh
 export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
-cloudflared access login https://effect-ci-github-cloudflare.ericclemmons.workers.dev
+cloudflared access login --quiet https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 cf-ci doctor --remote
 ```
 
@@ -30,13 +30,13 @@ If you are on `main`, create a rehearsal branch; otherwise keep your branch:
 git switch -c demo/rehearsal
 ```
 
-**Finish remote setup before presenting.** `doctor` checks authentication and host
-capabilities without starting work. The URL is already in `.env`. The enrolled
+Run `doctor` before presenting: it checks authentication and host capabilities
+without starting work. The URL is in `.env`. The enrolled
 demo uses your existing Access login; no separate API profile is needed for your
 approved identity. Other API-token clients are unchanged. Keep credentials out of
 project env files; never use a deployment token.
 
-GitHub pushes use your normal GitHub login, not Access. Run `pnpm dev` to edit the app.
+Run `pnpm dev` to edit.
 
 ## 1. Discover the project
 
@@ -93,7 +93,8 @@ Change `src/message.ts` and repeat. Inspect Vite+'s actual hit/miss output.
 
 > Keep package scripts. Replace their YAML execution steps with one workflow reference.
 
-[`.github/workflows/github.yml`](./.github/workflows/github.yml):
+Already adopted here. Compare the [original job](./verification/github-baseline.example.yml)
+with the [current workflow](./.github/workflows/github.yml):
 
 ```diff
 --- a/.github/workflows/github.yml
@@ -168,12 +169,13 @@ For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
 branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The parent card shows status and the preview link. Its thread holds step output.
+The parent card shows status and the preview link. Its thread holds step output;
+long failures attach a redacted text snippet with a short inline excerpt.
 Failed command replies include bounded, redacted stdout/stderr and the exit code.
-Click **Details on that Slack parent card** for the same Cloudflare Workflow run.
+Click **Dashboard** on that card for the same Cloudflare Workflow run.
+The first thread reply is a live Status/Step table; each linked step opens its reply.
 
 The host currently selects its fixed demo program, not uploaded `workflow.ts`.
-Local authored goals and the hosted program are separate until remote parity lands.
 
 ### Select hosted goals
 
@@ -182,17 +184,27 @@ cf-ci run test build --remote
 ```
 
 Live verified: selected hosted goals share installation and never
-publish or release. The CLI checks host capabilities before dispatch; an older
-host rejects the command without starting the default workflow. Without targets,
+publish or release. The CLI checks host capabilities before dispatch. Without targets,
 `cf-ci run --remote` runs the hosted suite and publishes a preview.
 
 ## 8. Verify previously checked work
 
 > Trust exact evidence, not an agent saying “tests passed.”
 
-Full test-suite reuse is not enrolled yet. The existing live proof verifies only
-the pure syntax check; lint and tests still execute.
-[Attestation policy and actual positive/negative runs](../../apps/effect-ci/README.md).
+From a clean, committed checkout with the enrolled local signing key and Docker:
+
+```sh
+node .cloudflare/ci/attest-tests.ts
+git push origin refs/notes/effect-ci-demo-tests-v1
+cf-ci run test build --remote
+```
+
+The signer runs Vitest in pinned Linux before signing.
+The host independently checks commit, suite, dependency bytes and runtime.
+Only `test` can be reused; typecheck and build still run. Missing, changed or
+invalid evidence runs the tests normally. This enrollment is for this demo's
+exact suite, not arbitrary tests or another computer's unregistered key.
+[Policy and retained verification evidence](../../apps/effect-ci/README.md).
 
 ## 9. Consume the build in a deploy action
 
@@ -218,7 +230,7 @@ It is not an external deployment. Hosted publication uses the private publisher 
 
 > The browser receives the same checked build, not a second build.
 
-Open **Open preview** on your Slack card. Edit the release message, commit and
+Open **Preview** on your Slack card. Edit the release message, commit and
 `git push` again to publish a new commit-pinned preview. Production stays unchanged.
 
 These are static previews of this Vite app, not resource-isolated Workers Previews.
@@ -244,10 +256,10 @@ Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
 
 > HTTP failure → authenticated event → Flue proposal → exact-commit test → unmerged PR.
 
-The new public500 automatically reached Flue, passed the exact-commit native Node
-check and opened [unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
-Its renamed-bot acknowledgement error is preserved. Approved read-only
-reconciliation confirmed that existing PR and updated the same Slack card.
+A real public500 reached Flue, passed native verification and opened
+[unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
+Its acknowledgement failure is preserved; read-only reconciliation confirmed the
+PR and updated the same Slack card.
 [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 

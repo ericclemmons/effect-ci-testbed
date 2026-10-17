@@ -218,7 +218,7 @@ const remoteConnection = (root: string) => {
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
+      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
     )
   }
 
@@ -228,10 +228,21 @@ const remoteConnection = (root: string) => {
 const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType<typeof remoteConnection>) => {
   let available: unknown
   try {
-    const response = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
-    if (response.status === 401 || response.status === 403)
+    const response = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "manual", signal: AbortSignal.timeout(15_000) })
+    let accessLogin = false
+    if ([301,302,303,307,308].includes(response.status)) {
+      try {
+        const location = new URL(response.headers.get("location") ?? "", remoteUrl)
+        accessLogin = location.protocol === "https:" &&
+          (/(^|\.)cloudflareaccess\.com$/.test(location.hostname) ||
+            (location.origin === new URL(remoteUrl).origin && location.pathname.startsWith("/cdn-cgi/access/")))
+      } catch {}
+    }
+    if (response.status === 401 || response.status === 403 || accessLogin) {
+      await response.body?.cancel().catch(() => {})
       throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
-        "The remote host denied authentication. Refresh Cloudflare Access and check the private API profile. No run was dispatched.")
+        `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
+    }
     if (response.ok) available = await response.json()
   } catch (error) {
     if (error instanceof CliFailure) throw error

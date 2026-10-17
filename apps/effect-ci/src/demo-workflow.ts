@@ -52,6 +52,12 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     cache: false,
     slackLayout: "status-thread",
     slackCommandOutput: "failed",
+    slackCommandLog: ({ exports, instanceId, stepId, threadTs, text }) => {
+      const host = exports as { PrivateSlackImages: { getByName(name: string): {
+        uploadLog(runId: string, stepId: string, threadTs: string, text: string): Promise<{ ok: true; fileId: string } | { ok: false }>
+      } } };
+      return host.PrivateSlackImages.getByName(instanceId).uploadLog(instanceId, stepId, threadTs, text);
+    },
     slackProgressSteps: (parameters) => ["checkout", "syntax", "install", "lint", "check", "typecheck", "test", "build", "verify build", "publish site",
       ...(parameters.trigger === "github" && demoProductionAllowed(parameters) ? ["prepare release", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])],
     container: { image: "workspace", instance: "standard-1" },

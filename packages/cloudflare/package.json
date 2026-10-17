@@ -19,7 +19,9 @@
     "./demo-candidate": "./src/demo-candidate.ts",
     "./reviewed-release": "./src/reviewed-release.ts",
     "./node-syntax-check": "./src/node-syntax-check.ts",
-    "./node-syntax-signer": "./src/node-syntax-signer.ts"
+    "./node-syntax-signer": "./src/node-syntax-signer.ts",
+    "./demo-test-check": "./src/demo-test-check.ts",
+    "./demo-test-signer": "./src/demo-test-signer.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

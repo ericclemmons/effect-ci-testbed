@@ -87,25 +87,30 @@ the downstream restored workspace. All three native steps passed once.
 Artifacts repository name before any step: there is no guessed GitHub fallback.
 Anonymous requests to the example Worker return 404. The proof reused the immutable
 fixture already stored in Artifacts; no new import or Git token was created. Its
-previous import-issued token remained revoked. This is standalone deployment proof,
-not yet a live proof of importing a newly copied repository-root fixture.
+previous import-issued token remained revoked. This verifies the standalone deployment.
+
+The separate `coverage-artifacts-private-root-20261012-1` run verifies a private
+repository-root fixture at `5d063b0c6f57635c77195f19f560ea7fe3edf40e`, without a
+`directory` selector. Its same owned Workflow completed all three steps once and
+restored snapshot `c99cd865-25d6-4209-8e0e-1bac28c61faa`. The
+[retained setup record](https://github.com/ericclemmons/effect-ci-testbed/issues/163)
+records revoked upload tokens and anonymous Git 401 before dispatch. Private fixture
+contents stay private. This is Artifacts Git upload/binding proof, **not** proof of
+remote import from a private GitHub repository.
 
 Read those histories without redispatching:
 
 ```sh
 LIVE_STANDALONE_ARTIFACTS=1 CF_BIN=cf node --test examples/artifacts-source/src/live.test.ts
+LIVE_PRIVATE_ROOT_ARTIFACTS=1 CF_BIN=cf node --test examples/artifacts-source/src/live.test.ts
 ```
 
 See the [Artifacts binding API](https://developers.cloudflare.com/artifacts/api/workers-binding/).
 
 ## Verification proof
 
-**Video:** Pending — no same-run recording has been published for this recipe.
+**Video:** Pending.
 
-**Measured results:** Pending — no structured per-environment timing summary has
-been published here. Existing recorded runs and coverage claims remain as documented;
-missing media or measurements do not imply those runs failed or were never verified.
+**Measured results:** Pending.
 
-Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
-assertions, video/transcript, outcome and cold/warm timings. See the
-[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
+[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

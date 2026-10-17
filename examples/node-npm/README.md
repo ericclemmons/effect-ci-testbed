@@ -41,20 +41,17 @@ Compare:
   runs and which earlier action is a true blocker.
 
 `cf-ci` is the canonical interface for developers and coding agents. It discovers
-[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts) and executes its default
-workflow:
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts):
 
 ```bash
-pnpm exec cf-ci
+pnpm exec cf-ci run
 pnpm exec cf-ci plan --format=json
 ```
 
-Explicit `--format=text` and `--format=json` override output selection. Without an
-override, a directly detected coding agent receives JSON while interactive and hybrid
-terminals receive text. See [`../exported-actions`](../exported-actions) for the
-opt-in direct-action interface. `--local` is the default; `--remote` selects a
-configured remote provider without changing the workflow, and fails with
-`CI_REMOTE_UNAVAILABLE` / exit code `3` until the entry point supplies one.
+Bare `cf-ci` prints help. `run` executes the default workflow; `plan` only inspects
+it. Humans get text, detected agents get JSON; `--format` overrides either.
+See [`../exported-actions`](../exported-actions) for direct-action targets.
+Remote execution needs an enrolled provider; this fixture does not configure one.
 
 ```bash
 NODE_ENV=staging pnpm ci:node-npm:dry-run
@@ -79,12 +76,8 @@ The unchanged workflow also passed in a real Cloudflare Workflow. See the
 
 ## Verification proof
 
-**Video:** Pending — no same-run recording has been published for this recipe.
+**Video:** Pending.
 
-**Measured results:** Pending — no structured per-environment timing summary has
-been published here. Existing recorded runs and coverage claims remain as documented;
-missing media or measurements do not imply those runs failed or were never verified.
+**Measured results:** Pending.
 
-Use the [proof-page contract](../PROOF-PAGES.md) for exact revision/environment,
-assertions, video/transcript, outcome and cold/warm timings. See the
-[coverage matrix](../../README.md#recipes-by-feature) for current backend support.
+[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

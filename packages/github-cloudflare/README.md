@@ -54,6 +54,18 @@ The final result retains that graph. No checklist or approval capability appears
 on the parent. The owned demo opts into this layout;
 other hosts keep their existing presentation unless they opt in.
 
+The first reply is a maintained Status/Step table. Step names link to their
+evidence replies; Dashboard and Preview stay beside the source link on the parent.
+Declared progress shows one segment per step and keeps the last completed step.
+
+`slackCommandOutput: "failed"` adds bounded, redacted command output to failed step
+replies. The owned demo also supplies `slackCommandLog`: long output becomes a text
+snippet in the same channel and parent thread, with a short inline excerpt.
+These are retained stdout/stderr tails, not unlimited process logs. A host-only
+Durable Object records upload intent before allocation; lost acknowledgements
+never allocate another file. Unavailable snippets retain the inline fallback.
+No public file URL, new Slack scope or project-side credential is required.
+
 Each running step gets one maintained, non-broadcast reply containing only that
 step's status and evidence—no numbering or repeated workflow/source/details header.
 Host continuations

@@ -52,6 +52,7 @@ export default defineConfig({
       }),
     },
     env: {
+      GITHUB_ACTIONS_RUNNER: bindings.worker({ worker: "effect-ci-github-actions-runner" }),
       PUBLIC_ADMISSION: bindings.worker({ worker: "effect-ci-repair-events", exportName: "PublicIncidentAdmission" }),
       PUBLIC_PROPOSAL: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "PublicProposalDriver" }),
       DEMO_SITE: bindings.worker({

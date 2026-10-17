@@ -7,6 +7,7 @@ import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
 import { demoRouteAllowed, demoRunAllowed, demoGitHubAllowed, demoRemoteTargets } from "./demo-policy.ts";
 import { demoAccessRequest } from "./demo-access.ts";
+import { runnerWebhook, type RunnerWebhookEnvironment } from "./runner-webhook.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
 export { StaticAssetSourceReader } from "./static-assets-source.ts";
 export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicIncidentRepairWorkflow, PublicPipelineReadiness } from "./public-incident-repair.ts";
@@ -49,7 +50,9 @@ const demo = GitHubCloudflare.worker({
   },
 });
 export default {
-  async fetch(request: Request, environment: WorkerEnvironment, context: ExecutionContext) {
+  async fetch(request: Request, environment: WorkerEnvironment & RunnerWebhookEnvironment, context: ExecutionContext) {
+    const runner = await runnerWebhook(request, environment);
+    if (runner) return runner;
     const pathname = new URL(request.url).pathname;
     if (pathname === "/demo" || pathname.startsWith("/demo/")) {
       if (!demoRouteAllowed(pathname)) return new Response("Not found", { status: 404 });
