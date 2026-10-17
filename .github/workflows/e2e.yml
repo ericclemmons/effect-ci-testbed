@@ -244,6 +244,7 @@ jobs:
           - portable-artifacts
           - verification-evidence
           - source-providers
+          - snapshot-fanout
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -353,6 +354,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: portable-artifacts
             workflow: examples/portable-artifacts/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: snapshot-fanout
+            workflow: examples/snapshot-fanout/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
           - example: verification-evidence
             workflow: examples/verification-evidence/.cloudflare/ci/workflow.ts

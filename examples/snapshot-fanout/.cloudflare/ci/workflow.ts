@@ -2,6 +2,8 @@ import * as CI from "@effect-ci-testbed/ci"
 
 import * as actions from "./actions.ts"
 
+export { local } from "./local.ts"
+
 const workflow = CI.workflow("snapshot-fanout", function* () {
   return yield* CI.parallel([
     actions.left(),

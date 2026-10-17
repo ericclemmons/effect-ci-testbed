@@ -26,7 +26,7 @@ export const left = CI.action("left", () => function* () {
 ```
 
 The workflow runs `left()` and `right()` with `CI.parallel`. `prepare()` executes once
-and returns a durable workspace revision. On Cloudflare, each consuming action restores
+and returns a workspace revision. On Cloudflare, each consuming action restores
 that same snapshot into a Container selected by the action ID. The two checks both
 write `branch.txt`, sleep, and assert their own value remains; they would race and fail
 if they shared a filesystem.
@@ -34,6 +34,29 @@ if they shared a filesystem.
 [The conventional GitHub version](./.github/workflows/github.yml) expresses the same
 shape with a prepared artifact and two matrix jobs. Effect CI does not need an artifact
 manifest because the workspace revision is the dependency value.
+
+## Run locally or on GitHub
+
+After `pnpm install` at the repository root:
+
+```sh
+cd examples/snapshot-fanout
+pnpm exec cf-ci plan
+pnpm exec cf-ci run
+```
+
+The recipe's `local` adapter gives each action a private filesystem copy and
+captures its returned workspace. Both branches inherit the prepared bytes; neither
+can mutate the other's copy or the prepared snapshot. Only the public `app/`
+fixture is copied; repository-root credentials, dependencies and `.git` are not.
+Links and special files are rejected. Temporary copies are removed after execution.
+
+These are trusted shell commands on the host, **not a security sandbox**. This
+small recipe-owned adapter does not change the default local runner or native
+Cloudflare behavior. The [Effect-on-GitHub caller](./.github/workflows/effect-on-github.yml)
+and repository matrix run the same program on GitHub's runner.
+
+## Run on Cloudflare
 
 Run this unchanged workflow in a real Cloudflare account with the
 [hosted example app](../../apps/example-runner):
@@ -43,11 +66,6 @@ pnpm --filter @effect-ci-testbed/example-runner exec cf deploy
 cf workflows instances create effect-ci-example-snapshot-fanout \
   --body '{"instance_id":"fanout-1","params":{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"COMMIT_SHA"}}'
 ```
-
-The ordinary in-process local runner deliberately does not promise filesystem
-isolation. This example uses the Cloudflare runtime because isolated Containers
-are the behavior under test. A future local snapshot runner can provide the same
-capability without changing these actions.
 
 Hosted verification: `coverage-snapshot-fanout-20261008-1` completed against
 `55be3e8c7bff809aa9a8a910f888bc86613922e0`. Native history shows one prepared
