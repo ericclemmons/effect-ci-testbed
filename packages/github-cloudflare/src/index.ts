@@ -222,6 +222,8 @@ export const workflowEntrypoint = <A>(
     // Additional providers still receive subsequent semantic snapshots.
     let presentationBlocked = false
     const threadMessages = new Map<string, string>()
+    let detailsMessageTs: string | undefined
+    let detailsBlocked = false
     const blockedThreads = new Set<string>()
     let latestThread: string | undefined
     const channels = options.notificationChannels?.(this.env, event.payload) ?? this.env
@@ -255,11 +257,11 @@ export const workflowEntrypoint = <A>(
           return
         }
         const policy = { retries: { limit: 0, delay: "1 second" }, timeout: "20 seconds" } as const
-        const deliveryStep = async (name: string, deliver: () => Promise<NotificationResult>): Promise<NotificationResult | undefined> => {
+        const deliveryStep = async (name: string, deliver: () => Promise<NotificationResult>, observational = false): Promise<NotificationResult | undefined> => {
           try { return await step.do(name, policy, deliver) }
           catch (error) {
-            presentationBlocked = true
-            if (required) throw new NotificationDeliveryUnavailable()
+            if (!observational) presentationBlocked = true
+            if (required && !observational) throw new NotificationDeliveryUnavailable()
             // This receipt is observational, not approval or business authority.
             // Do not expose upstream errors, which may contain webhook secrets.
             try {
@@ -301,9 +303,12 @@ export const workflowEntrypoint = <A>(
           const details = card.renderDetails()
           // A separate checkpointed first reply. Lost ACKs are preserved, never
           // repaired by reposting the table or repeating any business action.
-          await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
+          const posted = await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
             { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! },
-            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }))
+            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }), true)
+          if (posted && !posted.failed && posted.slackMessageTs && posted.slackMessageTs !== slackMessageTs)
+            detailsMessageTs = posted.slackMessageTs
+          else detailsBlocked = true
         }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
@@ -329,6 +334,18 @@ export const workflowEntrypoint = <A>(
           if (updated && !updated.failed && updated.slackMessageTs !== ts && required)
             throw new Error("Host finalization thread identity mismatch")
           if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
+        }
+        if (threaded && detailsMessageTs && !detailsBlocked) {
+          const links = new Map<string, string>()
+          const channel = channels.SLACK_CHANNEL_ID!
+          if (/^[CG][A-Z0-9]+$/.test(channel)) for (const [id, ts] of threadMessages) {
+            if (/^\d+\.\d+$/.test(ts)) links.set(id, `https://slack.com/archives/${channel}/p${ts.replace(".", "")}`)
+          }
+          const details = card.renderDetails(links)
+          const updated = await deliveryStep(`notification:${key}:details-update`, () => sendNotification(
+            { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channel },
+            details.text, fetch, detailsMessageTs, details.blocks), true)
+          if (!updated || updated.failed || updated.slackMessageTs !== detailsMessageTs) detailsBlocked = true
         }
       })
 

@@ -57,7 +57,7 @@ const sourceLinks = (identity: RunIdentity): string => {
   const url = valid ? `https://github.com/${repository}` : undefined
   const commit = /^[a-f0-9]{7,64}$/i.test(identity.revision)
   const revision = commit ? identity.revision.slice(0, 7) : identity.revision
-  return `${link(url, repository.slice(0, 200))}@${link(url && commit ? `${url}/commit/${identity.revision}` : undefined, revision.slice(0, 100))}${safeUrl(identity.detailsUrl) ? ` • ${link(safeUrl(identity.detailsUrl), "Details")}` : ""}`
+  return `${link(url, repository.slice(0, 200))}@${link(url && commit ? `${url}/commit/${identity.revision}` : undefined, revision.slice(0, 100))}${safeUrl(identity.detailsUrl) ? ` • ${link(safeUrl(identity.detailsUrl), "Dashboard")}` : ""}`
 }
 
 /** Reconstructed on replay. Enrolled redacted failure presentation stays outside semantic snapshots. */
@@ -196,21 +196,22 @@ export class RunCard {
   }
 
   /** A native table in the first thread reply, never a capability or raw payload. */
-  renderDetails(): { text: string; blocks: ReadonlyArray<SlackBlock> } {
-    const repository = this.identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
-    const repositoryUrl = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ? `https://github.com/${repository}` : undefined
-    const commitUrl = repositoryUrl && /^[a-f0-9]{7,64}$/i.test(this.identity.revision) ? `${repositoryUrl}/commit/${this.identity.revision}` : undefined
+  renderDetails(stepLinks: ReadonlyMap<string, string> = new Map()): { text: string; blocks: ReadonlyArray<SlackBlock> } {
     const cell = (text: string, url?: string) => url ? { type: "rich_text", elements: [{ type: "rich_text_section",
       elements: [{ type: "link", url, text: text.slice(0, 80) }] }] } : { type: "raw_text", text: text.slice(0, 80) }
-    const rows = [["Field", "Value"], ["Workflow", this.workflowId], ["Repository", repository],
-      ["Commit", this.identity.revision], ["Run", this.identity.instanceId],
-      ...(safeUrl(this.identity.detailsUrl) ? [["Dashboard", safeUrl(this.identity.detailsUrl)!]] : [])]
-    return { text: rows.slice(1).map(([key, value]) => `${key}: ${value!.slice(0, 500)}`).join("\n"), blocks: [
+    const ids = [...new Set([...(this.progressSteps ?? []), ...this.checks.keys()])]
+    if (!ids.length) return { text: "Preparing steps…", blocks: [
+      { type: "section", text: { type: "plain_text", text: "Preparing steps…" } },
+    ] }
+    // One table per message, at most 100 rows including its header. Preserve
+    // full textual status for screen readers; glyphs are visual shorthand only.
+    const rows = ids.slice(0, 99).map(id => ({ id, status: this.checks.get(id)?.status ?? "planned" }))
+    return { text: rows.map(({ id, status }) => `${id}: ${status}`).join("\n"), blocks: [
       { type: "table", column_settings: [{ is_wrapped: false }, { is_wrapped: true }],
-        rows: [[cell("Field"), cell("Value")], [cell("Workflow"), cell(this.workflowId)],
-          [cell("Repository"), cell(repositoryUrl ? repository.split("/")[1]! : repository, repositoryUrl)],
-          [cell("Commit"), cell(this.identity.revision.slice(0, 7), commitUrl)],
-          [cell("Run"), cell(this.identity.instanceId.slice(0, 8), safeUrl(this.identity.detailsUrl))]] },
+        rows: [[cell("Status"), cell("Step")], ...rows.map(({ id, status }) => [
+          cell(`${plainSymbols[status]} ${status}`), cell(id, safeUrl(stepLinks.get(id))),
+        ])] },
+      ...(ids.length > 99 ? [{ type: "context", elements: [{ type: "plain_text", text: `${ids.length - 99} more steps; see Dashboard.` }] }] : []),
     ] }
   }
 
@@ -244,8 +245,7 @@ export class RunCard {
       const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")
       return { text: title, blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
-        { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
-        ...(this.resultLink ? [{ type: "section", text: { type: "mrkdwn", text: link(this.resultLink.url, this.resultLink.label), verbatim: true } }] : []),
+        { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity) + (this.resultLink ? ` • ${link(this.resultLink.url, this.resultLink.label.replace(/^Open /, "").replace(/^preview$/, "Preview").replace(/^checked build$/, "Checked build"))}` : ""), verbatim: true }] },
         // Latest evidence remains visible without opening the thread, including
         // after terminal success/failure. Approval capabilities stay in replies.
         ...(this.lastHealthChart ? [{ type: "image", slack_file: { id: this.lastHealthChart.fileId }, alt_text: `Latest successfully rendered health confidence intervals: Release ${this.lastHealthChart.phase}%; not a forecast` }] : []),
