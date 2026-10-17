@@ -84,7 +84,10 @@ test("GitHub adoption shows the original job and matches the current adopted wor
   assert.match(section, /Already adopted here/);
   assert.match(section, /verification\/github-baseline\.example\.yml/);
   const current = readFileSync(new URL("../.github/workflows/github.yml", import.meta.url), "utf8");
-  assert.equal(current.slice(current.indexOf("permissions:")), reference.slice(reference.indexOf("permissions:")));
+  assert.equal(
+    current.slice(current.indexOf("permissions:")),
+    reference.slice(reference.indexOf("permissions:")),
+  );
 });
 
 test("authored orchestration keeps hosted parity honest and explains exact-suite reuse boundaries", () => {
