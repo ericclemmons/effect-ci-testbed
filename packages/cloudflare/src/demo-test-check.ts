@@ -42,7 +42,7 @@ if(JSON.stringify(fs.readdirSync('src').sort())!==JSON.stringify(['app.ts','mess
 const files=paths.map(file);for(const f of files)if(fixed[f.path]&&fixed[f.path]!==f.sha256)throw Error('Changed suite policy');
 const message=fs.readFileSync('src/message.ts','utf8').trim(),prefix='export const message = ';if(message.length>8192||!message.startsWith(prefix)||!message.endsWith(';'))throw Error('Nonliteral demo message');const literal=JSON.parse(message.slice(prefix.length,-1));if(typeof literal!=='string'||message!==prefix+JSON.stringify(literal)+';')throw Error('Nonliteral demo message');
 const deps=p.join(root,'node_modules');if(fs.realpathSync(deps)!==deps)throw Error('External dependencies');const entries=[];let bytes=0;
-const walk=dir=>{for(const name of fs.readdirSync(p.join(deps,dir)).sort()){const rel=p.posix.join(dir,name);if(rel==='.vite'||rel==='.cache')continue;const f=p.join(deps,rel),s=fs.lstatSync(f);if(s.isSymbolicLink()){const target=fs.realpathSync(f);if(!target.startsWith(deps+'/'))throw Error('External dependency link');entries.push([rel,'link',fs.readlinkSync(f)]);}else if(s.isDirectory())walk(rel);else if(s.isFile()){bytes+=s.size;if(bytes>1073741824||entries.length>100000)throw Error('Dependency bound');entries.push([rel,s.size,sha(fs.readFileSync(f))]);}else throw Error('Special dependency file');}};walk('');
+const walk=dir=>{for(const name of fs.readdirSync(p.join(deps,dir)).sort()){const rel=p.posix.join(dir,name);if(rel==='.vite/vitest'||rel==='.vite/task-cache')continue;const f=p.join(deps,rel),s=fs.lstatSync(f);if(s.isSymbolicLink()){const target=fs.realpathSync(f);if(!target.startsWith(deps+'/'))throw Error('External dependency link');entries.push([rel,'link',fs.readlinkSync(f)]);}else if(s.isDirectory())walk(rel);else if(s.isFile()){bytes+=s.size;if(bytes>1073741824||entries.length>100000)throw Error('Dependency bound');entries.push([rel,s.mode&0o777,s.size,sha(fs.readFileSync(f))]);}else throw Error('Special dependency file');}};walk('');
 console.log(JSON.stringify({version:1,files,dependencies:sha(JSON.stringify(entries)),dependencyFiles:entries.length,node:sha(fs.readFileSync(process.execPath)),runtime:process.version,platform:process.platform,arch:process.arch,versions:process.versions}));`;
 export const testInspectCommand = `env -i PATH=/usr/local/bin:/usr/bin:/bin /usr/local/bin/node --input-type=commonjs -e ${quote(inspector)}`;
 const digest = async (v: unknown) =>
@@ -54,7 +54,7 @@ const digest = async (v: unknown) =>
   ).join("");
 export const testPolicyDigest = () =>
   digest([
-    "demo-vitest-suite-v1",
+    "demo-vitest-suite-v2",
     syntaxRepository,
     syntaxWorkflow,
     "test",
