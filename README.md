@@ -117,6 +117,11 @@ GitHub approach beside the portable Effect approach.
 
 ## Deployable apps
 
+[`apps/github-actions-runner`](./apps/github-actions-runner/README.md) is an optional
+GitHub Actions runner on Cloudflare Containers: change `runs-on`, keep native YAML
+steps and logs. It is separate from Effect CI's native Workflow runner and disabled
+until a dedicated selected-repository App is configured; live proof is pending.
+
 [`apps/effect-ci`](./apps/effect-ci/README.md) contains the self-hosted Cloudflare
 service and step-by-step setup: `cf` deployment, GitHub App integration, Cloudflare
 Access protection, remote runs, and live Slack checklists with inline release approval.

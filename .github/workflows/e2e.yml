@@ -668,6 +668,11 @@ jobs:
           pnpm --filter @effect-ci-testbed/repair-events check
           pnpm --filter @effect-ci-testbed/repair-events test
           pnpm --filter @effect-ci-testbed/repair-events exec cf build
+      - name: Verify optional GitHub Actions runner without registration or deployment
+        run: |
+          pnpm --filter @effect-ci-testbed/github-actions-runner check
+          pnpm --filter @effect-ci-testbed/github-actions-runner test
+          pnpm --filter @effect-ci-testbed/github-actions-runner build
       - name: Verify hosted Worker starts locally
         run: |
           log="$RUNNER_TEMP/github-cloudflare-ci.log"
