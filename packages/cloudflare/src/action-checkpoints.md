@@ -27,6 +27,27 @@ failed attempt, then read the **same** external artifact/operation identity and
 verify its actual bytes and ownership before deciding what recovery is allowed.
 Do not create a new identity or blindly POST again after an uncertain ACK.
 
+## Container snapshots
+
+Workspace mutations have a durable owner/input marker, written before commands.
+An evicted provider object can reuse the same running container without restoring
+its ancestor over uncommitted files. If that container has stopped, recovery fails
+explicitly; it does not restart an older snapshot or rerun commands.
+
+Final action commits are immutable. A saved snapshot and cleared mutation marker
+are recorded together. A lost storage or container-release acknowledgement returns
+that same saved snapshot on retry, without capturing an older workspace again.
+User-named intermediate checkpoints retain their existing behavior.
+
+The regression uses the actual workspace class with simulated container/storage
+failures. It covers eviction, container loss, foreign action/input rejection, and
+lost storage/release acknowledgements. This does not fix Cloudflare's underlying
+snapshot service or turn the retained failed native run into a success.
+
+```sh
+node --test apps/effect-ci/src/workspace-snapshot-recovery.test.ts apps/effect-ci/src/artifact-revision-runtime.test.ts
+```
+
 ## Observed native failure; local diagnostic regression
 
 On October 16, main source `8d8e8f96401c9bdaad3caa84f6bee53e44f93d39`, instance

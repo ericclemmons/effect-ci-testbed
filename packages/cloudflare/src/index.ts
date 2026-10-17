@@ -21,6 +21,7 @@ export { SourceRevisions, readDurableSource } from "./durable-source.ts"
 const decoder = new TextDecoder()
 const defaultImage = "cloudflare/debian-trixie"
 const defaultTargetDirectory = "/workspace/repository"
+const uncheckpointedContainerLost = "Workspace has uncheckpointed changes but its container stopped; inspect the failed action, never restore an ancestor or rerun its commands automatically"
 
 export interface ContainerExecutionResult {
   readonly exitCode: number
@@ -32,6 +33,26 @@ export interface ContainerSnapshotValue {
   readonly id: string
   readonly name?: string
   readonly size: number
+}
+
+const snapshotValue = (snapshot: ContainerSnapshotValue): ContainerSnapshotValue => ({
+  id: snapshot.id,
+  ...(snapshot.name ? { name: snapshot.name } : {}),
+  size: snapshot.size,
+})
+
+interface WorkspaceCommit {
+  readonly stepId: string
+  readonly cwd: string
+  readonly revision?: ContainerSnapshotValue
+  readonly options?: WorkspaceContainerOptions
+}
+
+interface CommittedWorkspace {
+  readonly snapshot: ContainerSnapshotValue
+  readonly stepId: string
+  readonly cwd: string
+  readonly revisionId?: string
 }
 
 interface WorkspaceContainerStub {
@@ -53,6 +74,7 @@ interface WorkspaceContainerStub {
   readonly checkpoint: (
     name: string,
     release?: boolean,
+    commit?: WorkspaceCommit,
   ) => Promise<ContainerSnapshotValue>
   readonly execute: (
     command: string,
@@ -117,6 +139,17 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   private dirty = false
   private workingCheckpointId: string | undefined
 
+  // Memory alone cannot distinguish a clean ancestor from command output after
+  // the provider object is evicted. No command text or credentials are stored.
+  private async workingMutation(): Promise<{ stepId?: string; revisionId?: string } | undefined> {
+    return await this.ctx.storage.get("workingMutation") ?? undefined
+  }
+
+  private async markMutation(stepId?: string, revisionId?: string): Promise<void> {
+    await this.ctx.storage.put("workingMutation", { stepId, revisionId })
+    this.dirty = true
+  }
+
   constructor(
     state: DurableObjectState,
     environment: WorkspaceContainerEnvironment,
@@ -145,6 +178,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     if (container.running) {
       return
+    }
+
+    if (await this.workingMutation()) {
+      throw new Error(uncheckpointedContainerLost)
     }
 
     const activeCheckpoint = await this.ctx.storage.get<ContainerSnapshotValue>(
@@ -192,6 +229,21 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     revision?: ContainerSnapshotValue,
     options: WorkspaceContainerOptions = {},
   ): Promise<void> {
+    const mutation = await this.workingMutation()
+    if (mutation) {
+      if (!this.container().running) {
+        throw new Error(uncheckpointedContainerLost)
+      }
+      if ((mutation.stepId !== undefined && (mutation.stepId !== stepId || mutation.revisionId !== revision?.id)) ||
+        (mutation.stepId === undefined && revision !== undefined)) {
+        throw new Error("Workspace has uncheckpointed changes owned by another action or input revision")
+      }
+      this.activeStepId = stepId
+      this.dirty = true
+      this.workingCheckpointId = mutation.revisionId
+      return
+    }
+
     if (this.activeStepId === stepId) {
       await this.ensureRunning(options)
       return
@@ -266,6 +318,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     const manifest = JSON.stringify(files)
     if (files.length > 1000 || new TextEncoder().encode(manifest).length > 96 * 1024) throw new Error("Source manifest limit exceeded")
     await this.ensureRunning(options)
+    await this.markMutation()
     const result = await this.run(["python3", "-c", [
       "import base64,json,pathlib,shutil,sys",
       "files=json.loads(sys.argv[1]); root=pathlib.Path('/workspace/repository')",
@@ -291,6 +344,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     cachePaths: ReadonlyArray<string> = [],
   ): Promise<void> {
     await this.ensureRunning(options)
+    await this.markMutation()
 
     const git = await this.run(["sh", "-lc", "command -v git"])
 
@@ -397,7 +451,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     options: WorkspaceContainerOptions = {},
   ): Promise<ContainerExecutionResult> {
     await this.materialize(stepId, revision, options)
-    this.dirty = true
+    await this.markMutation(stepId, revision?.id)
 
     const paths = cachePaths.map((path) => {
       if (path.startsWith("/") || path.split("/").includes("..")) {
@@ -483,12 +537,38 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   async checkpoint(
     name: string,
     release = false,
+    commit?: WorkspaceCommit,
   ): Promise<ContainerSnapshotValue> {
+    // An action's final commit is immutable. If its acknowledgement was lost,
+    // return that exact saved snapshot, never capture its ancestor on retry.
+    const committed = commit ? await this.ctx.storage.get<CommittedWorkspace>(`committed:${name}`) : undefined
+    if (committed) {
+      if (committed.stepId !== commit!.stepId || committed.cwd !== commit!.cwd || committed.revisionId !== commit!.revision?.id) {
+        throw new Error("Immutable workspace commit belongs to another action or input revision")
+      }
+      if (await this.workingMutation()) throw new Error("An immutable workspace commit cannot replace new uncheckpointed changes")
+      await this.ctx.storage.put({ activeCheckpoint: committed.snapshot, workingMutation: null })
+      if (this.container().running && (release || this.workingCheckpointId !== committed.snapshot.id || this.dirty)) {
+        await this.container().destroy(`Recovering committed workspace ${committed.snapshot.id}`)
+      }
+      this.activeStepId = undefined
+      this.dirty = false
+      this.workingCheckpointId = committed.snapshot.id
+      return snapshotValue(committed.snapshot)
+    }
+    if (commit && !await this.exists(".", commit.cwd, commit.stepId, commit.revision, commit.options)) {
+      throw new Error("Cannot commit a missing workspace")
+    }
+    if (!this.container().running && await this.workingMutation()) {
+      throw new Error(uncheckpointedContainerLost)
+    }
     const snapshot = await this.container().snapshotContainer({ name })
 
     await this.ctx.storage.put({
       activeCheckpoint: snapshot,
       [`checkpoint:${name}`]: snapshot,
+      ...(commit ? { [`committed:${name}`]: { snapshot, stepId: commit.stepId, cwd: commit.cwd, revisionId: commit.revision?.id } } : {}),
+      workingMutation: null,
     })
     this.activeStepId = undefined
     this.dirty = false
@@ -498,11 +578,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       await this.container().destroy(`Releasing committed workspace ${snapshot.id}`)
     }
 
-    return {
-      id: snapshot.id,
-      ...(snapshot.name ? { name: snapshot.name } : {}),
-      size: snapshot.size,
-    }
+    return snapshotValue(snapshot)
   }
 
   async restore(
@@ -511,7 +587,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   ): Promise<void> {
     const container = this.container()
 
-    await this.ctx.storage.put("activeCheckpoint", snapshot)
+    await this.ctx.storage.put({ activeCheckpoint: snapshot, workingMutation: null })
 
     if (container.running) {
       await container.destroy(`Restoring workspace checkpoint ${snapshot.id}`)
@@ -767,12 +843,14 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             // Returning a dependency workspace is enough: even a pass-through
             // action with no commands must commit that revision, not an empty container.
             // The same-step materializer preserves any writes this action already made.
-            const exists = await container.exists(".", workspace.cwd, stepId,
-              workspace.revision?.value as ContainerSnapshotValue | undefined, options.container)
-            if (!exists) throw new Error("Cannot commit a missing workspace")
             return container.checkpoint(
               `${stepId}-workspace`,
               options.reuseWorkspace === false,
+              {
+                stepId, cwd: workspace.cwd,
+                ...(workspace.revision ? { revision: workspace.revision.value as ContainerSnapshotValue } : {}),
+                ...(options.container ? { options: options.container } : {}),
+              },
             )
           })
 
