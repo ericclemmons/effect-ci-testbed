@@ -19,7 +19,9 @@ test("preformatted output retains redaction, bounds, truncation and empty-stream
   const frame = failedCommandOutput(diagnostics, ["owned-secret"])!
   assert.doesNotMatch(JSON.stringify(frame), /owned-secret|private-token/)
   assert.match(frame.text, /stdout \(tail; output truncated\)/)
-  assert.ok(JSON.stringify(frame).length < 6000)
+  assert.ok(JSON.stringify({ text: frame.text, blocks: frame.blocks }).length < 6000)
+  assert.match(frame.snippetText, /stdout\nx{2400}/)
+  assert.ok(frame.compact.text.length < 650)
   const empty = failedCommandOutput({ ...diagnostics, output: { stdout: "", stderr: "", truncated: false } }, [])!
   assert.match(empty.text, /No stdout or stderr was captured/)
   assert.equal(empty.blocks.length, 2)

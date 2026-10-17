@@ -26,7 +26,13 @@ export function failedCommandOutput(diagnostics: CommandDiagnostics, redactValue
   ]
   // Text elements preserve literal newlines/indentation, without interpreting
   // fences, mrkdwn links or user-provided Block Kit elements in command output.
-  return { text: streams.join("\n"), blocks: streams.map(text => ({ type: "rich_text", elements: [
+  const blocks = (values: string[]) => values.map(text => ({ type: "rich_text", elements: [
     { type: "rich_text_preformatted", elements: [{ type: "text", text }] },
-  ] })) }
+  ] }))
+  const captured = [header, ...(diagnostics.output.truncated ? ["Captured tails; process output was truncated."] : []),
+    ...(stdout ? [`stdout\n${stdout}`] : []), ...(stderr ? [`stderr\n${stderr}`] : [])].join("\n\n")
+  const excerpt = [header, ...(stderr ? [`stderr (excerpt)\n${stderr.slice(-500)}`] : stdout ? [`stdout (excerpt)\n${stdout.slice(-500)}`] : []),
+    "Captured output attached in this thread." ]
+  return { text: streams.join("\n"), blocks: blocks(streams),
+    snippetText: captured, compact: { text: excerpt.join("\n"), blocks: blocks(excerpt) } }
 }
