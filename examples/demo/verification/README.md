@@ -3,6 +3,17 @@
 Historical captures keep their original `developer-loop` recipe name, source
 paths, release tags and digests after the rename to `examples/demo`.
 
+Maintainer-only documentation, recording, relay and artifact tests run separately:
+
+```sh
+pnpm test:verification
+```
+
+The app's `pnpm test` / `cf-ci run test` runs its Vitest suite, not these maintainer
+checks. The adoption regression in `scripts/demo-adoption.test.ts` changes the
+workflow YAML and message in a temporary app, then executes its actual test task.
+The guide's pre-adoption YAML is a stable fixture, not the user's editable workflow.
+
 ### Record the local user journey
 
 After installing dependencies, **commit the recipe first**, then run:
