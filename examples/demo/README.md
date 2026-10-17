@@ -190,9 +190,20 @@ host rejects the command without starting the default workflow. Without targets,
 
 > Trust exact evidence, not an agent saying “tests passed.”
 
-Full test-suite reuse is not enrolled yet. The existing live proof verifies only
-the pure syntax check; lint and tests still execute.
-[Attestation policy and actual positive/negative runs](../../apps/effect-ci/README.md).
+From a clean, committed checkout with the enrolled local signing key and Docker:
+
+```sh
+node .cloudflare/ci/attest-tests.ts
+git push origin refs/notes/effect-ci-demo-tests-v1
+cf-ci run test build --remote
+```
+
+The signer runs the actual Vitest suite in the pinned Linux image before signing.
+The host independently checks the commit, suite, dependency bytes and runtime.
+Only `test` can be reused; typecheck and build still run. Missing, changed or
+invalid evidence runs the tests normally. This enrollment is for this demo's
+exact suite, not arbitrary tests or another computer's unregistered key.
+[Policy and retained verification evidence](../../apps/effect-ci/README.md).
 
 ## 9. Consume the build in a deploy action
 

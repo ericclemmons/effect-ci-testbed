@@ -6,6 +6,7 @@ import {
   syntaxCommand,
   syntaxInspectCommand,
 } from "@effect-ci-testbed/cloudflare/node-syntax-check";
+import { testCommand, testInspectCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 
 const require = createRequire(import.meta.url);
 const pluginPath = await realpath(
@@ -165,7 +166,8 @@ test(
         'npm run "lint"',
         'npm run "check"',
         'npm run "typecheck"',
-        'npm run "test"',
+        testInspectCommand,
+        testCommand,
         'npm run "build"',
         "node .cloudflare/ci/verify-build.ts",
       ]);
@@ -197,7 +199,7 @@ test(
       const after = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
       assert.equal(
         after.commands.length,
-        11,
+        12,
         "missing lockfile must fail before any extra package command",
       );
       await runtime.dispatchFetch("https://probe.invalid/prepare-failure");

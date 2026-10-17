@@ -4,6 +4,8 @@ const ref = "refs/notes/effect-ci-hosted-checks-v1"
 export interface GitHubCheckNoteReader {
   /** Pinned by host policy, not by the project or incoming note. */
   readonly repository: string
+  /** Host-enrolled namespace; never selected by evidence or project code. */
+  readonly notesRef?: string
   /** Host-only authenticated fetch; receives fixed GitHub GET URLs, never blob URLs from replies. */
   readonly request: (url: string, init: RequestInit) => Promise<Response>
 }
@@ -45,6 +47,8 @@ export const readGitHubCheckNote = async (
   options: GitHubCheckNoteReader,
   revision: string,
 ): Promise<GitHubCheckNote | undefined> => {
+  const selectedRef = options.notesRef ?? ref
+  if (!/^refs\/notes\/effect-ci-[a-z0-9-]{1,64}$/.test(selectedRef)) return undefined
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repository) ||
       options.repository.split("/").some(part => part === "." || part === "..") || !sha.test(revision)) return undefined
   const controller = new AbortController()
@@ -68,8 +72,8 @@ export const readGitHubCheckNote = async (
     return json<T>(response, limit, controller.signal)
   }
   const lookup = async (): Promise<GitHubCheckNote | undefined> => {
-    const reference = await read<{ ref: string; object: { type: string; sha: string } }>(`ref/${ref.slice(5)}`)
-    if (reference.ref !== ref || reference.object?.type !== "commit" || !sha.test(reference.object.sha)) return undefined
+    const reference = await read<{ ref: string; object: { type: string; sha: string } }>(`ref/${selectedRef.slice(5)}`)
+    if (reference.ref !== selectedRef || reference.object?.type !== "commit" || !sha.test(reference.object.sha)) return undefined
     const notesCommit = reference.object.sha
     const commit = await read<{ sha: string; tree: { sha: string } }>(`commits/${notesCommit}`)
     if (commit.sha !== notesCommit || !sha.test(commit.tree?.sha)) return undefined

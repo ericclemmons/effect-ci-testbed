@@ -12,6 +12,13 @@ import {
   syntaxWorkflow,
 } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import * as Effect from "effect/Effect";
+import {
+  testCommand,
+  testIdentity,
+  testInspectCommand,
+  testNotesRef,
+  testPolicyDigest,
+} from "@effect-ci-testbed/cloudflare/demo-test-check";
 
 // Approved demo-only enrollment. The private key never enters this application.
 
@@ -26,10 +33,10 @@ export const demoCheckCache = (
       const transport: Array<{ status: number; endpoint: string }> = [];
       let missReason: string | undefined;
       let evidenceFetch: typeof fetch = fetch;
+      const suite = request.stepId === "test" && request.command === testCommand;
       if (
         request.workflowId !== syntaxWorkflow ||
-        request.stepId !== "syntax" ||
-        request.command !== syntaxCommand ||
+        (!suite && (request.stepId !== "syntax" || request.command !== syntaxCommand)) ||
         request.workspace.kind !== "remote" ||
         request.workspace.cwd !== "/workspace/repository/examples/demo"
       )
@@ -43,13 +50,16 @@ export const demoCheckCache = (
             workflowId: request.workflowId,
             stepId: request.stepId,
             commandIndex: 0,
-            command: syntaxInspectCommand,
+            command: suite ? testInspectCommand : syntaxInspectCommand,
             workspace: request.workspace,
             options: {},
             onOutput: () => {},
           }),
         );
-        identity = await syntaxIdentity(request.event.revision!, result.stdout);
+        identity = await (suite ? testIdentity : syntaxIdentity)(
+          request.event.revision!,
+          result.stdout,
+        );
       } catch {
         return false;
       }
@@ -62,6 +72,7 @@ export const demoCheckCache = (
         },
         reader: {
           repository: "ericclemmons/effect-ci-testbed",
+          ...(suite ? { notesRef: testNotesRef } : {}),
           // Public, fixed GET endpoints only. Rate limits are misses, never bypass.
           request: async (url, init) => {
             transport.push({ status: 0, endpoint: "request-start" });
@@ -87,9 +98,9 @@ export const demoCheckCache = (
             checks: [
               {
                 workflowId: syntaxWorkflow,
-                stepId: "syntax",
-                command: syntaxCommand,
-                policyDigest: await syntaxPolicyDigest(),
+                stepId: suite ? "test" : "syntax",
+                command: suite ? testCommand : syntaxCommand,
+                policyDigest: await (suite ? testPolicyDigest : syntaxPolicyDigest)(),
               },
             ],
           },
@@ -100,7 +111,7 @@ export const demoCheckCache = (
       // durable step. Persist the verdict so a resumed instance never changes its
       // branch after a mutable notes ref moves. No source text or credentials.
       const observation = runner.actionExecutor.execute({
-        stepId: "syntax:evidence-observation",
+        stepId: `${request.stepId}:evidence-observation`,
         options: { retries: { limit: 0, delay: 0, backoff: "constant" } },
         run: () =>
           Effect.promise(async () => {

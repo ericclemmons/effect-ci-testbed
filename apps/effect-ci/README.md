@@ -1111,6 +1111,25 @@ is required. Verification uses ordinary Worker CPU and a bounded public JWKS
 request on cache misses, not an AI call. The shared JOSE version was already
 pinned in this workspace.
 
+### Enrolled demo test-suite reuse
+
+`node examples/demo/.cloudflare/ci/attest-tests.ts` signs the actual Vitest suite
+from a clean committed checkout, using the existing local operator key and pinned
+Linux image. Push `refs/notes/effect-ci-demo-tests-v1`, then run
+`cf-ci run test build --remote` from the demo. The host independently fingerprints
+the actual source, suite/config, installed dependency bytes and Node runtime;
+only the exact commit's `test` check can hit. Typecheck remains an executed
+prerequisite, and build/publication/deployment are never authorized by this note.
+
+The enrollment fixes the current demo suite/config/manifest/lock and allows only
+a literal release-message edit. A changed suite, another repository/runtime,
+missing/invalid signature or unknown key is a miss, not permission to skip.
+The signer installs public pinned dependencies in an isolated snapshot, executes
+Vitest without networking, then checks unchanged inputs before reading the local
+private key. It never mounts `.git`, host credentials or the key into Docker.
+Existing syntax notes are unchanged; this separate check identity prevents a
+syntax-only signature from authorizing test reuse.
+
 ### Enrolled demo syntax-check reuse
 
 The `/demo` workflow has one host-enrolled pure `syntax` check. Its trusted command
