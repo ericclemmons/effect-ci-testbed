@@ -16,6 +16,45 @@ import test from "node:test";
 
 const demo = fileURLToPath(new URL("../examples/demo/", import.meta.url));
 
+test("the conventional comparison stages the baseline without undoing demo adoption", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/e2e.yml", import.meta.url), "utf8");
+  const start = workflow.indexOf('          example_root="$RUNNER_TEMP/examples/$EXAMPLE"');
+  const end = workflow.indexOf('          git -C "$example_root" init', start);
+  assert.ok(start >= 0 && end > start);
+  const staging = workflow.slice(start, end).replace(/^          /gm, "");
+  const directory = mkdtempSync(join(tmpdir(), "effect-ci-baseline-staging-"));
+  try {
+    for (const example of ["demo", "node-pnpm"]) {
+      const source = join(directory, "examples", example);
+      mkdirSync(join(source, ".github/workflows"), { recursive: true });
+      const original = readFileSync(
+        new URL(`../examples/${example}/.github/workflows/github.yml`, import.meta.url),
+        "utf8",
+      );
+      writeFileSync(join(source, ".github/workflows/github.yml"), original);
+      if (example === "demo") {
+        mkdirSync(join(source, "verification"));
+        cpSync(join(demo, "verification/github-baseline.example.yml"),
+          join(source, "verification/github-baseline.example.yml"));
+      }
+      const result = spawnSync("bash", ["-euc", staging], {
+        cwd: directory,
+        encoding: "utf8",
+        env: { ...process.env, RUNNER_TEMP: join(directory, "runner"), EXAMPLE: example },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const staged = readFileSync(join(directory, "runner/examples", example,
+        ".github/workflows/github.yml"), "utf8");
+      assert.equal(staged, example === "demo"
+        ? readFileSync(join(demo, "verification/github-baseline.example.yml"), "utf8")
+        : original);
+      assert.equal(readFileSync(join(source, ".github/workflows/github.yml"), "utf8"), original);
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test(
   "the real demo test task still passes after adopting its documented GitHub workflow",
   { timeout: 45000 },

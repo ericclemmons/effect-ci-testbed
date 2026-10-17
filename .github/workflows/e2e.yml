@@ -73,6 +73,11 @@ jobs:
           example_root="$RUNNER_TEMP/examples/$EXAMPLE"
           mkdir -p "$example_root"
           cp -R "examples/$EXAMPLE/." "$example_root"
+          # Compare conventional Actions, not the demo's adopted monorepo caller.
+          # The effect-on-github matrix verifies that caller in its real checkout.
+          if [ "$EXAMPLE" = "demo" ]; then
+            cp "$example_root/verification/github-baseline.example.yml" "$example_root/.github/workflows/github.yml"
+          fi
 
           git -C "$example_root" init --initial-branch=main
           git -C "$example_root" config user.name effect-ci-testbed
