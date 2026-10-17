@@ -1,13 +1,13 @@
 import type { Enrollment } from "./policy.ts";
 
-// Host-owned policy, NOT webhook input. A separate, selected-repository GitHub
-// App is required. Do not expand the existing Effect CI App's permissions.
+// Host-owned policy, NOT webhook input. Reuse the existing Effect CI App;
+// installation tokens are still reduced to this one trusted private repository.
 export const enrollment: Enrollment = {
-  enabled: false,
-  appId: 0,
-  installationId: 0,
-  repositoryId: 0,
-  repository: "owner/private-repository",
+  enabled: true,
+  appId: 5089816,
+  installationId: 165265172,
+  repositoryId: 1416063432,
+  repository: "ericclemmons/effect-ci-private-github-fixture",
   runnerGroupId: 1,
   lifetimeSeconds: 900,
 };

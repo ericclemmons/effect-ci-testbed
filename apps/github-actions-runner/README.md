@@ -36,7 +36,9 @@ the latter architectural shape, without importing its runner patches or R2 cache
 
 ## Configure and deploy
 
-**Disabled by default; no App installation or cloud resources are created by install/build.**
+**The owned demo is enrolled for the private fixture; install/build creates no cloud resources.**
+For another installation, edit the host-owned enrollment before deploying. Missing
+credentials reject webhooks without starting a container.
 
 From the repository root:
 
@@ -51,18 +53,29 @@ pnpm build
 Build compiles the Worker and builds the Linux/amd64 runner image locally (Docker
 required). Deploy is separate:
 
-1. Create a **separate** GitHub App with repository **Administration: write**,
-   **Actions: read**, and Metadata: read. Subscribe to **Workflow job**; set its
-   webhook to `https://<your-runner-worker>/github/webhook` with a random 32+ byte
-   secret. Install it on **one selected, trusted private repository**.
-2. Set that App/installation/repository's numeric IDs and full repository name in
+1. Reuse the existing Effect CI GitHub App. Add repository **Administration: write**
+   and **Actions: read**, accept its installation update, and subscribe to
+   **Workflow job** alongside **Check suite**. Keep the existing webhook URL and
+   secret. The main Worker authenticates workflow-job deliveries and forwards
+   them through its fixed `GITHUB_ACTIONS_RUNNER` service binding; other events
+   keep their existing CI route. No second GitHub App or public webhook is needed.
+2. Set the App/installation/repository's numeric IDs and full repository name in
    [`src/enrollment.ts`](./src/enrollment.ts), then set `enabled: true`.
-3. Store `RUNNER_APP_PRIVATE_KEY` and `RUNNER_WEBHOOK_SECRET` as Worker secrets
-   using your normal Cloudflare secret provisioning. Do not put either in GitHub
-   YAML, the image, a public config, or the existing Effect CI App.
-4. Run `pnpm deploy`, then apply the `runs-on` change above to a **push-triggered**
+   This demo uses App `5089816`, installation `165265172`, and only
+   `ericclemmons/effect-ci-private-github-fixture` for runner tokens/admission,
+   even if that App is installed on more repositories.
+3. Store the existing App key as `RUNNER_APP_PRIVATE_KEY` and its existing webhook
+   secret as `RUNNER_WEBHOOK_SECRET` on this runner Worker. Neither enters the
+   image, GitHub YAML, logs or public config. Ordinary CI still requests its
+   reduced Contents/Checks tokens, never runner Administration authority.
+4. Run `pnpm run deploy` here first, then deploy the main Effect CI Worker with the
+   runner service binding. Apply the `runs-on` change above to a **push-triggered**
    workflow in the enrolled repository. `GET /health` reports enrollment, not a
    proof that credentials or runners work.
+
+A separate App is optional for installations that want separate credential and
+permission boundaries. With one App, its key can request the broader granted
+permissions; reduced tokens limit each operation but do not isolate the App key.
 
 For the first live proof, copy [`examples/smoke.yml`](./examples/smoke.yml) to
 `.github/workflows/cloudflare-runner-smoke.yml` in that private repository and
@@ -116,9 +129,10 @@ To retire the deployment, set `enabled: false` and deploy that change first.
 Allow any existing lease to finish or hit its deadline, then inspect its durable
 journal and confirm its container and exact GitHub registration are gone. Cleanup
 failure or quarantine requires inspection, not deletion of the journal to free
-capacity. Only after cleanup, remove the dedicated App installation and the
-runner Worker/Container application using the account's normal resource tools.
-Never remove the existing Effect CI App or its native Workers. Keep the journal
+capacity. Only after cleanup, remove the runner service binding and its
+Worker/Container application using the account's normal resource tools. Remove
+the runner-only permissions/event from the shared App if no other runner uses
+them; do not uninstall the shared Effect CI App or remove native Workers. Keep the journal
 until you no longer need its replay protection and audit history.
 
 ## Verification
