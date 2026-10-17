@@ -1,6 +1,14 @@
-# Same pinned runtime as the existing host, with no project write access to OS tools.
-FROM registry.cloudflare.com/0db135ec469e2f216fcea26426f29755/cloudflare-build/13fd7ac27c05/effect-ci-workspace-workspace@sha256:7b2ede4459d6738f1465db630f3fe3794fd9c9ba28f8b5a9dffc3900b8df9924
+# Public pinned base: a fresh self-hosted install and credential-free CI can build it.
+FROM node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315
 
-RUN chown node:node /workspace
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends bash ca-certificates git python3 \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=docker.io/cloudflare/sandbox:1.0.0 \
+  /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
+
+RUN mkdir -p /workspace && chown node:node /workspace
 USER node
 WORKDIR /workspace
+CMD ["sleep", "infinity"]

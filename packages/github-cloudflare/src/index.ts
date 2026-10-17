@@ -60,7 +60,13 @@ export interface HostFinalization<A> {
   readonly observe?: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
-export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment>, "checkCache"> {
+export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment>, "checkCache" | "stepResultCache"> {
+  readonly stepResultCache?: (environment: Environment, context: {
+    readonly runner: Cloudflare.Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: WorkflowParameters
+  }) => CI.StepResultCache
   /** Trusted host capabilities stay outside the project workspace. */
   readonly checkCache?: (environment: Environment, context: {
     readonly runner: Cloudflare.Runner
@@ -443,6 +449,10 @@ export const workflowEntrypoint = <A>(
         workspaceFileSystem: runner.fileSystem,
         ...(options.checkCache
           ? { checkCache: options.checkCache(this.env, { runner, exports: this.ctx.exports,
+              instanceId: event.instanceId, parameters: event.payload }) }
+          : {}),
+        ...(options.stepResultCache
+          ? { stepResultCache: options.stepResultCache(this.env, { runner, exports: this.ctx.exports,
               instanceId: event.instanceId, parameters: event.payload }) }
           : {}),
         workspacePersistence: runner.persistence,

@@ -660,6 +660,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
   readonly root?: string
   readonly secrets?: (environment: Environment) => CI.SecretResolver
   readonly checkCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.CheckCache
+  readonly stepResultCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.StepResultCache
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -997,6 +998,9 @@ export const workflowEntrypoint = <
       source: runner.source,
       ...(options.checkCache
         ? { checkCache: options.checkCache(this.env, { runner }) }
+        : {}),
+      ...(options.stepResultCache
+        ? { stepResultCache: options.stepResultCache(this.env, { runner }) }
         : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,

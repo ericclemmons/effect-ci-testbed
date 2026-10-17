@@ -205,9 +205,10 @@ definitions. Successful tests create a host-signed receipt; the next matching
 run verifies it instead of running the suite again. JSON includes the evidence.
 No local signing key or Git-note push is needed.
 
-Only the enrolled pure checks are reused. Typecheck and build still run; missing
-or changed evidence runs tests normally. A squash/rebase creates a new commit
-and needs fresh verification. Remote currently requires a pushed commit.
+Pure checks reuse their verified results. Build returns a workspace: later runs
+restore its signed snapshot and consume the same files without rebuilding.
+Deployment still executes. Missing, changed or expired evidence runs the work
+normally. A squash/rebase needs fresh verification. Remote requires a pushed commit.
 [Receipt policy and limits](../../packages/cloudflare/src/trusted-runner-receipts.md).
 
 ## 9. Consume the build in a deploy action

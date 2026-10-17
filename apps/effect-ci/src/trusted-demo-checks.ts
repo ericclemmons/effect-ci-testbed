@@ -4,15 +4,17 @@ import { runnerCheckFingerprint, signRunnerCheckReceipt, verifyRunnerCheckReceip
   type RunnerCheckClaim } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { syntaxCommand, syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
-import { demoRunnerPolicyDigest } from "./demo-runner-policy.ts";
+import { demoRunnerPolicyDigest, demoBuildIdentity } from "./demo-runner-policy.ts";
+import { runnerStepFingerprint, signRunnerStepReceipt, verifyRunnerStepReceipt,
+  type RunnerStepIdentity, type RunnerStepClaim } from "@effect-ci-testbed/cloudflare/runner-step-result";
 
 const keyId = "demo-trusted-runner-v1";
 /** Private host capability. Neither HTTP nor project containers can submit claims.
  * Storage owns a dedicated runner key, never the GitHub App or developer key.
  */
-export class TrustedDemoChecks extends DurableObject<Record<string, never>> {
+export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: string } }> {
   #keys!: CryptoKeyPair;
-  constructor(ctx: DurableObjectState, env: Record<string, never>) {
+  constructor(ctx: DurableObjectState, env: { VERSION_METADATA?: { id: string } }) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
       let stored = await ctx.storage.get<{ privateKey: JsonWebKey; publicKey: JsonWebKey }>("authority");
@@ -50,10 +52,37 @@ export class TrustedDemoChecks extends DurableObject<Record<string, never>> {
       if (!await tx.get(key)) await tx.put(key, receipt);
     });
   }
+  async #eligibleStep(identity: RunnerStepIdentity) {
+    if (!identity || identity.repository !== syntaxRepository || identity.workflowId !== syntaxWorkflow || identity.stepId !== "build" || !this.env.VERSION_METADATA?.id) return false;
+    return await runnerStepFingerprint(identity) === await runnerStepFingerprint(await demoBuildIdentity(identity.revision, this.env.VERSION_METADATA.id));
+  }
+  async stepResult(identity: RunnerStepIdentity) {
+    if (!await this.#eligibleStep(identity)) return;
+    const receipt = await this.ctx.storage.get<string>(`step-result:${identity.revision}:${await runnerStepFingerprint(identity)}`);
+    return verifyRunnerStepReceipt(receipt, identity, new Map([[keyId, this.#keys.publicKey]]));
+  }
+  async recordStepResult(claim: RunnerStepClaim): Promise<void> {
+    if (!await this.#eligibleStep(claim.identity) || claim.result.cwd !== "/workspace/repository/examples/demo")
+      throw Error("Unenrolled workspace result");
+    const fingerprint = await runnerStepFingerprint(claim.identity);
+    const key = `step-result:${claim.identity.revision}:${fingerprint}`;
+    const history = `step-result-history:${claim.identity.revision}:${fingerprint}:${claim.runId}`;
+    const receipt = JSON.stringify(await signRunnerStepReceipt(keyId, this.#keys.privateKey, claim));
+    await this.ctx.storage.transaction(async tx => {
+      // A later successful rebuild can replace an expired snapshot reference,
+      // while every producing run's evidence stays append-only. A replay of an
+      // older run must never move the latest pointer backwards.
+      if (await tx.get(history)) return;
+      await tx.put(history, receipt);
+      await tx.put(key, receipt);
+    });
+  }
   async forCommit(revision: string) {
     if (!/^[a-f0-9]{40}$/.test(revision)) throw Error("Invalid receipt revision");
     const values = await this.ctx.storage.list<string>({ prefix: `receipt:${revision}:`, limit: 32 });
-    return { ...(await this.publicKey()), receipts: Array.from(values.values(), value => JSON.parse(value)) };
+    const results = await this.ctx.storage.list<string>({ prefix: `step-result:${revision}:`, limit: 32 });
+    return { ...(await this.publicKey()), receipts: Array.from(values.values(), value => JSON.parse(value)),
+      stepResults: Array.from(results.values(), value => JSON.parse(value)) };
   }
   fetch() { return new Response("Not found", { status: 404 }); }
 }

@@ -8,6 +8,31 @@ const options = { repository: snapshot.repository, policy: "org-review-v1", mode
   read: async () => structuredClone(snapshot), infer: async () => '{"safeToMerge":true,"reason":"Small isolated text change."}',
   publish: async (_decision: PullRequestReviewDecision) => {} };
 
+test("Markdown-only PRs use org policy without a model; protected instructions and code do not", async () => {
+  let writes = 0;
+  for (const path of ["README.md", "examples/demo/README.md", "docs/snapshots.md"]) {
+    const decision = await reviewPullRequest({ repository: snapshot.repository, policy: "docs-review-v1",
+      read: async () => ({ ...snapshot, files: [{ path, status: "modified", patch: "-old\n+clearer docs" }] }),
+      infer: async () => { assert.fail("Documentation must not invoke an agent/model"); },
+      publish: async value => { writes++; assert.equal(value.event, "APPROVE"); },
+    });
+    assert.equal(decision.model, "none");
+  }
+  for (const [path, status] of [["src/app.ts", "modified"], ["AGENTS.md", "modified"],
+    [".github/instructions.md", "modified"], ["docs/agents/domain.md", "modified"], ["README.md", "renamed"]])
+    await assert.rejects(reviewPullRequest({ repository: snapshot.repository, policy: "docs-review-v1",
+      read: async () => ({ ...snapshot, files: [{ path: path!, status: status!, patch: "-old\n+new" }] }),
+      publish: async () => { writes++; },
+    }), /require a configured reviewer/);
+  let reads = 0;
+  await assert.rejects(reviewPullRequest({ repository: snapshot.repository, policy: "docs-review-v1",
+    read: async () => ({ ...snapshot, head: ++reads === 1 ? snapshot.head : "f".repeat(40),
+      files: [{ path: "README.md", status: "modified", patch: "-old\n+new" }] }),
+    publish: async () => { writes++; },
+  }), /changed during review/);
+  assert.equal(writes, 3);
+});
+
 test("org model review binds head, base and policy separately from execution evidence", async () => {
   const writes: PullRequestReviewDecision[] = [];
   for (const safeToMerge of [true, false]) {

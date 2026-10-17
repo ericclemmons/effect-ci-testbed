@@ -37,8 +37,10 @@ The trusted host uses the same check definitions for remote and SCM runs. It
 signs successful enrolled syntax/test commands with a separate host-owned key,
 after checking unchanged prepared inputs and runtime. The next exact-input run
 can verify that receipt. Local runs and local Git notes are not this authority.
-No key reaches project code or containers. Typecheck, builds and deployments
-still execute; their success is not implied by a test receipt. Changing the
+No key reaches project code or containers. A test receipt does not imply build
+success: build has its own completed-step receipt binding its returned workspace
+snapshot. A later run can restore that snapshot into its own workspace identity
+instead of rebuilding. Deployment and approval actions still execute. Changing the
 suite/config/dependencies or using a nonliteral demo message leaves ordinary
 execution intact. Never weaken enrollment to force a hit or copy evidence to
 another commit. Squash/rebase requires new verification.

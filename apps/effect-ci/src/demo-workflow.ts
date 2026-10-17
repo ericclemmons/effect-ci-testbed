@@ -7,6 +7,8 @@ import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-ca
 import { demoRunnerCheckCache } from "./demo-runner-check-cache.ts";
 import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { finalizeDemoRun } from "./demo-run-finalizer.ts";
+import { demoWorkspaceResultCache } from "./demo-workspace-result-cache.ts";
+import type { RunnerStepAuthority } from "@effect-ci-testbed/cloudflare/runner-step-result";
 
 // The host enrolls this package and task names at deployment. Its pushed source
 // and package scripts still execute in the native workspace, never in the host.
@@ -72,6 +74,11 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     checkCache: (_environment, { runner, exports, instanceId }) => {
       const host = exports as { TrustedDemoChecks: { getByName(name: string): RunnerCheckAuthority } };
       return demoRunnerCheckCache(runner, instanceId, host.TrustedDemoChecks.getByName("demo-trusted-runner-v1"));
+    },
+    stepResultCache: (environment, { runner, exports, instanceId }) => {
+      const host = exports as { TrustedDemoChecks: { getByName(name: string): RunnerStepAuthority } };
+      const version = (environment as unknown as { VERSION_METADATA?: { id: string } }).VERSION_METADATA?.id;
+      return demoWorkspaceResultCache(runner, instanceId, host.TrustedDemoChecks.getByName("demo-trusted-runner-v1"), version);
     },
   },
 );

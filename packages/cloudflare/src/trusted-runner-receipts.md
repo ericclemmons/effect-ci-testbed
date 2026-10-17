@@ -38,7 +38,7 @@ public evidence; `--remote --format=json` retrieves that plan from the same
 authenticated host. An embedded public key is not independent trust: another
 consumer must pin the issuer/key through its own host configuration.
 
-The demo uses a separate unprivileged image derived from the pinned host base.
+The demo uses a separate unprivileged image built from a pinned public Node base.
 Node and OS tools remain root-owned. Project commands use a non-login shell;
 the inspector requires uid 1000. Other native runners retain their existing
 image and shell behavior. A fresh image alone is not sufficient if project
@@ -52,12 +52,43 @@ this authority. Their standalone verifier and historical evidence remain intact.
 ## Boundaries
 
 Exact-commit reuse only. Squash/rebase/integration commits require new evidence.
-Builds still execute: artifact reuse must restore verified output bytes, not
-pretend that a build ran. Deployments and approvals are never cached successes.
+Deployments and approvals are never cached successes.
+
+## Durable step results
+
+`StepResultCache` is a host adapter at the completed-step boundary. Lookup happens
+before action construction, so an eligible hit can return the saved result
+without recreating its prerequisites. Record happens after successful execution
+and workspace commit. Planning never reads/writes this store. Provider failures
+miss; failed execution or commit cannot record a success. Rollback-bearing actions
+keep their normal lifecycle rather than entering this cache.
+
+The demo enrolls only its fixed zero-argument build as reusable computation.
+Its separately signed step receipt binds repository, commit, workflow, step,
+host policy/runtime and the returned immutable workspace snapshot. It does not
+infer eligibility from an arbitrary project's action name. Additional dynamic
+inputs, arguments, secrets or side effects require a different host enrollment.
+The runtime identity includes Cloudflare's Worker version metadata: a host/image
+rollout invalidates prior build reuse. Missing version metadata disables this
+optimization rather than guessing an identity.
+
+A later run verifies the receipt, checks snapshot availability, and hydrates a
+Workspace with the receiving run's owner—not the producer's workspace ID. The
+publisher reads the saved build files through that workspace. No separate
+publish/upload/restore calls are added to the user's workflow.
+
+An unavailable snapshot is a durable miss without provider-read retries. A
+successful rebuild records a new result while retaining prior run receipts.
+Replaying an older producing run cannot move the latest pointer backwards.
+
+The kernel result contract also permits other return values, such as R2-backed
+recording handles. The demo adapter currently serializes workspaces only; it does
+not upload videos or claim a generic artifact codec. Storage backing belongs to
+the provider, not a new user-facing workflow concept.
 
 The current remote source is a pushed Git commit, not an unpublished checkout.
 Receipt storage is a repository-scoped private authority, not yet a general
-commit dossier or landing queue. Artifact restoration is separate work.
+commit dossier or landing queue.
 
 `@effect-ci-testbed/github/pull-request-review` is the separate org-review adapter:
 complete bounded textual diff, tool-free model prompt, strict yes/no result and
@@ -66,3 +97,8 @@ Stale/incomplete inputs or invalid model output cannot approve. The caller must
 supply a budgeted model and journaled GitHub review writer; live webhook wiring
 and automatic landing are not implemented by this adapter. Repository policy
 must invalidate stale approvals and gate the final integrated commit.
+
+Ordinary Markdown-only changes take a deterministic documentation policy with
+`model: "none"`; no agent or paid call is needed. Renames, automation paths,
+agent instructions and security/policy files stay outside that fast path.
+Code changes without a configured reviewer require review, not automatic approval.
