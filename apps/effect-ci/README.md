@@ -1,14 +1,15 @@
 # Deploy Effect CI
 
-> How do I keep source and pull requests on GitHub while every CI run is a native Cloudflare Workflow instance?
+> Keep GitHub. Run CI as native Cloudflare Workflows, with GitHub checks and Slack updates.
 
-The [owned public incident repair implementation](PUBLIC-REPAIR.md) now connects
-admission, a fresh bounded proposal, native verification and a proposed-PR Slack
-card. A genuine public500 now automatically produced a fresh Flue proposal,
-passed exact-commit native Node verification and created unmerged PR4. The final
-acknowledgement failed on the renamed bot's login; approved read-only reconciliation
-confirmed the existing PR and updated the same Slack card. The linked guide
-preserves the original failed Workflow explicitly; no repair merged or deployed.
+- **Try the configured demo:** [walkthrough](../../examples/demo/README.md).
+- **Deploy your own host:** [first hosted run](#first-hosted-run), including App,
+  Access and secret setup. This is not a one-click installer.
+- **Keep GitHub Actions YAML:** use the separate [optional runner](../github-actions-runner/README.md).
+- **Inspect the flywheel:** [public error → verified, unmerged repair PR](./PUBLIC-REPAIR.md).
+
+The detailed evidence below records what ran, where, and with whose approval.
+It is not extra setup for the demo.
 
 ```mermaid
 flowchart LR
@@ -21,28 +22,27 @@ flowchart LR
 
 ---
 
-The first slice is a single-tenant service deployed in the repository owner's
-Cloudflare account. It is similar in spirit to a hosted CI integration or Workers
-Builds, but it is an independently deployable Effect CI service—not an emulation of either product.
+This single-tenant service runs in your Cloudflare account. The host owns credentials,
+source enrollment and notification destinations; project actions get none of those
+credentials. GitHub App events start native Workflow instances, not GitHub Actions jobs.
 
-Verified on a deployed account: a real GitHub App webhook started native
-checkout/install/build with snapshots and returned successful GitHub checks with
-command logs. One live-updated Slack checklist and inline approval followed by an
-echo-only release are also verified. `cf-ci --remote` completed through an actual
-`cloudflared` Access user session: instance `d94238ee-afdf-404f-aa63-ec013f8fcba1`
-checked out source `cb851662300487cb033e1f1bd5586351f28c60eb`, installed and built,
-streamed command output, and exited successfully after the terminal event.
-This run used the Worker API token as well as Access; it did not deploy a release.
+Historical remote proof: the CLI, through a real `cloudflared` Access
+session, completed instance `d94238ee-afdf-404f-aa63-ec013f8fcba1` at source
+`cb851662300487cb033e1f1bd5586351f28c60eb`: checkout, install, build, streamed output,
+terminal success. That run also used an API token and did not release. The current
+demo separately supports its enrolled Access identity without an API profile.
 
 ## Experience
 
-The same-build candidate controller is documented in
-[Demo release integration](./DEMO-RELEASE.md). The enrolled `demo/live` flow is
-now live-verified: real push, checked Vite build, one maintained Slack card, four
-actual graphs and explicitly authorized browser-delegated test decisions, then
-the same prepared candidate committed at 100%. These are not independent human
-reviews or general standalone enrollment. The historical HMD lab below remains
-separate evidence; its old baseline-reset scripts must not reset this committed target.
+Push your branch for a commit-pinned preview. Main selects a production candidate
+and requires the Slack review; do not push to a separate deployment branch.
+The Slack parent keeps status, source, Dashboard and Preview links. Its first reply
+indexes steps; each step links to its own evidence.
+
+[Demo release integration](./DEMO-RELEASE.md) retains the earlier `demo/live`
+release proof, including four graphs and explicitly delegated test decisions.
+Those are historical test approvals, not independent human review or general
+repository enrollment. Never run old baseline-reset scripts against the current target.
 
 1. Install the Effect CI GitHub App on a repository.
 2. Push a commit or update a pull request.
