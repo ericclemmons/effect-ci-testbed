@@ -111,6 +111,9 @@ export interface WorkspaceContainerOptions {
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
   /** Command that must succeed before a newly started or restored container is usable. */
   readonly readyCommand?: string
+  /** Trusted hosts may avoid project-writable login startup files. Default
+   * remains the existing login shell for other runners. */
+  readonly loginShell?: boolean
 }
 
 interface WorkspaceContainerEnvironment {}
@@ -472,7 +475,9 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(["sh", "-lc", command], cwd)
+    const result = await this.run(options.loginShell === false
+      ? ["/bin/sh", "-c", command]
+      : ["sh", "-lc", command], cwd)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])

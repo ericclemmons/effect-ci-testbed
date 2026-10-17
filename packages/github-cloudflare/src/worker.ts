@@ -53,6 +53,8 @@ export interface WorkerOptions {
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   /** Explicit host opt-in; selected goals must be consumed by its workflow factory. */
   readonly remoteTargets?: ReadonlyArray<string>
+  /** The terminal status contains public execution evidence for the CLI. */
+  readonly remoteResult?: boolean
   /** Declaration only; the trusted host must independently enforce each method. */
   readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
   readonly github?: GitHubClient
@@ -210,7 +212,7 @@ const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
   workflow: Workflow<WorkflowParameters>,
-  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets"> = {},
+  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets" | "remoteResult"> = {},
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -239,6 +241,7 @@ const remoteRun = async (
     instanceId,
     eventsUrl: `${origin}/runs/${encodeURIComponent(instanceId)}/events`,
     statusUrl: `${origin}/runs/${encodeURIComponent(instanceId)}`,
+    ...(options.remoteResult ? { resultAvailable: true } : {}),
   }, { status: 202 })
 }
 

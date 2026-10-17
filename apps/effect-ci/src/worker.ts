@@ -9,6 +9,7 @@ import { demoRouteAllowed, demoRunAllowed, demoGitHubRun, demoRemoteTargets } fr
 import { demoAccessRequest } from "./demo-access.ts";
 import { runnerWebhook, type RunnerWebhookEnvironment } from "./runner-webhook.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
+export { TrustedDemoChecks } from "./trusted-demo-checks.ts";
 export { StaticAssetSourceReader } from "./static-assets-source.ts";
 export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicIncidentRepairWorkflow, PublicPipelineReadiness } from "./public-incident-repair.ts";
 export { DemoCandidateRecoveryWorkflow } from "./demo-candidate-recovery.ts";
@@ -34,6 +35,7 @@ const ci = GitHubCloudflare.worker({
 const demo = GitHubCloudflare.worker({
   routePrefix: "/demo",
   remoteTargets: demoRemoteTargets,
+  remoteResult: true,
   remoteAuthentication: ["api-token", "cloudflare-access-identity"],
   remoteRunAllowed: demoRunAllowed,
   workflow: (_environment, context) => {

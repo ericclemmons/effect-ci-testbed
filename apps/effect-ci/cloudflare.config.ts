@@ -8,7 +8,10 @@ const name = "effect-ci-github-cloudflare";
 const workspace = defineContainer({
   name: "effect-ci-workspace",
   schedulingPolicy: "durable-object",
-  images: { workspace: { dockerfile: "./Dockerfile" } },
+  images: {
+    workspace: { dockerfile: "./Dockerfile" },
+    "trusted-demo": { dockerfile: "./Dockerfile.trusted-demo" },
+  },
 });
 
 export default defineConfig({
@@ -21,6 +24,7 @@ export default defineConfig({
     exports: {
       StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
+      TrustedDemoChecks: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentDispatcher: exports.worker(),
       PublicPipelineReadiness: exports.worker(),

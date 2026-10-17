@@ -94,6 +94,7 @@ interface RemoteRunResponse {
   readonly instanceId: string
   readonly eventsUrl: string
   readonly statusUrl: string
+  readonly resultAvailable?: boolean
 }
 
 interface WorkflowInstanceEvent {
@@ -368,6 +369,21 @@ const builtInRemote = async (
     )
   }
 
+  if (run.resultAvailable === true) {
+    // Same-origin validation precedes forwarding any execution/Access credential.
+    const statusUrl = remoteEventUrl(remoteUrl, run.statusUrl)
+    try {
+      const response = await fetch(statusUrl, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
+      if (!response.ok) throw Error("Status unavailable")
+      const status = await response.json() as { status?: unknown; output?: unknown }
+      if (status.status !== "complete" || !status.output) throw Error("Result unavailable")
+      return { ...run, events, output: status.output }
+    } catch {
+      throw new CliFailure("CI_REMOTE_RESULT_UNAVAILABLE", ExitCode.providerUnavailable,
+        "Remote execution completed, but its evidence could not be retrieved. Inspect the same Workflow status; do not dispatch again.",
+        { instanceId: run.instanceId, events })
+    }
+  }
   return { ...run, events }
 }
 

@@ -4,8 +4,8 @@ import { demoRunAllowed, demoGitHubAllowed, demoProductionAllowed, demoRemoteSel
 import { makeDemoProgram } from "./demo-program.ts";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import type { DemoCandidateReceipt } from "@effect-ci-testbed/cloudflare/demo-candidate";
-import { demoCheckCache } from "./demo-check-cache.ts";
-import { withDemoEvidenceRead } from "./demo-evidence-reader.ts";
+import { demoRunnerCheckCache } from "./demo-runner-check-cache.ts";
+import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { finalizeDemoRun } from "./demo-run-finalizer.ts";
 
 // The host enrolls this package and task names at deployment. Its pushed source
@@ -60,19 +60,19 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     },
     slackProgressSteps: (parameters) => ["checkout", "syntax", "install", "lint", "check", "typecheck", "test", "build", "verify build", "publish site",
       ...(parameters.trigger === "github" && demoProductionAllowed(parameters) ? ["prepare release", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])],
-    container: { image: "workspace", instance: "standard-1" },
+    container: { image: "trusted-demo", instance: "standard-1", loginShell: false },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,
-    checkCache: (environment, { runner }) =>
-      demoCheckCache(runner, (operation) =>
-        withDemoEvidenceRead(
-          {
-            appId: environment.GITHUB_APP_ID,
-            privateKey: environment.GITHUB_PRIVATE_KEY,
-          },
-          operation,
-        ),
-      ),
+    executionEvidence: ({ exports, parameters }) => {
+      const host = exports as { TrustedDemoChecks: { getByName(name: string): {
+        forCommit(revision: string): Promise<unknown>
+      } } };
+      return host.TrustedDemoChecks.getByName("demo-trusted-runner-v1").forCommit(parameters.revision);
+    },
+    checkCache: (_environment, { runner, exports, instanceId }) => {
+      const host = exports as { TrustedDemoChecks: { getByName(name: string): RunnerCheckAuthority } };
+      return demoRunnerCheckCache(runner, instanceId, host.TrustedDemoChecks.getByName("demo-trusted-runner-v1"));
+    },
   },
 );
 

@@ -1169,7 +1169,9 @@ export interface CheckCacheRequest {
 /** Runner policy for reusing side-effect-free checks with the same exact inputs. */
 export interface CheckCache {
   readonly lookup: (request: CheckCacheRequest) => Effect.Effect<boolean, unknown>
-  readonly record: (request: CheckCacheRequest) => Effect.Effect<void, unknown>
+  /** Called only after successful execution. The result is the runner's output,
+   * never an action-provided assertion. Older read-only adapters may ignore it. */
+  readonly record: (request: CheckCacheRequest, result?: CommandExecutionResult) => Effect.Effect<void, unknown>
 }
 
 export interface WorkspaceFileSystem {
@@ -2164,8 +2166,8 @@ const makeRuntime = (
               Effect.flatMap((result) => result.exitCode === 0 ? Effect.succeed(result) :
                 Effect.fail(new CommandError(stepId, command, workspace.cwd, result.exitCode,
                   undefined, boundedCommandOutput(result.stdout, result.stderr)))),
-              Effect.tap(() => checkCache && checkCacheRequest
-                ? checkCache.record(checkCacheRequest).pipe(Effect.ignore)
+              Effect.tap((result) => checkCache && checkCacheRequest
+                ? checkCache.record(checkCacheRequest, result).pipe(Effect.ignore)
                 : Effect.void),
               Effect.flatMap((result) => Effect.gen(function* () {
                 if (result.stdout) {

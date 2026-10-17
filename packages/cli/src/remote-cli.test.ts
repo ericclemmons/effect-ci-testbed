@@ -23,6 +23,9 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let supportsTargets = true
   let capabilityStatus = 200
   let capabilityProtocol = "effect-ci-remote-v1"
+  let resultAvailable = false
+  let resultStatus = 200
+  let resultReads = 0
   const selections: unknown[] = []
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
@@ -55,6 +58,12 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         response.end(JSON.stringify({ protocol: capabilityProtocol, targets: ["test", "build"] }))
         return
       }
+      if (request.url === `${routePrefix}/runs/fixture` && resultAvailable) {
+        resultReads++
+        response.writeHead(resultStatus, { "content-type": "application/json" })
+        response.end(JSON.stringify({ status: "complete", output: { evidence: { receipts: [{ keyId: "host-fixture", signature: "test-only" }] } } }))
+        return
+      }
       if (request.url === `${routePrefix}/runs`) {
         dispatches++
         let body = ""
@@ -62,7 +71,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.match(JSON.parse(body).revision, /^[a-f0-9]{40}$/)
         selections.push(JSON.parse(body).targets)
         response.writeHead(202, { "content-type": "application/json" })
-        response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture` }))
+        response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture`,
+          ...(resultAvailable ? { resultAvailable: true } : {}) }))
       } else {
         response.writeHead(200, { "content-type": "application/x-ndjson" })
         if (request.url === `${routePrefix}/runs/fixture/events?cursor=1`) {
@@ -206,6 +216,18 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
     assert.equal(dispatches, 10)
+    await rm(join(directory, "uncommitted.txt"))
+    resultAvailable = true
+    const signedResult = await run("fixture-user-token", false, "json", true)
+    assert.equal(signedResult.code, 0, signedResult.output)
+    assert.equal(JSON.parse(signedResult.output).result.output.evidence.receipts[0].keyId, "host-fixture")
+    assert.equal(resultReads, 1)
+    resultStatus = 503
+    const missingResult = await run("fixture-user-token", false, "json", true)
+    assert.equal(missingResult.code, 3, missingResult.output)
+    assert.equal(JSON.parse(missingResult.output).error.code, "CI_REMOTE_RESULT_UNAVAILABLE")
+    assert.match(JSON.parse(missingResult.output).error.message, /do not dispatch again/)
+    assert.equal(dispatches, 12, "a missing receipt never redispatches completed work")
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

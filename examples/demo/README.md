@@ -187,24 +187,28 @@ Live verified: selected hosted goals share installation and never
 publish or release. The CLI checks host capabilities before dispatch. Without targets,
 `cf-ci run --remote` runs the hosted suite and publishes a preview.
 
-## 8. Verify previously checked work
+## 8. Let the trusted runner verify it once
 
 > Trust exact evidence, not an agent saying “tests passed.”
 
-From a clean, committed checkout with the enrolled local signing key and Docker:
+The receipt-enabled host rollout is pending; this section describes the new path.
+
+From the clean, pushed commit:
 
 ```sh
-node .cloudflare/ci/attest-tests.ts
-git push origin refs/notes/effect-ci-demo-tests-v1
 cf-ci run test build --remote
+cf-ci run test build --remote --format=json
 ```
 
-The signer runs Vitest in pinned Linux before signing.
-The host independently checks commit, suite, dependency bytes and runtime.
-Only `test` can be reused; typecheck and build still run. Missing, changed or
-invalid evidence runs the tests normally. This enrollment is for this demo's
-exact suite, not arbitrary tests or another computer's unregistered key.
-[Policy and retained verification evidence](../../apps/effect-ci/README.md).
+Local runs are feedback. Remote and SCM runs share the same runner and check
+definitions. Successful tests create a host-signed receipt; the next matching
+run verifies it instead of running the suite again. JSON includes the evidence.
+No local signing key or Git-note push is needed.
+
+Only the enrolled pure checks are reused. Typecheck and build still run; missing
+or changed evidence runs tests normally. A squash/rebase creates a new commit
+and needs fresh verification. Remote currently requires a pushed commit.
+[Receipt policy and limits](../../packages/cloudflare/src/trusted-runner-receipts.md).
 
 ## 9. Consume the build in a deploy action
 

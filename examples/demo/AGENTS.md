@@ -30,25 +30,19 @@ Reusable evidence is commit-first, not dirty-tree feedback. In a clean enrolled
 checkout, after the authorized commit has been pushed:
 
 ```sh
-node .cloudflare/ci/attest.ts
-git push origin refs/notes/effect-ci-hosted-checks-v1
-cf-ci run --remote
+cf-ci run test build --remote --format=json
 ```
 
-The local signer executes the exact committed pure syntax check in the pinned
-Linux image before signing. Keep its private key outside containers and project
-code. Existing exact-commit notes are create-only: inspect conflicts, do not force
-an overwrite. Only the enrolled check may be verified; builds and other actions
-still execute. Advisory `refs/notes/effect-ci-verification` is not reuse authority.
+The trusted host uses the same check definitions for remote and SCM runs. It
+signs successful enrolled syntax/test commands with a separate host-owned key,
+after checking unchanged prepared inputs and runtime. The next exact-input run
+can verify that receipt. Local runs and local Git notes are not this authority.
+No key reaches project code or containers. Typecheck, builds and deployments
+still execute; their success is not implied by a test receipt. Changing the
+suite/config/dependencies or using a nonliteral demo message leaves ordinary
+execution intact. Never weaken enrollment to force a hit or copy evidence to
+another commit. Squash/rebase requires new verification.
 
-The hosted demo additionally enrolls its exact Vitest suite under a separate
-test identity using the same local operator key. Run `node .cloudflare/ci/attest-tests.ts`
-and push `refs/notes/effect-ci-demo-tests-v1` before `cf-ci run test build --remote`.
-This command copies committed public inputs, installs the pinned dependencies
-without host credentials, runs Vitest with networking disabled, and verifies
-unchanged source/dependency/runtime identities before reading the local key.
-Typecheck executes as a prerequisite; its result is not included in this signature.
-Changing the suite/config/dependencies or using a nonliteral demo message makes
-the policy ineligible and leaves ordinary test execution intact. Do not overwrite
-existing notes, weaken the policy to force a hit, or call a local signature a
-verified hosted hit. No build, deployment or other check is authorized by it.
+Historical local signers remain separate experiments. Keep their keys outside
+containers; never overwrite existing notes or describe them as host-issued
+receipts. See `../../packages/cloudflare/src/trusted-runner-receipts.md`.

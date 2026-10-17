@@ -2,11 +2,9 @@ import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import test from "node:test";
-import {
-  syntaxCommand,
-  syntaxInspectCommand,
-} from "@effect-ci-testbed/cloudflare/node-syntax-check";
-import { testCommand, testInspectCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
+import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
+import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
+import { demoRunnerInspectCommand } from "./demo-runner-policy.ts";
 
 const require = createRequire(import.meta.url);
 const pluginPath = await realpath(
@@ -30,6 +28,7 @@ test(
       import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
       import manifest from "../../../examples/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
+      export {TrustedDemoChecks} from "./trusted-demo-checks.ts";
       import {workflowEntrypoint} from '@effect-ci-testbed/github-cloudflare';
       import {makeDemoProgram} from './demo-program.ts';
       // TEST-ONLY host for candidate diagnostics. Remote DemoCIWorkflow must
@@ -113,6 +112,7 @@ test(
             },
             exports: {
               WorkspaceContainer: { type: "durable-object", storage: "sqlite" },
+              TrustedDemoChecks: { type: "durable-object", storage: "sqlite" },
               DemoCIWorkflow: { type: "workflow", name: "demo-filesystem-probe" },
               PrepareFailureWorkflow: { type: "workflow", name: "demo-prepare-failure-probe" },
               Publisher: { type: "worker" },
@@ -160,13 +160,13 @@ test(
       );
       assert.ok(state.exists.includes("package-lock.json"));
       assert.deepEqual(state.commands, [
-        syntaxInspectCommand,
+        demoRunnerInspectCommand(false),
         syntaxCommand,
         "npm_config_cache=.effect-ci/cache/npm npm ci",
         'npm run "lint"',
         'npm run "check"',
         'npm run "typecheck"',
-        testInspectCommand,
+        demoRunnerInspectCommand(true),
         testCommand,
         'npm run "build"',
         "node .cloudflare/ci/verify-build.ts",
