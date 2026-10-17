@@ -53,10 +53,7 @@ test("Slack links to the same native run without adding another manual Dashboard
 });
 
 test("GitHub adoption replaces the actual manual job with the repository workflow reference", () => {
-  const baseline = readFileSync(
-    new URL("../.github/workflows/github.yml", import.meta.url),
-    "utf8",
-  );
+  const baseline = readFileSync(new URL("./github-baseline.example.yml", import.meta.url), "utf8");
   const section = guide.split("## 5.")[1].split("## 6.")[0];
   const diff = section.match(/```diff\n([\s\S]*?)```/)[1];
   assert.match(diff, /--- a\/\.github\/workflows\/github.yml/);
@@ -66,6 +63,7 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
     .map((line) => line.slice(1))
     .join("\n");
   assert.ok(baseline.includes(removed), "deleted job steps must match the actual baseline");
+  assert.match(removed, /runs-on: ubuntu-latest/);
   assert.match(
     diff,
     /\+    uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
@@ -78,6 +76,8 @@ test("GitHub adoption replaces the actual manual job with the repository workflo
     reference,
     /uses: ericclemmons\/effect-ci-testbed\/\.github\/workflows\/effect-ci.yml@main/,
   );
+  assert.doesNotMatch(reference, /^    (?:runs-on|steps):/m);
+  assert.match(reference, /checks: write/);
 });
 
 test("authored orchestration requests goals, without claiming hosted parity or full-suite reuse", () => {

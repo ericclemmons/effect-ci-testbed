@@ -183,7 +183,9 @@ test(
         const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");
         assert.ok(replyUpdates.every((m: any) => !m.body.blocks.some((b: any) => ["header", "context", "divider"].includes(b.type))), "step replies omit repeated run chrome");
         const replies = state.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(replies.length, 1 + state.images, "one build reply and one reply per reviewed phase");
+        assert.equal(replies.length, 2 + state.images, "one details table, one build reply and one reply per reviewed phase");
+        assert.equal(replies[0].body.blocks[0].type, "table");
+        assert.equal(replies.filter((m: any) => m.body.blocks.some((b: any) => b.type === "table")).length, 1);
         assert.ok(replies.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         assert.ok(state.messages.some((m: any) => m.body.ts !== "123.456" && m.body.blocks.some((b: any) => b.type === "image")));
         assert.ok(!state.messages.at(-1).body.blocks.some((b: any) => b.type === "actions"));
