@@ -142,8 +142,12 @@ duplicate delivery, lost acknowledgements, restart boundaries and deadline clean
 The local workerd test uses actual SQLite Durable Objects and a fake GitHub
 service; it does not register a runner or execute a real GitHub job.
 
-Native GitHub step/log behavior still requires an approved selected-repository
-App installation and one live job. No live registration or deployment is claimed.
+Live proof: [native Actions run #2](https://github.com/ericclemmons/effect-ci-private-github-fixture/actions/runs/39004343417)
+passed both shell steps on `effect-ci-cloudflare`, using the existing Effect CI
+App. GitHub recorded independent stdout/stderr and Linux x86_64 / UID 1001.
+After completion, the exact GitHub runner registration was absent and the
+Cloudflare container was stopped with exit code 0 (no active instances).
+Native CI and the production allocation were unchanged.
 
 Local verification: 18 tests passed, including actual workerd/SQLite reload and
 the real native-fetch GitHub client boundary;
@@ -156,4 +160,5 @@ called native `fetch` as an object method, which workerd rejects with `Illegal
 invocation`. The added real-workerd regression reproduced this before the fix;
 the default transport now calls `fetch` through a lexical wrapper. Its original
 delivery, queued run and durable admission are preserved rather than reset or
-relabeled as successful. A fresh completed native job is still required.
+relabeled as successful. That first run was cancelled while unassigned; the
+fresh ordinary branch push above completed successfully after the fix.
