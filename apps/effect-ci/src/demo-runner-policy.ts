@@ -6,6 +6,7 @@ import { syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/
 import type { RunnerStepIdentity } from "@effect-ci-testbed/cloudflare/runner-step-result";
 
 export const demoTrustedNodeBase = "node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315";
+export const demoTrustedReadyCommand = '/usr/local/bin/node -e \'if(process.getuid()!==1000)process.exit(1)\'';
 
 export function demoRunnerInspectCommand(suite: boolean) {
   // The pinned root-owned Node binary reports its real uid. Project commands
@@ -27,7 +28,7 @@ export async function demoBuildIdentity(revision: string, hostVersion: string): 
   if (!/^[a-f0-9-]{36}$/.test(hostVersion)) throw Error("Trusted build reuse requires host version metadata");
   const runtimeDigest = await runnerReceiptDigest(new TextEncoder().encode(JSON.stringify([
     demoTrustedNodeBase,
-    "trusted-demo/uid-1000/root-owned-runtime/non-login-shell", hostVersion,
+    "trusted-demo/uid-1000/root-owned-runtime/non-login-shell", demoTrustedReadyCommand, hostVersion,
   ])));
   const policyDigest = await runnerReceiptDigest(new TextEncoder().encode(JSON.stringify([
     "demo-workspace-result-v1", manifest, "build", "host-inferred-script-and-hooks",

@@ -9,6 +9,7 @@ import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-
 import { finalizeDemoRun } from "./demo-run-finalizer.ts";
 import { demoWorkspaceResultCache } from "./demo-workspace-result-cache.ts";
 import type { RunnerStepAuthority } from "@effect-ci-testbed/cloudflare/runner-step-result";
+import { demoTrustedReadyCommand } from "./demo-runner-policy.ts";
 
 // The host enrolls this package and task names at deployment. Its pushed source
 // and package scripts still execute in the native workspace, never in the host.
@@ -62,7 +63,7 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     },
     slackProgressSteps: (parameters) => ["checkout", "syntax", "install", "lint", "check", "typecheck", "test", "build", "verify build", "publish site",
       ...(parameters.trigger === "github" && demoProductionAllowed(parameters) ? ["prepare release", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])],
-    container: { image: "trusted-demo", instance: "standard-1", loginShell: false },
+    container: { image: "trusted-demo", instance: "standard-1", loginShell: false, readyCommand: demoTrustedReadyCommand },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,
     executionEvidence: ({ exports, parameters }) => {
