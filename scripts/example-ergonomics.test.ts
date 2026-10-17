@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
 import { resolve } from "node:path"
+import { readFileSync } from "node:fs"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 import { build } from "../examples/node-pnpm/.cloudflare/ci/actions.ts"
@@ -12,6 +13,13 @@ const cli = (args: string[]) => {
   assert.equal(result.status, 0, result.stderr || result.stdout)
   return JSON.parse(result.stdout)
 }
+
+test("root recipe shortcuts execute or plan rather than silently printing help", () => {
+  const { scripts } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+  const entries = Object.entries(scripts).filter(([name]) => name.startsWith("ci:"))
+  assert.ok(entries.length >= 8)
+  for (const [name, command] of entries) assert.match(String(command), /\bcf-ci\b.*\b(?:run|plan)\b/, name)
+})
 
 test("the pnpm recipe exposes useful goals, not its internal setup", () => {
   const result = cli(["list"])

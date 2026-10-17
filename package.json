@@ -5,13 +5,13 @@
   "scripts": {
     "build": "pnpm --filter @effect-ci-testbed/ci build",
     "check": "pnpm --filter './packages/*' --filter './apps/*' check && node scripts/check-examples.ts && node scripts/check-example-plans.ts && node --test scripts/check-recipe-docs.test.ts scripts/example-ergonomics.test.ts",
-    "ci:hitl-deploy": "EFFECT_CI_APPROVAL=approved EFFECT_CI_EVENT=workflow_dispatch cf-ci --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts",
+    "ci:hitl-deploy": "EFFECT_CI_APPROVAL=approved EFFECT_CI_EVENT=workflow_dispatch cf-ci run --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts",
     "ci:hitl-deploy:dry-run": "EFFECT_CI_EVENT=workflow_dispatch cf-ci --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts plan",
-    "ci:cloudflare-runner": "EFFECT_CI_EVENT=workflow_dispatch cf-ci --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts",
+    "ci:cloudflare-runner": "EFFECT_CI_EVENT=workflow_dispatch cf-ci run --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts",
     "ci:cloudflare-runner:dry-run": "EFFECT_CI_EVENT=workflow_dispatch cf-ci --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts plan",
-    "ci:node-npm": "cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts --format=text",
+    "ci:node-npm": "cf-ci run --workflow examples/node-npm/.cloudflare/ci/workflow.ts --format=text",
     "ci:node-npm:dry-run": "cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts plan --format=text",
-    "ci:node-pnpm": "cf-ci --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts --format=text",
+    "ci:node-pnpm": "cf-ci run --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts --format=text",
     "ci:node-pnpm:dry-run": "cf-ci --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts plan --format=text"
   },
   "devDependencies": {

@@ -28,7 +28,7 @@ checkout → npm ci → cf build → cf deploy --prebuilt --dry-run
 Run the generic hook locally:
 
 ```sh
-EFFECT_CI_EVENT=deploy_hook pnpm exec cf-ci
+EFFECT_CI_EVENT=deploy_hook pnpm exec cf-ci run
 ```
 
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml)
