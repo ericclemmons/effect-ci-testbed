@@ -2,6 +2,20 @@
 
 Local runs are feedback. The host signs verification. PR policy decides approval.
 
+## Current host acceptance
+
+The merged SDK fixes through `c08d06b` are deployed as Worker
+`4448c514-fe56-4790-8111-159a8a89a17d`. Remote `doctor` passed without dispatch.
+At commit `4496c99`, remote run `355940b2-919d-435c-ae10-8b9afe332340` built and
+signed its workspace; `d207d477-13f0-41ff-b587-51233f803675` reused that same build
+and verified the existing test receipt. Neither build nor test-suite commands
+replayed on the second run. Signatures and original producer IDs were independently
+verified. Installation and typechecking still ran; this is not blanket CI skipping.
+
+The earlier remote-to-SCM and PR-approval proofs below remain separate retained runs.
+
+## Earlier snapshot-reuse proof
+
 Snapshot-reuse proof source: `ca90adf96ac5ffd8c5ef2e5254202f482ff9013b`.
 Its Worker version: `55ff142f-752c-41da-82a4-7f7e7c6fd17b`.
 

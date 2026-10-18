@@ -17,7 +17,7 @@ jobs:
       # act jobs share the image's Node tool cache. Avoid concurrent extraction.
       max-parallel: 1
       matrix:
-        change: [input, unchanged, missing, tampered, program, runtime]
+        change: [input, unchanged, missing, tampered, program, runtime, filesystem-loss]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

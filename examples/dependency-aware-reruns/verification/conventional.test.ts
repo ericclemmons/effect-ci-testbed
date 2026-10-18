@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const script = "examples/dependency-aware-reruns/verification/conventional.mjs";
-for (const scenario of ["input", "unchanged", "missing", "tampered", "program", "runtime"]) {
+for (const scenario of ["input", "unchanged", "missing", "tampered", "program", "runtime", "filesystem-loss"]) {
   test(`conventional conditions preserve exact outputs: ${scenario}`, () => {
     const temp = mkdtempSync(join(tmpdir(), "effect-ci-conventional-test-"));
     try {
@@ -22,6 +22,12 @@ for (const scenario of ["input", "unchanged", "missing", "tampered", "program", 
       assert.equal(proof.fullComparison, true);
       assert.equal(proof.scenario, scenario);
       assert.equal(proof.output, scenario === "program" ? "CHARLIE! / BRAVO!\n" : "CHARLIE / BRAVO\n");
+      if (scenario === "filesystem-loss") {
+        assert.deepEqual(proof.executed, ["bundle"]);
+        assert.deepEqual(proof.reused, ["left", "right"]);
+        assert.deepEqual(proof.recovery, { failedAttempt: 2, newAttempt: 3, commandNumber: 1,
+          failedHistoryUnchanged: true, originalPublicationUnchanged: true, receiptDidNotRestoreFiles: true });
+      }
     } finally { rmSync(temp, { recursive: true }); }
   });
 }
