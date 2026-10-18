@@ -18,6 +18,20 @@ the inspecting runtime. Local-note proofs below remain historical; they are not
 host-issued receipts. [Hosted acceptance](./TRUSTED-REMOTE.md) verifies remote-to-SCM
 test/build reuse, the published bytes, and the separate PR-review gate.
 
+Org PR policy is [a workflow](./src/workflows/pull-request.ts):
+`inspect PR → review → approve PR`. These are ordinary CI actions. The workflow
+chooses eligibility; the host supplies verified evidence and a journaled,
+exact-head GitHub writer. It never supplies a merge capability. Planning performs
+no API calls. [Live proof](./TRUSTED-REMOTE.md#approval-is-an-action) records all
+three native checkpoints and a real App approval after trusted remote test/build,
+without a model call.
+
+Inspect it without credentials or writes, from the repo root:
+
+```sh
+cf-ci --workflow apps/effect-ci/src/workflows/pull-request.ts plan approve
+```
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]

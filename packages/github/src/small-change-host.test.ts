@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readSmallChange, runSmallChange, type SmallChangeHost, type SmallChangeOperation } from "./small-change-host.ts";
+import { publishSmallChange, readSmallChange, runSmallChange, type SmallChangeHost, type SmallChangeOperation } from "./small-change-host.ts";
 
 const head = "a".repeat(40), base = "b".repeat(40), repository = "owner/demo";
 function fixture() {
@@ -136,4 +136,57 @@ test("diff reads pin both SHAs; a foreign comparison base cannot authorize a rev
   };
   await assert.rejects(runSmallChange(f.host, 50, f.store), /Comparison base/);
   assert.equal(f.writes(), 0);
+});
+
+test("unrelated recent merges do not hide qualifying author experience after the thirtieth PR", async () => {
+  const f = fixture(), request = f.host.request;
+  f.host.request = async (path, ...args) => {
+    if (path.startsWith("/pulls?")) return Array.from({ length: 40 }, (_, i) => ({ number: i + 101,
+      user: { id: 8 }, merged_at: "2026-10-18T00:00:00Z", base: { repo: { full_name: repository } } }));
+    const number = Number(/^\/pulls\/(\d+)\/files\?/.exec(path)?.[1]);
+    if (number) return [{ filename: number < 108 || (number >= 131 && number < 134) ? "README.md" : "other.ts" }];
+    return request(path, ...args);
+  };
+  const input = await readSmallChange(f.host, 50);
+  assert.equal(input.experience.demo?.length, 10);
+  assert.deepEqual(input.experience.demo?.slice(-3), [131, 132, 133]);
+  assert.equal(f.writes(), 0);
+});
+
+test("experience lookup stays bounded and cannot invent a qualifying hundred-and-first file list", async () => {
+  const f = fixture(), request = f.host.request; let fileLists = 0;
+  f.host.request = async (path, ...args) => {
+    if (path.startsWith("/pulls?")) {
+      const page = Number(new URL("https://github.invalid" + path).searchParams.get("page"));
+      return Array.from({ length: 100 }, (_, i) => ({ number: page * 100 + i + 1,
+        user: { id: 8 }, merged_at: "2026-10-18T00:00:00Z", base: { repo: { full_name: repository } } }));
+    }
+    const number = Number(/^\/pulls\/(\d+)\/files\?/.exec(path)?.[1]);
+    if (number) { fileLists++; return [{ filename: number < 110 || number === 201 ? "README.md" : "other.ts" }]; }
+    return request(path, ...args);
+  };
+  const input = await readSmallChange(f.host, 50);
+  assert.equal(fileLists, 100);
+  assert.equal(input.experience.demo?.length, 9);
+  assert.equal(f.writes(), 0);
+});
+
+test("the writer publishes the trusted workflow verdict instead of choosing org policy", async () => {
+  const f = fixture(), input = await readSmallChange(f.host, 50);
+  const result = await publishSmallChange(f.host, 50, f.store, input,
+    { head, base, eligible: false, reasons: ["This workflow requires human review."] });
+  assert.equal(result.decision.eligible, false);
+  assert.equal(f.checks[0].conclusion, "neutral");
+  assert.equal(f.reviews.length, 0);
+});
+
+test("workflow verdicts cannot replace canonical commits or bypass stale evidence", async () => {
+  for (const stale of [false, true]) {
+    const f = fixture(), input = await readSmallChange(f.host, 50);
+    if (stale) f.move();
+    await assert.rejects(publishSmallChange(f.host, 50, f.store, input,
+      { head: stale ? head : "c".repeat(40), base, eligible: true, reasons: [] }),
+    stale ? /PR changed/ : /Invalid workflow approval/);
+    assert.equal(f.writes(), 0);
+  }
 });

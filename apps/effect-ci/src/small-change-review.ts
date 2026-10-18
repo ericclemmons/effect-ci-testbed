@@ -1,6 +1,10 @@
 import { DurableObject, WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { createAppJwt } from "../../../packages/github/src/app.ts";
-import { runSmallChange, type SmallChangeHost, type SmallChangeOperation } from "../../../packages/github/src/small-change-host.ts";
+import { publishSmallChange, readSmallChange, type SmallChangeHost, type SmallChangeOperation, type SmallChangeStore } from "../../../packages/github/src/small-change-host.ts";
+import type { SmallChangeDecision, SmallChangeEvidence } from "../../../packages/github/src/small-change.ts";
+import * as CI from "@effect-ci-testbed/ci";
+import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts";
+import { policyId, pullRequestPolicy, smallChangePolicy } from "./workflows/pull-request.ts";
 import { syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 import { demoBuildIdentity, demoRunnerPolicyDigest } from "./demo-runner-policy.ts";
@@ -81,19 +85,23 @@ export async function verifiedDemoReviewChecks(authority: ReviewAuthority, head:
 }
 
 export class SmallChangeReviews extends DurableObject<Environment> {
-  async evaluate(number: number) {
+  #validate(number: number, policyRevision: string | undefined) {
     if (!Number.isSafeInteger(number) || number < 1) throw Error("Invalid PR number");
+    if (!policyRevision || policyRevision !== this.env.VERSION_METADATA?.id)
+      throw Error("Org policy revision changed; no approval capability");
+  }
+  #withHost<T>(operation: (host: SmallChangeHost) => Promise<T>) {
     const authority = (this.ctx.exports as unknown as { TrustedDemoChecks: { getByName(name: string): ReviewAuthority } })
       .TrustedDemoChecks.getByName("demo-trusted-runner-v1");
-    return withSmallChangeToken(this.env, request => runSmallChange({
-      repository, appId, botId, policyId: "demo-small-change-v1", request,
-      policy: { maxChangedLines: 1000, maxServices: 1, minMergedPullRequests: 10, requiredChecks: ["test", "build"],
-        service: path => path === "README.md" ? "docs" : path.startsWith("examples/demo/") &&
-          !path.includes("/.cloudflare/") && !path.includes("/.github/") && !/(^|\/)(AGENTS|CLAUDE|SECURITY|POLICY)\.md$/i.test(path)
-          ? "demo" : undefined },
+    return withSmallChangeToken(this.env, request => operation({
+      repository, appId, botId, policyId, request,
+      policy: smallChangePolicy,
       verifiedChecks: head => verifiedDemoReviewChecks(authority, head, this.env.VERSION_METADATA?.id),
       // No paid reviewer is configured. Non-README code stays on normal review.
-    }, number, {
+    }));
+  }
+  #store(): SmallChangeStore {
+    return {
       read: key => this.ctx.storage.get<SmallChangeOperation>(key),
       claim: (key, value) => this.ctx.storage.transaction(async tx => {
         if (await tx.get(key)) return false; await tx.put(key, value); return true;
@@ -103,19 +111,47 @@ export class SmallChangeReviews extends DurableObject<Environment> {
         if (!current || current.state !== "pending" || current.marker !== value.marker) throw Error("Review journal changed");
         await tx.put(key, value);
       }),
-    }));
+    };
+  }
+  async read(number: number, policyRevision: string) {
+    this.#validate(number, policyRevision);
+    return this.#withHost(host => readSmallChange(host, number));
+  }
+  async publish(number: number, evidence: SmallChangeEvidence, decision: SmallChangeDecision, policyRevision: string) {
+    this.#validate(number, policyRevision);
+    return this.#withHost(host => publishSmallChange(host, number, this.#store(), evidence, decision));
+  }
+  /** Preserve the existing private RPC for pinned/retained callers. */
+  async evaluate(number: number) {
+    const revision = this.env.VERSION_METADATA?.id;
+    this.#validate(number, revision);
+    const { value } = await CI.runPromise(pullRequestPolicy({
+      read: () => this.read(number, revision!), publish: (evidence, decision) => this.publish(number, evidence, decision, revision!),
+    }).workflow, { env: "cloudflare", ci: true, output: "silent" });
+    if (!value) throw Error("PR workflow produced no decision");
+    return value;
   }
   fetch() { return new Response("Not found", { status: 404 }); }
 }
 
 /** PR-only host workflow, independent of execution attestations and deployment. */
 export class SmallChangeReviewWorkflow extends WorkflowEntrypoint<Environment, { number: number }> {
-  run(event: Readonly<WorkflowEvent<{ number: number }>>, step: WorkflowStep) {
+  async run(event: Readonly<WorkflowEvent<{ number: number }>>, step: WorkflowStep) {
     if (!event.payload || Object.keys(event.payload).join() !== "number" ||
       !Number.isSafeInteger(event.payload.number) || event.payload.number < 1) throw Error("Invalid review event");
-    const owner = (this.ctx.exports as unknown as { SmallChangeReviews: { getByName(name: string): { evaluate(number: number): Promise<SmallChangeOperation> } } })
+    const owner = (this.ctx.exports as unknown as { SmallChangeReviews: { getByName(name: string): Pick<SmallChangeReviews, "read" | "publish"> } })
       .SmallChangeReviews.getByName(`pr-${event.payload.number}`);
-    return step.do("small-change", { retries: { limit: 0, delay: "1 second" }, timeout: "10 minutes" },
-      () => owner.evaluate(event.payload.number));
+    // An old pinned Workflow cannot publish its verdict through a newer policy
+    // owner's capability after a rollout. This value is host metadata, not payload.
+    const revision = this.env.VERSION_METADATA?.id;
+    if (!revision) throw Error("Org policy version metadata unavailable");
+    const { value, plan } = await CI.runPromise(pullRequestPolicy({
+      read: () => owner.read(event.payload.number, revision),
+      publish: (evidence, decision) => owner.publish(event.payload.number, evidence, decision, revision),
+    }).workflow, { env: "cloudflare", ci: true, output: "silent",
+      actionExecutor: makeActionExecutor(step, new Set()),
+    });
+    if (!value) throw Error("PR workflow produced no decision");
+    return { ...value, workflowPlan: plan };
   }
 }
