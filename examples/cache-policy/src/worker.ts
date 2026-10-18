@@ -11,6 +11,7 @@ export default {
 }
 
 export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
+  container: { image: "workspace" },
   cache: {
     key: "custom-build-cache",
     keyFiles: ["examples/cache-policy/app/src/input.txt"],
