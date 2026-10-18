@@ -3,6 +3,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import { makeRunner, WorkspaceContainer as PlatformWorkspace } from "@effect-ci-testbed/cloudflare";
 import * as Effect from "effect/Effect";
 import { repository, sourceRoot as root, original, changed, programChanged, publicSource } from "./source.ts";
+import { emptyParameters, once, cleanupOnce } from "./control.ts";
 
 // Owned public fixture only, never caller-selected source or project commands.
 const names = ["left", "right", "bundle"] as const;
@@ -25,13 +26,13 @@ export class WorkspaceContainer extends PlatformWorkspace {
 
 export class RerunProof extends WorkflowEntrypoint {
   async run(event: WorkflowEvent<Record<string, never>>, step: WorkflowStep) {
-    if (Object.keys(event.payload ?? {}).length) throw Error("This fixture accepts only empty parameters");
+    emptyParameters(event.payload);
     const namespace = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace<WorkspaceContainer> }).WorkspaceContainer;
     const traces: unknown[] = [];
 
     const run = async (label: string, revision: string, previous?: Previous): Promise<Previous> => {
       const workspaceId = `${event.instanceId}:${label}`, used = new Set<string>();
-      const scoped = { do: (name: string, ...args: unknown[]) => (step.do as Function).call(step, `${label}:${name}`, ...args) } as WorkflowStep;
+      const scoped = { do: (name: string, ...args: unknown[]) => (step.do as Function).call(step, `${label}:${name}`, once, args.at(-1)) } as WorkflowStep;
       const runner = makeRunner({
         binding: { getByName(name: string) { used.add(name); return namespace.getByName(name); } } as unknown as DurableObjectNamespace,
         repository, revision, root, workspaceId, step: scoped, reuseWorkspace: false,
@@ -112,8 +113,10 @@ export class RerunProof extends WorkflowEntrypoint {
         traces.push({ label, revision, reasons, executed, reused, lineage, output, program, runtime });
         return { attempt: result.attempt, inputs, program, runtime, lineage, output };
       } finally {
-        const stopped = await Promise.allSettled([...used].map(name => namespace.getByName(name).stopFixture()));
-        if (stopped.some(result => result.status === "rejected")) throw Error("Fixture VM cleanup incomplete; inspect this run before doing anything else");
+        await step.do(`${label}:cleanup`, cleanupOnce, async () => {
+          const stopped = await Promise.allSettled([...used].map(name => namespace.getByName(name).stopFixture()));
+          if (stopped.some(result => result.status === "rejected")) throw Error("Fixture VM cleanup incomplete; inspect this run before doing anything else");
+        });
       }
     };
     const first = await run("original", original);

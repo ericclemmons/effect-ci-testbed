@@ -238,7 +238,7 @@ jobs:
       - name: Verify the conventional comparison's explicit conditions
         run: node --test examples/dependency-aware-reruns/verification/conventional.test.ts
       - name: Verify the isolated native fixture's public Git inputs
-        run: node --test apps/effect-ci/verification/native-rerun/source.test.ts
+        run: node --test apps/effect-ci/verification/native-rerun/source.test.ts apps/effect-ci/verification/native-rerun/control.test.ts
 
   d1-migration-contract:
     name: d1-migration / plan and Worker build

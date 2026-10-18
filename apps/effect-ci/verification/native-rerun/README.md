@@ -17,7 +17,7 @@ cd apps/effect-ci/verification/native-rerun
 From the repository root:
 
 ```sh
-node --test apps/effect-ci/verification/native-rerun/source.test.ts
+node --test apps/effect-ci/verification/native-rerun/source.test.ts apps/effect-ci/verification/native-rerun/control.test.ts
 VERIFY_NATIVE_RERUN_IMAGE=1 node --test apps/effect-ci/verification/native-rerun/image.test.ts
 ```
 
@@ -25,6 +25,10 @@ The source test uses real local Git objects and mocked HTTP responses. The image
 test retrieves the public blobs anonymously and executes their actual program
 offline as the image's unprivileged user, with a read-only root filesystem.
 Neither test proves the native workflow or Cloudflare snapshot reuse.
+
+The operator payload must be `{}`. Each native operation has a one-minute timeout
+and no automatic retry; cleanup has a separate 30-second timeout. A cleanup failure
+requires inspection before another run.
 
 Live testing requires the separately requested isolated-target approval. Preserve
 run history, stop fixture VMs afterward, and never touch the production host.
