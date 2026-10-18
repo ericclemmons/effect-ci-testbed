@@ -59,6 +59,7 @@ test("the actual standalone deployment config has no cross-Worker demo dependenc
   });
   assert.equal(config.containers.length, 1);
   assert.deepEqual(Object.keys(config.containers[0].images), ["workspace"]);
+  assert.equal(config.containers[0].images.workspace.dockerfile, "./Dockerfile.standalone");
 });
 
 test("standalone build uses another project's package manager and root without demo capabilities", async () => {

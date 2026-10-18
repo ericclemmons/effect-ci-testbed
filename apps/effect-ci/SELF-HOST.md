@@ -45,6 +45,8 @@ The [standalone workflow](./src/standalone-program.ts) installs with the project
 detected package manager and runs `build` by default. `test build` selects both
 goals with shared installation. Edit this host-authored workflow to encode your
 org policy; project scripts execute inside the workspace, not the host.
+The standalone image includes Node 24.22 and pnpm 12.8.1; it does not require
+pnpm to happen to be installed in the base image.
 
 Slack is optional. Configure your own `SLACK_BOT_TOKEN` / `SLACK_CHANNEL_ID`, or
 webhook destination. No channel or reviewer identity is copied from the demo.

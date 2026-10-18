@@ -85,7 +85,7 @@ const demo = defineConfig({
 const profile = hostProfile(process.env);
 const standaloneWorkspace = profile.profile === "standalone" ? defineContainer({
   name: `${profile.name}-workspace`, schedulingPolicy: "durable-object",
-  images: { workspace: { dockerfile: "./Dockerfile" } },
+  images: { workspace: { dockerfile: "./Dockerfile.standalone" } },
 }) : undefined;
 
 export default profile.profile === "demo" ? demo : defineConfig({
