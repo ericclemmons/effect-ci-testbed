@@ -59,6 +59,7 @@ interface CommittedWorkspace {
 }
 
 interface WorkspaceContainerStub {
+  readonly getImageIdentity: (options?: WorkspaceContainerOptions) => Promise<string | undefined>
   readonly getCachedSnapshot: (
     key: string,
   ) => Promise<ContainerSnapshotValue | undefined>
@@ -177,6 +178,14 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     }
 
     return container
+  }
+
+  /** Host-only platform metadata, never a digest supplied by project commands.
+   * An unresolved mutable name cannot authorize a whole-container cache restore. */
+  async getImageIdentity(options: WorkspaceContainerOptions = {}): Promise<string | undefined> {
+    const image = options.image ?? defaultImage
+    return this.container().images[image] ||
+      (/^(?:.+@)?sha256:[a-f0-9]{64}$/.test(image) ? image : undefined)
   }
 
   private async ensureRunning(options: WorkspaceContainerOptions = {}): Promise<void> {
@@ -705,6 +714,8 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               await checkout()
             })
             const identity = await options.step.do("workspace-cache:identity", async () => {
+              const image = await primary.getImageIdentity(options.container)
+              if (!image) return undefined
               const files: Array<readonly [string, string | undefined]> = []
               for (const path of options.cache!.keyFiles) {
                 // Validate before handing any path to the filesystem RPC.
@@ -715,11 +726,13 @@ export const makeRunner = (options: RunnerOptions): Runner => {
                 repository: options.repository,
                 key: options.cache!.key,
                 paths: options.cache!.paths ?? [],
-                container: { image: defaultImage, ...options.container },
+                container: { ...options.container, image },
                 files,
               })
             })
-            cache = options.binding.getByName(identity) as unknown as WorkspaceContainerStub
+            // Native replay may return an identity journaled by an older host.
+            // Never reopen its alias-only namespace after this policy upgrade.
+            if (identity?.startsWith("cache:v3:")) cache = options.binding.getByName(identity) as unknown as WorkspaceContainerStub
           }
           if (cache) {
             const snapshot = await options.step.do("workspace-cache:restore", () =>

@@ -50,6 +50,10 @@ The standalone image includes Node 24.22 and pnpm 12.8.1; it does not require
 pnpm to happen to be installed in the base image.
 Project commands run as uid 1000 in a non-login shell; Node and pnpm stay
 root-owned. Add system tools when building your image, not from project scripts.
+Transport caches are isolated by the platform-resolved image and container policy.
+Rebuilding an image starts a new cache; an unresolved mutable image name runs
+fresh. A restored workspace is not, by itself, attestation or permission to skip
+an action.
 
 Slack is optional. Configure your own `SLACK_BOT_TOKEN` / `SLACK_CHANNEL_ID`, or
 webhook destination. No channel or reviewer identity is copied from the demo.

@@ -13,7 +13,7 @@ export const cacheIdentity = async (request: {
     }
   }
   const input = JSON.stringify({
-    version: 2,
+    version: 3,
     repository: request.repository,
     key: request.key,
     container: request.container,
@@ -21,5 +21,5 @@ export const cacheIdentity = async (request: {
     files: files.map(([path, content]) => [path, content ?? null]),
   })
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input))
-  return `cache:v2:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`
+  return `cache:v3:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`
 }
