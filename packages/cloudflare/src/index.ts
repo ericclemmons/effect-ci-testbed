@@ -655,7 +655,7 @@ export interface WorkflowParameters {
   readonly repository: string
   readonly revision: string
   /** Normalized triggering event; source identity always comes from repository/revision. */
-  readonly event?: Pick<CI.WorkflowEventShape, "type" | "ref" | "payload">
+  readonly event?: Pick<CI.WorkflowEventShape, "type" | "ref" | "payload" | "comparison">
 }
 
 export interface WorkflowEnvironment {
@@ -1009,6 +1009,7 @@ export const workflowEntrypoint = <
         type: event.payload.event?.type ?? "workflow_dispatch",
         payload: event.payload.event?.payload ?? event.payload,
         ...(event.payload.event?.ref ? { ref: event.payload.event.ref } : {}),
+        ...(event.payload.event?.comparison ? { comparison: event.payload.event.comparison } : {}),
         revision: event.payload.revision,
         source: {
           kind: "git",

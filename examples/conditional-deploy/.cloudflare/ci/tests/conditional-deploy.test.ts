@@ -3,6 +3,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
 
 import workflow, { production } from "../workflow.ts"
+import ifElse from "../if-else.ts"
 
 for (const type of ["pull_request", "push", "release"] as const) {
   for (const ref of ["refs/heads/main", "refs/heads/feature", "refs/tags/v1"] as const) {
@@ -47,3 +48,22 @@ await CI.runPromise(workflow, {
 })
 
 assert.equal(executions, 1)
+
+// Source providers expose a complete comparison; ordinary if/else chooses the
+// branch. These provider-boundary cases are not native hosted diff evidence.
+for (const [paths, shouldDeploy] of [
+  [["examples/conditional-deploy/index.html"], true],
+  [["packages/ci/src/index.ts"], true],
+  [["README.md"], false],
+  [[], false],
+] as const) {
+  executions = 0
+  const result = await CI.runPromise(ifElse, { executor, output: "silent", source: {
+    changes: () => Effect.succeed({ status: "known", base: "a".repeat(40), head: "b".repeat(40), paths }),
+    checkout: () => shouldDeploy
+      ? Effect.succeed(CI.Workspace.local("/fixture"))
+      : Effect.die("An unchanged project must not checkout"),
+  } })
+  assert.equal(executions, shouldDeploy ? 1 : 0)
+  assert.equal(result.plan.nodes.some(node => node.id === "deploy"), shouldDeploy)
+}

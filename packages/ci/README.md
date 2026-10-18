@@ -74,9 +74,24 @@ Optional check/result cache outages execute the work normally, including when an
 adapter throws. A failed cache write does not fail successful work. Cancellation
 still stops the run; required event/attempt persistence is not an optional cache.
 
-`CI.when` records inspectable conditions. Ordinary Effect control flow is available
-for runtime-only decisions. Action-owned rollback runs in reverse completion order
-after terminal failure.
+`CI.when` records inspectable conditions. Ordinary `if/else` works too:
+
+```ts
+const source = yield* CI.Source
+if (yield* source.changed(["apps/site/**", "packages/ui/**"])) {
+  yield* deploy()
+} else {
+  // No matching changes.
+}
+```
+
+`source.changes()` exposes the comparison and changed paths. The event adapter
+normally supplies the base; local runs use the remote default branch. Unknown
+comparisons run work. An explicit `{ base, head }` override remains available.
+See [changed-file conditions](../../examples/conditional-deploy#start-with-a-source-query)
+for glob support, deployment baselines and the planning boundary. This does not
+infer dependencies or authorize attestation reuse. Action-owned rollback runs in
+reverse completion order after terminal failure.
 
 Event adapters supply `CI.WorkflowEvent` and, when relevant, `CI.Source`. An error
 event need not pretend to be a Git push. Hosted execution still requires an enrolled
