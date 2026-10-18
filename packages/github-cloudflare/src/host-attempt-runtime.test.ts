@@ -21,14 +21,21 @@ test(
     import{DurableObject}from'cloudflare:workers';
     import*as Native from'@effect-ci-testbed/cloudflare';import*as GitHub from'./index.ts';
     import{hostAttemptProgram}from'./host-attempt.fixture.ts';
+    import{signExecutionReceipt,verifyExecutionReceipt}from'../../cloudflare/src/execution-receipt.ts';
     export class WorkspaceContainer extends DurableObject{async checkpoint(){return{id:'immutable-build-snapshot',size:12};}}
     const observations=[];let bodies=0;
+    const keys=crypto.subtle.generateKey('Ed25519',false,['sign','verify']);
+    const identity={issuer:'https://ci.acme.example',repository:'https://github.com/acme/private.git',revision:'a'.repeat(40),
+      workflowId:'attempt-fixture',policyDigest:'b'.repeat(64),runtimeDigest:'c'.repeat(64),inputsDigest:'d'.repeat(64),eventDigest:'e'.repeat(64)};
     const program=(fail=false,workspace=false)=>hostAttemptProgram(fail,workspace,()=>bodies++);
     const record=(fail=false)=>async(attempt,context)=>{
       if(context.environment.HOST_MARKER!=='host-only-marker')throw Error('Missing host context');
+      const key=await keys;
+      const receipt=await signExecutionReceipt({keyId:'acme',key:key.privateKey,identity,instanceId:context.instanceId,attempt});
+      if(!await verifyExecutionReceipt(JSON.stringify(receipt),identity,new Map([['acme',key.publicKey]])))throw Error('Receipt verification failed');
       observations.push({phase:'attempt',instance:context.instanceId,repository:context.parameters.repository,revision:context.parameters.revision,
         conclusion:attempt.conclusion,number:attempt.number,nodes:attempt.plan.nodes.map(({id,status,dependencies})=>({id,status,dependencies})),
-        passedCheckPresent:Object.hasOwn(attempt.outputs,'test'),outputs:attempt.outputs});
+        passedCheckPresent:Object.hasOwn(attempt.outputs,'test'),outputs:attempt.outputs,receipt});
       if(fail)throw Error('PRIVATE_SIGNER_ERROR');
     };
     export const NativeSuccess=Native.workflowEntrypoint(program(),{cache:false,onAttempt:record()});
@@ -129,6 +136,13 @@ test(
         assert.equal(actual.instance, id);
         assert.equal(actual.revision, "a".repeat(40));
         assert.equal(actual.number, 1);
+        assert.equal(actual.receipt.purpose, "execution-observation");
+        assert.equal(actual.receipt.claim.instanceId, id);
+        assert.equal(actual.receipt.claim.conclusion, actual.conclusion);
+        assert.deepEqual(actual.receipt.claim.steps.find((s: any) => s.id === "test").output, { kind: "void" });
+        assert.equal(actual.receipt.claim.steps.find((s: any) => s.id === "build").output?.kind,
+          ["Failed", "NativeFailed"].includes(name) ? undefined : name === "WorkspaceScenario" ? "workspace" : "json");
+        assert.doesNotMatch(JSON.stringify(actual.receipt), /immutable-build-snapshot|artifact-handle|FORGED|host-only-marker/);
         assert.equal(actual.repository, "https://github.com/acme/private.git");
         assert.equal(
           actual.conclusion,

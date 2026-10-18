@@ -77,6 +77,13 @@ use eligibility to grant the narrow automatic approval path. CODEOWNERS and
 rulesets remain authoritative: this bot does not bypass them. The user enables
 auto-merge separately.
 
+GitHub App bots cannot currently be listed in CODEOWNERS
+([GitHub's answer](https://github.com/orgs/community/discussions/23064)). The App's
+real approval and a required code-owner review are separate gates. Keep required
+human owners on sensitive paths; do not make the App a bypass actor to simulate
+owner approval. A dedicated machine-user owner is a different account model, not
+something this integration silently creates.
+
 ## Run the example
 
 From the repo root:
