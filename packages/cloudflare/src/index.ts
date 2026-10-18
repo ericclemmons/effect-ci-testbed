@@ -1,4 +1,5 @@
 import * as CI from "@effect-ci-testbed/ci"
+import { gitSourceChangesCommand, parseGitSourceChanges } from "@effect-ci-testbed/ci/source-changes"
 import {
   DurableObject,
   WorkerEntrypoint,
@@ -59,6 +60,7 @@ interface CommittedWorkspace {
 }
 
 interface WorkspaceContainerStub {
+  readonly sourceChanges: (comparison: CI.SourceComparison, cwd: string, options?: WorkspaceContainerOptions) => Promise<CI.SourceChanges>
   readonly getImageIdentity: (options?: WorkspaceContainerOptions) => Promise<string | undefined>
   readonly getCachedSnapshot: (
     key: string,
@@ -457,6 +459,15 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     }
   }
 
+  /** Only a fixed Git read is allowed here. Never mark command ownership or
+   * checkpoint a query as business work; dirty/lost work remains guarded. */
+  async sourceChanges(comparison: CI.SourceComparison, cwd: string, options: WorkspaceContainerOptions = {}): Promise<CI.SourceChanges> {
+    const command = gitSourceChangesCommand(comparison)
+    if (!command) return { status: "unknown", reason: "unavailable" }
+    await this.materialize("$source-changes", undefined, options)
+    return parseGitSourceChanges(await this.run(containerShell(command, { ...options, loginShell: false }), cwd))
+  }
+
   async execute(
     command: string,
     cwd: string,
@@ -681,6 +692,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
+  let sourceSequence = 0
   const activeBodies = new Set<string>()
   const fileSequences = new Map<string, number>()
   const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
@@ -715,9 +727,18 @@ export const makeRunner = (options: RunnerOptions): Runner => {
     })()
   }
 
-  return {
+  const runner: Runner = {
     actionExecutor: makeActionExecutor(options.step, activeBodies),
     source: {
+      changes: comparison => Effect.gen(function* () {
+        if (!comparison) return { status: "unknown", reason: "no-baseline" } as const
+        const workspace = yield* runner.source.checkout()
+        return yield* Effect.tryPromise({
+          try: () => options.step.do(`source-changes:${++sourceSequence}`, { timeout: "30 seconds", retries: { limit: 0, delay: "1 second", backoff: "constant" } }, () =>
+            primary.sourceChanges({ ...comparison, head: comparison.head ?? options.revision }, workspace.cwd, options.container)),
+          catch: error => error,
+        })
+      }),
       checkout: () => Effect.tryPromise({
         try: async () => {
           if (options.cache) {
@@ -950,6 +971,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
     },
   }
+  return runner
 }
 
 /** Static workflows or event-time discovery; factories must checkpoint external reads. */

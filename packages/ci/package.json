@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./command-diagnostics": "./src/command-diagnostics.ts",
-    "./directory-deployment": "./src/directory-deployment.ts"
+    "./directory-deployment": "./src/directory-deployment.ts",
+    "./source-changes": "./src/source-changes.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

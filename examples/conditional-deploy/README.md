@@ -170,7 +170,11 @@ starting checkout. Its returned plan retains the inspectable condition.
 
 That event/ref proof does not establish the new changed-file query on native
 Cloudflare. Changed-file coverage currently consists of real local Git diffs and
-provider-boundary example tests; native hosted acceptance is separate.
+provider-boundary example tests; native hosted acceptance is separate. The native
+runner uses a fixed, non-login Git read rather than the mutation command adapter,
+so inspecting changes cannot claim ownership of the selected action's workspace.
+Missing checkout history still means unknown/run; this does not fetch a base or
+add comparison metadata to check-suite events.
 
 ## Verification proof
 
