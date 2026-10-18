@@ -60,6 +60,7 @@ containers remained active.
 
 This fixed input contract is not generic dependency discovery, signing enrollment
 or automatic side-effect replay. The [conventional comparison](../../../../examples/dependency-aware-reruns/.github/workflows/github.yml)
-adds a real filesystem-loss case; its seven local scenarios pass, with hosted YAML
-verification still pending. It uses manual runner-local history, not a native
+adds a real filesystem-loss case. All seven cases passed in the actual GitHub
+YAML run at `72f8567`; source, step selection and output/history digests were
+independently verified. It uses manual runner-local history, not a native
 Cloudflare journal.

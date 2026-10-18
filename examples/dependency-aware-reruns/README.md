@@ -95,7 +95,9 @@ executed the actual YAML through `act` and verified all six cases at `4d09ad3`.
 The additional `filesystem-loss` case saves a command receipt, removes its
 unpublished candidate directory, preserves the failed-attempt record, and rebuilds
 only the pure bundle. Both leaf outputs and the original publication stay intact.
-Its local real-process test passes; the added YAML case is awaiting hosted CI.
+The [seven-case GitHub run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39134825056/job/117697094707)
+passed at `72f8567`. Independent verification checked the actual YAML step
+selection, source tree, output digests and unchanged failure/publication records.
 
 ## Verification proof
 
