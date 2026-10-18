@@ -626,6 +626,9 @@ export interface RunnerOptions {
   readonly step: WorkflowStep
   readonly targetDirectory?: string
   readonly token?: string | (() => Promise<string>)
+  /** Host-only credential lifetime; the callback encloses just clone/fetch.
+   * Never journal its token or expose it to project commands. */
+  readonly withCheckoutToken?: (checkout: (token: string | undefined) => Promise<void>) => Promise<void>
   readonly workspaceId: string
 }
 
@@ -679,6 +682,15 @@ export const makeRunner = (options: RunnerOptions): Runner => {
     : primary
   let cache: WorkspaceContainerStub | undefined
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
+  const checkout = (cachePaths?: ReadonlyArray<string>) => {
+    const perform = (token: string | undefined) => primary.checkout(
+      options.repository, options.revision, targetDirectory, options.container, token, cachePaths,
+    )
+    return options.withCheckoutToken ? options.withCheckoutToken(perform) : (async () => {
+      const token = typeof options.token === "function" ? await options.token() : options.token
+      await perform(token)
+    })()
+  }
 
   return {
     actionExecutor: makeActionExecutor(options.step, activeBodies),
@@ -688,8 +700,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           if (options.cache) {
             // Read inputs from this run's source, never from a previous cache snapshot.
             await options.step.do("workspace-cache:source", async () => {
-              const token = typeof options.token === "function" ? await options.token() : options.token
-              await primary.checkout(options.repository, options.revision, targetDirectory, options.container, token)
+              await checkout()
             })
             const identity = await options.step.do("workspace-cache:identity", async () => {
               const files: Array<readonly [string, string | undefined]> = []
@@ -719,18 +730,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           await options.step.do("checkout", async () => {
-            const token = typeof options.token === "function"
-              ? await options.token()
-              : options.token
-
-            await primary.checkout(
-              options.repository,
-              options.revision,
-              targetDirectory,
-              options.container,
-              token,
-              options.cache?.paths,
-            )
+            await checkout(options.cache?.paths)
           })
 
           const cwd = options.root

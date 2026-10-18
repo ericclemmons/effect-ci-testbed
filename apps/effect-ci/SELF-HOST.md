@@ -75,5 +75,9 @@ General trusted-result issuance/reuse and PR policy enrollment are still being
 generalized. This profile does not pretend the demo's fixed signing/repair policy
 is portable, nor does it require that policy to deploy a basic CI host.
 GitHub event runs use the installed App's scoped checkout credential. Remote CLI
-checkout of private repositories still needs generalized host enrollment; do not
-mistake a successful public-source run for that capability.
+runs resolve your App's installation for that repository and borrow a
+Contents-read token for checkout, then revoke it. Install the App on private
+repositories you intend to run; no installation ID or token belongs in CLI input.
+Repositories without an installation use anonymous checkout. Local Workflow tests
+exercise this path with fake GitHub responses; a fresh-account private checkout
+has not yet been live-verified.

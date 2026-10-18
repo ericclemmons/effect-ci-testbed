@@ -23,6 +23,7 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
     ).workflow;
   },
   {
+    remoteGitHubCheckout: true,
     slackLayout: "status-thread",
     slackCommandOutput: "failed",
     container: { image: "workspace", instance: "standard-1" },
