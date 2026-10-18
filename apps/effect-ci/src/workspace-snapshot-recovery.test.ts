@@ -12,7 +12,7 @@ const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
 const compiled = await build({
   stdin: {
     resolveDir: new URL(".", import.meta.url).pathname,
-    contents: 'export { WorkspaceContainer } from "@effect-ci-testbed/cloudflare";',
+    contents: 'export { WorkspaceContainer, makeRunner } from "@effect-ci-testbed/cloudflare"; export { runPromise, gen } from "effect/Effect"; export { Workspace } from "@effect-ci-testbed/ci";',
     loader: "ts",
   },
   bundle: true, write: false, format: "esm", platform: "node", target: "esnext",
@@ -25,7 +25,7 @@ const compiled = await build({
     ` }));
   } }],
 });
-const { WorkspaceContainer } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+const { WorkspaceContainer, makeRunner, runPromise, gen, Workspace } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
 
 function fixture() {
@@ -48,10 +48,11 @@ function fixture() {
       snapshots.set(snapshot.id, [...files]); return snapshot;
     },
     async exec(command: string[]) {
-      let exitCode = 0;
+      let exitCode = 0, stdout = new Uint8Array();
       if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
       else if (command[0] === "test") exitCode = command.at(-1) === "." || files.includes(command.at(-1)!) ? 0 : 1;
-      return { output: async () => ({ exitCode, stdout: new Uint8Array(), stderr: new Uint8Array() }) };
+      else if (command[0] === "cat") stdout = new TextEncoder().encode(files.at(-1)!);
+      return { output: async () => ({ exitCode, stdout, stderr: new Uint8Array() }) };
     },
   };
   const ctx = { container, storage: {
@@ -82,8 +83,96 @@ function fixture() {
     dropAncestor: () => snapshots.delete("checkout"),
     foreignCommit: () => workspace.checkpoint("install-workspace", false,
       { cwd: "/workspace/repository", stepId: "install", revision: { ...revision, id: "foreign" } }),
+    addInput: (id: string, text: string) => snapshots.set(id, ["output.txt", text]),
+    readInput: (id: string, stepId = "bundle") => workspace.readFile("output.txt", "/workspace/repository", stepId, { id, name: id, size: 2 }),
   };
 }
+
+test("one action reads each immutable dependency revision, even when both contain the same path", async () => {
+  const f = fixture(); f.addInput("left", "LEFT"); f.addInput("right", "RIGHT");
+  assert.equal(await f.readInput("left"), "LEFT");
+  assert.equal(await f.readInput("right"), "RIGHT");
+  assert.equal(await f.readInput("left"), "LEFT");
+  const before = f.counts();
+  assert.equal(await f.readInput("left"), "LEFT");
+  assert.deepEqual(f.counts(), before, "An unchanged clean input does not restart its container");
+  assert.equal(before.starts, 3, "Only actual revision changes materialize another input");
+});
+
+test("different actions already read distinct snapshots with the same file path", async () => {
+  const f = fixture(); f.addInput("left", "LEFT"); f.addInput("right", "RIGHT");
+  assert.equal(await f.readInput("left", "first"), "LEFT");
+  assert.equal(await f.readInput("right", "second"), "RIGHT");
+  assert.equal(await f.readInput("left", "first"), "LEFT");
+});
+
+test("switching a same-action read cannot discard uncheckpointed command output", async () => {
+  const f = fixture(); f.addInput("right", "RIGHT"); await f.install();
+  const before = f.counts();
+  await assert.rejects(f.readInput("right", "install"), /uncheckpointed/i);
+  assert.deepEqual(f.counts(), before);
+  assert.ok(f.contents(await f.commit())?.includes("node_modules/.bin/vpr"));
+});
+
+test("granular file checkpoints distinguish input, path and repeated observations without rewriting replay", async () => {
+  const receipts = new Map<string, unknown>(), calls: string[] = [];
+  let version = 1;
+  const provider = {
+    async readFile(path: string, cwd: string, _step: string, revision: { id: string }) {
+      calls.push(`read:${revision.id}:${path}`); return `${revision.id}:${cwd}:${path}:${version}`;
+    },
+    async exists(_path: string, _cwd: string, _step: string, revision: { id: string }) { calls.push(`exists:${revision.id}`); return revision.id === "left"; },
+  };
+  const step = { do: async (name: string, ...args: any[]) => {
+    if (!receipts.has(name)) receipts.set(name, structuredClone(await args.at(-1)({ attempt: 1 })));
+    return structuredClone(receipts.get(name));
+  } };
+  const runner = () => makeRunner({ binding: { getByName: () => provider }, repository: "https://github.com/example/public", revision: "a".repeat(40), workspaceId: "files", step });
+  const input = (id: string) => Workspace.remote("files", "/workspace", { provider: "cloudflare-container", value: { id, name: id, size: 1 } });
+  const read = (r: any, id: string, path = "output.txt") => runPromise(r.fileSystem.readFile(input(id), path, "bundle"));
+  const first = runner();
+  assert.equal(await read(first, "left"), "left:/workspace:output.txt:1");
+  assert.equal(await read(first, "right"), "right:/workspace:output.txt:1");
+  assert.equal(await read(first, "left", "a/b"), "left:/workspace:a/b:1");
+  assert.equal(await read(first, "left", "a-b"), "left:/workspace:a-b:1");
+  version = 2;
+  assert.equal(await read(first, "left"), "left:/workspace:output.txt:2");
+  assert.equal(await runPromise(first.fileSystem.exists(input("left"), "output.txt", "bundle")), true);
+  assert.equal(await runPromise(first.fileSystem.exists(input("right"), "output.txt", "bundle")), false);
+  const before = calls.length, retained = JSON.stringify([...receipts]);
+  version = 3;
+  const replay = runner();
+  assert.equal(await read(replay, "left"), "left:/workspace:output.txt:1");
+  assert.equal(await read(replay, "right"), "right:/workspace:output.txt:1");
+  assert.equal(await read(replay, "left", "a/b"), "left:/workspace:a/b:1");
+  assert.equal(await read(replay, "left", "a-b"), "left:/workspace:a-b:1");
+  assert.equal(await read(replay, "left"), "left:/workspace:output.txt:2");
+  assert.equal(await runPromise(replay.fileSystem.exists(input("left"), "output.txt", "bundle")), true);
+  assert.equal(await runPromise(replay.fileSystem.exists(input("right"), "output.txt", "bundle")), false);
+  assert.equal(calls.length, before, "Replay uses each original observation, not one cached path for the whole action");
+  assert.equal(JSON.stringify([...receipts]), retained);
+});
+
+test("cached whole-action bodies do not shift subsequent granular file ordinals on replay", async () => {
+  const receipts = new Map<string, unknown>(); let reads = 0;
+  const provider = { async readFile(_path: string, _cwd: string, _step: string, revision: { id: string }) { reads++; return revision.id; } };
+  const step = { do: async (name: string, ...args: any[]) => {
+    if (!receipts.has(name)) receipts.set(name, structuredClone(await args.at(-1)({ attempt: 1 })));
+    return structuredClone(receipts.get(name));
+  } };
+  const input = (id: string) => Workspace.remote("files", "/workspace", { provider: "cloudflare-container", value: { id, name: id, size: 1 } });
+  const execute = async () => {
+    const runner = makeRunner({ binding: { getByName: () => provider }, repository: "https://github.com/example/public", revision: "a".repeat(40), workspaceId: "files", step });
+    const body = await runPromise(runner.actionExecutor.execute({ stepId: "bundle", options: {}, run: () => gen(function* () {
+      const value = yield* runner.fileSystem.readFile(input("left"), "output.txt", "bundle");
+      return { value, commands: [], events: [] };
+    }) }));
+    assert.equal(body.value, "left");
+    assert.equal(await runPromise(runner.fileSystem.readFile(input("right"), "output.txt", "bundle")), "right");
+  };
+  await execute(); assert.equal(reads, 2);
+  await execute(); assert.equal(reads, 2, "Both native checkpoints replay without new RPCs");
+});
 
 test("a snapshot retry keeps the same still-running install, including after provider-object restart", async () => {
   for (const restart of [false, true]) {
