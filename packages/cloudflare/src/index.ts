@@ -111,6 +111,9 @@ export interface WorkspaceContainerOptions {
   readonly instance?: "lite" | "standard-1" | "standard-2" | "standard-3" | "standard-4"
   /** Command that must succeed before a newly started or restored container is usable. */
   readonly readyCommand?: string
+  /** Trusted hosts may avoid project-writable login startup files. Default
+   * remains the existing login shell for other runners. */
+  readonly loginShell?: boolean
 }
 
 interface WorkspaceContainerEnvironment {}
@@ -472,7 +475,9 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(["sh", "-lc", command], cwd)
+    const result = await this.run(options.loginShell === false
+      ? ["/bin/sh", "-c", command]
+      : ["sh", "-lc", command], cwd)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])
@@ -655,6 +660,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
   readonly root?: string
   readonly secrets?: (environment: Environment) => CI.SecretResolver
   readonly checkCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.CheckCache
+  readonly stepResultCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.StepResultCache
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
@@ -992,6 +998,9 @@ export const workflowEntrypoint = <
       source: runner.source,
       ...(options.checkCache
         ? { checkCache: options.checkCache(this.env, { runner }) }
+        : {}),
+      ...(options.stepResultCache
+        ? { stepResultCache: options.stepResultCache(this.env, { runner }) }
         : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,

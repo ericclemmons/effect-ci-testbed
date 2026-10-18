@@ -60,7 +60,20 @@ export interface HostFinalization<A> {
   readonly observe?: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
-export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.WorkflowEntrypointOptions<Environment> {
+export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment>, "checkCache" | "stepResultCache"> {
+  readonly stepResultCache?: (environment: Environment, context: {
+    readonly runner: Cloudflare.Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: WorkflowParameters
+  }) => CI.StepResultCache
+  /** Trusted host capabilities stay outside the project workspace. */
+  readonly checkCache?: (environment: Environment, context: {
+    readonly runner: Cloudflare.Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: WorkflowParameters
+  }) => CI.CheckCache
   /** One live status line in Slack; per-step details and host review frames in its thread. */
   readonly slackLayout?: "status-thread"
   /** Explicit destination opt-in: bounded, redacted failed-command output in step replies only. */
@@ -82,6 +95,13 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Cloudflare.Workf
    * Use sibling step.do/waitForEvent calls for durable side effects; never uploaded project code.
    */
   readonly finalize?: (context: HostFinalization<A>) => Promise<void>
+  /** Public evidence only, attached to the terminal plan. Runs in a durable
+   * host checkpoint; never expose keys, raw logs or project capabilities here. */
+  readonly executionEvidence?: (context: {
+    readonly exports: unknown
+    readonly parameters: WorkflowParameters
+    readonly instanceId: string
+  }) => Promise<unknown>
 }
 
 const isApprovalResult = (value: unknown): value is CI.ApprovalResult => {
@@ -403,7 +423,7 @@ export const workflowEntrypoint = <A>(
         executor: runner.executor,
         actionExecutor: runner.actionExecutor,
         onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
-          if (options.finalize && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
+          if ((options.finalize || options.executionEvidence) && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
             deferredCompletion = runtimeEvent
             return
           }
@@ -428,7 +448,12 @@ export const workflowEntrypoint = <A>(
         source: runner.source,
         workspaceFileSystem: runner.fileSystem,
         ...(options.checkCache
-          ? { checkCache: options.checkCache(this.env, { runner }) }
+          ? { checkCache: options.checkCache(this.env, { runner, exports: this.ctx.exports,
+              instanceId: event.instanceId, parameters: event.payload }) }
+          : {}),
+        ...(options.stepResultCache
+          ? { stepResultCache: options.stepResultCache(this.env, { runner, exports: this.ctx.exports,
+              instanceId: event.instanceId, parameters: event.payload }) }
           : {}),
         workspacePersistence: runner.persistence,
       }), { workflow: definition.id, instance: event.instanceId }, this.env))
@@ -459,11 +484,19 @@ export const workflowEntrypoint = <A>(
             return notify(`host-finalize:custom:${key}`, () => true, presentation, true, threadKey ?? key)
           },
         })
+      }
+      let evidence: unknown
+      if (options.executionEvidence) {
+        evidence = await step.do("host-execution-evidence", () => options.executionEvidence!({
+          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId,
+        }) as Promise<any>)
+      }
+      if (deferredCompletion) {
         await reporter?.report(deferredCompletion)
         const completion = deferredCompletion
         await notify("host-finalize:completed", () => card.update(completion))
       }
-      return result.plan
+      return options.executionEvidence ? { ...result.plan, evidence } : result.plan
     } catch (error) {
       if (deferredCompletion) {
         const failure = { ...deferredCompletion, conclusion: "failure" as const }

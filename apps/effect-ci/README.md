@@ -11,6 +11,13 @@
 The detailed evidence below records what ran, where, and with whose approval.
 It is not extra setup for the demo.
 
+The new [trusted-runner receipt path](../../packages/cloudflare/src/trusted-runner-receipts.md)
+uses one host authority for remote and SCM checks. The demo's separate
+[unprivileged image](./Dockerfile.trusted-demo) keeps project code from replacing
+the inspecting runtime. Local-note proofs below remain historical; they are not
+host-issued receipts. [Hosted acceptance](./TRUSTED-REMOTE.md) verifies remote-to-SCM
+test/build reuse, the published bytes, and the separate PR-review gate.
+
 ```mermaid
 flowchart LR
   step_checkout["checkout"]

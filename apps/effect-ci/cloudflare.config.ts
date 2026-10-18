@@ -8,7 +8,10 @@ const name = "effect-ci-github-cloudflare";
 const workspace = defineContainer({
   name: "effect-ci-workspace",
   schedulingPolicy: "durable-object",
-  images: { workspace: { dockerfile: "./Dockerfile" } },
+  images: {
+    workspace: { dockerfile: "./Dockerfile" },
+    "trusted-demo": { dockerfile: "./Dockerfile.trusted-demo" },
+  },
 });
 
 export default defineConfig({
@@ -21,6 +24,9 @@ export default defineConfig({
     exports: {
       StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
+      TrustedDemoChecks: exports.durableObject({ storage: "sqlite" }),
+      SmallChangeReviews: exports.durableObject({ storage: "sqlite" }),
+      SmallChangeReviewWorkflow: exports.workflow({ name: "effect-ci-small-change-review" }),
       PublicIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentDispatcher: exports.worker(),
       PublicPipelineReadiness: exports.worker(),
@@ -52,6 +58,7 @@ export default defineConfig({
       }),
     },
     env: {
+      VERSION_METADATA: bindings.versionMetadata(),
       GITHUB_ACTIONS_RUNNER: bindings.worker({ worker: "effect-ci-github-actions-runner" }),
       PUBLIC_ADMISSION: bindings.worker({ worker: "effect-ci-repair-events", exportName: "PublicIncidentAdmission" }),
       PUBLIC_PROPOSAL: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "PublicProposalDriver" }),
