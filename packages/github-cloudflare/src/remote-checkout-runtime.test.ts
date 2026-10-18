@@ -40,6 +40,7 @@ test(
         throw Error('Unexpected API operation');
       };
       export class WorkspaceContainer extends DurableObject{
+        async getImageIdentity(){return 'sha256:'+ 'a'.repeat(64);}
         async checkout(repository,revision,directory,options,token){events.push(token==='fixture_checkout_token'?'authenticated-checkout':token===undefined?'anonymous-checkout':'wrong-credential');}
         async checkpoint(){return{id:'fixture-snapshot',size:1};}
         async getCachedSnapshot(){return undefined;}
