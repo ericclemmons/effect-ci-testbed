@@ -22,8 +22,9 @@ Org PR policy is [a workflow](./src/workflows/pull-request.ts):
 `inspect PR → review → approve PR`. These are ordinary CI actions. The workflow
 chooses eligibility; the host supplies verified evidence and a journaled,
 exact-head GitHub writer. It never supplies a merge capability. Planning performs
-no API calls. The new action graph has local native Workflow/SQLite/RPC proof with
-simulated GitHub responses; its separate live rollout is still pending.
+no API calls. [Live proof](./TRUSTED-REMOTE.md#approval-is-an-action) records all
+three native checkpoints and a real App approval after trusted remote test/build,
+without a model call.
 
 Inspect it without credentials or writes, from the repo root:
 

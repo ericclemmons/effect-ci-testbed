@@ -122,3 +122,107 @@ test(
     }
   },
 );
+
+test(
+  "retained org workflow approves through three ordinary native actions after trusted remote verification",
+  {
+    skip: process.env.VERIFY_TRUSTED_REMOTE !== "1",
+    timeout: 180_000,
+  },
+  async () => {
+    const head = "a11e97f292058f2edca46cf6d56f06098610aa00";
+    const remoteId = "c4a7cd1b-9a91-4c14-90c1-8c9783301846";
+    const remote = instance(remoteId);
+    assert.equal(remote.status, "complete");
+    assert.equal(remote.success, true);
+    assert.equal(remote.params.revision, head);
+    const evidence = remote.output.evidence;
+    assert.deepEqual(evidence.publicKey, publicKey);
+    const keys = new Map([
+      [
+        "demo-trusted-runner-v1",
+        await crypto.subtle.importKey("jwk", publicKey, "Ed25519", false, ["verify"]),
+      ],
+    ]);
+    const suite = evidence.receipts.find((r: any) => r.claim.identity.stepId === "test");
+    assert.ok(suite);
+    assert.equal(suite.claim.runId, remoteId);
+    assert.equal(suite.claim.identity.repository, `https://github.com/${repo}`);
+    assert.equal(suite.claim.identity.revision, head);
+    assert.equal(suite.claim.identity.workflowId, "cf-ci-demo");
+    assert.equal(suite.claim.identity.command, testCommand);
+    assert.equal(suite.claim.identity.policyDigest, await demoRunnerPolicyDigest(true));
+    assert.equal(
+      await verifyRunnerCheckReceipt(JSON.stringify(suite), suite.claim.identity, keys),
+      true,
+    );
+    const build = evidence.stepResults.find((r: any) => r.claim.identity.stepId === "build");
+    assert.ok(build);
+    assert.equal(build.claim.runId, remoteId);
+    assert.ok(
+      await verifyRunnerStepReceipt(
+        JSON.stringify(build),
+        await demoBuildIdentity(head, "a71e9181-f4b8-4af2-9fe6-6fa50b5f31d4"),
+        keys,
+      ),
+    );
+
+    const review = instance(
+      "review-d1c741e0-caa4-11f1-867e-0072b079b97d-345",
+      "effect-ci-small-change-review",
+    );
+    assert.equal(review.status, "complete");
+    assert.equal(review.success, true);
+    assert.equal(review.params.number, 345);
+    assert.equal(review.output.decision.eligible, true);
+    assert.equal(review.output.decision.head, head);
+    assert.equal(review.output.decision.base, "bddafc121abb97753fa85be6f0682f2390751cd4");
+    assert.deepEqual(
+      review.output.workflowPlan.nodes.map((n: any) => n.id),
+      ["inspect PR", "review", "approve PR"],
+    );
+    assert.ok(review.output.workflowPlan.nodes.every((n: any) => n.status === "complete"));
+    assert.deepEqual(
+      review.steps.map((s: any) => s.name),
+      ['action:"inspect PR"-1', 'action:"review"-1', 'action:"approve PR"-1'],
+    );
+    assert.ok(
+      review.steps.every(
+        (s: any) => s.success && s.attempts.length === 1 && s.config.retries.limit === 0,
+      ),
+    );
+    const inspected = JSON.parse(review.steps[0].output).value.data;
+    assert.equal(inspected.review.kind, "documentation-policy");
+    assert.ok(inspected.experience.docs.length >= 10);
+
+    const pr = json("gh", ["api", `repos/${repo}/pulls/345`]);
+    assert.equal(pr.head.sha, head);
+    assert.equal(pr.state, "closed");
+    assert.equal(pr.merged, false);
+    assert.equal(pr.auto_merge, null);
+    const approvals = json("gh", ["api", `repos/${repo}/pulls/345/reviews`]).filter(
+      (r: any) =>
+        r.user?.id === 334321206 &&
+        r.user?.type === "Bot" &&
+        r.state === "APPROVED" &&
+        r.commit_id === head,
+    );
+    assert.equal(approvals.length, 1);
+    assert.equal(approvals[0].id, review.output.reviewId);
+    assert.ok(approvals[0].body.endsWith(`<!-- ${review.output.marker} -->`));
+    const checks = json("gh", [
+      "api",
+      `repos/${repo}/commits/${head}/check-runs?check_name=small-change&app_id=5089816&per_page=100&filter=all`,
+    ]);
+    assert.ok(
+      checks.check_runs.some(
+        (c: any) =>
+          c.id === review.output.checkId &&
+          c.head_sha === head &&
+          c.app?.id === 5089816 &&
+          c.conclusion === "success" &&
+          c.external_id === review.output.marker,
+      ),
+    );
+  },
+);

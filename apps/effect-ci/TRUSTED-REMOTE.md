@@ -2,8 +2,8 @@
 
 Local runs are feedback. The host signs verification. PR policy decides approval.
 
-Deployed source: `ca90adf96ac5ffd8c5ef2e5254202f482ff9013b`.
-Worker version: `55ff142f-752c-41da-82a4-7f7e7c6fd17b`.
+Snapshot-reuse proof source: `ca90adf96ac5ffd8c5ef2e5254202f482ff9013b`.
+Its Worker version: `55ff142f-752c-41da-82a4-7f7e7c6fd17b`.
 
 ## What ran
 
@@ -48,6 +48,28 @@ VERIFY_TRUSTED_REMOTE=1 node --test examples/demo/verification/trusted-runner-pr
 
 This creates nothing and invokes no model. It is a maintainer check, not demo setup.
 The fixture key below is public; the private signing key stays in the host DO.
+
+## Approval is an action
+
+`inspect PR → review → approve PR`
+
+The [authored org workflow](./src/workflows/pull-request.ts) owns the rule. The
+host supplies canonical evidence and a journaled exact-head writer, not a merge
+capability. Each action has its own native checkpoint; planning makes no API calls.
+
+- [Remote test/build](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-demo/instance/c4a7cd1b-9a91-4c14-90c1-8c9783301846) signed the exact pushed commit.
+- [PR #345 approval](https://github.com/ericclemmons/effect-ci-testbed/pull/345#pullrequestreview-5561282518) followed the real PR-open event, without a model.
+- [Native actions](https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-small-change-review/instance/review-d1c741e0-caa4-11f1-867e-0072b079b97d-345) completed once each, with zero retries.
+
+Proof head: `a11e97f292058f2edca46cf6d56f06098610aa00`.
+Host source: `bddafc121abb97753fa85be6f0682f2390751cd4`.
+Worker version: `a71e9181-f4b8-4af2-9fe6-6fa50b5f31d4`.
+
+The acceptance PR is closed, unmerged. Production and the separate Actions runner
+were unchanged. Earlier [PR #344](https://github.com/ericclemmons/effect-ci-testbed/pull/344)
+retains its neutral result: the old 30-PR lookup undercounted author experience.
+The corrected reader found ten real qualifying merges after examining 50; it
+stops at 100 same-author file lists without lowering the ten-merge criterion.
 
 ## Limits
 
