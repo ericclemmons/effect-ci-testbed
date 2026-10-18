@@ -32,6 +32,8 @@ test(
       if(fail)throw Error('PRIVATE_SIGNER_ERROR');
     };
     export const NativeSuccess=Native.workflowEntrypoint(program(),{cache:false,onAttempt:record()});
+    export const NativeFailed=Native.workflowEntrypoint(program(true),{cache:false,onAttempt:record()});
+    export const NativeRecordFailed=Native.workflowEntrypoint(program(),{cache:false,onAttempt:record(true)});
     export const GitHubSuccess=GitHub.workflowEntrypoint(program(),{cache:false,onAttempt:record()});
     export const WorkspaceScenario=GitHub.workflowEntrypoint(program(false,true),{cache:false,onAttempt:record()});
     export const Failed=GitHub.workflowEntrypoint(program(true),{cache:false,onAttempt:record()});
@@ -55,6 +57,8 @@ test(
     });
     const names = [
       "NativeSuccess",
+      "NativeFailed",
+      "NativeRecordFailed",
       "GitHubSuccess",
       "WorkspaceScenario",
       "Failed",
@@ -103,7 +107,11 @@ test(
         }
         assert.equal(
           status.status,
-          ["Failed", "RecordFailed", "Finalized"].includes(name) ? "errored" : "complete",
+          ["Failed", "NativeFailed", "RecordFailed", "NativeRecordFailed", "Finalized"].includes(
+            name,
+          )
+            ? "errored"
+            : "complete",
           JSON.stringify(status),
         );
         assert.doesNotMatch(JSON.stringify(status), /PRIVATE_SIGNER_ERROR|host-only-marker|FORGED/);
@@ -122,9 +130,13 @@ test(
         assert.equal(actual.revision, "a".repeat(40));
         assert.equal(actual.number, 1);
         assert.equal(actual.repository, "https://github.com/acme/private.git");
-        assert.equal(actual.conclusion, name === "Failed" ? "failure" : "success");
+        assert.equal(
+          actual.conclusion,
+          ["Failed", "NativeFailed"].includes(name) ? "failure" : "success",
+        );
         assert.deepEqual(actual.outputs.test, { checked: true });
-        if (name === "Failed") assert.equal(Object.hasOwn(actual.outputs, "build"), false);
+        if (["Failed", "NativeFailed"].includes(name))
+          assert.equal(Object.hasOwn(actual.outputs, "build"), false);
         else if (name === "WorkspaceScenario")
           assert.deepEqual(actual.outputs.build, {
             kind: "remote",
@@ -136,7 +148,7 @@ test(
             },
           });
         else assert.equal(actual.outputs.build, "artifact-handle");
-        if (name === "RecordFailed")
+        if (["RecordFailed", "NativeRecordFailed"].includes(name))
           assert.match(status.error.message, /Host attempt recording failed/);
       }
     } finally {
