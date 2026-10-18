@@ -84,9 +84,8 @@ node --test examples/dependency-aware-reruns/verification/conventional.test.ts
 ```
 
 The helper owns runner-local files; it does not use Effect CI, issue signatures
-or demonstrate cross-run artifact transport. The GitHub `dependency-aware-reruns /
-github` job executes the actual YAML through `act`; retained hosted comparison
-evidence is still pending.
+or demonstrate cross-run artifact transport. The [GitHub comparison run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39115640015/job/117640750308)
+executed the actual YAML through `act` and verified all six cases at `4d09ad3`.
 
 ## Verification proof
 
