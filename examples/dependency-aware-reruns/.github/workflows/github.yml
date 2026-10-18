@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # act jobs share the image's Node tool cache. Avoid concurrent extraction.
+      max-parallel: 1
       matrix:
         change: [input, unchanged, missing, tampered, program, runtime]
     steps:
