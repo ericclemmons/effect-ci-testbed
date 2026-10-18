@@ -117,6 +117,7 @@ export const updateCheck = async (
 }
 
 export * from "./app.ts"
+export * from "./checkout-auth.ts"
 export * from "./check-cache.ts"
 export * from "./reporter.ts"
 export * from "./repair.ts"

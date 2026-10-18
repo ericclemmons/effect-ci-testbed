@@ -61,6 +61,9 @@ export interface HostFinalization<A> {
 }
 
 export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment>, "checkCache" | "stepResultCache"> {
+  /** Opt-in for self-hosted remote runs: resolve this host App's installation,
+   * borrow a repository-only Contents-read token, revoke after checkout. */
+  readonly remoteGitHubCheckout?: boolean
   readonly stepResultCache?: (environment: Environment, context: {
     readonly runner: Cloudflare.Runner
     readonly exports: unknown
@@ -213,6 +216,10 @@ export const workflowEntrypoint = <A>(
       // Source credentials cannot write checks/comments or read another installed
       // repository. Reporting retains its independent host-only credential path.
       ...(github ? { token: () => GitHub.createInstallationToken(credentials(this.env), github.installationId, github.repositoryName.split("/")[1] ?? "") } : {}),
+      ...(!github && options.remoteGitHubCheckout ? {
+        withCheckoutToken: (checkout: (token: string | undefined) => Promise<void>) =>
+          GitHub.withRepositoryCheckoutToken(credentials(this.env), event.payload.repository, checkout),
+      } : {}),
       workspaceId: event.instanceId,
     })
     let operation = 0

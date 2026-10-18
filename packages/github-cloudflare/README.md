@@ -1,5 +1,22 @@
 # Hosted workflow continuation
 
+## Remote private checkout
+
+`workflowEntrypoint(definition, { remoteGitHubCheckout: true })` lets a self-hosted
+runner check out private GitHub sources using its own installed App. The host
+resolves the installation from GitHub, requests Contents-read access to that one
+repository, and revokes the token after clone/fetch. Neither the App key nor its
+token enters project files, native checkpoint results or CLI parameters.
+
+No installation means anonymous checkout; other public Git providers never
+receive a GitHub credential. Redirects, installation mismatches, extra token
+permissions and revocation failures fail closed. The option is off by default;
+signed GitHub-event checkout and existing hosts keep their current behavior.
+The standalone host opts in. Local native Workflow/RPC tests cover both checkout
+paths (including the cache's source inspection), not a live private deployment.
+
+## Continuation
+
 `workflowEntrypoint(definition, { finalize })` supports a trusted host continuation
 after successful CI actions. The callback receives the actual workflow result as
 `value`, the existing `RunCard`, host `environment`, canonical run `parameters`,

@@ -37,8 +37,9 @@ the owned demo's Access identity is not inherited.
 
 For the CLI, configure your host origin as `EFFECT_CI_REMOTE_URL` (no `/demo`
 suffix) and keep the API token in a private user-owned remote profile, not a
-project env file. [Authentication setup](./README.md#4-protect-operator-routes-with-access)
-explains Access and the separate API token. Run `cf-ci doctor --remote` before
+project env file. [Private CLI profile](./README.md#private-cli-profile) shows its
+format; [Access setup](./README.md#4-protect-operator-routes-with-access) explains
+the separate authentication boundary. Run `cf-ci doctor --remote` before
 dispatching work.
 
 The [standalone workflow](./src/standalone-program.ts) installs with the project's
@@ -75,5 +76,9 @@ General trusted-result issuance/reuse and PR policy enrollment are still being
 generalized. This profile does not pretend the demo's fixed signing/repair policy
 is portable, nor does it require that policy to deploy a basic CI host.
 GitHub event runs use the installed App's scoped checkout credential. Remote CLI
-checkout of private repositories still needs generalized host enrollment; do not
-mistake a successful public-source run for that capability.
+runs resolve your App's installation for that repository and borrow a
+Contents-read token for checkout, then revoke it. Install the App on private
+repositories you intend to run; no installation ID or token belongs in CLI input.
+Repositories without an installation use anonymous checkout. Local Workflow tests
+exercise this path with fake GitHub responses; a fresh-account private checkout
+has not yet been live-verified.
