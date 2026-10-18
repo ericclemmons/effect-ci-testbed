@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { makeCommandStepExecutor } from "../../../packages/cloudflare/src/command-step.ts";
 
 // Exercise the actual provider class. Only the platform container/storage are
 // simulated: Node cannot construct a Cloudflare Container or force its failure.
@@ -139,4 +140,57 @@ test("source materialization also records uncheckpointed changes before a contai
   f.stop(); f.restart();
   await assert.rejects(f.foreignStep(), /uncheckpointed/i);
   assert.equal(f.counts().starts, starts);
+});
+
+// Only the native step journal and container are simulated here. These tests
+// exercise the real command adapter plus the real WorkspaceContainer guard;
+// they are not hosted native Workflow or real container-loss evidence.
+function commandJournal() {
+  const receipts = new Map<string, unknown>(), names: string[] = [];
+  const step = { do: async (name: string, ...args: any[]) => {
+    names.push(name);
+    if (!receipts.has(name)) receipts.set(name, structuredClone(await args.at(-1)()));
+    return structuredClone(receipts.get(name));
+  } };
+  const replay = () => {
+    const execute = makeCommandStepExecutor(step as any);
+    return (body: () => Promise<any>) => execute({
+      stepId: "install", command: "npm ci", options: {},
+      workspace: { cwd: "/workspace/repository" } as any,
+    }, body);
+  };
+  return { replay, receipts, names };
+}
+
+test("replayed granular command receipts cannot publish a filesystem lost before its checkpoint", async () => {
+  const f = fixture(), journal = commandJournal();
+  const execute = journal.replay();
+  await execute(f.install);
+  await execute(f.install);
+  const saved = JSON.stringify([...journal.receipts]), before = f.counts();
+  f.stop(); f.restart();
+  const replay = journal.replay();
+  // The durable results still exist, but neither result contains the files.
+  await replay(() => { throw Error("Never replay an external command merely to recover its output files"); });
+  await replay(() => { throw Error("Never replay an external command merely to recover its output files"); });
+  await assert.rejects(f.commit(), /uncheckpointed|uncommitted/i);
+  assert.deepEqual(f.counts(), before, "No command replay, ancestor restart or snapshot acknowledgement");
+  assert.equal(JSON.stringify([...journal.receipts]), saved, "Receipt history is not rewritten by failed publication");
+  assert.deepEqual(journal.names, ['command:["install",1]', 'command:["install",2]', 'command:["install",1]', 'command:["install",2]']);
+});
+
+test("granular receipt replay preserves a separately published workspace after object restart", async () => {
+  const f = fixture(), journal = commandJournal();
+  const execute = journal.replay();
+  await execute(f.install);
+  await execute(f.install);
+  const published = await f.commit(), before = f.counts();
+  f.stop(); f.restart(); f.dropAncestor();
+  const replay = journal.replay();
+  await replay(() => { throw Error("The command already completed"); });
+  await replay(() => { throw Error("The command already completed"); });
+  assert.deepEqual(await f.commit(), published, "Return the immutable publication, not an ancestor or a new capture");
+  assert.ok(f.contents(published)?.includes("node_modules/.bin/vpr"));
+  assert.deepEqual(f.counts(), before);
+  assert.equal(journal.receipts.size, 2);
 });
