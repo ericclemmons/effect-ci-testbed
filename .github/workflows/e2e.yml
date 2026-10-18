@@ -70,6 +70,7 @@ jobs:
           - secure-secrets
           - rollback-compensation
           - deploy-hook
+          - dependency-aware-reruns
     steps:
       - uses: actions/checkout@v7
 
@@ -227,6 +228,8 @@ jobs:
       - run: node --test examples/dependency-aware-reruns/.cloudflare/ci/tests/dependency-aware-reruns.test.ts
       - name: Verify committed input changes and owned checkpoint lineage
         run: node --test examples/dependency-aware-reruns/verification/source-rerun.test.ts
+      - name: Verify the conventional comparison's explicit conditions
+        run: node --test examples/dependency-aware-reruns/verification/conventional.test.ts
 
   d1-migration-contract:
     name: d1-migration / plan and Worker build
