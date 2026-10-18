@@ -81,6 +81,8 @@ export function makeSourceQueries(source: SourceService, options: {
         'test -z "$dirty"',
         `base=$(git rev-parse --verify --end-of-options ${quote(selected.base + "^{commit}")})`,
         `head=$(git rev-parse --verify --end-of-options ${quote(target + "^{commit}")})`,
+        'current=$(git rev-parse --verify HEAD)',
+        'test "$current" = "$head"',
         ...(selected.mergeBase ? ['base=$(git merge-base "$base" "$head")'] : []),
         "printf '%s\\0%s\\0' \"$base\" \"$head\"",
         'git --no-pager diff --no-ext-diff --no-textconv --no-relative --no-renames --name-only -z "$base" "$head" --',

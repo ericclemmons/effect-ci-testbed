@@ -54,6 +54,11 @@ test("a source query drives an ordinary if/else from an actual committed Git dif
       reference: { kind: "local", path: root }, checkout: () => Effect.succeed(CI.Workspace.local(root)),
     } })
     assert.equal(local.value, "unchanged")
+    const stale = await CI.runPromise(workflow, { output: "silent",
+      event: { type: "push", comparison: { base: since, head: since } },
+      source: { checkout: () => Effect.succeed(CI.Workspace.local(root)) },
+    })
+    assert.equal(stale.value, "deployed", "stale event metadata cannot skip changes in the actual checkout")
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
