@@ -8,6 +8,8 @@ import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/
 import { demoRouteAllowed, demoRunAllowed, demoGitHubRun, demoRemoteTargets } from "./demo-policy.ts";
 import { demoAccessRequest } from "./demo-access.ts";
 import { runnerWebhook, type RunnerWebhookEnvironment } from "./runner-webhook.ts";
+import { smallChangeWebhook } from "./small-change-webhook.ts";
+export { SmallChangeReviews, SmallChangeReviewWorkflow } from "./small-change-review.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
 export { TrustedDemoChecks } from "./trusted-demo-checks.ts";
 export { StaticAssetSourceReader } from "./static-assets-source.ts";
@@ -50,6 +52,9 @@ export default {
   async fetch(request: Request, environment: WorkerEnvironment & RunnerWebhookEnvironment, context: ExecutionContext) {
     const runner = await runnerWebhook(request, environment);
     if (runner) return runner;
+    const review = await smallChangeWebhook(request, environment.GITHUB_WEBHOOK_SECRET,
+      (context.exports as unknown as { SmallChangeReviewWorkflow: Workflow<{ number: number }> }).SmallChangeReviewWorkflow);
+    if (review) return review;
     const pathname = new URL(request.url).pathname;
     if (pathname === "/demo" || pathname.startsWith("/demo/")) {
       if (!demoRouteAllowed(pathname)) return new Response("Not found", { status: 404 });

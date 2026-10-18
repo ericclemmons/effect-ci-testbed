@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./pull-request-review": "./src/pull-request-review.ts",
     "./small-change": "./src/small-change.ts",
+    "./small-change-host": "./src/small-change-host.ts",
     "./recorded-proposal": "./src/recorded-proposal.ts",
     "./incident-proposal": "./src/incident-proposal.ts",
     "./incident-evidence": "./src/incident-evidence.ts",

@@ -25,6 +25,8 @@ export default defineConfig({
       StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       TrustedDemoChecks: exports.durableObject({ storage: "sqlite" }),
+      SmallChangeReviews: exports.durableObject({ storage: "sqlite" }),
+      SmallChangeReviewWorkflow: exports.workflow({ name: "effect-ci-small-change-review" }),
       PublicIncidentRepairOperations: exports.durableObject({ storage: "sqlite" }),
       PublicIncidentDispatcher: exports.worker(),
       PublicPipelineReadiness: exports.worker(),

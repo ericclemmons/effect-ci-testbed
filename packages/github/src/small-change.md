@@ -83,6 +83,18 @@ This exercises both paths with fixture PR evidence and a captured writer. It als
 proves that stale checks, moving commits, missing reviews, duplicate history and
 the 1,000-line boundary cannot approve. It does not create a GitHub review.
 
-The policy and adapter are implemented; the hosted PR webhook/reader/writer and
-live two-PR acceptance demo are still to be wired. No repository protection or
-auto-merge settings are changed by running this example.
+The hosted [PR workflow](../../../apps/effect-ci/src/small-change-review.ts) and
+[signed event router](../../../apps/effect-ci/src/small-change-webhook.ts) are
+implemented. Deployment and the live two-PR acceptance demo are still pending.
+No repository protection or auto-merge settings are changed by this example.
+
+The demo host uses the existing Effect CI App, restricted to this repository.
+Its short-lived token has Contents read, Checks write and Pull requests write;
+it cannot merge. PR events and completed native check suites select the separate
+review workflow. The host verifies test and build receipts through its private
+authority, not a key supplied by the PR. The numeric bot identity survives renames.
+
+The reader bounds history to 300 recent closed PRs and 30 same-author merged PR
+file lists. It may undercount experience; that means normal review, not invented
+qualification. Unavailable or incomplete evidence never grants approval. Code
+changes currently need normal review: no paid reviewer is configured.
