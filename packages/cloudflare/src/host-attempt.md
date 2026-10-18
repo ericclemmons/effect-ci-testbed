@@ -23,8 +23,10 @@ This observes the **CI definition's attempt**, before any `finalize` continuatio
 A successful build followed by a failed release remains a successful build and a
 failed native run—not a production-release attestation.
 
-Signing, source/runtime/input verification, artifact codecs and consumer trust
-remain host-adapter responsibilities. `executionEvidence` can project public
+The [execution receipt](./execution-receipt.md) signs these observations for any
+check/action in a Git-backed workflow, not a fixed demo suite. Source/runtime/input
+verification, artifact storage and consumer trust remain host-adapter responsibilities.
+`executionEvidence` can project public
 stored evidence into a successful remote result. Neither hook grants cache reuse,
 PR approval or deployment authority; those decisions belong in workflow policy.
 
