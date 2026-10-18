@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-10-18T19:23:04.695Z",
+  "worker": "effect-ci-snapshot-site",
+  "workerVersion": "1c16a7eb-0645-453c-af05-2834592019c3",
+  "workflow": "effect-ci-snapshot-site-deploy",
+  "cases": [
+    {
+      "case": "first",
+      "revision": "6c5877839e74f7a2bded8a6e6c2c171fe600aa58",
+      "instance": "cf_62cdd9db3fa1bdeedaef57eef9751dd0c30c9b685393324fb02136b422dee1b0",
+      "published": true
+    },
+    {
+      "case": "same bytes, different commit",
+      "revision": "a5c0c16453e62fb90443fca1311fcc4c72d47033",
+      "instance": "cf_9173c22560779e0b8c4b4732a66d0823fa55c76534407f406f786a3f8bbcf37d",
+      "published": false
+    },
+    {
+      "case": "shared package changes output",
+      "revision": "96eb64b9b056bc6651620bdbb95d460819bb5277",
+      "instance": "cf_313fc7fe7e63945b83118d9f97e254c909805da41148e988db828caa02182f61",
+      "published": true
+    },
+    {
+      "case": "same source and bytes",
+      "revision": "96eb64b9b056bc6651620bdbb95d460819bb5277",
+      "instance": "cf_4d7308502b5249992555611785ecee964faeb6832c7f22737d7f23833778531c",
+      "published": false
+    }
+  ],
+  "allNativeRunsComplete": true,
+  "distinctBuildSnapshots": 4,
+  "buildCommandsPerRun": 1,
+  "successfulBaselinesRecorded": 2,
+  "applicationSourceUnchanged": true,
+  "sharedSourceChanged": true,
+  "servedOutputSha256": "5a68fa4e0a122fc977081ce64f0f747f1b316748bd5384e10e4b38faa7fa40bc",
+  "servedPolicyAndReceiptsVerified": true,
+  "activeContainersAtVerification": 0,
+  "boundary": "Owned HTML destination with real native snapshots, not arbitrary Worker bundles, automatic input closure or trusted check reuse. Snapshot handles remain private."
+}

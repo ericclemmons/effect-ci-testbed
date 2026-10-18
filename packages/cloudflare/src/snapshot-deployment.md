@@ -67,6 +67,9 @@ baseline RPCs private. These are host capabilities, not public HTTP endpoints.
 The [deployable HTML site](../../../apps/effect-ci/verification/snapshot-site)
 shows actual publication, serving-handler byte verification, idempotent replay
 and final container cleanup without account-specific services or keys. It is a
-small static destination, not a general Worker-bundle/canary adapter. Local
-tests use real Workflows/RPC/SQLite/HTTP and an offline real image; native container
-snapshot behavior still needs hosted acceptance for this new provider.
+small static destination, not a general Worker-bundle/canary adapter. Its
+[hosted proof](../../../apps/effect-ci/verification/snapshot-site/hosted-proof.json)
+retains four completed native runs: first deploy, identical bytes in a different
+snapshot skip, shared-package output change deploys, repeated output skips.
+Served bytes and deployment receipts were independently checked; all example
+containers were stopped. Local tests additionally cover failure, drift and replay.

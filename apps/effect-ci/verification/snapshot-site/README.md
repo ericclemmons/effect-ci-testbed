@@ -22,8 +22,7 @@ in with `cf`:
 ```sh
 ../../node_modules/.bin/cf build
 ../../node_modules/.bin/cf deploy --prebuilt
-../../node_modules/.bin/cf workflows instances create \
-  --workflow-name effect-ci-snapshot-site-deploy \
+../../node_modules/.bin/cf workflows instances create effect-ci-snapshot-site-deploy \
   --body '{"params":{"repository":"https://github.com/YOUR/REPO","revision":"FULL_COMMIT_SHA"}}'
 ```
 
@@ -56,3 +55,13 @@ The workflow stops its own containers in a final cleanup step and retains native
 history and published snapshots. Output inspection requires `/usr/bin/python3`;
 the reused unprivileged standalone image supplies it. Local runtime tests use
 real Workflows/RPC/SQLite/HTTP but simulate the container snapshot backend.
+
+## Hosted proof
+
+The [retained native runs](./hosted-proof.json) completed with actual container
+snapshots: first publication, identical output from a different commit skips,
+shared-package-only output change publishes, then repeating that source skips.
+All four produced distinct snapshots. Independent HTTP readback confirmed the
+bytes, serving policy and unchanged receipt on skips; no containers remained
+active. The [deployed example](https://effect-ci-snapshot-site.ericclemmons.workers.dev/)
+is an explicitly owned fixture, not a required destination for other accounts.
