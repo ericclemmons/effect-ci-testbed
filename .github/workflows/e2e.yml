@@ -292,6 +292,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: node --test examples/${{ matrix.example }}/.cloudflare/ci/tests/${{ matrix.example }}.test.ts
+      - name: Verify persisted output-change decisions through the CLI
+        if: matrix.example == 'conditional-deploy'
+        run: node --test examples/conditional-deploy/verification/output-changes.test.ts
 
   automatic-data-tracking:
     name: vite-plus-cache / automatic data tracking

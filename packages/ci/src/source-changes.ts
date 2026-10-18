@@ -1,6 +1,7 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import type { CommandExecutor, SourceService, WorkflowEventShape } from "./index.ts"
+import { pathGlob, pathPatterns } from "./path-glob.ts"
 
 /** Explicit committed comparison. Use mergeBase for a PR's branch-point diff. */
 export interface SourceComparison {
@@ -31,26 +32,6 @@ const normalize = (value: SourceChanges): SourceChanges => {
         !path || path.startsWith("/") || path.includes("\0") || path.split("/").some(part => part === ".." || part === ".")) ||
       value.paths.reduce((length, path) => length + path.length + 1, 0) > 1_048_576) return unavailable
   return { status: "known", base: value.base, head: value.head, paths: [...new Set(value.paths)].sort() }
-}
-
-/** Small portable glob vocabulary: *, ** and ?. No platform-specific path rules. */
-const glob = (pattern: string): RegExp => {
-  if (!pattern || pattern.startsWith("/") || pattern.split("/").some(part => part === ".." || part === ".") ||
-      /[\\\[\]{}!\x00-\x1f]/.test(pattern)) throw Error("Expected a repository-relative glob using *, ** or ?")
-  let expression = "^"
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i]!
-    if (c === "*" && pattern[i + 1] === "*") {
-      if ((i > 0 && pattern[i - 1] !== "/") || (i + 2 < pattern.length && pattern[i + 2] !== "/"))
-        throw Error("** must occupy a complete path segment")
-      i++
-      if (pattern[i + 1] === "/") { expression += "(?:[^/]+/)*"; i++ }
-      else expression += "[\\s\\S]*"
-    } else if (c === "*") expression += "[^/]*"
-    else if (c === "?") expression += "[^/]"
-    else expression += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  }
-  return new RegExp(expression + "$")
 }
 
 export function makeSourceQueries(source: SourceService, options: {
@@ -106,9 +87,7 @@ export function makeSourceQueries(source: SourceService, options: {
     ...(source.reference ? { reference: source.reference } : {}),
     changes,
     changed: (patterns, comparison) => Effect.suspend(() => {
-      const patternsArray = typeof patterns === "string" ? [patterns] : patterns
-      if (!patternsArray.length) throw Error("Provide at least one changed-path glob")
-      const matchers = patternsArray.map(glob)
+      const matchers = pathPatterns(patterns).map(pathGlob)
       return changes(comparison).pipe(Effect.map(result => result.status === "unknown" ||
         result.paths.some(path => matchers.some(pattern => pattern.test(path)))))
     }),

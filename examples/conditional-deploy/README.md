@@ -63,6 +63,42 @@ In plan mode queries perform no source IO and report unknown, so this positive
 `if` takes its conservative branch. JavaScript does not preserve both branches
 or a predicate in the plan. Use the inspectable form for that contract.
 
+## Compare built output
+
+Source watchlists select work before a build. Output comparisons answer a different
+question: did the deployable change, including changes from shared packages?
+
+```ts
+const workspace = yield* build()
+if (yield* workspace.changed("dist/**")) {
+  yield* deploy()
+}
+```
+
+The host binds a destination and its last successful deployment. A new commit or
+snapshot alone does not count; changed bytes, file paths, executable bits or serving
+configuration do. A failed publication does not advance the baseline. Unknown
+state runs deployment.
+
+Run the [working output example](./.cloudflare/ci/output-changes.ts) twice:
+
+```sh
+pnpm ci:changed-outputs
+pnpm ci:changed-outputs
+```
+
+The first run publishes a local directory; the second skips `deploy`. Change
+[`outputs/shared/message.mjs`](./outputs/shared/message.mjs) and run again: the app
+source is unchanged, but its output changes and deploys. State persists under
+`.effect-ci/deployments/site` in this example, ignored by Git.
+
+This uses the [directory deployment adapter](../../packages/ci/src/directory-deployment.md),
+not a simulated deploy. It copies and reads back the selected files before atomically
+advancing its current deployment. It is local-only; Cloudflare destinations still
+need their own output comparison provider. Without one, `workspace.changed` returns
+`true`. The first adapter compares its complete configured scope, not arbitrary
+subsets. Separate destinations need separate baselines.
+
 ## Keep a condition inspectable
 
 ```mermaid
