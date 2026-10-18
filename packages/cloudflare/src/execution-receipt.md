@@ -28,6 +28,8 @@ The operator supplies that host implementation. Resolve repository/commit, event
 input, runtime and policy identities independently; never sign a digest supplied
 by a remote caller or project command. Keep the key outside the workspace. Journal
 uncertain writes under the same native instance/attempt identity, not a new UUID.
+The [private commit journal](./execution-journal.md) supplies immutable storage and
+verified reads without requiring the demo's account or signing policy.
 
 `verifyExecutionReceipt` requires the expected identities and an enrolled issuer
 key. It returns the signed observation, not an automatic cache hit or merge grant.
