@@ -1169,7 +1169,26 @@ export interface CheckCacheRequest {
 /** Runner policy for reusing side-effect-free checks with the same exact inputs. */
 export interface CheckCache {
   readonly lookup: (request: CheckCacheRequest) => Effect.Effect<boolean, unknown>
-  readonly record: (request: CheckCacheRequest) => Effect.Effect<void, unknown>
+  /** Called only after successful execution. The result is the runner's output,
+   * never an action-provided assertion. Older read-only adapters may ignore it. */
+  readonly record: (request: CheckCacheRequest, result?: CommandExecutionResult) => Effect.Effect<void, unknown>
+}
+
+export interface StepResultCacheRequest {
+  readonly event: WorkflowEventShape
+  readonly stepId: string
+  readonly workflowId: string
+}
+
+/** Host-owned reuse of completed computation, including its returned artifacts.
+ * Enrollment, input verification and value hydration belong to the adapter.
+ * An absent result is a miss; { value: undefined } is a valid stored result.
+ * Never enroll external writes, deployments or approval decisions.
+ */
+export interface StepResultCache {
+  readonly lookup: (request: StepResultCacheRequest) => Effect.Effect<{ readonly value: unknown } | undefined, unknown>
+  /** Called after successful execution and workspace commit, never before. */
+  readonly record: (request: StepResultCacheRequest, value: unknown) => Effect.Effect<void, unknown>
 }
 
 export interface WorkspaceFileSystem {
@@ -1675,6 +1694,7 @@ const makeRuntime = (
     readonly selection: WorkflowRerunPlan
   },
   actionExecutor?: ActionExecutor,
+  stepResultCache?: StepResultCache,
 ) =>
   Effect.gen(function* () {
     const definitions = new Map<string, StepDefinition>()
@@ -1839,8 +1859,27 @@ const makeRuntime = (
             .pipe(Effect.flatMap(commit))
         }))
 
+        const resultRequest = { workflowId, stepId: id, event }
+        let resultReused = false
+        // Resolve before construction: a returned workspace contains the output
+        // of its prerequisites, so a hit need not recreate those dependencies.
+        // Rollback-bearing actions always execute their normal lifecycle.
+        const reusableBody = mode === "execute" && stepResultCache && !definition.rollback
+          ? stepResultCache.lookup(resultRequest).pipe(
+              Effect.catch(() => Effect.succeed(undefined)),
+              Effect.flatMap((stored) => {
+                if (stored !== undefined) {
+                  resultReused = true
+                  return Effect.succeed(stored.value)
+                }
+                return body.pipe(Effect.tap((value) =>
+                  stepResultCache.record(resultRequest, value).pipe(Effect.ignore)))
+              }),
+            )
+          : body
+
         return queued.pipe(
-          Effect.andThen(body),
+          Effect.andThen(reusableBody),
           Effect.provideService(CurrentStep, id),
           Effect.annotateLogs({ "ci.step": id, "ci.attempt": 1 }),
           Effect.tap((value) => Effect.sync(() => {
@@ -1872,6 +1911,8 @@ const makeRuntime = (
           Effect.tap(() => {
             node.status = mode === "plan"
               ? "planned"
+              : resultReused
+              ? "reused"
               : node.verifiedCommands > 0 && node.executedCommands === 0
               ? "verified"
               : "complete"
@@ -2164,8 +2205,8 @@ const makeRuntime = (
               Effect.flatMap((result) => result.exitCode === 0 ? Effect.succeed(result) :
                 Effect.fail(new CommandError(stepId, command, workspace.cwd, result.exitCode,
                   undefined, boundedCommandOutput(result.stdout, result.stderr)))),
-              Effect.tap(() => checkCache && checkCacheRequest
-                ? checkCache.record(checkCacheRequest).pipe(Effect.ignore)
+              Effect.tap((result) => checkCache && checkCacheRequest
+                ? checkCache.record(checkCacheRequest, result).pipe(Effect.ignore)
                 : Effect.void),
               Effect.flatMap((result) => Effect.gen(function* () {
                 if (result.stdout) {
@@ -2316,6 +2357,7 @@ export interface RunOptions {
   readonly workspacePersistence?: WorkspacePersistence
   readonly workspaceFileSystem?: WorkspaceFileSystem
   readonly checkCache?: CheckCache
+  readonly stepResultCache?: StepResultCache
 }
 
 export interface RunConfiguration extends RunOptions {
@@ -2529,6 +2571,7 @@ const interpret = <A>(
       options.checkCache,
       previous && selection ? { previous, selection } : undefined,
       options.actionExecutor,
+      options.stepResultCache,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {

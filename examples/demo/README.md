@@ -165,13 +165,12 @@ git commit -m "Rehearse the demo"
 git push
 ```
 
-For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
-branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
+First push: `git push -u origin demo/rehearsal` (or your branch's name).
+Then just `git push`.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The parent card shows status and the preview link. Its thread holds step output;
-long failures attach a redacted text snippet with a short inline excerpt.
-Failed command replies include bounded, redacted stdout/stderr and the exit code.
+The card shows status and preview. Failures include redacted output, exit code
+and a text snippet for long logs.
 Click **Dashboard** on that card for the same Cloudflare Workflow run.
 The first thread reply is a live Status/Step table; each linked step opens its reply.
 
@@ -187,24 +186,28 @@ Live verified: selected hosted goals share installation and never
 publish or release. The CLI checks host capabilities before dispatch. Without targets,
 `cf-ci run --remote` runs the hosted suite and publishes a preview.
 
-## 8. Verify previously checked work
+## 8. Let the trusted runner verify it once
 
 > Trust exact evidence, not an agent saying “tests passed.”
 
-From a clean, committed checkout with the enrolled local signing key and Docker:
+The receipt-enabled host rollout is pending; this section describes the new path.
+
+From the clean, pushed commit:
 
 ```sh
-node .cloudflare/ci/attest-tests.ts
-git push origin refs/notes/effect-ci-demo-tests-v1
 cf-ci run test build --remote
+cf-ci run test build --remote --format=json
 ```
 
-The signer runs Vitest in pinned Linux before signing.
-The host independently checks commit, suite, dependency bytes and runtime.
-Only `test` can be reused; typecheck and build still run. Missing, changed or
-invalid evidence runs the tests normally. This enrollment is for this demo's
-exact suite, not arbitrary tests or another computer's unregistered key.
-[Policy and retained verification evidence](../../apps/effect-ci/README.md).
+Remote and SCM runs share the same runner and check definitions. Successful tests
+create a host-signed receipt; matching runs verify it instead of rerunning. JSON includes evidence.
+No local signing key or Git-note push is needed.
+
+Pure checks reuse their verified results. Build returns a workspace: later runs
+restore its signed snapshot and consume the same files without rebuilding.
+Deployment still executes. Missing, changed or expired evidence runs the work
+normally. A squash/rebase needs fresh verification. Remote requires a pushed commit.
+[Receipt policy and limits](../../packages/cloudflare/src/trusted-runner-receipts.md).
 
 ## 9. Consume the build in a deploy action
 
@@ -222,9 +225,8 @@ exact suite, not arbitrary tests or another computer's unregistered key.
 cf-ci run deploy
 ```
 
-The local action prints a deployment preview from `.cloudflare/ci/deploy.ts`:
-actual built-file sizes and hashes, with `deploymentPerformed: false`.
-It is not an external deployment. Hosted publication uses the private publisher below.
+The local action prints built-file sizes and hashes from `.cloudflare/ci/deploy.ts`,
+with `deploymentPerformed: false`. Hosted publication uses the private publisher.
 
 ## 10. Open the hosted preview
 
@@ -263,8 +265,7 @@ PR and updated the same Slack card.
 [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 
-Verify that actual public-error run without another error, model call or write,
-from the repository root with your existing Cloudflare CLI and GitHub sessions:
+Verify without another error, model call or write, from the repo root:
 
 ```sh
 node examples/flue-repair/verify-public.ts

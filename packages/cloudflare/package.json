@@ -15,6 +15,8 @@
     "./static-assets-journal": "./src/static-assets-journal.ts",
     "./check-cache": "./src/check-cache.ts",
     "./check-evidence": "./src/check-evidence.ts",
+    "./runner-check-receipt": "./src/runner-check-receipt.ts",
+    "./runner-step-result": "./src/runner-step-result.ts",
     "./demo-site": "./src/demo-site.ts",
     "./demo-candidate": "./src/demo-candidate.ts",
     "./reviewed-release": "./src/reviewed-release.ts",
