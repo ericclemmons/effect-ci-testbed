@@ -107,7 +107,8 @@ test("authored orchestration keeps hosted parity honest and explains exact-suite
   assert.match(reuse, /Deployment still executes/);
   assert.match(reuse, /Missing, changed or expired evidence runs the work/);
   assert.match(reuse, /squash\/rebase needs fresh verification/);
-  assert.match(reuse, /host rollout is pending/);
+  assert.match(reuse, /Live verified: remote test\/build receipts are reused by SCM CI/);
+  assert.match(reuse, /TRUSTED-REMOTE\.md/);
   assert.match(guide, /deploymentPerformed: false/);
   assert.ok(
     guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,

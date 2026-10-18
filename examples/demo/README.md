@@ -190,7 +190,7 @@ publish or release. The CLI checks host capabilities before dispatch. Without ta
 
 > Trust exact evidence, not an agent saying “tests passed.”
 
-The receipt-enabled host rollout is pending; this section describes the new path.
+Live verified: remote test/build receipts are reused by SCM CI.
 
 From the clean, pushed commit:
 
@@ -208,6 +208,7 @@ restore its signed snapshot and consume the same files without rebuilding.
 Deployment still executes. Missing, changed or expired evidence runs the work
 normally. A squash/rebase needs fresh verification. Remote requires a pushed commit.
 [Receipt policy and limits](../../packages/cloudflare/src/trusted-runner-receipts.md).
+[Hosted proof](../../apps/effect-ci/TRUSTED-REMOTE.md).
 
 ## 9. Consume the build in a deploy action
 

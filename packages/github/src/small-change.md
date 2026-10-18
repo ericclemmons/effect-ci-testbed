@@ -85,8 +85,9 @@ the 1,000-line boundary cannot approve. It does not create a GitHub review.
 
 The hosted [PR workflow](../../../apps/effect-ci/src/small-change-review.ts) and
 [signed event router](../../../apps/effect-ci/src/small-change-webhook.ts) are
-implemented. Deployment and the live two-PR acceptance demo are still pending.
-No repository protection or auto-merge settings are changed by this example.
+deployed. [Hosted acceptance](../../../apps/effect-ci/TRUSTED-REMOTE.md) records
+the README approval and passing code change left for normal review. Running the
+library example changes no repository protection or auto-merge setting.
 
 The demo host uses the existing Effect CI App, restricted to this repository.
 Its short-lived token has Contents read, Checks write and Pull requests write;
