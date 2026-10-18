@@ -18,17 +18,17 @@ test(
         resolveDir: new URL(".", import.meta.url).pathname,
         loader: "ts",
         contents: `
-    import{DurableObject}from'cloudflare:workers';import*as CI from'@effect-ci-testbed/ci';
+    import{DurableObject}from'cloudflare:workers';
     import*as Native from'@effect-ci-testbed/cloudflare';import*as GitHub from'./index.ts';
+    import{hostAttemptProgram}from'./host-attempt.fixture.ts';
     export class WorkspaceContainer extends DurableObject{async checkpoint(){return{id:'immutable-build-snapshot',size:12};}}
     const observations=[];let bodies=0;
-    const program=(fail=false,workspace=false)=>{const test=CI.check('test',()=>function*(){bodies++;return{checked:true};});
-      const build=CI.action('build',()=>function*(){bodies++;if(fail)throw Error('Fixture build failure');return workspace?CI.Workspace.remote('workspacescenario','/workspace/repository'):'artifact-handle';});
-      return CI.workflow('attempt-fixture',function*(){yield*test();return yield*build();});};
+    const program=(fail=false,workspace=false)=>hostAttemptProgram(fail,workspace,()=>bodies++);
     const record=(fail=false)=>async(attempt,context)=>{
       if(context.environment.HOST_MARKER!=='host-only-marker')throw Error('Missing host context');
       observations.push({phase:'attempt',instance:context.instanceId,repository:context.parameters.repository,revision:context.parameters.revision,
-        conclusion:attempt.conclusion,number:attempt.number,nodes:attempt.plan.nodes.map(({id,status})=>({id,status})),outputs:attempt.outputs});
+        conclusion:attempt.conclusion,number:attempt.number,nodes:attempt.plan.nodes.map(({id,status,dependencies})=>({id,status,dependencies})),
+        passedCheckPresent:Object.hasOwn(attempt.outputs,'test'),outputs:attempt.outputs});
       if(fail)throw Error('PRIVATE_SIGNER_ERROR');
     };
     export const NativeSuccess=Native.workflowEntrypoint(program(),{cache:false,onAttempt:record()});
@@ -116,7 +116,7 @@ test(
         );
         assert.doesNotMatch(JSON.stringify(status), /PRIVATE_SIGNER_ERROR|host-only-marker|FORGED/);
         const { observations, bodies } = await call({});
-        assert.equal(bodies, 2);
+        assert.equal(bodies, 3);
         if (name === "Default") {
           assert.deepEqual(observations, []);
           continue;
@@ -134,7 +134,19 @@ test(
           actual.conclusion,
           ["Failed", "NativeFailed"].includes(name) ? "failure" : "success",
         );
-        assert.deepEqual(actual.outputs.test, { checked: true });
+        assert.deepEqual(actual.outputs.prepare, { prepared: true });
+        assert.equal(
+          actual.passedCheckPresent,
+          true,
+          "A passed void check is not a missing result",
+        );
+        assert.equal(actual.nodes.find((node: any) => node.id === "test").status, "complete");
+        assert.deepEqual(actual.nodes.find((node: any) => node.id === "test").dependencies, [
+          "prepare",
+        ]);
+        assert.deepEqual(actual.nodes.find((node: any) => node.id === "build").dependencies, [
+          "test",
+        ]);
         if (["Failed", "NativeFailed"].includes(name))
           assert.equal(Object.hasOwn(actual.outputs, "build"), false);
         else if (name === "WorkspaceScenario")
