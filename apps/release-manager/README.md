@@ -104,13 +104,16 @@ Workers Static Assets upload, or project JavaScript executing inside this broker
 A separate create-only candidate record is persisted in the SAME singleton SQLite
 object **before** the version-upload POST. Existing release journals, owners,
 alarms and historical receipts are not reset. Active/pending release ownership
-blocks preparation. The candidate index has a32-revision lifetime capacity, with
+blocks preparation. The candidate index has a 256-revision lifetime capacity, with
 no eviction or reset endpoint. A completed identical identity replays its receipt
 without network/token access; changed policy/bytes, corrupt, failed or pending
 identities fail closed. Uncertain uploads are never automatically retried; inspect
 the original commit/digest/module hash and version annotations instead of inventing
 a new identity. A validated upload acknowledgement is followed by an independent
-version GET and unchanged active-allocation readback before completion.
+version GET and unchanged active-allocation readback before completion. This is
+finite prototype retention, not automatic garbage collection. The private native
+`CandidateInspectionWorkflow` reads fixed candidate/count/release metadata with no
+credentials, uploads, retries or journal writes; its payload must be empty.
 
 An authenticated existing host can call
 `reconcileCandidate(fullRevision, assetDigest, existingVersionId)` for a pending
