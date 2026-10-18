@@ -19,6 +19,10 @@ The acceptance PRs target the feature branch for #339, not production. Neither
 enables auto-merge. Eligibility does not replace GitHub's review requirements.
 Code review currently falls back to normal review; no paid reviewer is configured.
 
+A temporary review/check requirement on that feature branch confirmed the merge
+gate: README was `APPROVED` / `CLEAN`; code was `REVIEW_REQUIRED` / `BLOCKED`.
+The temporary rule was removed afterward. Main's rules were unchanged.
+
 The remote-only runs did not publish or release. The branch's SCM run published
 a preview, not a production candidate. Production and the separate Actions
 runner allocations remained unchanged. No repair replay or model call occurred.

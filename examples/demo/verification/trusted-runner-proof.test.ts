@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { webcrypto as crypto } from "node:crypto";
+import process from "node:process";
+import { fileURLToPath, URL } from "node:url";
 import test from "node:test";
 import { verifyRunnerCheckReceipt } from "../../../packages/cloudflare/src/runner-check-receipt.ts";
 import { verifyRunnerStepReceipt } from "../../../packages/cloudflare/src/runner-step-result.ts";
