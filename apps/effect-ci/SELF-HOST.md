@@ -78,9 +78,11 @@ secrets. A separate CI job builds this profile without Cloudflare credentials or
 owned demo services. These are not a fresh-account live
 deployment. The existing live demo is a separate regression fixture.
 
-General trusted-result issuance/reuse and PR policy enrollment are still being
-generalized. This profile does not pretend the demo's fixed signing/repair policy
-is portable, nor does it require that policy to deploy a basic CI host.
+SDK hosts can [sign actual check/action results](../../packages/cloudflare/src/execution-receipt.md)
+and [keep a private commit journal](../../packages/cloudflare/src/execution-journal.md).
+This profile does not automatically enroll signing keys, verify complete inputs or
+restore reusable outputs. The demo's fixed signing/repair policy is not required
+to deploy a basic CI host.
 GitHub event runs use the installed App's scoped checkout credential. Remote CLI
 runs resolve your App's installation for that repository and borrow a
 Contents-read token for checkout, then revoke it. Install the App on private
