@@ -29,6 +29,18 @@ precedence. Humans get text, detected agents get JSON. Use `--format` to overrid
 previews, test attestation and the real error-to-unmerged-PR proof.
 [Browse recipes](./examples/README.md) for one focused capability at a time.
 
+## What works
+
+- Run the same actions locally, on GitHub Actions or on the hosted Cloudflare runner.
+- Verify remote tests and restore signed build snapshots in later SCM runs.
+- Approve eligible README-only PRs without a model; leave code changes for review.
+- Push a branch for a preview. Release main through Slack's Progress/Reject gates.
+
+The [live demo proof](./apps/effect-ci/TRUSTED-REMOTE.md) records exact runs and
+limits. Remote execution requires a pushed commit and an enrolled host program;
+it does not upload arbitrary workflows. Signed reuse is exact-commit, not
+cross-merge proof. This is a testbed, not a production-readiness claim.
+
 ## Execution model
 
 Actions own prerequisites. Workflows request goals:
@@ -124,7 +136,7 @@ Start with a conventional pipeline, then choose explicit actions or task discove
 | [Run CI with pnpm](./examples/node-pnpm) | ✅ | ✅ | ✅ | ✅ |
 | [Discover checks automatically](./examples/zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Run a single check from the CLI](./examples/exported-actions) | ✅ | ✅ | ✅ | ✅ |
-| [Check changes before pushing](./examples/demo) | ✅ | ✅ | ✅ | 🔜 |
+| [Check changes before pushing](./examples/demo) | ✅ | ✅ | ✅ | ✅ |
 
 ### Checkout and build artifacts
 
@@ -235,26 +247,6 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Keep a long-running rollout on compatible code | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up PR preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |
 
-The next containerless recipes should build on each other: first retrieve a bounded,
-immutable GitHub file manifest, persist it in a DO, and upload existing HTML/CSS/JS;
-then add an isolated JS/Wasm build that produces a validated asset manifest. The DO
-owns coordination and durable receipts, not an unrestricted shell or project build.
-Cloudflare supports [direct static-asset uploads](https://developers.cloudflare.com/workers/static-assets/direct-upload/)
-through an upload session, missing-asset buckets, and Worker version deployment.
-That permits a hosted API adapter; it does not prove that the installed `cf` CLI
-runs inside a DO. Its build/deploy process assumes Node tools and filesystem/process
-facilities that [Workers do not fully implement](https://developers.cloudflare.com/workers/runtime-apis/nodejs/).
-Keep `cf` as the operator entrypoint and share Worker-compatible deployment logic
-where available, rather than trying to spawn the CLI in the DO.
-
-For both recipes, deployment credentials stay in a fixed-target trusted broker,
-never in the project isolate. Pin source and output digests, bound asset count/size,
-reject unsafe paths and redirects, reconcile uncertain upload/deploy acknowledgments,
-and verify served content before marking either row complete. A new deployment target
-needs its own scoped authority; the HMD demo broker is not a general site deployer.
-Arbitrary npm lifecycle scripts, native binaries and framework plugins still need
-a container unless their complete build path has a separately proven isolate adapter.
-
 ### Diagnosis and repair
 
 Inspect an existing verified Flue repair, then distinguish it from automatic healing.
@@ -265,44 +257,27 @@ Inspect an existing verified Flue repair, then distinguish it from automatic hea
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
 | Route a Cloudflare observability issue into a self-healing workflow | — | 🔜 | — | 🔜 |
 
-The Dynamic Worker slice is now proven with Prettier: immutable source is fetched
-without a Container, and formatting executes through a network-disabled WorkerLoader
-isolate. A separate hosted recipe now executes untrusted multi-module project ESM
-with host-owned HTTP assertions, empty bindings, denied HTTPS/TCP, fresh globals,
-bounded output and prompt CPU-loop rejection. The larger Dynamic Worker
-target remains the complete Vite+ toolchain—Oxlint, Oxfmt, and Vitest. The architectural goal is broader
-than linting: formatting, tests, builds, and other SDLC work should use an isolate
-whenever their declared capabilities permit it, because compute and memory should only
-be reserved for a container when the work actually requires one.
+## Evidence boundaries
 
-Zero-config discovery must still produce an ordinary inspectable plan. The intended
-flow is that a minimal `ci.ts` asks Effect CI to infer supported project tasks from
-package scripts and known tool manifests; users can then replace or refine any inferred
-action. Discovery is an authoring convenience, not a second opaque execution engine.
+- The demo's Cloudflare cell covers the enrolled hosted program. It does not prove
+  arbitrary uploaded workflow execution. [Actual runs](./apps/effect-ci/TRUSTED-REMOTE.md).
+- [Artifacts source proof](./examples/artifacts-source/README.md#verification)
+  includes a private repository-root fixture, revoked upload tokens and anonymous
+  Git rejection. It is Artifacts upload/binding proof, not private GitHub remote import.
+- Containerless recipes verify bounded formatting, project ESM and static-site
+  paths separately. They do not imply full Vite+, native binaries or arbitrary
+  lifecycle scripts can run in an isolate. Credentials stay in fixed-target brokers.
+- The demo's [HTTP error → verified unmerged PR](./apps/effect-ci/PUBLIC-REPAIR.md)
+  is recorded separately from the still-unverified WOBS recipe above. No repair
+  is automatically merged or deployed.
+- Slack's reviewed release proof is not strict healthy automatic progression.
+  Uncertain health needs a decision; rejection or timeout restores the prior allocation.
+- Setup guides are not verified one-click installers. Use each app's documented
+  Access, App and secret setup; do not deploy the whole repository blindly.
 
-Running a user's Dockerfile is distinct from customizing the outer runner image.
-Cloudflare supports Docker-in-Docker with `docker:dind`; the daemon must disable
-iptables and IP forwarding, and networked inner builds or runs use host networking.
-That limitation belongs in the runner layer so the portable build action can continue
-to say `docker build` without Cloudflare-specific flags.
+## Next
 
-## Try it locally
-
-Effect CI targets Node.js 24+, which executes the repository's erasable TypeScript
-directly. Workflow entrypoints therefore need no `tsx`, `ts-node`, build step, or
-custom loader.
-
-```sh
-pnpm install
-
-# Discover the graph without executing it.
-pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts plan
-
-# List or run an intentionally exported action for an agent or developer.
-pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts list
-pnpm cf-ci --workflow examples/exported-actions/.cloudflare/ci/workflow.ts run check --format=json
-
-# Run the repository workflow and type-check the testbed.
-pnpm cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts
-pnpm check
-```
+[Cross-merge verification](https://github.com/ericclemmons/effect-ci-testbed/issues/229) ·
+[Automatic DAG scheduling](https://github.com/ericclemmons/effect-ci-testbed/issues/171) ·
+[Same-run video proof](https://github.com/ericclemmons/effect-ci-testbed/issues/165) ·
+[Documentation and coverage gaps](https://github.com/ericclemmons/effect-ci-testbed/issues/163)
