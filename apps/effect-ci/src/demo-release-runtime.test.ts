@@ -187,7 +187,9 @@ test(
         const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");
         assert.ok(replyUpdates.every((m: any) => !m.body.blocks.some((b: any) => ["header", "context", "divider"].includes(b.type))), "step replies omit repeated run chrome");
         const replies = state.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(replies.length, 2 + state.images, "one details table, one build reply and one reply per reviewed phase");
+        assert.equal(replies.length, 1 + state.images, "one details table and one evidence/control reply per reviewed phase");
+        assert.ok(!replies.some((m: any) => m.body.text === "Preparing build"),
+          "a successful status-only build stays in the table instead of creating a duplicate reply");
         assert.equal(replies[0].body.text, "Preparing steps…");
         const indexUpdates = state.messages.filter((m: any) => m.body.ts === "123.000001");
         assert.ok(indexUpdates.length > 0);
