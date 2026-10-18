@@ -32,7 +32,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
         return Response.json(r);
       }
       if(/^\\/pulls\\/(50|51)$/.test(path))return Response.json({number:Number(path.split('/').at(-1)),base:{sha:base,repo:{full_name:repo}},head:{sha:head,repo:{full_name:repo}},user:{id:7},changed_files:1,state:'open',draft:false});
-      if(/^\\/pulls\\/(50|51)\\/files$/.test(path))return Response.json([{filename:'README.md',status:'modified',additions:1,deletions:1,patch:'-old\\n+new'}]);
+      if(path.startsWith('/compare/'))return Response.json({base_commit:{sha:base},files:[{filename:'README.md',status:'modified',additions:1,deletions:1,patch:'-old\\n+new'}]});
       if(path==='/pulls')return Response.json(Array.from({length:10},(_,i)=>({number:i+1,merged_at:'2026-10-18T00:00:00Z',user:{id:7},base:{repo:{full_name:repo}}})));
       if(/^\\/pulls\\/\\d+\\/files$/.test(path))return Response.json([{filename:'README.md'}]);
       if(path.startsWith('/commits/'))return Response.json({total_count:checks.length,check_runs:checks});

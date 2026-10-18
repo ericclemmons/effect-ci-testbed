@@ -38,7 +38,7 @@ await approveSmallChange({
 
 The host owns both callbacks. `read` uses canonical GitHub data, the trusted
 receipt verifier, author history and the org's reviewer—not JSON from PR code.
-Fetch every changed file, including both paths of a rename. Mark incomplete
+Read the diff by immutable base/head SHAs, including both paths of a rename. Mark incomplete
 pagination, missing patches/review or uncertain history as incomplete evidence.
 Count only distinct merged PRs by this author in each affected service.
 

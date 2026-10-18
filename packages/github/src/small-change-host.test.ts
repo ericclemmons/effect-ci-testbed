@@ -31,8 +31,10 @@ function fixture() {
           head: { sha: changed && reads > 1 ? base : head, repo: { full_name: repository } },
           user: { id: 8 }, changed_files: 1, state: "open", draft: false };
       }
-      if (path === "/pulls/50/files?per_page=100")
-        return [{ filename: code ? "app.ts" : "README.md", status: "modified", additions: 1, deletions: 1, patch: "-old\n+new" }];
+      if (path.startsWith("/compare/")) {
+        assert.equal(path, `/compare/${base}...${changed && reads > 1 ? base : head}?per_page=1`);
+        return { base_commit: { sha: base }, files: [{ filename: code ? "app.ts" : "README.md", status: "modified", additions: 1, deletions: 1, patch: "-old\n+new" }] };
+      }
       if (path.startsWith("/pulls?")) return Array.from({ length: 10 }, (_, i) => ({ number: i + 1,
         user: { id: 8 }, merged_at: "2026-10-18T00:00:00Z", base: { repo: { full_name: repository } } }));
       if (/^\/pulls\/\d+\/files/.test(path)) return [{ filename: "README.md" }];
@@ -98,8 +100,8 @@ test("moving PR evidence writes nothing; unmerged or foreign author history cann
 test("renames include their old sensitive path and incomplete file lists cannot use docs review", async () => {
   for (const mode of ["rename", "incomplete"]) {
     const f = fixture(), request = f.host.request; delete f.host.readReview;
-    f.host.request = async (path, ...args) => path === "/pulls/50/files?per_page=100"
-      ? [{ filename: "README.md", previous_filename: "SECURITY.md", status: mode === "rename" ? "renamed" : "modified", additions: 1, deletions: 0 }]
+    f.host.request = async (path, ...args) => path.startsWith("/compare/")
+      ? { base_commit: { sha: base }, files: [{ filename: "README.md", previous_filename: "SECURITY.md", status: mode === "rename" ? "renamed" : "modified", additions: 1, deletions: 0 }] }
       : path === "/pulls/50" && mode === "incomplete" ? { ...await request(path), changed_files: 2 } : request(path, ...args);
     const result = await runSmallChange(f.host, 50, f.store);
     assert.equal(result.decision.eligible, false);
@@ -123,4 +125,15 @@ test("concurrent deliveries claim one writer; foreign acknowledgements remain pe
     assert.equal(g.reviews.length, 0);
     assert.equal([...g.journal.values()][0]?.state, "pending");
   }
+});
+
+test("diff reads pin both SHAs; a foreign comparison base cannot authorize a review", async () => {
+  const f = fixture(), request = f.host.request;
+  f.host.request = async (path, ...args) => {
+    assert.notEqual(path, "/pulls/50/files?per_page=100", "Never read a moving PR file list for approval");
+    const value = await request(path, ...args);
+    return path.startsWith("/compare/") ? { ...value, base_commit: { sha: head } } : value;
+  };
+  await assert.rejects(runSmallChange(f.host, 50, f.store), /Comparison base/);
+  assert.equal(f.writes(), 0);
 });

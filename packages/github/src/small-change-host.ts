@@ -17,7 +17,7 @@ export interface SmallChangeHost {
 
 const sha = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 const positive = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
-const rows = (value: unknown): any[] => { if (!Array.isArray(value) || value.length > 100) throw Error("Incomplete GitHub page"); return value; };
+const rows = (value: unknown, limit = 100): any[] => { if (!Array.isArray(value) || value.length > limit) throw Error("Incomplete GitHub page"); return value; };
 const prPath = (number: number) => {
   if (!positive(number)) throw Error("Invalid PR number");
   return `/pulls/${number}`;
@@ -30,7 +30,11 @@ export async function readSmallChange(host: SmallChangeHost, number: number): Pr
   if (pr.number !== number || pr.base?.repo?.full_name !== host.repository ||
     pr.head?.repo?.full_name !== host.repository || !sha(pr.head?.sha) || !sha(pr.base?.sha) ||
     !positive(pr.user?.id) || !positive(pr.changed_files)) throw Error("PR identity is not enrolled");
-  const files = rows(await host.request(`${path}/files?per_page=100`));
+  // Pin the diff to immutable SHAs. /pulls/:number/files can move independently
+  // of the metadata read, even if a branch is force-pushed away and back.
+  const comparison = await host.request(`/compare/${pr.base.sha}...${pr.head.sha}?per_page=1`);
+  if (comparison.base_commit?.sha !== pr.base.sha) throw Error("Comparison base does not match PR");
+  const files = rows(comparison.files, 300);
   const complete = files.length === pr.changed_files && files.every(file =>
     typeof file.filename === "string" && ["added", "modified", "removed", "renamed", "copied", "changed"].includes(file.status) &&
     Number.isSafeInteger(file.additions) && Number.isSafeInteger(file.deletions) &&

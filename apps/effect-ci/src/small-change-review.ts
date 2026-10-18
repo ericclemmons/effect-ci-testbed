@@ -52,7 +52,8 @@ export async function withSmallChangeToken<T>(env: Environment, operation: (requ
       Object.keys(minted.permissions).some(key => ![...Object.keys(permissions), "metadata"].includes(key)) ||
       (minted.permissions.metadata !== undefined && minted.permissions.metadata !== "read")) throw Error("Small-change token permissions rejected");
     return await operation((path, method = "GET", body) => {
-      if (!/^\/(?:pulls|commits|check-runs)(?:[/?]|$)/.test(path) || path.includes("..") || /[\\\x00-\x20\x7f]/.test(path))
+      const comparison = /^\/compare\/[a-f0-9]{40}\.\.\.[a-f0-9]{40}\?per_page=1$/.test(path);
+      if ((!comparison && (!/^\/(?:pulls|commits|check-runs)(?:[/?]|$)/.test(path) || path.includes(".."))) || /[\\\x00-\x20\x7f]/.test(path))
         throw Error("Unenrolled review API path");
       return reviewApi(`https://api.github.com/repos/${repository}${path}`, minted.token, method, body, fetcher);
     });
