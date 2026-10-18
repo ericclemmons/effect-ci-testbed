@@ -2104,12 +2104,10 @@ const makeRuntime = (
           ).pipe(Effect.orDie)
           yield* rollback.effect.pipe(
             Effect.provideService(CurrentStep, "$rollback"),
-            Effect.matchEffect({
-              onFailure: (error) => Effect.sync(() => {
-                failures.push(error)
-              }),
-              onSuccess: () => Effect.void,
-            }),
+            Effect.asVoid,
+            Effect.catchCause((cause) => Cause.hasFails(cause) || Cause.hasDies(cause)
+              ? Effect.sync(() => { failures.push(Cause.squash(cause)) })
+              : Effect.failCause(cause)),
           )
         }
 
@@ -2600,9 +2598,11 @@ const interpret = <A>(
       },
     }
     const result = yield* workflowDefinition.effect.pipe(
-      Effect.catch((original) => runtime.unwind(original).pipe(
-        Effect.flatMap(() => Effect.fail(original)),
-      )),
+      Effect.catchCause((cause) => Cause.hasFails(cause) || Cause.hasDies(cause)
+        ? runtime.unwind(Cause.squash(cause)).pipe(
+          Effect.flatMap(() => Effect.failCause(cause)),
+        )
+        : Effect.failCause(cause)),
       Effect.provideService(Runtime, runtime),
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(PolicyBody, false),
