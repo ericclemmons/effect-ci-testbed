@@ -66,6 +66,8 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     container: { image: "trusted-demo", instance: "standard-1", loginShell: false, readyCommand: demoTrustedReadyCommand },
     notificationChannels: (environment, parameters) => parameters.trigger === "github" && demoGitHubAllowed(parameters) ? environment : {},
     finalize: finalizeDemoRun,
+    finalizationCheck: parameters => parameters.trigger === "github" && demoProductionAllowed(parameters)
+      ? "Deployment / cf-ci-demo" : undefined,
     executionEvidence: ({ exports, parameters }) => {
       const host = exports as { TrustedDemoChecks: { getByName(name: string): {
         forCommit(revision: string): Promise<unknown>
