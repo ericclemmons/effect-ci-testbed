@@ -43,7 +43,7 @@ test(
       write: false,
       format: "esm",
       target: "esnext",
-      external: ["cloudflare:workers", "node:*"],
+      external: ["cloudflare:*", "node:*"],
     });
     const config = {
       name: "candidate-probe",
