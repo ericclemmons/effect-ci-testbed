@@ -1,0 +1,47 @@
+name: Conventional dependency-aware reruns
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # act jobs share the image's Node tool cache. Avoid concurrent extraction.
+      max-parallel: 1
+      matrix:
+        change: [input, unchanged, missing, tampered, program, runtime]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Execute baseline and select affected work
+        id: selection
+        run: node verification/conventional.mjs prepare '${{ matrix.change }}'
+      - name: left
+        if: steps.selection.outputs.left == 'true'
+        env:
+          COMPARISON_ROOT: ${{ steps.selection.outputs.root }}
+        run: node verification/conventional.mjs run left
+      - name: right
+        if: steps.selection.outputs.right == 'true'
+        env:
+          COMPARISON_ROOT: ${{ steps.selection.outputs.root }}
+        run: node verification/conventional.mjs run right
+      - name: bundle
+        if: steps.selection.outputs.bundle == 'true'
+        env:
+          COMPARISON_ROOT: ${{ steps.selection.outputs.root }}
+        run: node verification/conventional.mjs run bundle
+      - name: Compare fresh outputs and retained checkpoint lineage
+        env:
+          COMPARISON_ROOT: ${{ steps.selection.outputs.root }}
+        run: node verification/conventional.mjs verify

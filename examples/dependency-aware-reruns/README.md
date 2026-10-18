@@ -69,8 +69,23 @@ checkpoint lineage and signed observations. Inputs are explicit for this small
 program; this is not automatic input discovery. Snapshots are owned filesystem
 copies, not Cloudflare snapshots. Signing keys are ephemeral fixture keys, not a
 deployed issuer. The [GitHub fixture run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39112462176/job/117631294099)
-verified these cases at `28e8d21`. Native Cloudflare and conventional YAML adapter
-proof remain pending; matrix cells stay unchanged.
+verified these cases at `28e8d21`. Native Cloudflare proof remains pending; matrix
+cells stay unchanged.
+
+### Conventional Actions comparison
+
+The [comparison YAML](./.github/workflows/github.yml) wires the same three steps
+with explicit `if` conditions. Six cases cover input changes, unchanged inputs,
+missing/tampered outputs and program/runtime changes. Each compares every output
+with a fresh execution and checks unaffected producer/digest lineage.
+
+```sh
+node --test examples/dependency-aware-reruns/verification/conventional.test.ts
+```
+
+The helper owns runner-local files; it does not use Effect CI, issue signatures
+or demonstrate cross-run artifact transport. The [GitHub comparison run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39115640015/job/117640750308)
+executed the actual YAML through `act` and verified all six cases at `4d09ad3`.
 
 ## Verification proof
 
