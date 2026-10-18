@@ -1,1 +1,1 @@
-export const message = "Howdy again from the demo app.";
+export const message = "Hello from normal review.";
