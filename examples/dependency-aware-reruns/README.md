@@ -92,6 +92,11 @@ The helper owns runner-local files; it does not use Effect CI, issue signatures
 or demonstrate cross-run artifact transport. The [GitHub comparison run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39115640015/job/117640750308)
 executed the actual YAML through `act` and verified all six cases at `4d09ad3`.
 
+The additional `filesystem-loss` case saves a command receipt, removes its
+unpublished candidate directory, preserves the failed-attempt record, and rebuilds
+only the pure bundle. Both leaf outputs and the original publication stay intact.
+Its local real-process test passes; the added YAML case is awaiting hosted CI.
+
 ## Verification proof
 
 **Video:** Pending.

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -31,7 +31,7 @@ function execute(root, name, revision, flags) {
 
 const [operation, argument] = process.argv.slice(2);
 if (operation === "prepare") {
-  assert.ok(["input", "unchanged", "missing", "tampered", "program", "runtime"].includes(argument));
+  assert.ok(["input", "unchanged", "missing", "tampered", "program", "runtime", "filesystem-loss"].includes(argument));
   for (const revision of [pins.original, pins.changed, pins.programChanged]) {
     assert.match(revision, /^[a-f0-9]{40}$/);
     try { execFileSync("git", ["cat-file", "-e", `${revision}^{commit}`], { stdio: "ignore" }); }
@@ -47,6 +47,22 @@ if (operation === "prepare") {
   const previous = Object.fromEntries(names.map(name => [name, { producer: "original", digest: execute(root, name, original, []) }]));
   if (argument === "missing") rmSync(join(root, "right", "output.txt"));
   if (argument === "tampered") writeFileSync(join(root, "bundle", "output.txt"), "tampered\n");
+  let loss;
+  if (argument === "filesystem-loss") {
+    // Keep the published baseline. The next command writes only an unpublished
+    // candidate, then its filesystem disappears after the receipt is saved.
+    renameSync(join(root, "bundle"), join(root, "original-bundle"));
+    const digest = execute(root, "bundle", revision, flags);
+    const receipt = JSON.stringify({ attempt: 2, step: "bundle", commandNumber: 1, exitCode: 0, outputDigest: digest });
+    writeFileSync(join(root, "command-receipt.json"), receipt, { flag: "wx" });
+    rmSync(join(root, "bundle"), { recursive: true });
+    assert.equal(existsSync(join(root, "bundle", "output.txt")), false);
+    assert.equal(readFileSync(join(root, "command-receipt.json"), "utf8"), receipt);
+    const failure = JSON.stringify({ number: 2, previousAttempt: 1, conclusion: "failure",
+      reason: "unpublished filesystem lost; command receipt cannot restore files", commands: [1], published: false });
+    writeFileSync(join(root, "failed-attempt.json"), failure, { flag: "wx" });
+    loss = { failureDigest: hash(failure), receiptDigest: hash(receipt), commands: [], lostBeforePublication: true };
+  }
   const reasons = {}, selected = {};
   for (const name of names) {
     const output = join(root, name, "output.txt");
@@ -59,7 +75,7 @@ if (operation === "prepare") {
     reasons[name] = reason;
     selected[name] = reason !== "same inputs and available checkpoint";
   }
-  save(root, { scenario: argument, original, revision, flags, previous, selected, reasons, executed: [], lineage: previous });
+  save(root, { scenario: argument, original, revision, flags, previous, selected, reasons, executed: [], lineage: previous, ...(loss ? { loss } : {}) });
   assert.ok(process.env.GITHUB_OUTPUT, "The caller supplies a private Actions output file");
   appendFileSync(process.env.GITHUB_OUTPUT, `root=${root}\n${names.map(name => `${name}=${selected[name]}`).join("\n")}\n`);
 } else {
@@ -71,13 +87,24 @@ if (operation === "prepare") {
     assert.ok(!state.executed.includes(argument), "A selected step executes once");
     state.lineage[argument] = { producer: "receiving-run", digest: execute(root, argument, state.revision, state.flags) };
     state.executed.push(argument);
+    if (state.loss) state.loss.commands.push({ attempt: 3, step: argument, commandNumber: 1 });
     save(root, state);
   } else {
     assert.equal(operation, "verify");
-    const expected = { input: ["left", "bundle"], unchanged: [], missing: ["right", "bundle"], tampered: ["bundle"], program: names, runtime: names }[state.scenario];
+    const expected = { input: ["left", "bundle"], unchanged: [], missing: ["right", "bundle"], tampered: ["bundle"], program: names, runtime: names, "filesystem-loss": ["bundle"] }[state.scenario];
     assert.deepEqual(state.executed, expected);
     assert.deepEqual(names.filter(name => state.selected[name]), expected);
     for (const name of names.filter(name => !state.selected[name])) assert.deepEqual(state.lineage[name], state.previous[name]);
+    let recovery;
+    if (state.loss) {
+      assert.equal(hash(readFileSync(join(root, "failed-attempt.json"))), state.loss.failureDigest);
+      assert.equal(hash(readFileSync(join(root, "command-receipt.json"))), state.loss.receiptDigest);
+      assert.equal(hash(readFileSync(join(root, "original-bundle", "output.txt"))), state.previous.bundle.digest);
+      assert.deepEqual(state.loss.commands, [{ attempt: 3, step: "bundle", commandNumber: 1 }]);
+      assert.equal(state.loss.lostBeforePublication, true);
+      recovery = { failedAttempt: 2, newAttempt: 3, commandNumber: 1,
+        failedHistoryUnchanged: true, originalPublicationUnchanged: true, receiptDidNotRestoreFiles: true };
+    }
     const fresh = mkdtempSync(join(tmpdir(), "effect-ci-conventional-full-"));
     try {
       for (const name of names) {
@@ -86,6 +113,7 @@ if (operation === "prepare") {
       }
       console.log(JSON.stringify({ proof: "conventional-source-rerun", environment: process.env.GITHUB_ACTIONS === "true" ? "GitHub Actions" : "local",
         scenario: state.scenario, revision: state.revision, executed: state.executed,
+        ...(recovery ? { recovery } : {}),
         reused: names.filter(name => !state.selected[name]), reasons: state.reasons, lineage: state.lineage,
         output: readFileSync(join(root, "bundle", "output.txt"), "utf8"), fullComparison: true,
         boundary: "Explicit YAML conditions and runner-local files; no signed reuse or Cloudflare snapshot claim" }));

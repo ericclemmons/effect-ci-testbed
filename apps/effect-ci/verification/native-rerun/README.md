@@ -59,5 +59,7 @@ producer and digest, every output matched the fresh comparison, and no fixture
 containers remained active.
 
 This fixed input contract is not generic dependency discovery, signing enrollment
-or automatic side-effect replay. GitHub comparison of the deliberate native-loss
-scenario remains separate; this does not close every #145/#146 acceptance gap.
+or automatic side-effect replay. The [conventional comparison](../../../../examples/dependency-aware-reruns/.github/workflows/github.yml)
+adds a real filesystem-loss case; its seven local scenarios pass, with hosted YAML
+verification still pending. It uses manual runner-local history, not a native
+Cloudflare journal.
