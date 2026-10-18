@@ -7,6 +7,9 @@ export default defineConfig({
     entrypoint: "./src/worker.ts",
     compatibilityDate: "2026-10-07",
     workersDev: false,
-    exports: { ReleaseJournalObject: exports.durableObject({ storage: "sqlite" }) },
+    exports: {
+      ReleaseJournalObject: exports.durableObject({ storage: "sqlite" }),
+      CandidateInspectionWorkflow: exports.workflow({ name: "effect-ci-release-candidate-inspection" }),
+    },
   },
 })
