@@ -1,5 +1,7 @@
 import * as CI from "@effect-ci-testbed/ci"
 import { gitSourceChangesCommand, parseGitSourceChanges } from "@effect-ci-testbed/ci/source-changes"
+import { outputManifestCommand, parseOutputManifest, type OutputManifest } from "./output-manifest.ts"
+import type { RunnerWorkspaceResult } from "./runner-step-result.ts"
 import {
   DurableObject,
   WorkerEntrypoint,
@@ -60,6 +62,7 @@ interface CommittedWorkspace {
 }
 
 interface WorkspaceContainerStub {
+  readonly inspectOutput: (snapshot: ContainerSnapshotValue, cwd: string, patterns: ReadonlyArray<string>, options?: WorkspaceContainerOptions) => Promise<OutputManifest>
   readonly sourceChanges: (comparison: CI.SourceComparison, cwd: string, options?: WorkspaceContainerOptions) => Promise<CI.SourceChanges>
   readonly getImageIdentity: (options?: WorkspaceContainerOptions) => Promise<string | undefined>
   readonly getCachedSnapshot: (
@@ -608,6 +611,22 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     return snapshotValue(snapshot)
   }
 
+  /** Used only on a dedicated inspection object, never a business workspace. */
+  async inspectOutput(snapshot: ContainerSnapshotValue, cwd: string, patterns: ReadonlyArray<string>, options: WorkspaceContainerOptions = {}): Promise<OutputManifest> {
+    return this.ctx.blockConcurrencyWhile(async () => {
+      if (await this.workingMutation()) throw Error("Output inspection cannot replace uncheckpointed work")
+      try {
+        await this.restore(snapshot, { ...(options.instance ? { instance: options.instance } : {}),
+          entrypoint: ["sleep", "infinity"], loginShell: false, readyCommand: "/usr/bin/python3 -I -c pass" })
+        const result = await this.run(outputManifestCommand(patterns), cwd)
+        if (result.exitCode !== 0) throw Error("Snapshot output inspection failed")
+        return parseOutputManifest(result.stdout, patterns)
+      } finally {
+        if (this.container().running) await this.container().destroy("Releasing output inspection workspace")
+      }
+    })
+  }
+
   async restore(
     snapshot: ContainerSnapshotValue,
     options: WorkspaceContainerOptions = {},
@@ -655,6 +674,11 @@ export interface RunnerOptions {
 }
 
 export interface Runner {
+  readonly outputs: {
+    /** Observe an immutable result; this never creates a new business snapshot. */
+    readonly inspect: (workspace: CI.Workspace, patterns: ReadonlyArray<string>) => Effect.Effect<{ snapshot: RunnerWorkspaceResult; manifest: OutputManifest }, unknown>
+    readonly read: (snapshot: RunnerWorkspaceResult, patterns: ReadonlyArray<string>) => Effect.Effect<OutputManifest, unknown>
+  }
   readonly actionExecutor: CI.ActionExecutor
   readonly executor: CI.CommandExecutor
   readonly fileSystem: CI.WorkspaceFileSystem
@@ -689,10 +713,17 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
   readonly secrets?: (environment: Environment) => CI.SecretResolver
   readonly checkCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.CheckCache
   readonly stepResultCache?: (environment: Environment, context: { readonly runner: Runner }) => CI.StepResultCache
+  readonly workspaceChanges?: (environment: Environment, context: {
+    readonly runner: Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: Parameters
+  }) => CI.WorkspaceChangeProvider
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
   let sourceSequence = 0
+  let outputSequence = 0
   const activeBodies = new Set<string>()
   const fileSequences = new Map<string, number>()
   const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
@@ -728,6 +759,26 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   }
 
   const runner: Runner = {
+    outputs: {
+      inspect: (workspace, patterns) => Effect.gen(function* () {
+        if (workspace.kind !== "remote" || workspace.id !== options.workspaceId || workspace.revision?.provider !== "cloudflare-container")
+          return yield* Effect.fail(Error("Output comparison requires this run's immutable Cloudflare workspace"))
+        const snapshot: RunnerWorkspaceResult = { kind: "workspace", provider: "cloudflare-container", cwd: workspace.cwd,
+          snapshot: workspace.revision.value as ContainerSnapshotValue }
+        return { snapshot, manifest: yield* runner.outputs.read(snapshot, patterns) }
+      }),
+      read: (value, patterns) => Effect.tryPromise({
+        try: async () => {
+          if (value?.kind !== "workspace" || value.provider !== "cloudflare-container" ||
+            !(value.cwd === targetDirectory || value.cwd.startsWith(targetDirectory + "/")) ||
+            value.cwd.split("/").some(part => part === "." || part === "..") || /[\x00-\x1f]/.test(value.cwd) ||
+            typeof value.snapshot?.id !== "string" || !value.snapshot.id || value.snapshot.id.length > 1024 ||
+            !Number.isSafeInteger(value.snapshot.size) || value.snapshot.size < 0) throw Error("Invalid output snapshot")
+          const reader = options.binding.getByName(`${options.workspaceId}:outputs=${++outputSequence}`) as unknown as WorkspaceContainerStub
+          return reader.inspectOutput(value.snapshot, value.cwd, patterns, options.container)
+        }, catch: error => error,
+      }),
+    },
     actionExecutor: makeActionExecutor(options.step, activeBodies),
     source: {
       changes: comparison => Effect.gen(function* () {
@@ -1054,6 +1105,9 @@ export const workflowEntrypoint = <
       ...(options.stepResultCache
         ? { stepResultCache: options.stepResultCache(this.env, { runner }) }
         : {}),
+      ...(options.workspaceChanges ? { workspaceChanges: { changed: request => Effect.suspend(() =>
+        options.workspaceChanges!(this.env, { runner, exports: this.ctx.exports,
+          instanceId: event.instanceId, parameters: event.payload }).changed(request)) } } : {}),
       workspaceFileSystem: runner.fileSystem,
       workspacePersistence: runner.persistence,
     }), { workflow: definition.id, instance: event.instanceId }, this.env))

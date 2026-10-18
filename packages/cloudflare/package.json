@@ -7,6 +7,8 @@
     ".": "./src/index.ts",
     "./artifacts-source": "./src/artifacts-source.ts",
     "./r2-source": "./src/r2-source.ts",
+    "./snapshot-deployment": "./src/snapshot-deployment.ts",
+    "./output-manifest": "./src/output-manifest.ts",
     "./durable-source": "./src/durable-source.ts",
     "./static-assets-source": "./src/static-assets-source.ts",
     "./static-assets-build": "./src/static-assets-build.ts",

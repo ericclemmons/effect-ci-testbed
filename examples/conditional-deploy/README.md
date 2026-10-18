@@ -94,10 +94,13 @@ source is unchanged, but its output changes and deploys. State persists under
 
 This uses the [directory deployment adapter](../../packages/ci/src/directory-deployment.md),
 not a simulated deploy. It copies and reads back the selected files before atomically
-advancing its current deployment. It is local-only; Cloudflare destinations still
-need their own output comparison provider. Without one, `workspace.changed` returns
-`true`. The first adapter compares its complete configured scope, not arbitrary
-subsets. Separate destinations need separate baselines.
+advancing its current deployment. It is local-only. Cloudflare hosts can use the
+[snapshot-backed provider](../../packages/cloudflare/src/snapshot-deployment.md)
+and [deployable HTML site](../../apps/effect-ci/verification/snapshot-site): save
+the successfully deployed workspace snapshot and compare selected content, not
+snapshot IDs. Without a destination provider, `workspace.changed` returns `true`.
+These adapters compare complete configured scopes, not arbitrary subsets.
+Separate destinations need separate baselines.
 
 ## Keep a condition inspectable
 
