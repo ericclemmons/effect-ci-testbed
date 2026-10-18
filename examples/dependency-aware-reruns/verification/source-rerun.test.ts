@@ -26,15 +26,15 @@ type Snapshot = { path: string; digest: string };
 test("real source changes select only affected work and restore owned filesystem checkpoints", async () => {
   const remote = git("remote", "get-url", "origin").replace(/^git@github.com:/, "https://github.com/").replace(/\.git$/, "");
   assert.match(remote, /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
-  const pinned = JSON.parse(readFileSync("examples/dependency-aware-reruns/verification/source-revisions.json", "utf8")) as { original: string; changed: string };
-  assert.equal(Object.keys(pinned).sort().join(), "changed,original");
-  const revisions = [pinned.changed, pinned.original];
+  const pinned = JSON.parse(readFileSync("examples/dependency-aware-reruns/verification/source-revisions.json", "utf8")) as { original: string; changed: string; programChanged: string };
+  assert.equal(Object.keys(pinned).sort().join(), "changed,original,programChanged");
+  const revisions = [pinned.changed, pinned.original, pinned.programChanged];
   for (const revision of revisions) {
     assert.match(revision, /^[a-f0-9]{40}$/);
     try { git("cat-file", "-e", `${revision}^{commit}`); }
     catch { git("fetch", "--no-tags", "origin", revision); }
   }
-  const [changedRevision, originalRevision] = revisions as [string, string];
+  const [changedRevision, originalRevision, programRevision] = revisions as [string, string, string];
   // Source commits contain the fixture program/data. The trusted host/SDK runs
   // at the current checkout, independently of the project source revision.
   git("diff", "--exit-code", "HEAD", "--", "packages/ci/src", "pnpm-lock.yaml", "package.json", driver);
@@ -43,21 +43,23 @@ test("real source changes select only affected work and restore owned filesystem
   const policy = (revision: string) => hash(JSON.stringify([hostPolicy, git("ls-tree", "-r", revision, `${fixture}/task.mjs`)]));
   const inputs = (revision: string) => Object.fromEntries((["left", "right"] as const).map(name =>
     [name, hash(blob(revision, `${fixture}/${name}.txt`))])) as Record<Leaf, string>;
-  const identity = (revision: string): ExecutionIdentity => ({
+  const identity = (revision: string, flags: string[] = []): ExecutionIdentity => ({
     issuer: "https://github.com", repository: remote, revision, workflowId: "source-projection-fixture",
-    policyDigest: policy(revision), runtimeDigest, inputsDigest: hash(JSON.stringify(inputs(revision))),
+    policyDigest: policy(revision), runtimeDigest: hash(JSON.stringify([runtimeDigest, flags])), inputsDigest: hash(JSON.stringify(inputs(revision))),
     eventDigest: hash(JSON.stringify({ type: "push", repository: remote, revision })),
   });
   assert.notEqual(inputs(originalRevision).left, inputs(changedRevision).left);
   assert.equal(inputs(originalRevision).right, inputs(changedRevision).right);
   assert.equal(policy(originalRevision), policy(changedRevision), "Only fixture data changes between the two source commits");
+  assert.notEqual(policy(changedRevision), policy(programRevision), "The third source commit changes the actual program");
+  assert.deepEqual(inputs(changedRevision), inputs(programRevision));
 
   const root = mkdtempSync(join(tmpdir(), "effect-ci-source-lineage-"));
   const snapshots = new Map<string, Snapshot>();
   const keys = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
   const trust = new Map([["fixture", keys.publicKey]]);
   const traces: Array<{ run: string; revision: string; executed: string[]; reused: string[]; reasons: Record<string, string>; output: string; receipt: string; lineage: Record<string, { producer: string | undefined; digest: string }> }> = [];
-  type Previous = { attempt: CI.WorkflowAttempt; identity: ExecutionIdentity; receipt: string };
+  type Previous = { attempt: CI.WorkflowAttempt; identity: ExecutionIdentity; receipt: string; flags: string[] };
 
   const available = (workspace: unknown) => {
     if (!(workspace instanceof CI.Workspace) || workspace.revision?.provider !== "owned-fixture-files") return false;
@@ -66,12 +68,13 @@ test("real source changes select only affected work and restore owned filesystem
     return !!snapshot && existsSync(snapshot.path) && snapshot.digest === value.digest && manifest(snapshot.path) === snapshot.digest;
   };
 
-  async function execute(run: string, revision: string, previous?: Previous): Promise<Previous> {
-    const currentIdentity = identity(revision), currentInputs = inputs(revision);
+  async function execute(run: string, revision: string, previous?: Previous, flags: string[] = []): Promise<Previous> {
+    assert.ok(flags.every(flag => ["--jitless", "--no-warnings"].includes(flag)));
+    const currentIdentity = identity(revision, flags), currentInputs = inputs(revision);
     const reasons: Record<string, string> = {};
     let selected: string[] = [];
     if (previous) {
-      assert.ok(await verifyExecutionReceipt(previous.receipt, identity(previous.identity.revision), trust));
+      assert.ok(await verifyExecutionReceipt(previous.receipt, identity(previous.identity.revision, previous.flags), trust));
       for (const name of ["left", "right"] as const) {
         const reason = previous.identity.policyDigest !== currentIdentity.policyDigest ? "policy changed"
           : previous.identity.runtimeDigest !== currentIdentity.runtimeDigest ? "runtime changed"
@@ -126,7 +129,7 @@ test("real source changes select only affected work and restore owned filesystem
       executor: { execute: ({ workspace, stepId, command }) => Effect.sync(() => {
         assert.ok(["node task.mjs leaf", "node task.mjs bundle"].includes(command));
         executed.push(stepId);
-        const stdout = execFileSync(process.execPath, ["task.mjs", stepId === "bundle" ? "bundle" : "leaf"], {
+        const stdout = execFileSync(process.execPath, [...flags, "task.mjs", stepId === "bundle" ? "bundle" : "leaf"], {
           cwd: local(workspace), env: { PATH: dirname(process.execPath), HOME: root }, encoding: "utf8", timeout: 10000,
         });
         return { exitCode: 0, stdout, stderr: "" };
@@ -157,7 +160,7 @@ test("real source changes select only affected work and restore owned filesystem
       return [name, { producer: value.id, digest: (value.revision!.value as { digest: string }).digest }];
     }));
     traces.push({ run, revision, executed, reused, reasons, output, receipt, lineage });
-    return { attempt: result.attempt, identity: currentIdentity, receipt };
+    return { attempt: result.attempt, identity: currentIdentity, receipt, flags };
   }
 
   try {
@@ -191,6 +194,16 @@ test("real source changes select only affected work and restore owned filesystem
     assert.deepEqual(traces[5]!.executed, ["left", "right", "bundle"]);
     assert.deepEqual(traces[5]!.reused, []);
     assert.equal(traces[5]!.output, traces[1]!.output);
+    const changedProgram = await execute("changed-program", programRevision, third);
+    assert.deepEqual(traces[6]!.executed, ["left", "right", "bundle"]);
+    assert.deepEqual(traces[6]!.reused, []);
+    assert.equal(traces[6]!.reasons.left, "policy changed");
+    assert.equal(traces[6]!.output, "CHARLIE! / BRAVO!\n");
+    await execute("changed-runtime", programRevision, changedProgram, ["--jitless", "--no-warnings"]);
+    assert.deepEqual(traces[7]!.executed, ["left", "right", "bundle"]);
+    assert.deepEqual(traces[7]!.reused, []);
+    assert.equal(traces[7]!.reasons.left, "runtime changed");
+    assert.equal(traces[7]!.output, traces[6]!.output);
     assert.equal(await verifyExecutionReceipt(first.receipt, identity(changedRevision), trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, policyDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, runtimeDigest: "0".repeat(64) }, trust), undefined);
