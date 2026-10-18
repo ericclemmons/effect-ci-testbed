@@ -108,6 +108,8 @@ the work. This is a deployment decision, not a reusable execution receipt. The
 [directory adapter](./src/directory-deployment.md) supplies a working local
 destination with persisted byte comparison and atomic publication. See the
 [executable example](../../examples/conditional-deploy#compare-built-output).
+Cloudflare hosts can use [snapshot-backed deployment baselines](../cloudflare/src/snapshot-deployment.md)
+with independent current-target byte verification.
 
 Event adapters supply `CI.WorkflowEvent` and, when relevant, `CI.Source`. An error
 event need not pretend to be a Git push. Hosted execution still requires an enrolled

@@ -42,6 +42,15 @@ jobs:
         env:
           VERIFY_NATIVE_RERUN_IMAGE: '1'
         run: node --test apps/effect-ci/verification/native-rerun/image.test.ts
+      - name: Build the independent snapshot-output site without deploying it
+        working-directory: apps/effect-ci/verification/snapshot-site
+        run: ../../node_modules/.bin/cf build
+      - name: Typecheck the standalone snapshot-output app
+        run: node node_modules/typescript/bin/tsc -p apps/effect-ci/verification/snapshot-site/tsconfig.json --noEmit
+      - name: Verify its fixed snapshot reader offline
+        env:
+          VERIFY_SNAPSHOT_SITE_IMAGE: '1'
+        run: node --test apps/effect-ci/verification/snapshot-site/image.test.ts
 
   github:
     name: ${{ matrix.example }} / github

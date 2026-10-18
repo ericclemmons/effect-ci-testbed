@@ -1,1 +1,1 @@
-export const message = "Built from a shared package."
+export const message = "Shared code ships too."

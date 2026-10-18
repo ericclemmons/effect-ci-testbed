@@ -466,6 +466,9 @@ export const workflowEntrypoint = <A>(
           ? { stepResultCache: options.stepResultCache(this.env, { runner, exports: this.ctx.exports,
               instanceId: event.instanceId, parameters: event.payload }) }
           : {}),
+        ...(options.workspaceChanges ? { workspaceChanges: { changed: request => Effect.suspend(() =>
+          options.workspaceChanges!(this.env, { runner, exports: this.ctx.exports,
+            instanceId: event.instanceId, parameters: event.payload }).changed(request)) } } : {}),
         workspacePersistence: runner.persistence,
       }), { workflow: definition.id, instance: event.instanceId }, this.env))
 

@@ -34,6 +34,7 @@ function fixture() {
   let files = ["package.json"], captures = 0, starts = 0, commands = 0;
   let failSnapshot: "none" | "running" | "stopped" = "none", failRelease = false, failStorageAck = false;
   let queryResponse: string | undefined;
+  let outputResponse: string | undefined;
   const container = {
     running: true, images: {},
     start(options: any) { starts++; const saved = snapshots.get(options.containerSnapshot.id); if (!saved) throw Error("Ancestor snapshot unavailable"); files = [...saved]; this.running = true; },
@@ -50,7 +51,10 @@ function fixture() {
     },
     async exec(command: string[]) {
       let exitCode = 0, stdout = new Uint8Array();
-      if ((command[0] === "sh" || command[0] === "/bin/sh") && command.at(-1)?.includes("git --no-pager diff") && queryResponse !== undefined) {
+      if (command[0] === "/usr/bin/python3" && outputResponse !== undefined) {
+        stdout = new TextEncoder().encode(outputResponse);
+      }
+      else if ((command[0] === "sh" || command[0] === "/bin/sh") && command.at(-1)?.includes("git --no-pager diff") && queryResponse !== undefined) {
         stdout = new TextEncoder().encode(queryResponse);
       }
       else if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
@@ -59,7 +63,7 @@ function fixture() {
       return { output: async () => ({ exitCode, stdout, stderr: new Uint8Array() }) };
     },
   };
-  const ctx = { container, storage: {
+  const ctx = { container, blockConcurrencyWhile: (operation: () => Promise<unknown>) => operation(), storage: {
     get: async (key: string) => stored.get(key),
     put: async (key: string | Record<string, any>, value: any) => {
       if (typeof key === "string") stored.set(key, structuredClone(value));
@@ -91,8 +95,31 @@ function fixture() {
     readInput: (id: string, stepId = "bundle") => workspace.readFile("output.txt", "/workspace/repository", stepId, { id, name: id, size: 2 }),
     sourceQuery: (value: string) => { queryResponse = value; },
     provider: () => workspace,
+    outputManifest: (value: unknown) => { outputResponse = JSON.stringify(value); },
+    inspect: (id = "checkout") => workspace.inspectOutput({ id, size: 1 }, "/workspace/repository", ["dist/**"]),
+    running: () => container.running,
   };
 }
+
+test("snapshot output reads stop their inspection VM without creating a business checkpoint", async () => {
+  const f = fixture();
+  const manifest = { version: 1, patterns: ["dist/**"], files: [{ path: "dist/index.html", size: 3, sha256: "a".repeat(64), executable: false }] };
+  f.outputManifest(manifest);
+  assert.deepEqual(await f.inspect(), manifest);
+  assert.equal(f.running(), false);
+  assert.deepEqual(f.counts(), { starts: 1, commands: 0, captures: 0 });
+  f.outputManifest({ invalid: true });
+  await assert.rejects(f.inspect());
+  assert.equal(f.running(), false, "Even an invalid manifest releases its inspection VM");
+});
+
+test("snapshot output inspection cannot replace or stop uncheckpointed business work", async () => {
+  const f = fixture(); await f.install(); const before = f.counts();
+  await assert.rejects(f.inspect(), /uncheckpointed/);
+  assert.equal(f.running(), true);
+  assert.deepEqual(f.counts(), before);
+  assert.ok(f.contents(await f.commit())?.includes("node_modules/.bin/vpr"));
+});
 
 test("a native source comparison cannot claim mutation ownership and block the selected action", async () => {
   const f = fixture(), head = "a".repeat(40), base = "b".repeat(40);
