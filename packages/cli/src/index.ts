@@ -12,6 +12,7 @@ import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.t
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
 import { readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
+import { githubSourceComparison } from "./source-comparison.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -723,10 +724,19 @@ const projectRoot = (workflowPath: string): string =>
     : dirname(workflowPath)
 
 const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
-  const event = process.env.EFFECT_CI_EVENT as CI.WorkflowEventName | undefined
+  const event = (process.env.EFFECT_CI_EVENT ?? process.env.GITHUB_EVENT_NAME) as CI.WorkflowEventName | undefined
   const revision = process.env.EFFECT_CI_REVISION ?? process.env.GITHUB_SHA
   const repository = process.env.GITHUB_REPOSITORY
   const decision = process.env.EFFECT_CI_APPROVAL
+  let payload: unknown
+  try {
+    const path = process.env.GITHUB_EVENT_PATH
+    if (path && lstatSync(path).isFile() && lstatSync(path).size <= 4_194_304)
+      payload = JSON.parse(readFileSync(path, "utf8"))
+  } catch { /* Missing metadata cannot authorize skipping work. */ }
+  const comparison = process.env.EFFECT_CI_BASE_REVISION
+    ? { base: process.env.EFFECT_CI_BASE_REVISION, ...(revision ? { head: revision } : {}) }
+    : githubSourceComparison(event ?? "workflow_dispatch", payload, revision)
   const approval: CI.ApprovalHandler | undefined = decision === "approved" || decision === "rejected"
     ? { request: () => Effect.succeed({ decision }) }
     : undefined
@@ -736,6 +746,7 @@ const defaultLocalOptions = (workflowPath: string): CI.RunConfiguration => {
     env: process.env.NODE_ENV ?? (process.env.CI ? "test" : "development"),
     event: {
       type: event ?? "workflow_dispatch",
+      ...(comparison ? { comparison } : {}),
       ...(process.env.GITHUB_REF ? { ref: process.env.GITHUB_REF } : {}),
       ...(revision ? { revision } : {}),
       ...(repository && revision

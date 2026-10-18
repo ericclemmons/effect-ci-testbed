@@ -11,6 +11,8 @@ import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
 import type { RuntimeObservers } from "./observers.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
+import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
+export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
 
@@ -1119,9 +1121,11 @@ export interface SourceService {
   readonly checkout: () => Effect.Effect<Workspace, unknown>
   /** Provider-neutral provenance for logs, evidence, and cache identity. */
   readonly reference?: SourceReference
+  /** Optional provider diff (including non-Git sources). Missing knowledge runs work. */
+  readonly changes?: (comparison?: SourceComparison) => Effect.Effect<SourceChanges, unknown>
 }
 
-export class Source extends ServiceMap.Service<Source, SourceService>()(
+export class Source extends ServiceMap.Service<Source, SourceQueries>()(
   "@effect-ci-testbed/Source",
 ) {}
 
@@ -1298,6 +1302,8 @@ export type SourceReference =
 export interface WorkflowEventShape {
   readonly type: WorkflowEventName
   readonly payload?: unknown
+  /** Event adapter's affected-files comparison, not a cache/attestation identity. */
+  readonly comparison?: SourceComparison
   /** Source selected by the event adapter. Non-source events may omit it. */
   readonly source?: SourceReference
   /** A normalized source ref such as `refs/heads/main` or `refs/tags/v1.0.0`. */
@@ -2607,7 +2613,10 @@ const interpret = <A>(
       Effect.provideService(CurrentStep, "$workflow"),
       Effect.provideService(PolicyBody, false),
       Effect.provideService(Attempt, 1),
-      Effect.provideService(Source, options.source ?? localSource),
+      Effect.provideService(Source, makeSourceQueries(options.source ?? localSource, {
+        executor: options.executor ?? makeLocalCommandExecutor(options.output),
+        workflowId: workflowDefinition.id, event, mode,
+      })),
       Effect.provideService(WorkflowEvent, event),
       Effect.provideService(Approval, approval),
       Effect.provideService(SecretStore, secrets),
