@@ -14,6 +14,28 @@ permissions:
   contents: read
 
 jobs:
+  standalone-host:
+    name: standalone host / credential-free image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - name: Build standalone host without Cloudflare credentials or owned demo services
+        working-directory: apps/effect-ci
+        env:
+          EFFECT_CI_PROFILE: standalone
+          EFFECT_CI_WORKER_NAME: selfhost-ci
+        run: pnpm build
+      - name: Verify the actual pnpm image offline
+        env:
+          VERIFY_STANDALONE_IMAGE: '1'
+        run: node --test apps/effect-ci/src/standalone-image.test.ts
+
   github:
     name: ${{ matrix.example }} / github
     runs-on: ubuntu-latest

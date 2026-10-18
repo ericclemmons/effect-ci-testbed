@@ -3,7 +3,7 @@
 > Keep GitHub. Run CI as native Cloudflare Workflows, with GitHub checks and Slack updates.
 
 - **Try the configured demo:** [walkthrough](../../examples/demo/README.md).
-- **Deploy your own host:** [first hosted run](#first-hosted-run), including App,
+- **Deploy your own host:** [standalone setup](./SELF-HOST.md), including App,
   Access and secret setup. This is not a one-click installer.
 - **Keep GitHub Actions YAML:** use the separate [optional runner](../github-actions-runner/README.md).
 - **Inspect the flywheel:** [public error → verified, unmerged repair PR](./PUBLIC-REPAIR.md).
@@ -825,6 +825,12 @@ service from this repository into your Cloudflare account and installs a private
 App on repositories you select. It is not yet a packaged installer for an unrelated
 repository.
 
+The deployment template selects `EFFECT_CI_PROFILE=standalone`: only the CI
+Workflow and workspace container, with your App, project root and optional Slack
+destination. It does not require this account's demo/release/repair/runner services.
+See [profile choices and verification boundaries](./SELF-HOST.md). Existing
+installations without a profile retain the original demo configuration.
+
 You need:
 
 - Node.js 24 or newer and pnpm;
@@ -849,7 +855,7 @@ pnpm run deploy
 `cf` prints the deployed Worker URL. Save its origin, for example:
 
 ```sh
-export EFFECT_CI_PUBLIC_URL=https://effect-ci-github-cloudflare.<subdomain>.workers.dev
+export EFFECT_CI_PUBLIC_URL=https://effect-ci.<subdomain>.workers.dev
 ```
 
 Open the origin in a browser. Access should require a login before showing

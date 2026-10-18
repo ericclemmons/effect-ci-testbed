@@ -1,4 +1,5 @@
 import { defineConfig, defineContainer, exports, bindings } from "cf/config";
+import { hostProfile } from "./host-profile.ts";
 
 // cf/config does not yet expose Access resources. See access.config.ts and
 // README.md for the accompanying Access application and policy provisioning.
@@ -14,7 +15,7 @@ const workspace = defineContainer({
   },
 });
 
-export default defineConfig({
+const demo = defineConfig({
   worker: {
     name,
     entrypoint: "./src/worker.ts",
@@ -79,4 +80,25 @@ export default defineConfig({
     },
   },
   containers: [workspace],
+});
+
+const profile = hostProfile(process.env);
+const standaloneWorkspace = profile.profile === "standalone" ? defineContainer({
+  name: `${profile.name}-workspace`, schedulingPolicy: "durable-object",
+  images: { workspace: { dockerfile: "./Dockerfile.standalone" } },
+}) : undefined;
+
+export default profile.profile === "demo" ? demo : defineConfig({
+  worker: {
+    name: profile.name, entrypoint: "./src/standalone-worker.ts",
+    compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
+    observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
+    exports: {
+      GitCheckoutOutbound: exports.worker(),
+      WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: standaloneWorkspace! }),
+      EffectCIWorkflow: exports.workflow({ name: profile.name }),
+    },
+    env: { EFFECT_CI_PROJECT_ROOT: bindings.text(profile.root) },
+  },
+  containers: [standaloneWorkspace!],
 });
