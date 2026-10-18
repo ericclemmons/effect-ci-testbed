@@ -52,6 +52,11 @@ test(
           "linux/amd64",
           "--network",
           "none",
+          // Bind-mounted outputs must remain owned by the invoking user on Linux.
+          "--user",
+          `${process.getuid!()}:${process.getgid!()}`,
+          "--env",
+          "HOME=/tmp",
           "--mount",
           `type=bind,source=${fixture},target=/workspace/repository`,
           "--workdir",
