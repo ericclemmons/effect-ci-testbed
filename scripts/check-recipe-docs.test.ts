@@ -16,6 +16,14 @@ test("remote goal documentation describes host negotiation, not blanket rejectio
   assert.match(root, /host.*advertis|advertis.*host/i);
 });
 
+test("the root guide has one quick start and separates hosted proof from roadmap coverage", () => {
+  assert.equal((root.match(/^## Try it locally$/gm) ?? []).length, 1);
+  assert.ok(root.includes("./apps/effect-ci/TRUSTED-REMOTE.md"));
+  assert.ok(root.includes("./examples/artifacts-source/README.md#verification"));
+  assert.ok(root.includes("https://github.com/ericclemmons/effect-ci-testbed/issues/229"));
+  assert.doesNotMatch(root, /The next containerless recipes should build on each other/);
+});
+
 test("every runnable recipe is discoverable in the matrix and reading guide", () => {
   const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
     .map((match) => match[1])
@@ -28,7 +36,7 @@ test("every runnable recipe is discoverable in the matrix and reading guide", ()
 });
 
 test("recipe groups have coverage tables with only explicit evidence states", () => {
-  const matrix = root.split("## Recipes by feature\n")[1]?.split("The Dynamic Worker slice")[0];
+  const matrix = root.split("## Recipes by feature\n")[1]?.split(/^## /m)[0];
   assert.ok(matrix);
   const groups = matrix.split(/^### /m).slice(1);
   assert.equal(groups.length, 10);
