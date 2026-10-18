@@ -35,6 +35,13 @@ jobs:
         env:
           VERIFY_STANDALONE_IMAGE: '1'
         run: node --test apps/effect-ci/src/standalone-image.test.ts
+      - name: Build the isolated rerun fixture without deploying it
+        working-directory: apps/effect-ci/verification/native-rerun
+        run: ../../node_modules/.bin/cf build
+      - name: Verify its scoped manifest and actual unprivileged image
+        env:
+          VERIFY_NATIVE_RERUN_IMAGE: '1'
+        run: node --test apps/effect-ci/verification/native-rerun/image.test.ts
 
   github:
     name: ${{ matrix.example }} / github
@@ -230,6 +237,8 @@ jobs:
         run: node --test examples/dependency-aware-reruns/verification/source-rerun.test.ts
       - name: Verify the conventional comparison's explicit conditions
         run: node --test examples/dependency-aware-reruns/verification/conventional.test.ts
+      - name: Verify the isolated native fixture's public Git inputs
+        run: node --test apps/effect-ci/verification/native-rerun/source.test.ts
 
   d1-migration-contract:
     name: d1-migration / plan and Worker build
