@@ -47,6 +47,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
         if(path==='/start'){await ctx.exports.SmallChangeReviewWorkflow.create({id:'policy-native',params:{number:52}});return Response.json({started:true})}
         if(path==='/status')return Response.json(await(await ctx.exports.SmallChangeReviewWorkflow.get('policy-native')).status());
         if(path==='/stale-policy')return Response.json(await owner(50).read(50,'00000000-0000-4000-8000-000000000000'));
+        if(path==='/stale-approval')return Response.json(await owner(50).publish(50,{}, {},'00000000-0000-4000-8000-000000000000'));
         if(path==='/seed'){
           const authority=ctx.exports.TrustedDemoChecks.getByName('demo-trusted-runner-v1');
           await authority.record({identity:{kind:'check',repository:syntaxRepository,revision:head,workflowId:syntaxWorkflow,stepId:'test',command:testCommand,policyDigest:await demoRunnerPolicyDigest(true),sourceDigest:'c'.repeat(64),toolchainDigest:'d'.repeat(64)},runId:'fixture-execution',completedAt:'2026-10-18T00:00:00.000Z',exitCode:0,stdoutDigest:'e'.repeat(64),stderrDigest:'f'.repeat(64)});
@@ -114,6 +115,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
     assert.equal((await get("/observed")).reviews.length, 3);
     const requestsBeforeStale = (await get("/observed")).requests.length;
     assert.match((await get("/stale-policy")).error, /Org policy revision changed/);
+    assert.match((await get("/stale-approval")).error, /Org policy revision changed/);
     assert.equal((await get("/observed")).requests.length, requestsBeforeStale,
       "Stale policy must not mint a token or read/write GitHub");
   } finally { await runtime.dispose(); }
