@@ -12,7 +12,7 @@ const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
 const compiled = await build({
   stdin: {
     resolveDir: new URL(".", import.meta.url).pathname,
-    contents: 'export { WorkspaceContainer, makeRunner } from "@effect-ci-testbed/cloudflare"; export { runPromise, gen } from "effect/Effect"; export { Workspace } from "@effect-ci-testbed/ci";',
+    contents: 'export { WorkspaceContainer, makeRunner } from "@effect-ci-testbed/cloudflare"; export { runPromise, gen } from "effect/Effect"; export { Workspace, Source, workflow, action, runPromise as runWorkflow } from "@effect-ci-testbed/ci";',
     loader: "ts",
   },
   bundle: true, write: false, format: "esm", platform: "node", target: "esnext",
@@ -25,7 +25,7 @@ const compiled = await build({
     ` }));
   } }],
 });
-const { WorkspaceContainer, makeRunner, runPromise, gen, Workspace } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+const { WorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
 
 function fixture() {
@@ -33,6 +33,7 @@ function fixture() {
   const snapshots = new Map<string, string[]>([["checkout", ["package.json"]]]);
   let files = ["package.json"], captures = 0, starts = 0, commands = 0;
   let failSnapshot: "none" | "running" | "stopped" = "none", failRelease = false, failStorageAck = false;
+  let queryResponse: string | undefined;
   const container = {
     running: true, images: {},
     start(options: any) { starts++; const saved = snapshots.get(options.containerSnapshot.id); if (!saved) throw Error("Ancestor snapshot unavailable"); files = [...saved]; this.running = true; },
@@ -49,7 +50,10 @@ function fixture() {
     },
     async exec(command: string[]) {
       let exitCode = 0, stdout = new Uint8Array();
-      if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
+      if ((command[0] === "sh" || command[0] === "/bin/sh") && command.at(-1)?.includes("git --no-pager diff") && queryResponse !== undefined) {
+        stdout = new TextEncoder().encode(queryResponse);
+      }
+      else if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
       else if (command[0] === "test") exitCode = command.at(-1) === "." || files.includes(command.at(-1)!) ? 0 : 1;
       else if (command[0] === "cat") stdout = new TextEncoder().encode(files.at(-1)!);
       return { output: async () => ({ exitCode, stdout, stderr: new Uint8Array() }) };
@@ -85,8 +89,66 @@ function fixture() {
       { cwd: "/workspace/repository", stepId: "install", revision: { ...revision, id: "foreign" } }),
     addInput: (id: string, text: string) => snapshots.set(id, ["output.txt", text]),
     readInput: (id: string, stepId = "bundle") => workspace.readFile("output.txt", "/workspace/repository", stepId, { id, name: id, size: 2 }),
+    sourceQuery: (value: string) => { queryResponse = value; },
+    provider: () => workspace,
   };
 }
+
+test("a native source comparison cannot claim mutation ownership and block the selected action", async () => {
+  const f = fixture(), head = "a".repeat(40), base = "b".repeat(40);
+  const commands: string[] = [];
+  let failure: string | undefined;
+  const execute = f.provider().execute.bind(f.provider());
+  f.provider().execute = async (...args: any[]) => {
+    commands.push(args[0]);
+    try { return await execute(...args); }
+    catch (error) { failure = (error as Error).message; throw error; }
+  };
+  f.sourceQuery(`${base}\0${head}\0apps/site/index.html\0`);
+  const receipts = new Map<string, unknown>();
+  const runner = makeRunner({ binding: { getByName: () => f.provider() },
+    repository: "https://github.com/example/public", revision: head, workspaceId: "source-query",
+    step: { do: async (name: string, ...args: any[]) => {
+      if (!receipts.has(name)) receipts.set(name, await args.at(-1)());
+      return receipts.get(name);
+    } },
+  });
+  const build = action("build", () => function* () {
+    const source = yield* Source;
+    return yield* (yield* source.checkout()).exec("npm run build");
+  });
+  const program = workflow("source-selection", function* () {
+    const source = yield* Source;
+    assert.deepEqual(yield* source.changes(), { status: "known", base, head, paths: ["apps/site/index.html"] });
+    assert.equal(yield* source.changed("apps/site/**"), true);
+    assert.equal(yield* source.changed("unrelated/**"), false);
+    return yield* build();
+  });
+  try {
+    await runWorkflow(program, { output: "silent", source: runner.source, executor: runner.executor,
+      workspacePersistence: runner.persistence, event: { type: "push", revision: head, comparison: { base, head } } });
+  } catch (error) { throw Error(failure ?? (error as Error).message); }
+  assert.deepEqual(commands, ["npm run build"], "The source read must not use the mutation command adapter");
+  assert.equal(f.counts().captures, 1, "Only completed build output is published, not query reads");
+});
+
+test("a source query cannot discard another action's uncheckpointed native output", async () => {
+  const f = fixture(), head = "a".repeat(40), base = "b".repeat(40);
+  await f.install();
+  const before = f.counts();
+  const runner = makeRunner({ binding: { getByName: () => f.provider() },
+    repository: "https://github.com/example/public", revision: head, workspaceId: "dirty-source",
+    // Checkout has already completed in the native journal. It must not run
+    // again just because this subsequent read cannot inspect a dirty container.
+    step: { do: async (name: string, ...args: any[]) => name === "checkout" ? undefined : args.at(-1)() },
+  });
+  const program = workflow("dirty-source", function* () { return yield* (yield* Source).changes(); });
+  const result = await runWorkflow(program, { output: "silent", source: runner.source, executor: runner.executor,
+    event: { type: "push", revision: head, comparison: { base, head } } });
+  assert.deepEqual(result.value, { status: "unknown", reason: "unavailable" });
+  assert.deepEqual(f.counts(), before, "A failed read cannot restart, command or capture the dirty workspace");
+  assert.ok(f.contents(await f.commit())?.includes("node_modules/.bin/vpr"));
+});
 
 test("one action reads each immutable dependency revision, even when both contain the same path", async () => {
   const f = fixture(); f.addInput("left", "LEFT"); f.addInput("right", "RIGHT");

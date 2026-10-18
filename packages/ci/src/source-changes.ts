@@ -34,6 +34,32 @@ const normalize = (value: SourceChanges): SourceChanges => {
   return { status: "known", base: value.base, head: value.head, paths: [...new Set(value.paths)].sort() }
 }
 
+/** Fixed, read-only Git query shared by local and native source providers. */
+export function gitSourceChangesCommand(selected: SourceComparison, revision = "HEAD"): string | undefined {
+  const target = selected.head ?? revision
+  if (typeof selected.base !== "string" || typeof target !== "string" || !selected.base || !target ||
+    selected.base.length > 512 || target.length > 512 || /[\x00-\x1f]/.test(selected.base + target)) return undefined
+  return [
+    // Avoid index refresh writes while inspecting committed source.
+    'dirty=$(git --no-optional-locks -c core.fsmonitor=false status --porcelain --untracked-files=normal)',
+    'test -z "$dirty"',
+    `base=$(git rev-parse --verify --end-of-options ${quote(selected.base + "^{commit}")})`,
+    `head=$(git rev-parse --verify --end-of-options ${quote(target + "^{commit}")})`,
+    'current=$(git rev-parse --verify HEAD)',
+    'test "$current" = "$head"',
+    ...(selected.mergeBase ? ['base=$(git merge-base "$base" "$head")'] : []),
+    "printf '%s\\0%s\\0' \"$base\" \"$head\"",
+    'git --no-pager diff --no-ext-diff --no-textconv --no-relative --no-renames --name-only -z "$base" "$head" --',
+  ].join(" && ")
+}
+
+export function parseGitSourceChanges(result: { readonly stdout: string; readonly exitCode: number }): SourceChanges {
+  if (result.exitCode !== 0 || result.stdout.length > 1_048_576) return unavailable
+  const [base, head, ...paths] = result.stdout.split("\0")
+  if (!base || !head || !sha.test(base) || !sha.test(head) || paths.pop() !== "" || paths.length > 100_000) return unavailable
+  return normalize({ status: "known", base, head, paths })
+}
+
 export function makeSourceQueries(source: SourceService, options: {
   readonly executor: CommandExecutor
   readonly workflowId: string
@@ -52,31 +78,13 @@ export function makeSourceQueries(source: SourceService, options: {
       if (source.changes) return normalize(yield* source.changes(selected))
       if (!selected) return { status: "unknown", reason: "no-baseline" } as const
       if (source.reference && source.reference.kind !== "git" && source.reference.kind !== "local") return unavailable
-      const target = selected.head ?? options.event.revision ?? "HEAD"
-      if (!selected.base || !target || /[\x00-\x1f]/.test(selected.base + target))
-        return { status: "unknown", reason: "unavailable" } as const
+      const command = gitSourceChangesCommand(selected, options.event.revision)
+      if (!command) return unavailable
       const workspace = yield* source.checkout()
-      const command = [
-        // A committed diff cannot justify skipping work on uncommitted inputs.
-        'dirty=$(git -c core.fsmonitor=false status --porcelain --untracked-files=normal)',
-        'test -z "$dirty"',
-        `base=$(git rev-parse --verify --end-of-options ${quote(selected.base + "^{commit}")})`,
-        `head=$(git rev-parse --verify --end-of-options ${quote(target + "^{commit}")})`,
-        'current=$(git rev-parse --verify HEAD)',
-        'test "$current" = "$head"',
-        ...(selected.mergeBase ? ['base=$(git merge-base "$base" "$head")'] : []),
-        "printf '%s\\0%s\\0' \"$base\" \"$head\"",
-        'git --no-pager diff --no-ext-diff --no-textconv --no-relative --no-renames --name-only -z "$base" "$head" --',
-      ].join(" && ")
       const result = yield* options.executor.execute({ workspace, command, workflowId: options.workflowId,
         stepId: "$source-changes", commandIndex: ++sequence,
         options: { timeout: "30 seconds", retries: { limit: 0, delay: 0, backoff: "constant" } }, onOutput: () => {} })
-      const [base, head, ...paths] = result.stdout.split("\0")
-      if (result.exitCode !== 0 || result.stdout.length > 1_048_576 || !base || !head ||
-          !sha.test(base) || !sha.test(head) || paths.pop() !== "" || paths.length > 100_000 ||
-          paths.some(path => !path || path.startsWith("/") || path.split("/").includes("..")))
-        return { status: "unknown", reason: "unavailable" } as const
-      return normalize({ status: "known", base, head, paths })
+      return parseGitSourceChanges(result)
     })
     return query.pipe(Effect.timeout("30 seconds"), Effect.catchCause(cause => Cause.hasFails(cause) || Cause.hasDies(cause)
       ? Effect.succeed({ status: "unknown", reason: "unavailable" } as const)
