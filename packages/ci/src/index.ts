@@ -1192,6 +1192,14 @@ export interface StepResultCache {
   readonly record: (request: StepResultCacheRequest, value: unknown) => Effect.Effect<void, unknown>
 }
 
+// Optional cache availability must not become a business failure or a false hit.
+// Suspend the callback too: adapters can throw before returning an Effect.
+// Cancellation, unlike an outage, must still stop the caller.
+const cacheOrElse = <A>(operation: () => Effect.Effect<A, unknown>, fallback: A) =>
+  Effect.suspend(operation).pipe(Effect.catchCause(cause => Cause.hasInterrupts(cause)
+    ? Effect.failCause(Cause.fromReasons<never>(cause.reasons.filter(Cause.isInterruptReason)))
+    : Effect.succeed(fallback)))
+
 export interface WorkspaceFileSystem {
   readonly exists: (
     workspace: Workspace,
@@ -1866,15 +1874,14 @@ const makeRuntime = (
         // of its prerequisites, so a hit need not recreate those dependencies.
         // Rollback-bearing actions always execute their normal lifecycle.
         const reusableBody = mode === "execute" && stepResultCache && !definition.rollback
-          ? stepResultCache.lookup(resultRequest).pipe(
-              Effect.catch(() => Effect.succeed(undefined)),
+          ? cacheOrElse(() => stepResultCache.lookup(resultRequest), undefined).pipe(
               Effect.flatMap((stored) => {
                 if (stored !== undefined) {
                   resultReused = true
                   return Effect.succeed(stored.value)
                 }
                 return body.pipe(Effect.tap((value) =>
-                  stepResultCache.record(resultRequest, value).pipe(Effect.ignore)))
+                  cacheOrElse(() => stepResultCache.record(resultRequest, value), undefined)))
               }),
             )
           : body
@@ -2169,9 +2176,7 @@ const makeRuntime = (
           ? { command, event, policy, stepId, workflowId, workspace }
           : undefined
         const verified = checkCache && checkCacheRequest
-          ? checkCache.lookup(checkCacheRequest).pipe(
-              Effect.catch(() => Effect.succeed(false)),
-            )
+          ? cacheOrElse(() => checkCache.lookup(checkCacheRequest), false)
           : Effect.succeed(false)
 
         return started.pipe(
@@ -2211,7 +2216,7 @@ const makeRuntime = (
                 Effect.fail(new CommandError(stepId, command, workspace.cwd, result.exitCode,
                   undefined, boundedCommandOutput(result.stdout, result.stderr)))),
               Effect.tap((result) => checkCache && checkCacheRequest
-                ? checkCache.record(checkCacheRequest, result).pipe(Effect.ignore)
+                ? cacheOrElse(() => checkCache.record(checkCacheRequest, result), undefined)
                 : Effect.void),
               Effect.flatMap((result) => Effect.gen(function* () {
                 if (result.stdout) {

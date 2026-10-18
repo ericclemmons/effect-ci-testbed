@@ -70,6 +70,10 @@ Workflows, containers and storage. Neither belongs in portable `actions.ts`.
 an ordinary cache hit is not a signed attestation. Builds and deployments do not
 become reusable checks just because their prerequisites were verified.
 
+Optional check/result cache outages execute the work normally, including when an
+adapter throws. A failed cache write does not fail successful work. Cancellation
+still stops the run; required event/attempt persistence is not an optional cache.
+
 `CI.when` records inspectable conditions. Ordinary Effect control flow is available
 for runtime-only decisions. Action-owned rollback runs in reverse completion order
 after terminal failure.
