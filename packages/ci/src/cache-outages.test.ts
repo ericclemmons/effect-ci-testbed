@@ -65,3 +65,30 @@ for (const store of ["result", "check"] as const) {
     });
   }
 }
+
+test("cache write outages cannot unwind completed business actions", async () => {
+  for (const store of ["result", "check"] as const) {
+    let rollbacks = 0;
+    const rollback = CI.action<void>("undo prepare", () => function* () { rollbacks++; });
+    const prepare = CI.action<void>("prepare", () => function* () {}, { rollback });
+    const check = CI.check("test", () => function* () {
+      yield* CI.Workspace.local("/fixture").exec("pnpm test");
+    }, { reuse: { scope: "commit" } });
+    const result = await CI.runPromise(CI.workflow("cache-not-business", function* () {
+      yield* prepare();
+      yield* check();
+      return "done";
+    }), {
+      output: "silent",
+      executor: { execute: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }) },
+      ...(store === "result" ? { stepResultCache: {
+        lookup: () => Effect.succeed(undefined), record: () => outage<void>("throw"),
+      } } : { checkCache: {
+        lookup: () => Effect.succeed(false), record: () => outage<void>("defect"),
+      } }),
+    });
+    assert.equal(result.value, "done");
+    assert.equal(rollbacks, 0);
+    assert.equal(result.plan.nodes.find(node => node.id === "undo prepare")?.status, "skipped");
+  }
+});
