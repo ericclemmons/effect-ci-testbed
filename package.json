@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prototype:outputs": "node examples/conditional-deploy/verification/output-changes.prototype.ts",
     "build": "pnpm --filter @effect-ci-testbed/ci build",
     "check": "pnpm --filter './packages/*' --filter './apps/*' check && node scripts/check-examples.ts && pnpm --filter cf-ci-demo check && node scripts/check-example-plans.ts && node --test scripts/check-recipe-docs.test.ts scripts/example-ergonomics.test.ts",
     "ci:hitl-deploy": "EFFECT_CI_APPROVAL=approved EFFECT_CI_EVENT=workflow_dispatch cf-ci run --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts",
