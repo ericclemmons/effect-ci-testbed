@@ -87,6 +87,7 @@ it can persist:
 
 ```ts
 Cloudflare.workflowEntrypoint(workflow, {
+  container: { image: "workspace" },
   cache: {
     key: "vite-task",
     keyFiles: ["examples/vite-plus-cache/app/package-lock.json"],

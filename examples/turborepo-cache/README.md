@@ -88,6 +88,7 @@ identifies Turborepo's local cache directory:
 
 ```ts
 Cloudflare.workflowEntrypoint(workflow, {
+  container: { image: "workspace" },
   cache: {
     key: "turbo-task",
     keyFiles: ["examples/turborepo-cache/app/package-lock.json"],

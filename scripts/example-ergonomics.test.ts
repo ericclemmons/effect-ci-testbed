@@ -14,6 +14,15 @@ const cli = (args: string[]) => {
   return JSON.parse(result.stdout)
 }
 
+test("transport-cache recipes explicitly select their digest-resolved configured image", () => {
+  for (const recipe of ["vite-plus-cache", "turborepo-cache", "cache-policy", "package-manager-cache"]) {
+    const worker = readFileSync(new URL(`../examples/${recipe}/src/worker.ts`, import.meta.url), "utf8")
+    const config = JSON.parse(readFileSync(new URL(`../examples/${recipe}/wrangler.jsonc`, import.meta.url), "utf8"))
+    assert.ok(config.containers.some((container: any) => container.images?.workspace?.dockerfile), recipe)
+    assert.match(worker, /container:\s*\{\s*image:\s*"workspace"\s*\}/, recipe)
+  }
+})
+
 test("root recipe shortcuts execute or plan rather than silently printing help", () => {
   const { scripts } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
   const entries = Object.entries(scripts).filter(([name]) => name.startsWith("ci:"))

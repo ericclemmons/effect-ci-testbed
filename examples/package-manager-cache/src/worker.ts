@@ -11,6 +11,7 @@ export default {
 }
 
 export const EffectCIWorkflow = Cloudflare.workflowEntrypoint(workflow, {
+  container: { image: "workspace" },
   cache: {
     key: "npm-downloads",
     keyFiles: ["examples/package-manager-cache/app/package-lock.json"],
