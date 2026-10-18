@@ -56,7 +56,7 @@ test("real source changes select only affected work and restore owned filesystem
   const snapshots = new Map<string, Snapshot>();
   const keys = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
   const trust = new Map([["fixture", keys.publicKey]]);
-  const traces: Array<{ run: string; revision: string; executed: string[]; reused: string[]; reasons: Record<string, string>; output: string; receipt: string }> = [];
+  const traces: Array<{ run: string; revision: string; executed: string[]; reused: string[]; reasons: Record<string, string>; output: string; receipt: string; lineage: Record<string, { producer: string | undefined; digest: string }> }> = [];
   type Previous = { attempt: CI.WorkflowAttempt; identity: ExecutionIdentity; receipt: string };
 
   const available = (workspace: unknown) => {
@@ -80,7 +80,10 @@ test("real source changes select only affected work and restore owned filesystem
         reasons[name] = reason;
         if (reason !== "same inputs and available checkpoint") selected.push(name);
       }
-    } else reasons.left = reasons.right = "first execution";
+      reasons.bundle = selected.length ? "dependency affected"
+        : !available(previous.attempt.outputs.bundle) ? "checkpoint unavailable or changed" : "same inputs and available checkpoint";
+      if (!selected.length && reasons.bundle === "checkpoint unavailable or changed") selected.push("bundle");
+    } else reasons.left = reasons.right = reasons.bundle = "first execution";
     const executed: string[] = [], runRoot = join(root, run);
     const stages = new Map<string, string>();
     const stage = (step: string, files: Record<string, string>) => {
@@ -149,7 +152,11 @@ test("real source changes select only affected work and restore owned filesystem
     assert.ok(await verifyExecutionReceipt(receipt, currentIdentity, trust));
     const output = readFileSync(join(local(result.value), "output.txt"), "utf8");
     const reused = result.plan.nodes.filter(node => node.status === "reused").map(node => node.id);
-    traces.push({ run, revision, executed, reused, reasons, output, receipt });
+    const lineage = Object.fromEntries(Object.entries(result.attempt.outputs).map(([name, value]) => {
+      assert.ok(value instanceof CI.Workspace);
+      return [name, { producer: value.id, digest: (value.revision!.value as { digest: string }).digest }];
+    }));
+    traces.push({ run, revision, executed, reused, reasons, output, receipt, lineage });
     return { attempt: result.attempt, identity: currentIdentity, receipt };
   }
 
@@ -170,6 +177,16 @@ test("real source changes select only affected work and restore owned filesystem
     assert.deepEqual(traces[2]!.executed, ["right", "bundle"]);
     assert.deepEqual(traces[2]!.reused, ["left"]);
     assert.equal(traces[2]!.output, traces[1]!.output);
+    const fourth = await execute("unchanged-inputs", changedRevision, third);
+    assert.deepEqual(traces[3]!.executed, []);
+    assert.deepEqual([...traces[3]!.reused].sort(), ["bundle", "left", "right"]);
+    assert.equal(traces[3]!.output, traces[2]!.output);
+    const bundleId = ((fourth.attempt.outputs.bundle as CI.Workspace).revision!.value as { id: string }).id;
+    writeFileSync(join(snapshots.get(bundleId)!.path, "output.txt"), "tampered output\n");
+    await execute("changed-checkpoint", changedRevision, fourth);
+    assert.deepEqual(traces[4]!.executed, ["bundle"]);
+    assert.deepEqual([...traces[4]!.reused].sort(), ["left", "right"]);
+    assert.equal(traces[4]!.output, traces[2]!.output);
     assert.equal(await verifyExecutionReceipt(first.receipt, identity(changedRevision), trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, policyDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, runtimeDigest: "0".repeat(64) }, trust), undefined);
