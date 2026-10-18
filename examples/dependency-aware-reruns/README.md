@@ -68,7 +68,9 @@ A full rerun checks the same output. Logs retain reasons, source revisions,
 checkpoint lineage and signed observations. Inputs are explicit for this small
 program; this is not automatic input discovery. Snapshots are owned filesystem
 copies, not Cloudflare snapshots. Signing keys are ephemeral fixture keys, not a
-deployed issuer. GitHub execution proof is pending CI; matrix cells stay unchanged.
+deployed issuer. The [GitHub fixture run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39112462176/job/117631294099)
+verified these cases at `28e8d21`. Native Cloudflare and conventional YAML adapter
+proof remain pending; matrix cells stay unchanged.
 
 ## Verification proof
 
