@@ -16,7 +16,7 @@ export async function publicSource(revision: string, request: typeof fetch = fet
   const files = [];
   for (const [name, expected] of Object.entries(objects[revision]!)) {
     const response = await request(`https://raw.githubusercontent.com/ericclemmons/effect-ci-testbed/${revision}/${sourceRoot}/${name}`, {
-      redirect: "error", signal: AbortSignal.timeout(10_000),
+      redirect: "manual", signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok || !response.body) throw Error("Public fixture source unavailable");
     const reader = response.body.getReader(), chunks: Uint8Array[] = [];

@@ -8,7 +8,7 @@ for (const revision of [original, changed, programChanged]) {
     const requested: string[] = [];
     const files = await publicSource(revision, (async (url: string, options: RequestInit) => {
       requested.push(url);
-      assert.equal(options.redirect, "error");
+      assert.equal(options.redirect, "manual");
       assert.equal(options.headers, undefined, "No credential or actor-provided headers");
       const name = url.split("/").at(-1)!;
       return new Response(execFileSync("git", ["show", `${revision}:${sourceRoot}/${name}`]));
@@ -23,7 +23,7 @@ test("unknown source, altered bytes, oversized responses and HTTP failures canno
   let called = false;
   await assert.rejects(publicSource("a".repeat(40), (async () => { called = true; return new Response(); }) as typeof fetch), /Unapproved/);
   assert.equal(called, false);
-  for (const response of [new Response("tampered"), new Response("x".repeat(16385)), new Response("upstream diagnostics", { status: 403 })]) {
+  for (const response of [new Response("tampered"), new Response("x".repeat(16385)), new Response("upstream diagnostics", { status: 403 }), new Response(null, { status: 302, headers: { Location: "https://example.invalid" } })]) {
     await assert.rejects(publicSource(original, (async () => response) as typeof fetch), /Git blob mismatch|too large|unavailable/);
   }
 });
