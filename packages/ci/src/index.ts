@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { existsSync, readFileSync, writeSync } from "node:fs"
 import { join } from "node:path"
 import * as Cache from "effect/Cache"
+import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -1926,10 +1927,14 @@ const makeRuntime = (
               timestamp: new Date().toISOString(),
             })
           }),
-          Effect.tapError((error) => {
+          Effect.onExit((exit) => {
+            if (Exit.isSuccess(exit)) return Effect.void
+            const cause = exit.cause
+            const interrupted = !Cause.hasFails(cause) && !Cause.hasDies(cause)
+            const error = Cause.squash(cause)
             const origin = failureOrigins.get(error)
-            node.status = origin && origin !== id ? "skipped" : "failed"
-            if (!origin) failureOrigins.set(error, id)
+            node.status = interrupted || (origin && origin !== id) ? "skipped" : "failed"
+            if (!interrupted && !origin) failureOrigins.set(error, id)
 
             const status = emitEvent({
               type: "step.status",
