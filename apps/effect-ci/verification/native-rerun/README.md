@@ -1,6 +1,6 @@
 # Isolated native rerun proof
 
-Local preparation for #145. **Not deployed or native-verified.**
+Owned hosted fixture for #145 and #146, separate from the CI application.
 
 The controller compares original, changed-input, unchanged, fresh, missing-output and changed-program
 runs using the real native adapter and workspace snapshots. Inputs are three fixed
@@ -30,11 +30,27 @@ The operator payload must be `{}`. Each native operation has a one-minute timeou
 and no automatic retry; cleanup has a separate 30-second timeout. A cleanup failure
 requires inspection before another run.
 
-Live testing requires the separately requested isolated-target approval. Preserve
-run history, stop fixture VMs afterward, and never touch the production host.
+Deploy this fixture to your own account, then use an empty JSON object as the
+operator payload. There is no public HTTP trigger. Stop fixture VMs after testing
+and retain run history.
+
 The missing-output case forks the right snapshot and removes only its copy's
 `output.txt`; it does not delete the original publication or simulate a provider
-outage. Every recovered output digest must match the fresh comparison. All native
-scenarios remain unexecuted. Deliberate pre-publication filesystem loss remains
-to be implemented; this is not generic dependency discovery, attestation, or
-completed #146 evidence.
+outage. Every recovered output digest must match the fresh comparison.
+
+The granular-loss case stops only the bundle's VM after its command receipt, before
+workspace publication. Publication must fail closed. A new attempt may rebuild
+this fixed, pure bundle while reusing the unaffected leaf snapshots; it must not
+rewrite the failed attempt or pretend that a command receipt restored files.
+
+## Verification
+
+Native run `cf_41e4e062a0bf7f371920530ebaece292b40bf73784f99b344b987d47b85559d7`
+passed all six source/output cases at `5d1e90b` on 2026-10-18: 118 successful
+native steps, preserved producer/snapshot lineage, identical fresh output digests,
+and zero active fixture containers afterward. The earlier CLI-parameter, RPC and
+fetch-compatibility failures remain in native history.
+
+The additional granular-loss/recovery case is not yet hosted-verified. This fixed
+input contract is not generic dependency discovery, attestation enrollment or
+automatic side-effect replay. It does not close every #145/#146 acceptance gap.

@@ -29,8 +29,9 @@ export class RerunProof extends WorkflowEntrypoint {
     emptyParameters(event.payload);
     const namespace = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace<WorkspaceContainer> }).WorkspaceContainer;
     const traces: unknown[] = [];
+    let lostAttempt: Previous | undefined;
 
-    const run = async (label: string, revision: string, previous?: Previous, withoutRightOutput = false): Promise<Previous> => {
+    const run = async (label: string, revision: string, previous?: Previous, withoutRightOutput = false, loseUnpublishedBundle = false): Promise<Previous> => {
       const originalPrevious = previous, retained = previous && JSON.stringify(previous.attempt);
       const workspaceId = `${event.instanceId}:${label}`, used = new Set<string>();
       const scoped = scopedSteps(step, label) as WorkflowStep;
@@ -97,6 +98,10 @@ export class RerunProof extends WorkflowEntrypoint {
           reasons.bundle = selected.length ? "dependency affected" : !await available("bundle") ? "checkpoint unavailable or changed" : "same inputs and available checkpoint";
           if (!selected.length && reasons.bundle !== "same inputs and available checkpoint") selected.push("bundle");
         } else for (const name of names) reasons[name] = "first execution";
+        if (loseUnpublishedBundle) {
+          if (!previous || selected.length) throw Error("Loss probe requires unchanged, available dependencies");
+          selected.push("bundle"); reasons.bundle = "explicit fixed idempotent filesystem-loss probe";
+        }
         const leaf = (name: "left" | "right") => CI.action(name, () => function* () {
           return yield* base.exec(`cp ${name}.txt input.txt && node task.mjs leaf`);
         });
@@ -109,8 +114,23 @@ export class RerunProof extends WorkflowEntrypoint {
           };
         });
         const result = await CI.runPromise(CI.workflow("native-source-reruns", () => bundle()), {
-          output: "silent", ci: true, executor: runner.executor, actionExecutor: runner.actionExecutor,
+          output: "silent", ci: true,
+          executor: loseUnpublishedBundle ? { execute: request => runner.executor.execute(request).pipe(Effect.tap(() =>
+            request.stepId === "bundle" ? Effect.promise(() => scoped.do("fault:stop-unpublished-bundle", () =>
+              namespace.getByName(`${workspaceId}:step=bundle`).stopFixture())) : Effect.void)) } : runner.executor,
+          ...(loseUnpublishedBundle ? {} : { actionExecutor: runner.actionExecutor }),
           workspacePersistence: runner.persistence, workspaceFileSystem: runner.fileSystem,
+          onAttempt: attempt => {
+            if (loseUnpublishedBundle && attempt.conclusion === "failure") {
+              if (!previous || attempt.outputs.bundle !== undefined
+                || attempt.plan.nodes.find(node => node.id === "bundle")?.status !== "failed") throw Error("Unexpected granular failure record");
+              lostAttempt = { attempt, inputs, program, runtime, lineage: previous.lineage, output: "" };
+              traces.push({ label, revision, failedAttempt: { id: attempt.id, number: attempt.number,
+                previousAttemptId: attempt.previousAttemptId, conclusion: attempt.conclusion,
+                statuses: attempt.plan.nodes.map(node => ({ id: node.id, status: node.status })) },
+                boundary: "Command receipt exists; unpublished filesystem was deliberately destroyed, not restored" });
+            }
+          },
           event: { type: "push", revision, source: { kind: "git", repository, revision } },
           ...(previous ? { rerun: { steps: selected, previous: { ...previous.attempt,
             outputs: Object.fromEntries(Object.entries(previous.attempt.outputs).map(([name, value]) => [name, rebind(value)])) } } } : {}),
@@ -127,7 +147,8 @@ export class RerunProof extends WorkflowEntrypoint {
         const output = await read(result.value, "output.txt", "verify-bundle");
         const reused = result.plan.nodes.filter(node => node.status === "reused").map(node => node.id).sort();
         const executed = names.filter(name => !reused.includes(name));
-        traces.push({ label, revision, reasons, executed, reused, lineage, output, program, runtime });
+        traces.push({ label, revision, reasons, executed, reused, lineage, output, program, runtime,
+          attempt: { id: result.attempt.id, number: result.attempt.number, previousAttemptId: result.attempt.previousAttemptId } });
         return { attempt: result.attempt, inputs, program, runtime, lineage, output };
       } finally {
         await step.do(`${label}:cleanup`, cleanupOnce, async () => {
@@ -149,6 +170,20 @@ export class RerunProof extends WorkflowEntrypoint {
       || names.some(name => missing.lineage[name].outputDigest !== fresh.lineage[name].outputDigest)) throw Error("Missing output did not rebuild only its affected subgraph");
     const program = await run("changed-program", programChanged, third);
     if (program.output !== "CHARLIE! / BRAVO!\n" || names.some(name => program.lineage[name].producer !== "changed-program")) throw Error("Changed program reused stale output");
+    try {
+      await run("lost-unpublished-bundle", changed, third, false, true);
+      throw Error("Lost unpublished filesystem unexpectedly succeeded");
+    } catch (error) {
+      if (!/uncheckpointed changes.*container stopped/i.test(String(error))) throw error;
+    }
+    const failed = requireValue(lostAttempt, "Missing actual failed granular attempt");
+    const failureRecord = JSON.stringify(failed.attempt);
+    const recovered = await run("recover-pure-bundle", changed, failed);
+    if (JSON.stringify(failed.attempt) !== failureRecord || recovered.attempt.previousAttemptId !== failed.attempt.id
+      || recovered.attempt.number !== failed.attempt.number + 1 || recovered.output !== fresh.output
+      || recovered.lineage.left.producer !== third.lineage.left.producer || recovered.lineage.right.producer !== third.lineage.right.producer
+      || recovered.lineage.bundle.producer !== "recover-pure-bundle"
+      || names.some(name => recovered.lineage[name].outputDigest !== fresh.lineage[name].outputDigest)) throw Error("New attempt did not safely recover only the fixed pure bundle");
     return { proof: "native-source-reruns", traces,
       boundary: "Owned fixed-public-source input contract and native workspace snapshots; no generic input closure, signature enrollment, production release, or repair claim" };
   }
