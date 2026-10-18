@@ -88,14 +88,22 @@ export interface SmallChangeStore {
   complete: (key: string, value: SmallChangeOperation) => Promise<void>
 }
 
-/** One attempt per evidence identity. An uncertain write is only reconciled by
- * reading that same check/review; absent results never authorize a blind retry. */
-export async function runSmallChange(host: SmallChangeHost, number: number, store: SmallChangeStore) {
+const validateHost = (host: SmallChangeHost) => {
   if (!/^[\w.-]+\/[\w.-]+$/.test(host.repository) || !positive(host.appId) || !positive(host.botId) ||
     !/^[a-zA-Z0-9_-]{1,128}$/.test(host.policyId)) throw Error("Invalid host review enrollment");
-  const before = await readSmallChange(host, number);
+};
+
+/** Publish a verdict from the trusted org workflow, not an incoming PR payload.
+ * This capability owns fresh evidence, scoped writes and uncertain-ACK recovery;
+ * the workflow owns the policy decision. No merge capability is supplied. */
+export async function publishSmallChange(host: SmallChangeHost, number: number, store: SmallChangeStore,
+  before: SmallChangeEvidence, decision: SmallChangeDecision) {
+  validateHost(host);
+  if (!decision || typeof decision.eligible !== "boolean" || decision.head !== before.head || decision.base !== before.base ||
+    !Array.isArray(decision.reasons) || decision.reasons.some(reason => typeof reason !== "string" || !reason.length) ||
+    (decision.eligible && (!before.open || before.draft || !before.complete || decision.reasons.length > 0)))
+    throw Error("Invalid workflow approval decision");
   const canonical = JSON.stringify(before);
-  const decision = smallChange(before, host.policy);
   const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(
     JSON.stringify([host.repository, number, host.policyId, canonical, decision]))))].map(b => b.toString(16).padStart(2, "0")).join("");
   const marker = `effect-ci-small-change:${host.policyId}:${hash}`;
@@ -153,4 +161,12 @@ export async function runSmallChange(host: SmallChangeHost, number: number, stor
     ...(review ? { reviewId: review.id } : {}) };
   await store.complete(marker, completed);
   return completed;
+}
+
+/** Compatibility composition. New org workflows can inspect, review and publish
+ * as ordinary CI actions without moving policy into the host writer. */
+export async function runSmallChange(host: SmallChangeHost, number: number, store: SmallChangeStore) {
+  validateHost(host);
+  const evidence = await readSmallChange(host, number);
+  return publishSmallChange(host, number, store, evidence, smallChange(evidence, host.policy));
 }

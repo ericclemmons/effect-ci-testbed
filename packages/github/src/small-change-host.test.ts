@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readSmallChange, runSmallChange, type SmallChangeHost, type SmallChangeOperation } from "./small-change-host.ts";
+import { publishSmallChange, readSmallChange, runSmallChange, type SmallChangeHost, type SmallChangeOperation } from "./small-change-host.ts";
 
 const head = "a".repeat(40), base = "b".repeat(40), repository = "owner/demo";
 function fixture() {
@@ -136,4 +136,24 @@ test("diff reads pin both SHAs; a foreign comparison base cannot authorize a rev
   };
   await assert.rejects(runSmallChange(f.host, 50, f.store), /Comparison base/);
   assert.equal(f.writes(), 0);
+});
+
+test("the writer publishes the trusted workflow verdict instead of choosing org policy", async () => {
+  const f = fixture(), input = await readSmallChange(f.host, 50);
+  const result = await publishSmallChange(f.host, 50, f.store, input,
+    { head, base, eligible: false, reasons: ["This workflow requires human review."] });
+  assert.equal(result.decision.eligible, false);
+  assert.equal(f.checks[0].conclusion, "neutral");
+  assert.equal(f.reviews.length, 0);
+});
+
+test("workflow verdicts cannot replace canonical commits or bypass stale evidence", async () => {
+  for (const stale of [false, true]) {
+    const f = fixture(), input = await readSmallChange(f.host, 50);
+    if (stale) f.move();
+    await assert.rejects(publishSmallChange(f.host, 50, f.store, input,
+      { head: stale ? head : "c".repeat(40), base, eligible: true, reasons: [] }),
+    stale ? /PR changed/ : /Invalid workflow approval/);
+    assert.equal(f.writes(), 0);
+  }
 });

@@ -12,6 +12,12 @@ Remote results cover execution, not approval. The PR-only gate reads the current
 head/base, verified check results and org-owned review evidence. It does not
 rerun tests or ask an agent to review a README.
 
+Org policy can be an ordinary CI workflow: inspect the PR, review its evidence,
+then run an approval action. The [host workflow](../../../apps/effect-ci/src/workflows/pull-request.ts)
+owns the rules; the provider capability rereads canonical evidence and journals
+the exact-head write. Planning performs no API calls. This action is not a human
+approval prompt or a merge command.
+
 Inspired by [Will Larson's small-change policy](https://lethain.com/small-changes/).
 The thresholds and service boundaries are policy, not CI primitives.
 

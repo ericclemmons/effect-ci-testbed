@@ -16,6 +16,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
     import {syntaxRepository,syntaxWorkflow} from '@effect-ci-testbed/cloudflare/node-syntax-check';
     import {testCommand} from '@effect-ci-testbed/cloudflare/demo-test-check';
     export {SmallChangeReviews};
+    export {SmallChangeReviewWorkflow} from './small-change-review.ts';
     export {TrustedDemoChecks} from './trusted-demo-checks.ts';
     const head='a'.repeat(40),base='b'.repeat(40),repo='ericclemmons/effect-ci-testbed';
     const checks=[],reviews=[],requests=[];let failReview=false,extraPermissions=false,renamed=false;
@@ -31,7 +32,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
         if(failReview){failReview=false;throw Error('lost ACK: Bearer fixture-installation-token')}
         return Response.json(r);
       }
-      if(/^\\/pulls\\/(50|51)$/.test(path))return Response.json({number:Number(path.split('/').at(-1)),base:{sha:base,repo:{full_name:repo}},head:{sha:head,repo:{full_name:repo}},user:{id:7},changed_files:1,state:'open',draft:false});
+      if(/^\\/pulls\\/(50|51|52)$/.test(path))return Response.json({number:Number(path.split('/').at(-1)),base:{sha:base,repo:{full_name:repo}},head:{sha:head,repo:{full_name:repo}},user:{id:7},changed_files:1,state:'open',draft:false});
       if(path.startsWith('/compare/'))return Response.json({base_commit:{sha:base},files:[{filename:'README.md',status:'modified',additions:1,deletions:1,patch:'-old\\n+new'}]});
       if(path==='/pulls')return Response.json(Array.from({length:10},(_,i)=>({number:i+1,merged_at:'2026-10-18T00:00:00Z',user:{id:7},base:{repo:{full_name:repo}}})));
       if(/^\\/pulls\\/\\d+\\/files$/.test(path))return Response.json([{filename:'README.md'}]);
@@ -43,6 +44,9 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
       const path=new URL(request.url).pathname;
       const owner=n=>ctx.exports.SmallChangeReviews.getByName('pr-'+n);
       try{
+        if(path==='/start'){await ctx.exports.SmallChangeReviewWorkflow.create({id:'policy-native',params:{number:52}});return Response.json({started:true})}
+        if(path==='/status')return Response.json(await(await ctx.exports.SmallChangeReviewWorkflow.get('policy-native')).status());
+        if(path==='/stale-policy')return Response.json(await owner(50).read(50,'00000000-0000-4000-8000-000000000000'));
         if(path==='/seed'){
           const authority=ctx.exports.TrustedDemoChecks.getByName('demo-trusted-runner-v1');
           await authority.record({identity:{kind:'check',repository:syntaxRepository,revision:head,workflowId:syntaxWorkflow,stepId:'test',command:testCommand,policyDigest:await demoRunnerPolicyDigest(true),sourceDigest:'c'.repeat(64),toolchainDigest:'d'.repeat(64)},runId:'fixture-execution',completedAt:'2026-10-18T00:00:00.000Z',exitCode:0,stdoutDigest:'e'.repeat(64),stderrDigest:'f'.repeat(64)});
@@ -56,12 +60,14 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
         return Response.json({checks,reviews,requests});
       }catch(error){return Response.json({error:String(error)}, {status:500})}
     }};
-  ` }, bundle: true, write: false, format: "esm", target: "esnext", external: ["cloudflare:workers"] });
+  ` }, bundle: true, write: false, format: "esm", target: "esnext", platform: "neutral",
+    external: ["cloudflare:workers", "node:*"], conditions: ["workerd", "import"] });
   const name = "small-change-native-probe";
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const runtime = new Miniflare({ workers: [{ config: { name, compatibilityDate: "2026-10-07",
+  const runtime = new Miniflare({ workers: [{ config: { name, compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
     manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: output.outputFiles[0].text } } },
-    exports: { SmallChangeReviews: { type: "durable-object", storage: "sqlite" }, TrustedDemoChecks: { type: "durable-object", storage: "sqlite" } },
+    exports: { SmallChangeReviews: { type: "durable-object", storage: "sqlite" }, TrustedDemoChecks: { type: "durable-object", storage: "sqlite" },
+      SmallChangeReviewWorkflow: { type: "workflow", name: "small-change-native-policy" } },
     env: { GITHUB_APP_ID: { type: "text", value: "5089816" },
       GITHUB_PRIVATE_KEY: { type: "text", value: privateKey.export({ type: "pkcs8", format: "pem" }).toString() },
       VERSION_METADATA: { type: "json", value: { id: "11111111-1111-4111-8111-111111111111" } } },
@@ -92,5 +98,23 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
       if (r.path.endsWith("/access_tokens")) assert.deepEqual(r.body, { repositories: ["effect-ci-testbed"],
         permissions: { contents: "read", checks: "write", pull_requests: "write" } });
     }
+    await get("/start");
+    let completed;
+    for (let i = 0; i < 200; i++) {
+      const status = await get("/status");
+      assert.notEqual(status.status, "errored", JSON.stringify(status.error));
+      if (status.status === "complete") { completed = status.output; break; }
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    assert.ok(completed, "Native org policy did not complete");
+    assert.equal(completed.decision.eligible, true);
+    assert.equal(completed.reviewId, 3);
+    assert.deepEqual(completed.workflowPlan.nodes.map((node: any) => node.id), ["inspect PR", "review", "approve PR"]);
+    assert.ok(completed.workflowPlan.nodes.every((node: any) => node.status === "complete"));
+    assert.equal((await get("/observed")).reviews.length, 3);
+    const requestsBeforeStale = (await get("/observed")).requests.length;
+    assert.match((await get("/stale-policy")).error, /Org policy revision changed/);
+    assert.equal((await get("/observed")).requests.length, requestsBeforeStale,
+      "Stale policy must not mint a token or read/write GitHub");
   } finally { await runtime.dispose(); }
 });
