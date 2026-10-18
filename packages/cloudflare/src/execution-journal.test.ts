@@ -74,6 +74,7 @@ test("private commit journal records a native run once and retains verified SQLi
     for (const subject of [{ ...identity, revision: "main" }, { ...identity, issuer: "https://ci.example/path" },
       { ...identity, repository: "https://token@github.com/acme/project.git" }]) assert.equal((await call({ op: "name", subject })).ok, false);
     assert.equal((await call({ op: "http" })).result, 404);
+    assert.equal((await call({ op: "record", receipt: "{invalid" })).error, "Execution receipt rejected");
     await call({ op: "start", id: "native-recorded" });
     let status: any;
     for (let i = 0; i < 200; i++) {
@@ -110,6 +111,7 @@ test("private commit journal records a native run once and retains verified SQLi
     assert.equal((await call({ op: "record", identity: foreign, receipt: await createReceipt("foreign", foreign) })).ok, false);
     assert.equal((await call({ op: "get", identity: foreign, id: "native-recorded" })).result, null);
     assert.equal((await call({ op: "record", receipt: native.replace('"success"', '"failure"') })).ok, false);
+    assert.equal((await call({ op: "record", receipt: native.replace('"keyId":"acme"', '"keyId":"unknown"') })).ok, false);
     for (let i = 0; i < 26; i++) assert.equal((await call({ op: "record", receipt: await createReceipt(`local-${i}`) })).ok, true);
     const first = (await call({ op: "history" })).result;
     assert.equal((await call({ op: "history", after: "../foreign" })).ok, false);
@@ -130,5 +132,13 @@ test("private commit journal records a native run once and retains verified SQLi
     assert.equal((await call({ op: "get", id: "native-recorded" })).result, native);
     assert.equal((await call({ op: "history" })).result.receipts.length, 25);
     assert.equal((await call({ op: "stats" })).result.bodies, 0, "reads and restored trust never rerun native actions");
+    const unavailable = options(publicKeys, "\n// unavailable operator trust source\n");
+    unavailable.workers[0]!.config.env.PUBLIC_KEYS.value = "PRIVATE_TRUST_ERROR";
+    await runtime.setOptions(unavailable);
+    const failure = await call({ op: "get", id: "native-recorded" });
+    assert.equal(failure.error, "Execution trust unavailable");
+    assert.doesNotMatch(JSON.stringify(failure), /PRIVATE_TRUST_ERROR/);
+    await runtime.setOptions(options(publicKeys, "\n// restore trust after redacted failure\n"));
+    assert.equal((await call({ op: "get", id: "native-recorded" })).result, native);
   } finally { await runtime.dispose(); }
 });
