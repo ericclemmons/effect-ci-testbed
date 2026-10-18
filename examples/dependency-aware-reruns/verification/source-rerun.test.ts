@@ -187,6 +187,10 @@ test("real source changes select only affected work and restore owned filesystem
     assert.deepEqual(traces[4]!.executed, ["bundle"]);
     assert.deepEqual([...traces[4]!.reused].sort(), ["left", "right"]);
     assert.equal(traces[4]!.output, traces[2]!.output);
+    await execute("full-comparison", changedRevision);
+    assert.deepEqual(traces[5]!.executed, ["left", "right", "bundle"]);
+    assert.deepEqual(traces[5]!.reused, []);
+    assert.equal(traces[5]!.output, traces[1]!.output);
     assert.equal(await verifyExecutionReceipt(first.receipt, identity(changedRevision), trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, policyDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, runtimeDigest: "0".repeat(64) }, trust), undefined);
