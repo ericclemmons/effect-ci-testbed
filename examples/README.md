@@ -23,6 +23,10 @@ existing hosted evidence is preserved, not silently relabeled as standalone proo
 
 ## Author a workflow
 
+[Approve a README-only PR](./approve-small-changes) expresses an organization-owned
+small-change rule as inspect/review/approve actions. It separates App approval
+from CODEOWNERS and GitHub's auto-merge gates, with a local no-write rehearsal.
+
 [npm pipeline](./node-npm) → [pnpm variant](./node-pnpm) →
 [zero-config discovery](./zero-config) → [selected public targets](./exported-actions).
 
