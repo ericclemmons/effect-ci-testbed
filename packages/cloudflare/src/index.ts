@@ -259,7 +259,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       return
     }
 
-    if (this.activeStepId === stepId) {
+    // One action may read several dependency workspaces with the same paths.
+    // Its identity alone does not mean the requested input is materialized.
+    // Dirty inputs were checked above and must never be replaced here.
+    if (this.activeStepId === stepId && (revision === undefined || this.workingCheckpointId === revision.id)) {
       await this.ensureRunning(options)
       return
     }
@@ -679,8 +682,17 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
 
 export const makeRunner = (options: RunnerOptions): Runner => {
   const activeBodies = new Set<string>()
+  const fileSequences = new Map<string, number>()
   const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
     activeBodies.has(stepId) ? operation() : options.step.do(name, operation as () => Promise<any>) as Promise<A>
+  const fileOperation = <A>(stepId: string, kind: "read" | "exists", operation: () => Promise<A>): Promise<A> => {
+    if (activeBodies.has(stepId)) return operation()
+    const sequence = (fileSequences.get(stepId) ?? 0) + 1
+    fileSequences.set(stepId, sequence)
+    // A path is not an observation identity: inputs and mutable contents may
+    // differ between calls. Tuple ordinals also avoid lossy path sanitization.
+    return options.step.do(`file:${JSON.stringify([stepId, sequence, kind])}`, operation as () => Promise<any>) as Promise<A>
+  }
   const executeCommand = makeCommandStepExecutor(options.step)
   const primary = options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
   const containerFor = (
@@ -809,10 +821,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
           }
 
-          const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
           const container = containerFor(stepId, workspace)
 
-          return bodyOperation(stepId, `${stepId}:exists-${pathId}`, () =>
+          return fileOperation(stepId, "exists", () =>
             container.exists(
               path,
               workspace.cwd,
@@ -834,10 +845,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Cannot materialize ${revision.provider} with Cloudflare`)
           }
 
-          const pathId = path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
           const container = containerFor(stepId, workspace)
 
-          return bodyOperation(stepId, `${stepId}:read-${pathId}`, () =>
+          return fileOperation(stepId, "read", () =>
             container.readFile(
               path,
               workspace.cwd,
