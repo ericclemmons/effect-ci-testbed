@@ -60,7 +60,7 @@ export interface HostFinalization<A> {
   readonly observe?: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
-export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment>, "checkCache" | "stepResultCache"> {
+export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache"> {
   /** Opt-in for self-hosted remote runs: resolve this host App's installation,
    * borrow a repository-only Contents-read token, revoke after checkout. */
   readonly remoteGitHubCheckout?: boolean
@@ -429,8 +429,12 @@ export const workflowEntrypoint = <A>(
         },
         executor: runner.executor,
         actionExecutor: runner.actionExecutor,
+        ...(options.onAttempt ? { onAttempt: Cloudflare.makeHostAttemptHandler(step, options.onAttempt, {
+          environment: this.env, exports: this.ctx.exports,
+          instanceId: event.instanceId, parameters: event.payload,
+        }) } : {}),
         onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
-          if ((options.finalize || options.executionEvidence) && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
+          if ((options.finalize || options.executionEvidence || options.onAttempt) && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
             deferredCompletion = runtimeEvent
             return
           }

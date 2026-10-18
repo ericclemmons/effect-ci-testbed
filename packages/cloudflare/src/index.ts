@@ -9,6 +9,8 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { containerShell } from "./container-shell.ts"
+import { makeHostAttemptHandler, type HostAttemptHandler } from "./host-attempt.ts"
+export { makeHostAttemptHandler, type HostAttemptHandler, type HostAttemptContext } from "./host-attempt.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
 import { commandFailure } from "./command-error.ts"
 import { cacheIdentity } from "./cache-identity.ts"
@@ -652,7 +654,10 @@ export interface WorkflowEnvironment {
   readonly Workspace?: DurableObjectNamespace
 }
 
-export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment> {
+export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment, Parameters extends WorkflowParameters = WorkflowParameters> {
+  /** Record the actual CI attempt, including successful outputs on failure.
+   * Host-only persistence is authoritative; this does not authorize result reuse. */
+  readonly onAttempt?: HostAttemptHandler<Environment, Parameters>
   readonly cache?: CI.WorkspaceCachePolicy | false
   readonly container?: WorkspaceContainerOptions
   readonly reuseWorkspace?: boolean
@@ -990,6 +995,10 @@ export const workflowEntrypoint = <
       },
       executor: runner.executor,
       actionExecutor: runner.actionExecutor,
+      ...(options.onAttempt ? { onAttempt: makeHostAttemptHandler(step, options.onAttempt, {
+        environment: this.env, exports: this.ctx.exports,
+        instanceId: event.instanceId, parameters: event.payload,
+      }) } : {}),
       output: "silent",
       ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
       source: runner.source,
