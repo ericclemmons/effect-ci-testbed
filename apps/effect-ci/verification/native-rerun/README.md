@@ -51,6 +51,13 @@ native steps, preserved producer/snapshot lineage, identical fresh output digest
 and zero active fixture containers afterward. The earlier CLI-parameter, RPC and
 fetch-compatibility failures remain in native history.
 
-The additional granular-loss/recovery case is not yet hosted-verified. This fixed
-input contract is not generic dependency discovery, attestation enrollment or
-automatic side-effect replay. It does not close every #145/#146 acceptance gap.
+Run `cf_c3464705c1de623db1afd6221fd99b43131dc738cc6b8c9549f8a44b3a8b562d`
+at `4496c99` also completed the granular-loss/recovery case: 152 native steps,
+including the expected failed publication. Attempt 4 retained that failure;
+attempt 5 rebuilt only the pure bundle. Both leaf snapshots kept their original
+producer and digest, every output matched the fresh comparison, and no fixture
+containers remained active.
+
+This fixed input contract is not generic dependency discovery, signing enrollment
+or automatic side-effect replay. GitHub comparison of the deliberate native-loss
+scenario remains separate; this does not close every #145/#146 acceptance gap.
