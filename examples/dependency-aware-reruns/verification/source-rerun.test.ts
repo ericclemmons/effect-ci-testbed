@@ -13,7 +13,7 @@ import { signExecutionReceipt, verifyExecutionReceipt, type ExecutionIdentity } 
 // automatic dependency discovery or an arbitrary-project input-closure verifier.
 const fixture = "examples/dependency-aware-reruns/verification/fixture";
 const driver = "examples/dependency-aware-reruns/verification/source-rerun.test.ts";
-const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" }).trim();
+const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 }).trim();
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const blob = (revision: string, path: string) => execFileSync("git", ["show", `${revision}:${path}`], { encoding: "utf8" });
 const manifest = (path: string) => hash(JSON.stringify(readdirSync(path).sort().map(name => {
@@ -24,15 +24,17 @@ type Leaf = "left" | "right";
 type Snapshot = { path: string; digest: string };
 
 test("real source changes select only affected work and restore owned filesystem checkpoints", async () => {
-  const remote = git("remote", "get-url", "origin").replace(/^git@github.com:/, "https://github.com/").replace(/\.git$/, "");
+  const pinned = JSON.parse(readFileSync("examples/dependency-aware-reruns/verification/source-revisions.json", "utf8")) as { repository: string; original: string; changed: string; programChanged: string };
+  assert.equal(Object.keys(pinned).sort().join(), "changed,original,programChanged,repository");
+  // Public source fixture only; a fork's account, App and credentials are not
+  // used as the source identity or forwarded to another repository.
+  const remote = pinned.repository;
   assert.match(remote, /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
-  const pinned = JSON.parse(readFileSync("examples/dependency-aware-reruns/verification/source-revisions.json", "utf8")) as { original: string; changed: string; programChanged: string };
-  assert.equal(Object.keys(pinned).sort().join(), "changed,original,programChanged");
   const revisions = [pinned.changed, pinned.original, pinned.programChanged];
   for (const revision of revisions) {
     assert.match(revision, /^[a-f0-9]{40}$/);
     try { git("cat-file", "-e", `${revision}^{commit}`); }
-    catch { git("fetch", "--no-tags", "origin", revision); }
+    catch { git("-c", "credential.helper=", "-c", "http.extraheader=", "-c", "http.https://github.com/.extraheader=", "fetch", "--no-tags", remote, revision); }
   }
   const [changedRevision, originalRevision, programRevision] = revisions as [string, string, string];
   // Source commits contain the fixture program/data. The trusted host/SDK runs
@@ -44,7 +46,7 @@ test("real source changes select only affected work and restore owned filesystem
   const inputs = (revision: string) => Object.fromEntries((["left", "right"] as const).map(name =>
     [name, hash(blob(revision, `${fixture}/${name}.txt`))])) as Record<Leaf, string>;
   const identity = (revision: string, flags: string[] = []): ExecutionIdentity => ({
-    issuer: "https://github.com", repository: remote, revision, workflowId: "source-projection-fixture",
+    issuer: "https://source-rerun.example", repository: remote, revision, workflowId: "source-projection-fixture",
     policyDigest: policy(revision), runtimeDigest: hash(JSON.stringify([runtimeDigest, flags])), inputsDigest: hash(JSON.stringify(inputs(revision))),
     eventDigest: hash(JSON.stringify({ type: "push", repository: remote, revision })),
   });
@@ -58,7 +60,7 @@ test("real source changes select only affected work and restore owned filesystem
   const snapshots = new Map<string, Snapshot>();
   const keys = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
   const trust = new Map([["fixture", keys.publicKey]]);
-  const traces: Array<{ run: string; revision: string; executed: string[]; reused: string[]; reasons: Record<string, string>; output: string; receipt: string; lineage: Record<string, { producer: string | undefined; digest: string }> }> = [];
+  const traces: Array<{ run: string; revision: string; flags: string[]; executed: string[]; reused: string[]; reasons: Record<string, string>; output: string; receipt: string; lineage: Record<string, { producer: string | undefined; digest: string }> }> = [];
   type Previous = { attempt: CI.WorkflowAttempt; identity: ExecutionIdentity; receipt: string; flags: string[] };
 
   const available = (workspace: unknown) => {
@@ -159,7 +161,7 @@ test("real source changes select only affected work and restore owned filesystem
       assert.ok(value instanceof CI.Workspace);
       return [name, { producer: value.id, digest: (value.revision!.value as { digest: string }).digest }];
     }));
-    traces.push({ run, revision, executed, reused, reasons, output, receipt, lineage });
+    traces.push({ run, revision, flags, executed, reused, reasons, output, receipt, lineage });
     return { attempt: result.attempt, identity: currentIdentity, receipt, flags };
   }
 
@@ -208,8 +210,8 @@ test("real source changes select only affected work and restore owned filesystem
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, policyDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, runtimeDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, third.identity, new Map()), undefined);
-    console.log(JSON.stringify({ proof: "owned-source-rerun-fixture", environment: process.env.GITHUB_ACTIONS ? "GitHub Actions" : "local",
-      repository: remote, revisions, runtimeDigest, publicKey: await crypto.subtle.exportKey("jwk", keys.publicKey), traces,
+    console.log(JSON.stringify({ proof: "owned-source-rerun-fixture", environment: process.env.GITHUB_ACTIONS === "true" ? "GitHub Actions" : "local",
+      repository: remote, revisions, hostRevision: git("rev-parse", "HEAD"), runtimeDigest, publicKey: await crypto.subtle.exportKey("jwk", keys.publicKey), traces,
       boundary: "Real Git commits, Node commands and owned filesystem checkpoints; ephemeral fixture issuer, not a deployed generic signer or Cloudflare snapshot proof" }));
   } finally {
     rmSync(root, { recursive: true });
