@@ -98,12 +98,16 @@ test("authored orchestration keeps hosted parity honest and explains exact-suite
   assert.match(section, /Marker-free script discovery is still conservative and serial/);
   assert.match(guide, /host currently selects its fixed demo program/);
   const reuse = guide.split("## 8.")[1].split("## 9.")[0];
-  assert.match(reuse, /node \.cloudflare\/ci\/attest-tests.ts/);
-  assert.match(reuse, /git push origin refs\/notes\/effect-ci-demo-tests-v1/);
-  assert.match(reuse, /enrolled local signing key and Docker/);
-  assert.match(reuse, /Only `test` can be reused; typecheck and build still run/);
-  assert.match(reuse, /invalid evidence runs the tests normally/);
-  assert.match(reuse, /not arbitrary tests or another computer's unregistered key/);
+  assert.match(reuse, /cf-ci run test build --remote/);
+  assert.match(reuse, /Remote and SCM runs share the same runner and check/);
+  assert.match(reuse, /host-signed receipt/);
+  assert.match(reuse, /No local signing key or Git-note push is needed/);
+  assert.doesNotMatch(reuse, /node \.cloudflare\/ci\/attest|git push origin refs\/notes/);
+  assert.match(reuse, /restore its signed snapshot/);
+  assert.match(reuse, /Deployment still executes/);
+  assert.match(reuse, /Missing, changed or expired evidence runs the work/);
+  assert.match(reuse, /squash\/rebase needs fresh verification/);
+  assert.match(reuse, /host rollout is pending/);
   assert.match(guide, /deploymentPerformed: false/);
   assert.ok(
     guide.replace(/```[\s\S]*?```/g, "").split(/\s+/).length < 900,

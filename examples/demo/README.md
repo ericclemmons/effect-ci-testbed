@@ -165,13 +165,12 @@ git commit -m "Rehearse the demo"
 git push
 ```
 
-For a new branch's first push, use `git push -u origin demo/rehearsal` (or your
-branch's name). Subsequent pushes are just `git push`; never redirect to a deploy branch.
+First push: `git push -u origin demo/rehearsal` (or your branch's name).
+Then just `git push`.
 
 Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The parent card shows status and the preview link. Its thread holds step output;
-long failures attach a redacted text snippet with a short inline excerpt.
-Failed command replies include bounded, redacted stdout/stderr and the exit code.
+The card shows status and preview. Failures include redacted output, exit code
+and a text snippet for long logs.
 Click **Dashboard** on that card for the same Cloudflare Workflow run.
 The first thread reply is a live Status/Step table; each linked step opens its reply.
 
@@ -200,9 +199,8 @@ cf-ci run test build --remote
 cf-ci run test build --remote --format=json
 ```
 
-Local runs are feedback. Remote and SCM runs share the same runner and check
-definitions. Successful tests create a host-signed receipt; the next matching
-run verifies it instead of running the suite again. JSON includes the evidence.
+Remote and SCM runs share the same runner and check definitions. Successful tests
+create a host-signed receipt; matching runs verify it instead of rerunning. JSON includes evidence.
 No local signing key or Git-note push is needed.
 
 Pure checks reuse their verified results. Build returns a workspace: later runs
@@ -227,9 +225,8 @@ normally. A squash/rebase needs fresh verification. Remote requires a pushed com
 cf-ci run deploy
 ```
 
-The local action prints a deployment preview from `.cloudflare/ci/deploy.ts`:
-actual built-file sizes and hashes, with `deploymentPerformed: false`.
-It is not an external deployment. Hosted publication uses the private publisher below.
+The local action prints built-file sizes and hashes from `.cloudflare/ci/deploy.ts`,
+with `deploymentPerformed: false`. Hosted publication uses the private publisher.
 
 ## 10. Open the hosted preview
 
@@ -268,8 +265,7 @@ PR and updated the same Slack card.
 [Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
 [Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
 
-Verify that actual public-error run without another error, model call or write,
-from the repository root with your existing Cloudflare CLI and GitHub sessions:
+Verify without another error, model call or write, from the repo root:
 
 ```sh
 node examples/flue-repair/verify-public.ts
