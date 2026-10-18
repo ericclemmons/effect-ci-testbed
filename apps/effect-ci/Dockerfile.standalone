@@ -10,6 +10,8 @@ RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-
 COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476f7d8ad39fe97c57965f044e4b0a0dcc93eac06 \
   /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
 
-RUN mkdir -p /workspace
+RUN mkdir -p /workspace && chown node:node /workspace
+ENV HOME=/home/node
+USER node
 WORKDIR /workspace
 CMD ["sleep", "infinity"]

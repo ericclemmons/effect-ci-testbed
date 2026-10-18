@@ -1,11 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { hostProfile } from "../host-profile.ts";
-import { standaloneProgram } from "./standalone-program.ts";
+import { standaloneContainerOptions, standaloneProgram } from "./standalone-program.ts";
+import { cacheIdentity } from "../../../packages/cloudflare/src/cache-identity.ts";
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+test("standalone uid/non-login policy cannot restore the old root runner's transport snapshot", async () => {
+  assert.equal(standaloneContainerOptions.loginShell, false);
+  assert.match(standaloneContainerOptions.readyCommand, /process\.getuid\(\)!==1000/);
+  const request = {
+    repository: "https://github.com/acme/private.git",
+    key: "acme/private",
+    paths: ["node_modules/.vite/task-cache"],
+    files: [],
+  };
+  const legacy = await cacheIdentity({
+    ...request,
+    container: { image: "workspace", instance: "standard-1" },
+  });
+  const current = await cacheIdentity({ ...request, container: standaloneContainerOptions });
+  assert.notEqual(current, legacy);
+});
 
 test("standalone deployment has its own configurable identity; existing demo defaults stay intact", () => {
   assert.deepEqual(hostProfile({}), { profile: "demo" });
