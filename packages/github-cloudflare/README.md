@@ -80,8 +80,11 @@ The final result retains that graph. No checklist or approval capability appears
 on the parent. The owned demo opts into this layout;
 other hosts keep their existing presentation unless they opt in.
 
-The first reply is a maintained Status/Step table. Step names link to their
-evidence replies; Dashboard and Preview stay beside the source link on the parent.
+The first reply is a maintained Status/Step table with glyph-only status cells
+and full status text in its accessible fallback. Routine step updates do not
+create duplicate replies. Failures, warnings, approval controls and host evidence
+retain dedicated replies; table links appear when a reply exists.
+Dashboard and Preview stay beside the source link on the parent.
 Declared progress shows one segment per step and keeps the last completed step.
 
 `slackCommandOutput: "failed"` adds bounded, redacted command output to failed step

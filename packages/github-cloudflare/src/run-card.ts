@@ -222,7 +222,7 @@ export class RunCard {
     return { text: rows.map(({ id, status }) => `${id}: ${status}`).join("\n"), blocks: [
       { type: "table", column_settings: [{ is_wrapped: false }, { is_wrapped: true }],
         rows: [[cell("Status"), cell("Step")], ...rows.map(({ id, status }) => [
-          cell(`${plainSymbols[status]} ${status}`), cell(id, safeUrl(stepLinks.get(id))),
+          cell(plainSymbols[status]), cell(id, safeUrl(stepLinks.get(id))),
         ])] },
       ...(ids.length > 99 ? [{ type: "context", elements: [{ type: "plain_text", text: `${ids.length - 99} more steps; see Dashboard.` }] }] : []),
     ] }
