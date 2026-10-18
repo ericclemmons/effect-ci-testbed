@@ -52,7 +52,9 @@ export async function readSmallChange(host: SmallChangeHost, number: number): Pr
     for (const old of history) {
       if (!old.merged_at || old.user?.id !== pr.user.id || old.number === number || !positive(old.number) ||
         old.base?.repo?.full_name !== host.repository) continue;
-      if (++examined > 30) break history;
+      // Recent unrelated merges must not exhaust the experience window before
+      // older qualifying work. Still bound API work and fail conservatively.
+      if (++examined > 100) break history;
       const priorFiles = rows(await host.request(`${prPath(old.number)}/files?per_page=100`));
       for (const service of services) {
         if (priorFiles.some(file => typeof file.filename === "string" && host.policy.service(file.filename) === service))
