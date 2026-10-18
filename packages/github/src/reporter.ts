@@ -14,6 +14,8 @@ import {
 } from "./index.ts"
 
 export interface ReporterOptions {
+  /** CI may complete before a separate deployment continuation/native run. */
+  readonly completionScope?: "ci"
   readonly executionEnvironment?: "GitHub Actions" | "Cloudflare" | "Local"
   readonly detailsUrl?: string
   readonly externalId?: string
@@ -495,10 +497,14 @@ export class Reporter {
       checkId: this.options.summaryCheckId,
       name: `${this.executionEnvironment} / ${this.workflowId}`,
       title: conclusion
-        ? `${this.workflowId} ${conclusion === "success" ? "passed" : "failed"} on Cloudflare`
+        ? `${this.workflowId}${this.options.completionScope === "ci" ? " CI checks" : ""} ${conclusion === "success" ? "passed" : "failed"} on Cloudflare`
         : `${this.workflowId} is running on Cloudflare`,
       summary: conclusion
-        ? `The native Cloudflare Workflow completed with ${conclusion}.`
+        ? this.options.completionScope === "ci"
+          ? conclusion === "success"
+            ? "CI checks and required execution evidence passed. Deployment finalization is tracked separately; this is not a deployment or native release success."
+            : "CI checks or required execution evidence failed. No successful deployment is implied."
+          : `The native Cloudflare Workflow completed with ${conclusion}.`
         : "A native Cloudflare Workflow is executing this commit.",
       status,
       ...(conclusion ? { conclusion } : {}),
