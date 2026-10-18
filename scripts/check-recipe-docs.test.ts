@@ -36,6 +36,17 @@ test("trusted-result SDK entrypoints are discoverable without implying standalon
   assert.match(selfHost, /does not automatically enroll signing keys/);
 });
 
+test("the check-reuse guide separates current remote receipts from historical Git-note proof", () => {
+  const readme = readFileSync("examples/verification-evidence/README.md", "utf8");
+  assert.ok(readme.includes("../../apps/effect-ci/TRUSTED-REMOTE.md"));
+  assert.match(readme, /host-issued receipts/);
+  assert.match(readme, /fixed demo test suite/);
+  assert.ok(readme.includes("refs/notes/effect-ci-hosted-checks-v1"));
+  assert.ok(readme.includes("refs/notes/effect-ci-verification"));
+  assert.doesNotMatch(readme, /It does \*\*not\*\* yet reuse lint or the test suite/);
+  assert.doesNotMatch(readme, /Full test-suite reuse, the remaining/);
+});
+
 test("every runnable recipe is discoverable in the matrix and reading guide", () => {
   const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
     .map((match) => match[1])
