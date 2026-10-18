@@ -3,7 +3,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import { makeRunner, WorkspaceContainer as PlatformWorkspace } from "@effect-ci-testbed/cloudflare";
 import * as Effect from "effect/Effect";
 import { repository, sourceRoot as root, original, changed, programChanged, publicSource } from "./source.ts";
-import { emptyParameters, once, cleanupOnce } from "./control.ts";
+import { emptyParameters, scopedSteps, cleanupOnce } from "./control.ts";
 
 // Owned public fixture only, never caller-selected source or project commands.
 const names = ["left", "right", "bundle"] as const;
@@ -33,7 +33,7 @@ export class RerunProof extends WorkflowEntrypoint {
     const run = async (label: string, revision: string, previous?: Previous, withoutRightOutput = false): Promise<Previous> => {
       const originalPrevious = previous, retained = previous && JSON.stringify(previous.attempt);
       const workspaceId = `${event.instanceId}:${label}`, used = new Set<string>();
-      const scoped = { do: (name: string, ...args: unknown[]) => (step.do as Function).call(step, `${label}:${name}`, once, args.at(-1)) } as WorkflowStep;
+      const scoped = scopedSteps(step, label) as WorkflowStep;
       const runner = makeRunner({
         binding: { getByName(name: string) { used.add(name); return namespace.getByName(name); } } as unknown as DurableObjectNamespace,
         repository, revision, root, workspaceId, step: scoped, reuseWorkspace: false,

@@ -8,3 +8,9 @@ export function emptyParameters(value: unknown) {
 
 export const once = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const;
 export const cleanupOnce = { ...once, timeout: "30 seconds" } as const;
+import type { WorkflowStep } from "cloudflare:workers";
+
+
+export function scopedSteps(step: Pick<WorkflowStep, "do">, label: string): Pick<WorkflowStep, "do"> {
+  return { do: ((name: string, ...args: unknown[]) => step.do(`${label}:${name}`, once, args.at(-1) as () => Promise<any>)) as WorkflowStep["do"] };
+}
