@@ -34,6 +34,7 @@ previews, test attestation and the real error-to-unmerged-PR proof.
 - Run the same actions locally, on GitHub Actions or on the hosted Cloudflare runner.
 - Verify remote tests and restore signed build snapshots in later SCM runs.
 - Approve eligible README-only PRs without a model; leave code changes for review.
+- Encode that approval policy in ordinary CI actions, alongside tests and builds.
 - Push a branch for a preview. Release main through Slack's Progress/Reject gates.
 
 The [live demo proof](./apps/effect-ci/TRUSTED-REMOTE.md) records exact runs and
