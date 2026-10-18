@@ -64,6 +64,12 @@ export default CI.workflow("project", function* () {
   including when a custom executor returns it instead of throwing.
 - Remote runs select an enrolled hosted program; they do not upload local code.
 
+Host SDK: [record actual attempts](./packages/cloudflare/src/host-attempt.md),
+[sign check/action results](./packages/cloudflare/src/execution-receipt.md), and
+[keep private commit history](./packages/cloudflare/src/execution-journal.md).
+These hooks do not automatically enroll a signer or prove that outputs remain
+available. Reuse and PR approval stay in host/workflow policy.
+
 [SDK and adapter contracts](./packages/ci/README.md) ·
 [Hosted setup](./apps/effect-ci/README.md) ·
 [Proof requirements](./examples/PROOF-PAGES.md)

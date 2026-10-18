@@ -24,6 +24,18 @@ test("the root guide has one quick start and separates hosted proof from roadmap
   assert.doesNotMatch(root, /The next containerless recipes should build on each other/);
 });
 
+test("trusted-result SDK entrypoints are discoverable without implying standalone enrollment", () => {
+  const selfHost = readFileSync("apps/effect-ci/SELF-HOST.md", "utf8");
+  for (const contract of ["host-attempt", "execution-receipt", "execution-journal"]) {
+    const path = `packages/cloudflare/src/${contract}.md`;
+    assert.ok(existsSync(path));
+    assert.ok(root.includes(path));
+    if (contract !== "host-attempt") assert.ok(selfHost.includes(path));
+  }
+  assert.match(root, /do not automatically enroll a signer/);
+  assert.match(selfHost, /does not automatically enroll signing keys/);
+});
+
 test("every runnable recipe is discoverable in the matrix and reading guide", () => {
   const matrixRecipes = [...root.matchAll(/\]\(\.\/examples\/([^/#)]+)/g)]
     .map((match) => match[1])
