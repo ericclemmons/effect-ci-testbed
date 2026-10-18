@@ -28,7 +28,9 @@ rollback once after terminal failure; rollback is not another retry and does not
 pretend external state can be rewound by restoring a filesystem snapshot.
 
 If recovery succeeds, the original failure remains the workflow failure. If recovery
-also fails, `CI.RollbackError` preserves both errors.
+also fails, `CI.RollbackError` preserves both errors and older compensations still
+run. This includes thrown JavaScript errors, not just `Effect.fail`. Success and
+interruption-only exits do not initiate failure compensation.
 
 The [hosted runner](../../apps/example-runner/README.md#native-rollback-policy)
 verifies three paths in real Cloudflare Workflows: success leaves rollback skipped;
