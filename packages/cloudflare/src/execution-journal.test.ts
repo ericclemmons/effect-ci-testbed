@@ -21,28 +21,14 @@ test("private commit journal records a native run once and retains verified SQLi
   const publicKeys = { acme: { ...await crypto.subtle.exportKey("jwk", keys.publicKey), alg: "EdDSA" } };
   const privateKey = { ...await crypto.subtle.exportKey("jwk", keys.privateKey), alg: "EdDSA" };
   const code = (await build({ stdin: { resolveDir: new URL(".", import.meta.url).pathname, loader: "ts", contents: `
-    import{DurableObject}from'cloudflare:workers';
-    import{executionJournal,executionCommitName}from'./execution-journal.ts';
-    import{signExecutionReceipt}from'./execution-receipt.ts';
-    import{workflowEntrypoint}from'./index.ts';
-    import{hostAttemptProgram}from'../../github-cloudflare/src/host-attempt.fixture.ts';
-    const identity=${JSON.stringify(identity)};
-    let bodies=0;
-    export class Journal extends executionJournal({keys:async env=>new Map(await Promise.all(Object.entries(JSON.parse(env.PUBLIC_KEYS)).map(async([id,key])=>[
-      id,await crypto.subtle.importKey('jwk',key,'Ed25519',false,['verify'])])))}){}
-    export class WorkspaceContainer extends DurableObject{}
-    const owner=async exports=>exports.Journal.getByName(await executionCommitName(identity));
-    export const Native=workflowEntrypoint(hostAttemptProgram(false,false,()=>bodies++),{cache:false,onAttempt:async(attempt,context)=>{
-      if(context.parameters.repository!==identity.repository||context.parameters.revision!==identity.revision)throw Error('Unenrolled fixture source');
-      const key=await crypto.subtle.importKey('jwk',JSON.parse(context.environment.PRIVATE_KEY),'Ed25519',false,['sign']);
-      const receipt=await signExecutionReceipt({keyId:'acme',key,identity,instanceId:context.instanceId,attempt});
-      await(await owner(context.exports)).record(identity,JSON.stringify(receipt));
-    }});
+    import{executionCommitName}from'./execution-journal.ts';
+    import{fixtureIdentity as identity,fixtureBodies,getFixtureJournal}from'./execution-journal.fixture.ts';
+    export{Journal,WorkspaceContainer,Native}from'./execution-journal.fixture.ts';
     // Test-only HTTP proxy. The exported library DO itself has no HTTP writer.
-    export default{async fetch(request,env,ctx){const p=await request.json(),j=await owner(ctx.exports);
+    export default{async fetch(request,env,ctx){const p=await request.json(),j=await getFixtureJournal(ctx.exports);
       try{let result;switch(p.op){
         case'name':result=await executionCommitName(p.subject??identity);break;
-        case'stats':result={bodies};break;
+        case'stats':result={bodies:fixtureBodies()};break;
         case'start':await ctx.exports.Native.create({id:p.id,params:{repository:identity.repository,revision:identity.revision,claimedConclusion:'success'}});result=true;break;
         case'status':result=await(await ctx.exports.Native.get(p.id)).status();break;
         case'record':result=await j.record(p.identity??identity,p.receipt);break;
