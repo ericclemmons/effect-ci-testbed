@@ -75,8 +75,9 @@ test("real source changes select only affected work and restore owned filesystem
     const currentIdentity = identity(revision, flags), currentInputs = inputs(revision);
     const reasons: Record<string, string> = {};
     let selected: string[] = [];
+    const unverified = previous && !await verifyExecutionReceipt(previous.receipt, identity(previous.identity.revision, previous.flags), trust);
+    if (unverified) previous = undefined;
     if (previous) {
-      assert.ok(await verifyExecutionReceipt(previous.receipt, identity(previous.identity.revision, previous.flags), trust));
       for (const name of ["left", "right"] as const) {
         const reason = previous.identity.policyDigest !== currentIdentity.policyDigest ? "policy changed"
           : previous.identity.runtimeDigest !== currentIdentity.runtimeDigest ? "runtime changed"
@@ -88,7 +89,7 @@ test("real source changes select only affected work and restore owned filesystem
       reasons.bundle = selected.length ? "dependency affected"
         : !available(previous.attempt.outputs.bundle) ? "checkpoint unavailable or changed" : "same inputs and available checkpoint";
       if (!selected.length && reasons.bundle === "checkpoint unavailable or changed") selected.push("bundle");
-    } else reasons.left = reasons.right = reasons.bundle = "first execution";
+    } else reasons.left = reasons.right = reasons.bundle = unverified ? "unverified previous evidence" : "first execution";
     const executed: string[] = [], runRoot = join(root, run);
     const stages = new Map<string, string>();
     const stage = (step: string, files: Record<string, string>) => {
@@ -206,6 +207,11 @@ test("real source changes select only affected work and restore owned filesystem
     assert.deepEqual(traces[7]!.reused, []);
     assert.equal(traces[7]!.reasons.left, "runtime changed");
     assert.equal(traces[7]!.output, traces[6]!.output);
+    await execute("unrelated-evidence", changedRevision, { ...second, receipt: first.receipt });
+    assert.deepEqual(traces[8]!.executed, ["left", "right", "bundle"]);
+    assert.deepEqual(traces[8]!.reused, []);
+    assert.equal(traces[8]!.reasons.left, "unverified previous evidence");
+    assert.equal(traces[8]!.output, traces[1]!.output);
     assert.equal(await verifyExecutionReceipt(first.receipt, identity(changedRevision), trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, policyDigest: "0".repeat(64) }, trust), undefined);
     assert.equal(await verifyExecutionReceipt(third.receipt, { ...third.identity, runtimeDigest: "0".repeat(64) }, trust), undefined);

@@ -62,6 +62,7 @@ commits and executes real Node commands. Missing commits are fetched read-only.
 | Nothing | — | all |
 | Tampered bundle checkpoint | bundle | left, right |
 | Program or runtime flags | all | — |
+| Unrelated signed evidence | all | — |
 
 A full rerun checks the same output. Logs retain reasons, source revisions,
 checkpoint lineage and signed observations. Inputs are explicit for this small
