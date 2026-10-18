@@ -52,7 +52,9 @@ test("snapshot/artifact outputs are commitments, unavailable values never invent
   const accessor = Object.defineProperty({}, "secret", { enumerable: true, get() { getters++; return "PRIVATE"; } });
   const cyclic: any = {}; cyclic.self = cyclic;
   for (const [value, kind] of [[workspace, "workspace"], [checkpoint, "checkpoint"], [artifact, "artifact"],
-    [accessor, "uncommitted"], [cyclic, "uncommitted"], [new Date(), "uncommitted"], [() => {}, "uncommitted"]] as const) {
+    [accessor, "uncommitted"], [cyclic, "uncommitted"], [new Date(), "uncommitted"], [() => {}, "uncommitted"],
+    [Array(200).fill("😀".repeat(1000)), "uncommitted"], [{ ["x".repeat(65_537)]: 1 }, "uncommitted"],
+    [{ nested: undefined }, "uncommitted"], [NaN, "uncommitted"], [-0, "uncommitted"]] as const) {
     const base = await execute();
     // Host test supplies a retained provider output, not a public caller claim.
     const attempt = { ...base, outputs: { ...base.outputs, "arbitrary-action": value } };

@@ -53,33 +53,43 @@ const base64url = (value: Uint8Array) => btoa(String.fromCharCode(...value)).rep
 
 /** Own data only. Never invoke a project's getters/toJSON or hash a lossy value. */
 const canonical = (value: unknown): string => {
-  let count = 0;
+  let count = 0, bytes = 0;
+  const emit = (text: string) => {
+    bytes += encoder.encode(text).length;
+    if (bytes > 65_536) throw Error("Execution value exceeds limits");
+    return text;
+  };
   const active = new Set<object>();
   const visit = (value: unknown, depth: number): string => {
     if (++count > 4096 || depth > 32) throw Error("Execution value exceeds limits");
-    if (value === null || typeof value === "boolean") return JSON.stringify(value);
-    if (typeof value === "string" && value.length <= 65_536) return JSON.stringify(value);
-    if (typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0)) return JSON.stringify(value);
+    if (value === null || typeof value === "boolean") return emit(JSON.stringify(value));
+    if (typeof value === "string" && value.length <= 65_536) return emit(JSON.stringify(value));
+    if (typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0)) return emit(JSON.stringify(value));
     if (typeof value !== "object" || !value || active.has(value) || Object.getOwnPropertySymbols(value).length) throw Error("Unsupported execution value");
     const array = Array.isArray(value);
     if (!array && ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw Error("Unsupported execution prototype");
     active.add(value);
     try {
       const descriptors = Object.getOwnPropertyDescriptors(value);
+      const keys = Object.keys(descriptors);
+      if (keys.length > 4097) throw Error("Execution value exceeds limits");
       if (Object.values(descriptors).some(d => !("value" in d))) throw Error("Execution accessors are not data");
       if (array) {
-        if (value.length > 4096 || Object.keys(descriptors).length !== value.length + 1) throw Error("Unsupported execution array");
+        if (value.length > 4096 || keys.length !== value.length + 1) throw Error("Unsupported execution array");
+        emit("[]" + ",".repeat(Math.max(0, value.length - 1)));
         return `[${Array.from({ length: value.length }, (_, i) => {
           if (!descriptors[i]) throw Error("Sparse execution array");
           return visit(descriptors[i].value, depth + 1);
         }).join(",")}]`;
       }
-      return `{${Object.keys(descriptors).sort().map(key => `${JSON.stringify(key)}:${visit(descriptors[key]!.value, depth + 1)}`).join(",")}}`;
+      emit("{}" + ",".repeat(Math.max(0, keys.length - 1)));
+      return `{${keys.sort().map(key => {
+        if (key.length > 65_536) throw Error("Execution key exceeds limits");
+        return `${emit(JSON.stringify(key) + ":")}${visit(descriptors[key]!.value, depth + 1)}`;
+      }).join(",")}}`;
     } finally { active.delete(value); }
   };
-  const text = visit(value, 0);
-  if (encoder.encode(text).length > 65_536) throw Error("Execution value exceeds limits");
-  return text;
+  return visit(value, 0);
 };
 
 const sourceUrl = (value: string, origin = false): boolean => {
