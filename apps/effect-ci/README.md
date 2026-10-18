@@ -1094,6 +1094,8 @@ JWTs remain in cloudflared's cache/process memory, never project env files.
 
 Other API clients retain their existing token boundary:
 
+#### Private CLI profile
+
 `cf-ci run --remote` can read a private user-owned
 `~/.config/effect-ci/remotes.json` profile instead of requiring shell exports:
 
@@ -1103,7 +1105,7 @@ Other API clients retain their existing token boundary:
   "remotes": [
     {
       "repository": "https://github.com/OWNER/REPOSITORY.git",
-      "url": "https://YOUR-HOST/demo",
+      "url": "https://ci.example.com",
       "token": "YOUR-EXISTING-WORKER-API-TOKEN"
     }
   ]
@@ -1114,6 +1116,8 @@ Create the file privately (mode `600`), outside repository checkouts. Only the
 matching repository uses it. An explicit remote URL override does not inherit a
 profile token for another endpoint. Existing environment overrides remain
 supported. Do not put App keys, Slack credentials or Access JWTs in the profile.
+Use your standalone host origin without a path. Append `/demo` only for the
+separately enrolled demo mount, not for a new self-hosted installation.
 
 Without explicit Access headers, the CLI reads the existing application-scoped
 session using `cloudflared access token --app <origin>` once per invocation. Its

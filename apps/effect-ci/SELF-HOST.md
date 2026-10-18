@@ -37,8 +37,9 @@ the owned demo's Access identity is not inherited.
 
 For the CLI, configure your host origin as `EFFECT_CI_REMOTE_URL` (no `/demo`
 suffix) and keep the API token in a private user-owned remote profile, not a
-project env file. [Authentication setup](./README.md#4-protect-operator-routes-with-access)
-explains Access and the separate API token. Run `cf-ci doctor --remote` before
+project env file. [Private CLI profile](./README.md#private-cli-profile) shows its
+format; [Access setup](./README.md#4-protect-operator-routes-with-access) explains
+the separate authentication boundary. Run `cf-ci doctor --remote` before
 dispatching work.
 
 The [standalone workflow](./src/standalone-program.ts) installs with the project's
