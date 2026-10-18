@@ -1,5 +1,12 @@
 import * as CI from "@effect-ci-testbed/ci";
 
+export const standaloneContainerOptions = {
+  image: "workspace",
+  instance: "standard-1",
+  loginShell: false,
+  readyCommand: "/usr/local/bin/node -e 'if(process.getuid()!==1000)process.exit(1)'",
+} as const;
+
 /** Host-authored example policy, not uploaded project code. Customize the
  * default goals here; package scripts still run inside the checked-out workspace. */
 export function standaloneProgram(root: string, goals: ReadonlyArray<string> = ["build"]) {

@@ -1,5 +1,5 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
-import { standaloneProgram } from "./standalone-program.ts";
+import { standaloneContainerOptions, standaloneProgram } from "./standalone-program.ts";
 
 export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 
@@ -26,6 +26,6 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
     remoteGitHubCheckout: true,
     slackLayout: "status-thread",
     slackCommandOutput: "failed",
-    container: { image: "workspace", instance: "standard-1" },
+    container: standaloneContainerOptions,
   },
 );

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +41,8 @@ test(
       const manifest = JSON.parse(readFileSync(join(fixture, "package.json"), "utf8"));
       assert.equal(manifest.packageManager, "pnpm@12.8.1");
       assert.equal(manifest.scripts.test, "node --test");
+      // Public tracked fixture only; the image's default uid reads it, never writes it.
+      chmodSync(fixture, 0o755);
       const result = spawnSync(
         "docker",
         [
@@ -52,20 +54,15 @@ test(
           "linux/amd64",
           "--network",
           "none",
-          // Bind-mounted outputs must remain owned by the invoking user on Linux.
-          "--user",
-          `${process.getuid!()}:${process.getgid!()}`,
-          "--env",
-          "HOME=/tmp",
           "--mount",
-          `type=bind,source=${fixture},target=/workspace/repository`,
+          `type=bind,source=${fixture},target=/fixture,readonly`,
           "--workdir",
-          "/workspace/repository",
+          "/workspace",
           "--entrypoint",
           "/bin/sh",
           container.images.workspace.localReference,
           "-c",
-          "node --version && pnpm --version && pnpm --ignore-workspace install --offline && pnpm --ignore-workspace run test && pnpm --ignore-workspace run build",
+          'test "$(id -u)" = 1000 && test ! -w /usr/local/bin/node && test ! -w /usr/local/bin/pnpm && node --version && pnpm --version && mkdir repository && cp -R /fixture/. repository/ && cd repository && pnpm --ignore-workspace install --offline && pnpm --ignore-workspace run test && pnpm --ignore-workspace run build && cmp src/index.js dist/index.js && echo UNPRIVILEGED_BUILD_VERIFIED',
         ],
         { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 },
       );
@@ -74,10 +71,7 @@ test(
       assert.match(result.stdout, /^v24\.22\.0$/m);
       assert.match(result.stdout, /^12\.8\.1$/m);
       assert.match(result.stdout, /tests 1/);
-      assert.equal(
-        readFileSync(join(fixture, "dist/index.js"), "utf8"),
-        readFileSync(join(fixture, "src/index.js"), "utf8"),
-      );
+      assert.match(result.stdout, /^UNPRIVILEGED_BUILD_VERIFIED$/m);
     } finally {
       // Only this test's uniquely named container and generated fixture.
       spawnSync("docker", ["rm", "--force", instance], { stdio: "ignore", timeout: 10_000 });

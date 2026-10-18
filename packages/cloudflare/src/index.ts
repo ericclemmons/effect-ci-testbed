@@ -8,6 +8,7 @@ import {
 } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
+import { containerShell } from "./container-shell.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
 import { commandFailure } from "./command-error.ts"
 import { cacheIdentity } from "./cache-identity.ts"
@@ -220,7 +221,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   private async waitUntilReady(options: WorkspaceContainerOptions): Promise<void> {
     if (!options.readyCommand) return
 
-    const ready = await this.run(["sh", "-lc", options.readyCommand])
+    const ready = await this.run(containerShell(options.readyCommand, options))
 
     if (ready.exitCode !== 0) {
       throw new Error(ready.stderr || ready.stdout || "Container readiness check failed")
@@ -349,14 +350,12 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     await this.ensureRunning(options)
     await this.markMutation()
 
-    const git = await this.run(["sh", "-lc", "command -v git"])
+    const git = await this.run(containerShell("command -v git", options))
 
     if (git.exitCode !== 0) {
-      const installGit = await this.run([
-        "sh",
-        "-lc",
-        "apt-get update && apt-get install --yes --no-install-recommends ca-certificates git",
-      ])
+      const installGit = await this.run(containerShell(
+        "apt-get update && apt-get install --yes --no-install-recommends ca-certificates git", options,
+      ))
 
       if (installGit.exitCode !== 0) {
         throw new Error(installGit.stderr || installGit.stdout || "git installation failed")
@@ -475,9 +474,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(options.loginShell === false
-      ? ["/bin/sh", "-c", command]
-      : ["sh", "-lc", command], cwd)
+    const result = await this.run(containerShell(command, options), cwd)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])
