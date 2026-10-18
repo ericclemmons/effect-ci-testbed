@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./command-diagnostics": "./src/command-diagnostics.ts"
+    "./command-diagnostics": "./src/command-diagnostics.ts",
+    "./directory-deployment": "./src/directory-deployment.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

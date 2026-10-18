@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 .wrangler/
 **/.effect-ci/cache/
+examples/conditional-deploy/.effect-ci/deployments/
 **/.cloudflare/types/
 **/.cloudflare/output/
 **/.cloudflare/state/

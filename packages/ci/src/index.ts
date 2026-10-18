@@ -12,6 +12,7 @@ import * as ServiceMap from "effect/ServiceMap"
 import type { RuntimeObservers } from "./observers.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
+import { pathPatterns } from "./path-glob.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -333,6 +334,7 @@ interface RuntimeShape {
     workspace: Workspace,
     path: string,
   ) => Effect.Effect<boolean, unknown>
+  readonly changed: (stepId: string, workspace: Workspace, patterns: string | ReadonlyArray<string>) => Effect.Effect<boolean, unknown>
   readonly checkpoint: (
     stepId: string,
     workspace: Workspace,
@@ -667,6 +669,16 @@ export class Workspace {
       const stepId = yield* CurrentStep
 
       return yield* runtime.checkpoint(stepId, workspace, name)
+    })
+  }
+
+  /** Compare deployable bytes against the host-selected successful baseline.
+   * Without a provider or complete knowledge, run work rather than skip it.
+   */
+  changed(patterns: string | ReadonlyArray<string>): Effect.Effect<boolean, unknown, Runtime | CurrentStep> {
+    const workspace = this
+    return Effect.gen(function* () {
+      return yield* (yield* Runtime).changed(yield* CurrentStep, workspace, patterns)
     })
   }
 
@@ -1123,6 +1135,16 @@ export interface SourceService {
   readonly reference?: SourceReference
   /** Optional provider diff (including non-Git sources). Missing knowledge runs work. */
   readonly changes?: (comparison?: SourceComparison) => Effect.Effect<SourceChanges, unknown>
+}
+
+/** A destination-scoped read capability, not a cache or permission to publish. */
+export interface WorkspaceChangeProvider {
+  readonly changed: (request: {
+    readonly workflowId: string
+    readonly stepId: string
+    readonly workspace: Workspace
+    readonly patterns: ReadonlyArray<string>
+  }) => Effect.Effect<boolean | undefined, unknown>
 }
 
 export class Source extends ServiceMap.Service<Source, SourceQueries>()(
@@ -1710,6 +1732,7 @@ const makeRuntime = (
   },
   actionExecutor?: ActionExecutor,
   stepResultCache?: StepResultCache,
+  workspaceChanges?: WorkspaceChangeProvider,
 ) =>
   Effect.gen(function* () {
     const definitions = new Map<string, StepDefinition>()
@@ -2250,6 +2273,12 @@ const makeRuntime = (
           }),
         )
       },
+      changed: (stepId, workspace, input) => Effect.suspend(() => {
+        const patterns = pathPatterns(input)
+        if (mode === "plan" || !workspaceChanges) return Effect.succeed(true)
+        return cacheOrElse(() => workspaceChanges.changed({ workflowId, stepId, workspace, patterns })
+          .pipe(Effect.timeout("30 seconds")), undefined).pipe(Effect.map(value => value !== false))
+      }),
       readFile: (stepId, workspace, path) => workspaceFileSystem.readFile(
         workspace,
         path,
@@ -2372,6 +2401,7 @@ export interface RunOptions {
   readonly workspaceFileSystem?: WorkspaceFileSystem
   readonly checkCache?: CheckCache
   readonly stepResultCache?: StepResultCache
+  readonly workspaceChanges?: WorkspaceChangeProvider
 }
 
 export interface RunConfiguration extends RunOptions {
@@ -2586,6 +2616,7 @@ const interpret = <A>(
       previous && selection ? { previous, selection } : undefined,
       options.actionExecutor,
       options.stepResultCache,
+      options.workspaceChanges,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {

@@ -93,6 +93,22 @@ for glob support, deployment baselines and the planning boundary. This does not
 infer dependencies or authorize attestation reuse. Action-owned rollback runs in
 reverse completion order after terminal failure.
 
+After building, compare the actual deployable with the destination's last
+successful deployment:
+
+```ts
+const workspace = yield* build()
+if (yield* workspace.changed("dist/**")) {
+  yield* deploy()
+}
+```
+
+Hosts supply `RunOptions.workspaceChanges`; absent or unavailable providers run
+the work. This is a deployment decision, not a reusable execution receipt. The
+[directory adapter](./src/directory-deployment.md) supplies a working local
+destination with persisted byte comparison and atomic publication. See the
+[executable example](../../examples/conditional-deploy#compare-built-output).
+
 Event adapters supply `CI.WorkflowEvent` and, when relevant, `CI.Source`. An error
 event need not pretend to be a Git push. Hosted execution still requires an enrolled
 program; the remote CLI does not upload arbitrary local TypeScript.
