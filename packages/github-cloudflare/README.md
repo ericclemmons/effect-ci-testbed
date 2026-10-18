@@ -15,6 +15,15 @@ signed GitHub-event checkout and existing hosts keep their current behavior.
 The standalone host opts in. Local native Workflow/RPC tests cover both checkout
 paths (including the cache's source inspection), not a live private deployment.
 
+## Record execution attempts
+
+`onAttempt(attempt, context)` journals the actual kernel result in a host-only
+native checkpoint, including passed outputs in a failed workflow. It runs before
+`finalize`; it does not treat a passed build as a released application. Both native
+adapters share the [recording contract](../cloudflare/src/host-attempt.md).
+The operator supplies storage/signing policy; no generic issuer or automatic
+result reuse is enabled by adding this callback.
+
 ## Continuation
 
 `workflowEntrypoint(definition, { finalize })` supports a trusted host continuation
