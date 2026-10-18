@@ -36,7 +36,7 @@ demo uses your existing Access login; no separate API profile is needed for your
 approved identity. Other API-token clients are unchanged. Keep credentials out of
 project env files; never use a deployment token.
 
-Run `pnpm dev` to edit.
+Run `pnpm dev` to iterate.
 
 ## 1. Discover the project
 
