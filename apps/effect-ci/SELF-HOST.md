@@ -65,7 +65,10 @@ should keep the template's explicit `standalone` choice.
 
 The standalone profile is built with a different Worker name and project root.
 Local workerd tests check its real entrypoint, API authentication and capabilities;
-graph tests use another project's pnpm files. These are not a fresh-account live
+graph tests use another project's pnpm files. The actual image also runs a clean
+tracked pnpm fixture's install/test/build with networking disabled and no host
+secrets. A separate CI job builds this profile without Cloudflare credentials or
+owned demo services. These are not a fresh-account live
 deployment. The existing live demo is a separate regression fixture.
 
 General trusted-result issuance/reuse and PR policy enrollment are still being
