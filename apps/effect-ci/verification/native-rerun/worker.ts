@@ -30,7 +30,8 @@ export class RerunProof extends WorkflowEntrypoint {
     const namespace = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace<WorkspaceContainer> }).WorkspaceContainer;
     const traces: unknown[] = [];
 
-    const run = async (label: string, revision: string, previous?: Previous): Promise<Previous> => {
+    const run = async (label: string, revision: string, previous?: Previous, withoutRightOutput = false): Promise<Previous> => {
+      const originalPrevious = previous, retained = previous && JSON.stringify(previous.attempt);
       const workspaceId = `${event.instanceId}:${label}`, used = new Set<string>();
       const scoped = { do: (name: string, ...args: unknown[]) => (step.do as Function).call(step, `${label}:${name}`, once, args.at(-1)) } as WorkflowStep;
       const runner = makeRunner({
@@ -65,6 +66,23 @@ export class RerunProof extends WorkflowEntrypoint {
         }));
         if (!/^[a-f0-9]{64}\s/.test(binary.stdout)) throw Error("Missing independently inspected Node binary digest");
         const runtime = await hash(JSON.stringify([image, binary.stdout.trim()]));
+        if (withoutRightOutput) {
+          if (!previous) throw Error("Missing-output scenario needs a private predecessor");
+          // Fork the previous output; never delete or mutate its published snapshot.
+          const rightOutput = rebind(previous.attempt.outputs.right);
+          const removed = await Effect.runPromise(runner.executor.execute({
+            workflowId: "native-source-reruns", stepId: "remove-right-output", commandIndex: 1,
+            workspace: rightOutput, command: "rm -f output.txt", options: {}, onOutput() {},
+          }));
+          if (removed.exitCode !== 0) throw Error("Could not prepare missing-output fork");
+          const missing = await Effect.runPromise(runner.persistence.commit({
+            workflowId: "native-source-reruns", stepId: "remove-right-output", workspace: rightOutput,
+          }));
+          if (await Effect.runPromise(runner.fileSystem.exists(missing, "output.txt", "verify-missing-output"))) throw Error("Missing-output fork still has its output");
+          if (await hash(await read(rightOutput, "output.txt", "verify-original-right")) !== previous.lineage.right.outputDigest) throw Error("Missing-output fork changed its original publication");
+          previous = { ...previous, attempt: { ...previous.attempt,
+            outputs: { ...previous.attempt.outputs, right: missing } } };
+        }
         const reasons: Record<string, string> = {}, selected: string[] = [];
         const available = async (name: Name) => {
           try { return await hash(await read(rebind(previous!.attempt.outputs[name]), "output.txt", `validate-${name}`)) === previous!.lineage[name].outputDigest; }
@@ -90,7 +108,6 @@ export class RerunProof extends WorkflowEntrypoint {
             return yield* base.exec(`node -e 'const f=require("node:fs");f.writeFileSync("left.txt",Buffer.from("${btoa(x)}","base64"));f.writeFileSync("right.txt",Buffer.from("${btoa(y)}","base64"))' && node task.mjs bundle`);
           };
         });
-        const retained = previous && JSON.stringify(previous.attempt);
         const result = await CI.runPromise(CI.workflow("native-source-reruns", () => bundle()), {
           output: "silent", ci: true, executor: runner.executor, actionExecutor: runner.actionExecutor,
           workspacePersistence: runner.persistence, workspaceFileSystem: runner.fileSystem,
@@ -98,7 +115,7 @@ export class RerunProof extends WorkflowEntrypoint {
           ...(previous ? { rerun: { steps: selected, previous: { ...previous.attempt,
             outputs: Object.fromEntries(Object.entries(previous.attempt.outputs).map(([name, value]) => [name, rebind(value)])) } } } : {}),
         });
-        if (previous && JSON.stringify(previous.attempt) !== retained) throw Error("Prior attempt changed");
+        if (originalPrevious && JSON.stringify(originalPrevious.attempt) !== retained) throw Error("Prior attempt changed");
         const lineage = {} as Record<Name, Lineage>;
         for (const name of names) {
           const workspace = result.attempt.outputs[name] as CI.Workspace;
@@ -125,7 +142,11 @@ export class RerunProof extends WorkflowEntrypoint {
     const third = await run("unchanged-inputs", changed, second);
     if (JSON.stringify(third.lineage) !== JSON.stringify(second.lineage)) throw Error("Unchanged inputs did not preserve all checkpoints");
     const fresh = await run("fresh-comparison", changed);
-    if (fresh.output !== second.output) throw Error("Selective/fresh outputs differ");
+    if (fresh.output !== second.output || names.some(name => fresh.lineage[name].outputDigest !== second.lineage[name].outputDigest)) throw Error("Selective/fresh outputs differ");
+    const missing = await run("missing-right-output", changed, third, true);
+    if (missing.output !== fresh.output || missing.lineage.left.producer !== third.lineage.left.producer
+      || missing.lineage.right.producer !== "missing-right-output" || missing.lineage.bundle.producer !== "missing-right-output"
+      || names.some(name => missing.lineage[name].outputDigest !== fresh.lineage[name].outputDigest)) throw Error("Missing output did not rebuild only its affected subgraph");
     const program = await run("changed-program", programChanged, third);
     if (program.output !== "CHARLIE! / BRAVO!\n" || names.some(name => program.lineage[name].producer !== "changed-program")) throw Error("Changed program reused stale output");
     return { proof: "native-source-reruns", traces,

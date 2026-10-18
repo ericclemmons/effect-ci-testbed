@@ -2,7 +2,7 @@
 
 Local preparation for #145. **Not deployed or native-verified.**
 
-The controller compares original, changed-input, unchanged, fresh and changed-program
+The controller compares original, changed-input, unchanged, fresh, missing-output and changed-program
 runs using the real native adapter and workspace snapshots. Inputs are three fixed
 public Git commits. Only three bounded, Git-blob-verified files enter each VM; no
 App credentials, production services, signer enrollment or HTTP dispatch exist.
@@ -32,5 +32,9 @@ requires inspection before another run.
 
 Live testing requires the separately requested isolated-target approval. Preserve
 run history, stop fixture VMs afterward, and never touch the production host.
-Missing-output and deliberate filesystem-loss scenarios remain to be implemented;
-this is not generic dependency discovery, attestation, or completed #146 evidence.
+The missing-output case forks the right snapshot and removes only its copy's
+`output.txt`; it does not delete the original publication or simulate a provider
+outage. Every recovered output digest must match the fresh comparison. All native
+scenarios remain unexecuted. Deliberate pre-publication filesystem loss remains
+to be implemented; this is not generic dependency discovery, attestation, or
+completed #146 evidence.
