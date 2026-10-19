@@ -28,7 +28,12 @@ export class WorkspaceContainer extends Base {
 
   protected override async processEnvironment(command: ReadonlyArray<string>, cwd?: string) {
     const active = this.deployment;
-    return active && command.at(-1) === active.command && cwd === active.cwd ? active.env : undefined;
+    if (active && command.at(-1) === active.command && cwd === active.cwd) return active.env;
+    // Container exec does not inherit Dockerfile ENV. cf's image builder needs
+    // this non-secret setting explicitly to avoid nested bridge/IPv6 setup.
+    if (command.at(-1) === "pnpm build" && platformApps.some(app => cwd === `/workspace/repository/apps/${app}`))
+      return { WRANGLER_CI_OVERRIDE_NETWORK_MODE_HOST: "1" };
+    return undefined;
   }
 
   protected override async configureOutbound() {
@@ -61,6 +66,7 @@ export class WorkspaceContainer extends Base {
       this.deployment = { command, cwd, capability: crypto.randomUUID(),
         proxy: new DeploymentProxy(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN), env: {
         CLOUDFLARE_API_TOKEN: deploymentToken, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+        WRANGLER_CI_OVERRIDE_NETWORK_MODE_HOST: "1",
         DOCKER_CONFIG: dockerConfig,
       } };
       try {
