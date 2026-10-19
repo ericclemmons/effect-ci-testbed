@@ -6,7 +6,7 @@ paths, release tags and digests after the rename to `test/fixtures/demo`.
 Maintainer-only documentation, recording, relay and artifact tests run separately:
 
 ```sh
-pnpm test:verification
+pnpm test:integration
 ```
 
 The app's `pnpm test` / `cf-ci run test` runs its Vitest suite, not these maintainer

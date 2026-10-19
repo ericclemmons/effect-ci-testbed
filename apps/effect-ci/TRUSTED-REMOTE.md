@@ -57,7 +57,7 @@ fetching the published HTML/JS reproduced the publication digest.
 Read-only retained-proof check, using existing Cloudflare/GitHub sessions:
 
 ```sh
-VERIFY_TRUSTED_REMOTE=1 node --test test/fixtures/demo/verification/trusted-runner-proof.test.ts
+VERIFY_TRUSTED_REMOTE=1 node --test test/fixtures/demo/test/trusted-runner-proof.test.ts
 ```
 
 This creates nothing and invokes no model. It is a maintainer check, not demo setup.

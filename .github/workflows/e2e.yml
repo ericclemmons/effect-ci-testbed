@@ -130,7 +130,7 @@ jobs:
           # Compare conventional Actions, not the demo's adopted monorepo caller.
           # The effect-on-github matrix verifies that caller in its real checkout.
           if [ "$EXAMPLE" = "demo" ]; then
-            cp "$example_root/verification/github-baseline.example.yml" "$example_root/.github/workflows/github.yml"
+            cp "$example_root/test/github-baseline.example.yml" "$example_root/.github/workflows/github.yml"
           fi
 
           git -C "$example_root" init --initial-branch=main
@@ -716,7 +716,7 @@ jobs:
         run: node --test packages/cli/src/*test.ts test/apps/example-runner/src/*test.ts
       - name: Verify demo maintainer tools and actual workflow adoption separately from app tests
         run: |
-          node --test test/fixtures/demo/verification/*.test.mjs test/fixtures/demo/verification/*.test.ts
+          node --test test/fixtures/demo/test/*.test.mjs test/fixtures/demo/test/*.test.ts
           node --test scripts/demo-adoption.test.ts
       - name: Verify source exports and HMD health foundations
         run: node --test packages/cloudflare/src/*.test.ts test/apps/demo-site/src/*.test.ts test/apps/hmd-demo/src/*.test.ts test/apps/release-manager/src/*.test.ts test/apps/repair-ai/src/*.test.ts

@@ -11,12 +11,12 @@
     "typecheck": "vpr typecheck:source",
     "pretest": "vpr typecheck",
     "test": "vpr test:source",
-    "test:verification": "node --test verification/*.test.mjs verification/*.test.ts",
+    "test:integration": "node --test test/*.test.mjs test/*.test.ts",
     "prebuild": "vpr typecheck && vpr lint",
     "build": "vpr build:source",
-    "verify:browser": "node verification/run.mjs",
-    "proof:preview": "node verification/preview-proof.mjs",
-    "proof:verify-published": "node verification/verify-published.mjs"
+    "verify:browser": "node test/run.mjs",
+    "proof:preview": "node test/preview-proof.mjs",
+    "proof:verify-published": "node test/verify-published.mjs"
   },
   "dependencies": {
     "@cloudflare/kumo": "2.14.0",

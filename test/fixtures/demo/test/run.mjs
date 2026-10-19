@@ -64,7 +64,7 @@ mkdirSync(resolve(root, output));
 const browserStartedAt = new Date().toISOString();
 const browser = spawnSync(
   "e2e",
-  ["run", `verification/${negative ? "negative" : "flow"}.e2e.ts`, "--output", output],
+  ["run", `test/${negative ? "negative" : "flow"}.e2e.ts`, "--output", output],
   {
     cwd: root,
     encoding: "utf8",

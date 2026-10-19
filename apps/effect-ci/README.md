@@ -1352,7 +1352,7 @@ native container transport. No website or GitHub Artifacts upload is implied.
 ```sh
 node --test apps/effect-ci/src/artifact-revision-runtime.test.ts \
   apps/effect-ci/src/demo-filesystem-runtime.test.ts \
-  test/fixtures/demo/verification/artifact.test.ts
+  test/fixtures/demo/test/artifact.test.ts
 ```
 
 After deploying this exact merged host through the documented preflight, a clean

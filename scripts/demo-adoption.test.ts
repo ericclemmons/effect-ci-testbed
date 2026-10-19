@@ -34,9 +34,9 @@ test("the conventional comparison stages the baseline without undoing demo adopt
       );
       writeFileSync(join(source, ".github/workflows/github.yml"), original);
       if (example === "demo") {
-        mkdirSync(join(source, "verification"));
-        cpSync(join(demo, "verification/github-baseline.example.yml"),
-          join(source, "verification/github-baseline.example.yml"));
+        mkdirSync(join(source, "test"));
+        cpSync(join(demo, "test/github-baseline.example.yml"),
+          join(source, "test/github-baseline.example.yml"));
       }
       const result = spawnSync("bash", ["-euc", staging], {
         cwd: directory,
@@ -47,7 +47,7 @@ test("the conventional comparison stages the baseline without undoing demo adopt
       const staged = readFileSync(join(directory, "runner/examples", example,
         ".github/workflows/github.yml"), "utf8");
       assert.equal(staged, example === "demo"
-        ? readFileSync(join(demo, "verification/github-baseline.example.yml"), "utf8")
+        ? readFileSync(join(demo, "test/github-baseline.example.yml"), "utf8")
         : original);
       assert.equal(readFileSync(join(source, ".github/workflows/github.yml"), "utf8"), original);
     }
@@ -69,18 +69,9 @@ test(
         "vite.config.ts",
         "tsconfig.json",
         "src",
-        "README.md",
         ".env",
       ])
         cpSync(join(demo, path), join(directory, path), { recursive: true });
-      mkdirSync(join(directory, "verification"));
-      // Include the exact maintainer test which rejected the user's adopted job.
-      for (const path of [
-        "demo-guide.test.mjs",
-        "effect-on-github.example.yml",
-        "github-baseline.example.yml",
-      ])
-        cpSync(join(demo, "verification", path), join(directory, "verification", path));
       symlinkSync(join(demo, "node_modules"), join(directory, "node_modules"), "dir");
       mkdirSync(join(directory, ".github/workflows"), { recursive: true });
       writeFileSync(
@@ -106,16 +97,6 @@ test(
       assert.equal(result.status, 0, result.stdout + result.stderr + String(result.error ?? ""));
       assert.match(result.stdout + result.stderr, /message\.test\.ts/);
       assert.doesNotMatch(result.stdout + result.stderr, /deleted job steps must match/);
-      const maintainer = spawnSync(
-        process.execPath,
-        ["--test", "verification/demo-guide.test.mjs"],
-        {
-          cwd: directory,
-          encoding: "utf8",
-          timeout: 10000,
-        },
-      );
-      assert.equal(maintainer.status, 0, maintainer.stdout + maintainer.stderr);
       assert.equal(
         JSON.parse(readFileSync(join(directory, "package.json"), "utf8")).scripts.test,
         "vpr test:source",

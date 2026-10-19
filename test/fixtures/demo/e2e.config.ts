@@ -3,7 +3,7 @@ import type { E2EConfig } from "e2e";
 
 export default {
   projectId: "effect-ci-developer-loop",
-  tests: "verification/*.e2e.ts",
+  tests: "test/*.e2e.ts",
   timeout: 30_000,
   launchTimeout: 30_000,
   actionTimeout: 5_000,
@@ -17,7 +17,7 @@ export default {
       engine: web({ viewport: { width: 960, height: 540 } }),
       app: {
         url: "http://127.0.0.1:18764",
-        command: { executable: "node", args: ["verification/preview.mjs"], reuseExisting: false },
+        command: { executable: "node", args: ["test/preview.mjs"], reuseExisting: false },
       },
     },
   ],

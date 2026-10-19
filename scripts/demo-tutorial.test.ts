@@ -24,6 +24,8 @@ test("the tutorial is a standalone app with explicit setup and teardown, no impl
   assert.match(readme, /gh repo delete "\$DEMO_REPO"/);
   assert.doesNotMatch(readme, /pnpm demo:setup|git worktree|rm -rf|--yes/);
   assert.ok(!existsSync(join(template, ".env")));
+  for (const path of ["package-lock.json", "degit.json", "verification", "TALKING-SCRIPT.md", "AGENTS.md"])
+    assert.ok(!existsSync(join(template, path)), `keep maintainer scaffolding out of the tutorial: ${path}`);
   assert.doesNotMatch(pkg.scripts.build + pkg.scripts.prebuild, /lint/,
     "an unconditional lint prerequisite must not defeat source-based lint selection");
   const workflow = readFileSync(join(template, ".github/workflows/ci.yml"), "utf8");
