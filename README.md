@@ -68,6 +68,12 @@ Docker daemon for app image builds; an App installation is not a Cloudflare
 deployment credential. Supporting GitHub validation jobs do not receive those
 credentials. Nothing here arms an AI flow or uploads a new secret.
 
+The native host's CI image includes Node, pnpm and Docker. Its configured
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are supplied to the main
+deployment commands as per-process environment values, not command arguments or
+workspace files. Check/build/fixture commands do not receive them. The local
+workflow uses your existing CLI login.
+
 `examples/demo` is a human tutorial/template, not a monorepo deployment target.
 Its copied repository owns its own `main` and eventual release policy. The
 monorepo's App webhook no longer starts the legacy demo preview or human release

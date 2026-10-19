@@ -44,6 +44,10 @@ jobs:
         env:
           VERIFY_STANDALONE_IMAGE: '1'
         run: node --test apps/effect-ci/src/standalone-image.test.ts
+      - name: Verify the native CI image includes its normal build tools
+        run: |
+          docker build --file apps/effect-ci/Dockerfile.ci --tag effect-ci-native-ci-image apps/effect-ci
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --entrypoint sh effect-ci-native-ci-image -c 'node --version && pnpm --version && docker --version && docker buildx version && dockerd --version'
       - name: Build the isolated rerun fixture without deploying it
         working-directory: apps/effect-ci/verification/native-rerun
         run: ../../node_modules/.bin/cf build
