@@ -1,6 +1,48 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createRequire } from "node:module";
+import { realpath } from "node:fs/promises";
 import { DeploymentProxy, deploymentToken } from "./deployment-proxy.ts";
+
+test("default upstream fetch works in actual Workerd, with host authentication and streamed request body", async () => {
+  const require = createRequire(import.meta.url);
+  const plugin = await realpath(new URL("../node_modules/@cloudflare/vite-plugin", import.meta.url));
+  const { Miniflare } = require(require.resolve("miniflare", { paths: [plugin] }));
+  const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
+  const output = await build({ stdin: {
+    resolveDir: new URL(".", import.meta.url).pathname, loader: "ts", contents: `
+      import {DeploymentProxy} from './deployment-proxy.ts';
+      export default {async fetch(request){
+        const proxy=new DeploymentProxy('account','host-fixture-token');
+        return proxy.fetch(new Request('https://api.cloudflare.com/client/v4/accounts/account/workers/workers/fixture',{
+          method:request.method,headers:{authorization:'Bearer effect-ci-outbound-proxy'},
+          ...(request.method==='POST'?{body:request.body}:{}),
+        }));
+      }};
+    ` }, bundle: true, format: "esm", platform: "neutral", target: "esnext", write: false });
+  const runtime = new Miniflare({ workers: [
+    { config: { name: "deployment-proxy-test", compatibilityDate: "2026-10-07",
+      manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: output.outputFiles[0].text } } }, exports: {} },
+      dev: { outboundService: { type: "worker", worker: "cloudflare-api-fixture" } } },
+    { config: { name: "cloudflare-api-fixture", compatibilityDate: "2026-10-07", exports: {},
+      manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: `
+        export default {async fetch(request){
+          if(request.headers.get('authorization')!=='Bearer host-fixture-token')return new Response('unauthorized',{status:401});
+          if(request.redirect!=='manual')throw Error('Redirect policy changed');
+          return Response.json({method:request.method,body:await request.text()});
+        }};
+      ` } } } } },
+  ] });
+  try {
+    for (const method of ["GET", "POST"]) {
+      const response = await runtime.dispatchFetch("https://proxy.invalid/", { method,
+        ...(method === "POST" ? { body: "fixture upload" } : {}) });
+      const body = await response.text();
+      assert.equal(response.status, 200, body);
+      assert.deepEqual(JSON.parse(body), { method, body: method === "POST" ? "fixture upload" : "" });
+    }
+  } finally { await runtime.dispose(); }
+});
 
 test("outbound proxy adds host-only account and registry authentication, never returning registry secrets", async () => {
   const calls: Request[] = [];

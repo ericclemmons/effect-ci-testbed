@@ -10,7 +10,10 @@ export class DeploymentProxy {
   private readonly token: string;
   private readonly upstream: (request: Request) => Promise<Response>;
   constructor(account: string, token: string,
-    upstream: (request: Request) => Promise<Response> = fetch) {
+    // Workers' global fetch requires its global receiver. Storing fetch itself
+    // and invoking this.upstream(request) binds it to this proxy (Node permits
+    // that, Workerd throws). Keep the default call in the global scope.
+    upstream: (request: Request) => Promise<Response> = request => fetch(request)) {
     this.account = account; this.token = token; this.upstream = upstream;
   }
 
