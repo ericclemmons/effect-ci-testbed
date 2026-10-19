@@ -10,6 +10,27 @@ const recipes = readdirSync("examples", { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+test("host entrypoint and setup links resolve, including existing recipe anchors", () => {
+  const host = "apps/effect-ci/README.md";
+  const setup = "apps/effect-ci/SELF-HOST.md";
+  const sources = [host, setup, ...recipes.map(recipe => join("examples", recipe, "README.md"))];
+  const slug = (heading: string) => heading.toLowerCase().replace(/[^\p{L}\p{N}_ -]/gu, "").replace(/ /g, "-");
+  for (const source of sources) {
+    for (const [, link] of readFileSync(source, "utf8").matchAll(/\]\(([^)]+)\)/g)) {
+      if (/^[a-z]+:/i.test(link)) continue;
+      const [file, anchor] = link.split("#");
+      const target = file ? resolve(dirname(source), file) : resolve(source);
+      // Check the two maintained host guides, not unrelated recipe prose.
+      if (target !== resolve(host) && target !== resolve(setup)) continue;
+      assert.ok(existsSync(target), `${source}: missing ${link}`);
+      if (anchor) {
+        const headings = [...readFileSync(target, "utf8").matchAll(/^#{1,6} (.+)$/gm)].map(match => slug(match[1]));
+        assert.ok(headings.includes(anchor), `${source}: missing anchor ${link}`);
+      }
+    }
+  }
+});
+
 test("remote goal documentation describes host negotiation, not blanket rejection", () => {
   assert.doesNotMatch(root, /built-in remote runner still rejects target selection/);
   assert.match(root, /cf-ci doctor --remote/);

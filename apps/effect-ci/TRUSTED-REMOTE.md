@@ -2,9 +2,9 @@
 
 Local runs are feedback. The host signs verification. PR policy decides approval.
 
-## Current host acceptance
+## Retained host acceptance
 
-The merged SDK fixes through `c08d06b` are deployed as Worker
+The merged SDK fixes through `c08d06b` were deployed as Worker
 `4448c514-fe56-4790-8111-159a8a89a17d`. Remote `doctor` passed without dispatch.
 At commit `4496c99`, remote run `355940b2-919d-435c-ae10-8b9afe332340` built and
 signed its workspace; `d207d477-13f0-41ff-b587-51233f803675` reused that same build
@@ -13,6 +13,7 @@ replayed on the second run. Signatures and original producer IDs were independen
 verified. Installation and typechecking still ran; this is not blanket CI skipping.
 
 The earlier remote-to-SCM and PR-approval proofs below remain separate retained runs.
+These version IDs identify the recorded runs, not the host's current allocation.
 
 ## Earlier snapshot-reuse proof
 
