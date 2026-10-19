@@ -110,7 +110,8 @@ test("the first reply is a live linked step table, not repeated metadata", () =>
   compact.update(event("install", "complete")); compact.update(event("test", "running"))
   const url = "https://slack.com/archives/C123/p123456789000001"
   const table = JSON.stringify(compact.renderDetails(new Map([["test", url], ["build", "javascript:alert(1)"]])).blocks)
-  assert.match(table, /✓ complete/); assert.match(table, /► running/); assert.match(table, /∗ planned/)
+  assert.match(table, /"text":"✓"/); assert.match(table, /"text":"►"/); assert.match(table, /"text":"∗"/)
+  assert.doesNotMatch(table, /✓ complete|► running|∗ planned/)
   assert.ok(table.includes(url)); assert.match(table, /"text":"test"/)
   assert.doesNotMatch(table, /Field|Value|Repository|Workflow|javascript:/)
   compact.update(event("test", "complete"))
