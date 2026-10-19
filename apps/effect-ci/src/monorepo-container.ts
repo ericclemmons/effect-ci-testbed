@@ -44,6 +44,21 @@ export class WorkspaceContainer extends Base {
     }).CloudflareDeploymentOutbound({ props: { workspaceId: this.ctx.id.toString(), capability: active.capability } });
     for (const host of ["api.cloudflare.com", "registry.cloudflare.com"])
       await this.ctx.container!.interceptOutboundHttps(host, outbound);
+    // HTTPS interception signs responses with an ephemeral runtime CA. The
+    // plain Node image does not trust it automatically (unlike Sandbox SDK).
+    // Install public trust material for Docker/Go; Node uses the explicit env
+    // below. Do this after registration and before any authenticated request.
+    const trust = await this.ctx.container!.exec(["sh", "-ec",
+      "test -s /etc/cloudflare/certs/cloudflare-containers-ca.crt && " +
+      "cp /etc/cloudflare/certs/cloudflare-containers-ca.crt /usr/local/share/ca-certificates/cloudflare-containers-ca.crt && " +
+      // dockerd already pulled build images and may have cached system roots.
+      // Registry-specific CA roots are read when opening that registry client.
+      "mkdir -p /etc/docker/certs.d/registry.cloudflare.com && " +
+      "cp /etc/cloudflare/certs/cloudflare-containers-ca.crt /etc/docker/certs.d/registry.cloudflare.com/ca.crt && " +
+      "update-ca-certificates >/dev/null",
+    ]);
+    if ((await trust.output()).exitCode !== 0)
+      throw Error("Could not trust the Cloudflare deployment outbound HTTPS certificate");
   }
 
   async deploymentFetch(request: Request, capability: string): Promise<Response> {
@@ -67,6 +82,7 @@ export class WorkspaceContainer extends Base {
         proxy: new DeploymentProxy(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN), env: {
         CLOUDFLARE_API_TOKEN: deploymentToken, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
         WRANGLER_CI_OVERRIDE_NETWORK_MODE_HOST: "1",
+        NODE_EXTRA_CA_CERTS: "/etc/cloudflare/certs/cloudflare-containers-ca.crt",
         DOCKER_CONFIG: dockerConfig,
       } };
       try {
