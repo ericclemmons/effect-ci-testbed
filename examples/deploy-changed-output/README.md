@@ -15,6 +15,15 @@ if (yield* workspace.changed("dist/**")) {
 This standalone recipe owns its app, shared module, workflow and local deployment
 state. It imports reusable library packages, not another example.
 
+```mermaid
+flowchart LR
+  step_checkout["checkout"]
+  step_build["build"]
+  step_deploy["deploy"]
+  step_checkout --> step_build
+  step_build --> step_deploy
+```
+
 ## Try it
 
 After the repository dependencies are installed, from the repository root:
