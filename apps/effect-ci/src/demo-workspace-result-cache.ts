@@ -24,12 +24,12 @@ export function demoWorkspaceResultCache(runner: Runner, runId: string, authorit
     },
     capture: async value => {
       if (!(value instanceof CI.Workspace) || value.kind !== "remote" || value.id !== runId ||
-          value.cwd !== "/workspace/repository/examples/demo" || value.revision?.provider !== "cloudflare-container") return;
+          value.cwd !== "/workspace/repository/test/fixtures/demo" || value.revision?.provider !== "cloudflare-container") return;
       return { kind: "workspace", provider: "cloudflare-container", cwd: value.cwd,
         snapshot: value.revision.value as { id: string; size: number; name?: string } };
     },
     restore: async (result, request) => {
-      if (result.cwd !== "/workspace/repository/examples/demo") return;
+      if (result.cwd !== "/workspace/repository/test/fixtures/demo") return;
       // Do not transplant the producing run's Workspace identity. This run gets
       // a fresh owner with the same immutable, host-authorized snapshot handle.
       const workspace = CI.Workspace.remote(runId, result.cwd, { provider: result.provider, value: result.snapshot });

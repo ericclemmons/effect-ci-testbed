@@ -33,7 +33,7 @@ await approveSmallChange({
     minMergedPullRequests: 10,
     requiredChecks: ["test", "build"],
     service: path =>
-      path === "README.md" || path.startsWith("apps/demo/")
+      path === "README.md" || path.startsWith("examples/demo/")
         ? "demo"
         : undefined, // shared, sensitive and unknown paths need normal review
   },

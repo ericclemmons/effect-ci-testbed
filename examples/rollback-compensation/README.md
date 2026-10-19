@@ -32,7 +32,7 @@ also fails, `CI.RollbackError` preserves both errors and older compensations sti
 run. This includes thrown JavaScript errors, not just `Effect.fail`. Success and
 interruption-only exits do not initiate failure compensation.
 
-The [hosted runner](../../apps/example-runner/README.md#native-rollback-policy)
+The [hosted runner](../../test/apps/example-runner/README.md#native-rollback-policy)
 verifies three paths in real Cloudflare Workflows: success leaves rollback skipped;
 exhausted native retries run rollback once and preserve the original failure; a later
 health failure unwinds completed actions in reverse order. These commands are
@@ -55,11 +55,3 @@ Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). Forced failure and
 double-failure assertions live in
 [`tests/rollback-compensation.test.ts`](./.cloudflare/ci/tests/rollback-compensation.test.ts).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

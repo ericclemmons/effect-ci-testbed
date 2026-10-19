@@ -55,7 +55,7 @@ Local checks:
 
 ```sh
 CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
-node --test examples/dynamic-project-checks/src/ownership.test.ts apps/example-runner/src/dynamic-project-runtime.test.ts
+node --test examples/dynamic-project-checks/src/ownership.test.ts test/apps/example-runner/src/dynamic-project-runtime.test.ts
 examples/dynamic-project-checks/node_modules/.bin/tsc -p examples/dynamic-project-checks/tsconfig.json
 ```
 
@@ -169,7 +169,7 @@ updated coverage cell; it is not relabeled hosted or mock-only evidence.
 
 ## Historical shared-host setup
 
-Deploy [the example host](../../apps/example-runner), then create an
+Deploy [the example host](../../test/apps/example-runner), then create an
 `effect-ci-example-dynamic-project` instance with `repository` (GitHub URL) and
 `revision` (full immutable commit SHA). No extra secrets or permissions are needed.
 Normal runs do not send Slack notifications.
@@ -177,7 +177,7 @@ Normal runs do not send Slack notifications.
 Local real-workerd boundary tests:
 
 ```sh
-node --test apps/example-runner/src/dynamic-project-runtime.test.ts
+node --test test/apps/example-runner/src/dynamic-project-runtime.test.ts
 ```
 
 These execute actual child modules, HTTPS/TCP denial, parent-binding isolation,
@@ -209,7 +209,7 @@ wall-clock rejection is not a measurement of CPU milliseconds or a memory quota.
 Read-only assertions (do not redispatch these histories):
 
 ```sh
-LIVE_DYNAMIC_PROJECT=1 CF_BIN=cf node --test apps/example-runner/src/live-dynamic-project.test.ts
+LIVE_DYNAMIC_PROJECT=1 CF_BIN=cf node --test test/apps/example-runner/src/live-dynamic-project.test.ts
 ```
 
 Earlier runs remain intact: `coverage-dynamic-project-20261012-1` rejected a CLI
@@ -228,11 +228,3 @@ cf workflows instances create effect-ci-example-dynamic-project --body '{"instan
 ```
 
 Choose a new instance ID and a commit containing this recipe's two project files.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

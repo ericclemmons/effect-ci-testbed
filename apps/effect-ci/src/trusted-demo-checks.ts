@@ -62,7 +62,7 @@ export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: 
     return verifyRunnerStepReceipt(receipt, identity, new Map([[keyId, this.#keys.publicKey]]));
   }
   async recordStepResult(claim: RunnerStepClaim): Promise<void> {
-    if (!await this.#eligibleStep(claim.identity) || claim.result.cwd !== "/workspace/repository/examples/demo")
+    if (!await this.#eligibleStep(claim.identity) || claim.result.cwd !== "/workspace/repository/test/fixtures/demo")
       throw Error("Unenrolled workspace result");
     const fingerprint = await runnerStepFingerprint(claim.identity);
     const key = `step-result:${claim.identity.revision}:${fingerprint}`;

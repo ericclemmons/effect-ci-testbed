@@ -65,11 +65,3 @@ The repository's pull-request E2E uses deterministic approved and rejected adapt
 an unattended test cannot remain in GitHub's `Waiting` state. Run the root
 `Effect CI HITL Deploy` workflow manually when you want to exercise the real protected
 environment approval UI.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -83,11 +83,3 @@ completion order.
 
 The portable plan contains rollback edges, unlike an ordinary hidden `Effect.catch`
 branch, so a runner can present and resume the same recovery sequence.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

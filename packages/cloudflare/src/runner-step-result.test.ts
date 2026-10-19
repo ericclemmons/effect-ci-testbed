@@ -8,7 +8,7 @@ import { runnerWorkspaceResultCache, signRunnerStepReceipt, verifyRunnerStepRece
 const identity: RunnerStepIdentity = { kind: "step-result", repository: "https://github.com/owner/repo",
   revision: "a".repeat(40), workflowId: "demo", stepId: "build", policyDigest: "b".repeat(64), runtimeDigest: "c".repeat(64) }
 const result: RunnerWorkspaceResult = { kind: "workspace", provider: "cloudflare-container",
-  cwd: "/workspace/repository/examples/demo", snapshot: { id: "immutable-build-1", size: 1024, name: "build-workspace" } }
+  cwd: "/workspace/repository/test/fixtures/demo", snapshot: { id: "immutable-build-1", size: 1024, name: "build-workspace" } }
 const claim: RunnerStepClaim = { identity, result, conclusion: "success", runId: "producer", completedAt: "2026-10-17T00:00:00.000Z" }
 const pair = await crypto.subtle.generateKey("Ed25519", false, ["sign", "verify"]) as CryptoKeyPair
 const keys = new Map([["host", pair.publicKey]])

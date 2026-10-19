@@ -69,7 +69,7 @@ Eric approved `effect-ci-static-assets-demo` (public),
 `effect-ci-static-assets-broker` (private), the
 `effect-ci-static-assets-publish` Workflow, `StaticAssetRevisions` SQLite storage,
 and the private `StaticAssetSourceReader` export on the existing App.
-The [authority record](./PROPOSAL.md) documents the scope and limitations.
+The [authority record](./AUTHORITY.md) documents the scope and limitations.
 The GitHub reader reuses the existing selected-testbed Contents READ capability,
 revoking each minted installation token before returning any source receipt.
 It never returns a token or permits another repository, path or target.

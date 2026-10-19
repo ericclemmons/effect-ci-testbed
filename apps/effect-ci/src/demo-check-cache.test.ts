@@ -73,7 +73,7 @@ for (const suite of [false, true])
           stepId: suite ? "test" : "syntax",
           command: suite ? testCommand : syntaxCommand,
           policy: { scope: "commit" },
-          workspace: CI.Workspace.remote("fixture", "/workspace/repository/examples/demo"),
+          workspace: CI.Workspace.remote("fixture", "/workspace/repository/test/fixtures/demo"),
           event: {
             type: "workflow_dispatch",
             revision,

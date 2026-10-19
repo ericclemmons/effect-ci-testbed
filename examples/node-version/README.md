@@ -45,11 +45,3 @@ workflow depends on `CI.Toolchain.Node`, so another runner can satisfy the same
 capability with its native tool cache without changing the actions. The GitHub runner
 uses `.node-version` as its cache input and persists `.effect-ci/cache/mise`; other
 runners can provide an equivalent policy without changing the workflow.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -122,7 +122,7 @@ LIVE_OWNED_GITLAB_SOURCE=1 CF_BIN=cf node --test examples/gitlab-source/src/live
 
 ## Historical shared-host proof
 
-These older commands require the [shared example host](../../apps/example-runner),
+These older commands require the [shared example host](../../test/apps/example-runner),
 not the owned configuration above:
 
 ```sh
@@ -145,11 +145,3 @@ checkpoint restoration, not private GitLab authentication or external CI executi
 The local filesystem variant passed independently. PR118's exact-head full suite
 also passed the Effect-on-GitHub plan/execute jobs for that portable fixture variant;
 the real GitLab network clone proof remains the hosted run above.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

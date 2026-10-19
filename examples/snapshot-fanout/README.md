@@ -59,7 +59,7 @@ and repository matrix run the same program on GitHub's runner.
 ## Run on Cloudflare
 
 Run this unchanged workflow in a real Cloudflare account with the
-[hosted example app](../../apps/example-runner):
+[hosted example app](../../test/apps/example-runner):
 
 ```sh
 pnpm --filter @effect-ci-testbed/example-runner exec cf deploy
@@ -83,11 +83,3 @@ Historical hosted verification: `coverage-snapshot-fanout-20261008-1` completed 
 `55be3e8c7bff809aa9a8a910f888bc86613922e0`. Native history shows one prepared
 checkpoint and both branch commands starting at the same instant. Both wrote the
 same filename and passed their own assertions with live workspace reuse disabled.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

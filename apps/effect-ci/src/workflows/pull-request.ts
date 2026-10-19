@@ -12,7 +12,7 @@ export const smallChangePolicy: SmallChangePolicy = {
   maxServices: 1,
   minMergedPullRequests: 10,
   requiredChecks: ["test", "build"],
-  service: path => path === "README.md" ? "docs" : path.startsWith("examples/demo/") &&
+  service: path => path === "README.md" ? "docs" : path.startsWith("test/fixtures/demo/") &&
     !path.includes("/.cloudflare/") && !path.includes("/.github/") &&
     !/(^|\/)(AGENTS|CLAUDE|SECURITY|POLICY)\.md$/i.test(path) ? "demo" : undefined,
 };

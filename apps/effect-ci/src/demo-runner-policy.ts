@@ -1,7 +1,7 @@
 import { runnerReceiptDigest } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { syntaxImage, syntaxPolicyDigest, syntaxInspectCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testPolicyDigest, testInspectCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
-import manifest from "../../../examples/demo/package.json" with { type: "json" };
+import manifest from "../../../test/fixtures/demo/package.json" with { type: "json" };
 import { syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import type { RunnerStepIdentity } from "@effect-ci-testbed/cloudflare/runner-step-result";
 

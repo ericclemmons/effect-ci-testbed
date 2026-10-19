@@ -4,7 +4,7 @@ import { approveSmallChange, smallChange, type SmallChangeEvidence, type SmallCh
 
 const head = "a".repeat(40), base = "b".repeat(40);
 const policy: SmallChangePolicy = { maxChangedLines: 1000, maxServices: 1, minMergedPullRequests: 10,
-  requiredChecks: ["test", "build"], service: path => path === "README.md" || path.startsWith("apps/demo/") ? "demo" : undefined };
+  requiredChecks: ["test", "build"], service: path => path === "README.md" || path.startsWith("examples/demo/") ? "demo" : undefined };
 const evidence: SmallChangeEvidence = { head, base, open: true, draft: false, complete: true,
   files: [{ path: "README.md", additions: 2, deletions: 1 }],
   checks: ["test", "build"].map(name => ({ name, head, conclusion: "success" })),
@@ -17,7 +17,7 @@ test("README approval uses existing exact-head checks and deterministic review, 
     publish: async result => { writes++; assert.equal(result.eligible, true); assert.equal(result.head, head); } });
   assert.equal(writes, 1);
   assert.deepEqual(result.reasons, []);
-  assert.equal(smallChange({ ...evidence, files: [{ path: "apps/demo/app.ts", additions: 8, deletions: 3 }],
+  assert.equal(smallChange({ ...evidence, files: [{ path: "examples/demo/app.ts", additions: 8, deletions: 3 }],
     review: { ...evidence.review, kind: "ai" } }, policy).eligible, true);
 });
 
@@ -38,7 +38,7 @@ test("size, experience, protected paths and missing/stale review route to normal
   ];
   for (const change of misses) assert.equal(smallChange({ ...evidence, ...change }, policy).eligible, false, JSON.stringify(change));
   assert.equal(smallChange({ ...evidence, files: [{ path: "README.md", additions: 998, deletions: 1 }] }, policy).eligible, true);
-  assert.equal(smallChange({ ...evidence, files: [{ path: "apps/demo/a.ts", additions: 1, deletions: 0 },
+  assert.equal(smallChange({ ...evidence, files: [{ path: "examples/demo/a.ts", additions: 1, deletions: 0 },
     { path: "apps/other/b.ts", additions: 1, deletions: 0 }], review: { ...evidence.review, kind: "ai" },
     experience: { demo: evidence.experience.demo!, other: evidence.experience.demo! } },
     { ...policy, service: path => path.startsWith("apps/other/") ? "other" : "demo" }).eligible, false);

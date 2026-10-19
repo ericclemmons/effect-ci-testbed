@@ -11,6 +11,7 @@ const workspace = defineContainer({
   schedulingPolicy: "durable-object",
   images: {
     workspace: { dockerfile: "./Dockerfile" },
+    ci: { dockerfile: "./Dockerfile.ci" },
     "trusted-demo": { dockerfile: "./Dockerfile.trusted-demo" },
   },
 });
@@ -35,6 +36,7 @@ const demo = defineConfig({
       DemoCandidateRecoveryWorkflow: exports.workflow({ name: "effect-ci-demo-candidate-recovery" }),
       DemoRoutingDiagnosticWorkflow: exports.workflow({ name: "effect-ci-demo-routing-diagnostic" }),
       GitCheckoutOutbound: exports.worker(),
+      CloudflareDeploymentOutbound: exports.worker(),
       HealthChartRenderer: exports.worker(),
       RepairVerifier: exports.worker(),
       RepairWriter: exports.worker(),
