@@ -321,7 +321,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     const environment = await this.processEnvironment(command, cwd)
     const process = await this.container().exec(
       [...command],
-      { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) },
+      cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
     )
     const output = await process.output()
 

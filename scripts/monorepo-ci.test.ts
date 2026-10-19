@@ -98,4 +98,6 @@ test("GitHub runs supporting checks without Cloudflare deployment credentials", 
   assert.doesNotMatch(yaml, /cloudflare-deploy|deployPlatform/);
   const reusable = readFileSync(".github/workflows/effect-ci.yml", "utf8");
   assert.doesNotMatch(reusable, /CLOUDFLARE_API_TOKEN|CLOUDFLARE_ACCOUNT_ID/);
+  const recipes = readFileSync(".github/workflows/e2e.yml", "utf8");
+  assert.doesNotMatch(recipes, /^\s+uses:\s+\.github\//m, "local reusable workflow references require ./");
 });

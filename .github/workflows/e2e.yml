@@ -497,7 +497,7 @@ jobs:
           - example: custom-container-image
             workflow: examples/custom-container-image/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
-    uses: .github/workflows/effect-ci.yml
+    uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: ${{ matrix.workflow }}
       runs-on: ${{ matrix.runs-on }}
