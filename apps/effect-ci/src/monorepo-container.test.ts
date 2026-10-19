@@ -19,7 +19,7 @@ test("main deployment commands receive only dummy credentials; real credentials 
         constructor(ctx,env){
           const calls=[];
           const container={running:true,interceptOutboundHttps:async(host)=>{calls.push({intercept:host});},destroy:async()=>{container.running=false;},exec:async(command,options)=>{
-            calls.push({command:command.at(-1),authorized:!!options?.env?.CLOUDFLARE_API_TOKEN});
+            calls.push({command:command.at(-1),authorized:!!options?.env?.CLOUDFLARE_API_TOKEN,network:options?.env?.WRANGLER_CI_OVERRIDE_NETWORK_MODE_HOST});
             return {output:async()=>({exitCode:0,stdout:new TextEncoder().encode(options?.env?.CLOUDFLARE_API_TOKEN??'ok'),stderr:new Uint8Array()})};
           }};
           super(ctx,env);
@@ -42,6 +42,7 @@ test("main deployment commands receive only dummy credentials; real credentials 
         const denied=await stub.execute(command,cwd,'deploy effect-ci');
         await stub.allowMainDeployment('a'.repeat(40));
         await stub.execute('pnpm check','/workspace/repository','check');
+        await stub.execute('pnpm build',cwd,'deploy effect-ci');
         await stub.execute(command,cwd,'foreign-action');
         const published=await stub.execute(command,cwd,'deploy effect-ci');
         await stub.execute(command,'/workspace/repository/test/apps/repair-ai','deploy repair-ai');
@@ -71,11 +72,13 @@ test("main deployment commands receive only dummy credentials; real credentials 
     assert.equal(result.stopped.exitCode, 1);
     assert.equal(result.published.exitCode, 0);
     assert.equal(result.published.stdout, "effect-ci-outbound-proxy");
+    assert.equal(result.before.calls.find((call: any) => call.command === "pnpm build").network, "1",
+      "Container exec must explicitly receive the non-secret cf/Docker host-network setting");
     assert.deepEqual(result.before.calls.filter((call: any) => call.intercept).map((call: any) => call.intercept), ["api.cloudflare.com", "registry.cloudflare.com"]);
     const cleanups = result.before.calls.filter((call: any) => call.command?.startsWith("/tmp/effect-ci-docker-"));
     assert.equal(cleanups.length, 1, "remove only this command's generated Docker login directory before commit");
     assert.deepEqual(result.before.calls.filter((call: any) => call.command && !call.command.startsWith("/tmp/effect-ci-docker-"))
-      .map((call: any) => call.authorized), [false, false, true, false]);
+      .map((call: any) => call.authorized), [false, false, false, true, false]);
     assert.ok(result.before.stored.some(([key]: any) => key === "mainDeployment"));
     assert.ok(result.after.stored.every(([key]: any) => key !== "mainDeployment"));
     assert.ok(!JSON.stringify(result).includes("private-fixture-token"));
