@@ -78,12 +78,15 @@ test("transport exceptions are not replayed by the response retry helper", async
 test("API retries the identical PATCH, never check creation", async () => {
   const original = globalThis.fetch
   const calls: Array<{url: string; method: string | undefined; body: BodyInit | null | undefined}> = []
+  const updateOptions = {token:"fixture",repository:"owner/repo",checkId:42,title:"test",summary:"passed",conclusion:"success" as const}
   try {
     globalThis.fetch = async (url, options) => {
       calls.push({url:String(url),method:options?.method,body:options?.body})
+      if (calls.length === 1 && options?.method === "PATCH")
+        Object.assign(updateOptions, {repository:"other/repo",checkId:99,summary:"changed"})
       return new Response(JSON.stringify({id:42,html_url:"https://github.com/fixture/check/42"}), {status:calls.length===1?500:200})
     }
-    await updateCheck({token:"fixture",repository:"owner/repo",checkId:42,title:"test",summary:"passed",conclusion:"success"})
+    await updateCheck(updateOptions)
     assert.equal(calls.length, 2)
     assert.deepEqual(calls[0], calls[1])
     assert.equal(calls[0].method, "PATCH")

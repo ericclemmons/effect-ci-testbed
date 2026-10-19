@@ -89,27 +89,29 @@ export const createCheck = async (
 export const updateCheck = async (
   options: UpdateCheckOptions,
 ): Promise<CheckRun> => {
-  const response = await updateVisibleCheck(() => fetch(
-    `https://api.github.com/repos/${options.repository}/check-runs/${options.checkId}`,
-    {
-      method: "PATCH",
-      headers: headers(options.token),
-      body: JSON.stringify({
-        ...(options.name ? { name: options.name } : {}),
-        ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
-        status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
-        ...(options.conclusion ? { conclusion: options.conclusion } : {}),
-        output: {
-          title: options.title,
-          summary: options.summary,
-          ...(options.text ? { text: options.text } : {}),
-        },
-      }),
-    },
-  ))
+  // Pin the target and serialized body before the first attempt. A retry must
+  // not observe later mutations through a caller's options object.
+  const checkId = options.checkId
+  const url = `https://api.github.com/repos/${options.repository}/check-runs/${checkId}`
+  const request: RequestInit = {
+    method: "PATCH",
+    headers: headers(options.token),
+    body: JSON.stringify({
+      ...(options.name ? { name: options.name } : {}),
+      ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
+      status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
+      ...(options.conclusion ? { conclusion: options.conclusion } : {}),
+      output: {
+        title: options.title,
+        summary: options.summary,
+        ...(options.text ? { text: options.text } : {}),
+      },
+    }),
+  }
+  const response = await updateVisibleCheck(() => fetch(url, request))
 
   if (!response.ok) {
-    throw await responseError(`update check ${options.checkId}`, response)
+    throw await responseError(`update check ${checkId}`, response)
   }
 
   const check = await response.json() as { id: number; html_url: string }
