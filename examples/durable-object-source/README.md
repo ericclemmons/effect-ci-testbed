@@ -158,10 +158,10 @@ pnpm cf-ci --workflow examples/durable-object-source/.cloudflare/ci/workflow.ts
 Real SQLite/RPC adapter test (local Workers runtime):
 
 ```sh
-node --test apps/example-runner/src/durable-source-runtime.test.ts
+node --test test/apps/example-runner/src/durable-source-runtime.test.ts
 ```
 
-After deploying the [example host](../../apps/example-runner) with `cf deploy`,
+After deploying the [example host](../../test/apps/example-runner) with `cf deploy`,
 dispatch its authenticated native Workflow:
 
 ```sh
@@ -170,7 +170,7 @@ cf workflows instances create effect-ci-example-durable-source --body '{"instanc
 
 The reference is `{ kind: "durable_object", id, revision }`; parameters retain
 the portable `repository`/`revision` shape. The demo manifest's SHA256 pins the
-exact canonical bytes produced by [the host](../../apps/example-runner/src/durable-source.ts).
+exact canonical bytes produced by [the host](../../test/apps/example-runner/src/durable-source.ts).
 Hosted run `coverage-do-source-20261012-1`, Workflow version
 `836817de-4c45-44fc-9975-3368e9998fea`, host deployment
 `9ec15a33-51b4-402a-a221-cf4597a60a6e`, completed the real DO seed/read,

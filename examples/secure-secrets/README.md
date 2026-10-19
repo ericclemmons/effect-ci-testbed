@@ -31,14 +31,14 @@ secret assertions live in
 
 ## Hosted Worker resolver
 
-The [example host](../../apps/example-runner/src/secure-secrets.ts) maps this recipe's
+The [example host](../../test/apps/example-runner/src/secure-secrets.ts) maps this recipe's
 `GITHUB_TOKEN` requirement to an **inert test canary**, `env.CI_DEMO_SECRET`, wrapped
 in `Redacted`. It is not a GitHub authentication token and does not authenticate a
 registry. This isolates the primitive: required-secret resolution and redacted
 metadata. The dedicated [outbound example](../secret-outbound) instead proves
 host-only credential substitution for an actual outbound request.
 
-Put an inert value in the Git-ignored `apps/example-runner/.secrets.env`, then deploy
+Put an inert value in the Git-ignored `test/apps/example-runner/.secrets.env`, then deploy
 from that app directory with `cf deploy --secrets-file .secrets.env`. Do not overwrite
 an existing secrets file or put personal OAuth/refresh credentials there.
 

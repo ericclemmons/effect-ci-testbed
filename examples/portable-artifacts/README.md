@@ -28,7 +28,7 @@ Run the canonical workflow locally:
 pnpm cf-ci --workflow examples/portable-artifacts/.cloudflare/ci/workflow.ts
 ```
 
-The [host app](../../apps/example-runner/README.md#verified-runs) verifies the same
+The [host app](../../test/apps/example-runner/README.md#verified-runs) verifies the same
 workflow with real Cloudflare snapshots: the downstream action restores the published
 revision and checks the artifact file. This is a small artifact fixture, not a real
 Worker build or deployment. It verifies transport within one Workflow; cross-account

@@ -1,1 +1,3 @@
-export const message = "Howdy again from the demo app.";
+import { greeting } from "../packages/greeting/message";
+
+export const message = greeting;

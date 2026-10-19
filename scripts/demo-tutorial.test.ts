@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-const template = resolve("apps/demo");
+const template = resolve("examples/demo");
 const cli = resolve("packages/cli/src/bin.ts");
 
 test("the tutorial is a standalone app with explicit setup and teardown, no implicit host or model authority", () => {
@@ -18,7 +18,7 @@ test("the tutorial is a standalone app with explicit setup and teardown, no impl
   assert.equal(worker.assets.directory, "./dist");
   assert.deepEqual(Object.keys(worker).sort(), ["$schema", "assets", "compatibility_date", "name"]);
   assert.match(readme, /mktemp -d/);
-  assert.match(readme, /tiged ericclemmons\/effect-ci-testbed\/apps\/demo demo/);
+  assert.match(readme, /tiged ericclemmons\/effect-ci-testbed\/examples\/demo demo/);
   assert.match(readme, /gh repo create/);
   assert.match(readme, /wrangler delete "\$DEMO_WORKER"/);
   assert.match(readme, /gh repo delete "\$DEMO_REPO"/);

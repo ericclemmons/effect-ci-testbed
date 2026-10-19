@@ -107,7 +107,7 @@ cache paths. Vite+ owns the fingerprints and cache correctness.
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed a warm build, then
+The [hosted example runner](../../test/apps/example-runner) completed a warm build, then
 `coverage-vite-plus-hit-20261008-2` ran in a separate Workflow instance with a cleaned
 checkout. Vite+ reported `cache hit, replaying` and 201 ms saved across 11 native
 Workflow steps. No explicit task inputs or outputs were added.

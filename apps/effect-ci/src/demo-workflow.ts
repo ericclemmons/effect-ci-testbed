@@ -49,7 +49,7 @@ const Base = GitHubCloudflare.workflowEntrypoint(
     }).workflow;
   },
   {
-    root: "examples/demo",
+    root: "test/fixtures/demo",
     // Whole-container cache snapshots may contain project-modified system files.
     // Signed input identification must start from the owned immutable image.
     cache: false,

@@ -25,7 +25,7 @@ function fixture() {
   for (const path of testPaths) {
     const dest = join(cwd, path);
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, readFileSync(new URL(`../../../examples/demo/${path}`, import.meta.url)));
+    writeFileSync(dest, readFileSync(new URL(`../../../test/fixtures/demo/${path}`, import.meta.url)));
   }
   mkdirSync(join(cwd, "node_modules"));
   writeFileSync(join(cwd, "node_modules/dependency.js"), "fixed dependency");

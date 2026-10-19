@@ -122,7 +122,7 @@ LIVE_OWNED_GITLAB_SOURCE=1 CF_BIN=cf node --test examples/gitlab-source/src/live
 
 ## Historical shared-host proof
 
-These older commands require the [shared example host](../../apps/example-runner),
+These older commands require the [shared example host](../../test/apps/example-runner),
 not the owned configuration above:
 
 ```sh

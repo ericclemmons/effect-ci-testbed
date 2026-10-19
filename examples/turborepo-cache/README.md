@@ -103,7 +103,7 @@ directory. Turborepo continues to own task hashing and output correctness.
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) populated the cache in
+The [hosted example runner](../../test/apps/example-runner) populated the cache in
 `coverage-turborepo-warm-20261008-2`, then a distinct
 `coverage-turborepo-hit-20261008-1` instance reported one cached task and restored the
 build result in an 85 ms task run. The hash was `f37d6ec47086f918` in both instances.

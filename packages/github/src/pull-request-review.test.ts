@@ -10,7 +10,7 @@ const options = { repository: snapshot.repository, policy: "org-review-v1", mode
 
 test("Markdown-only PRs use org policy without a model; protected instructions and code do not", async () => {
   let writes = 0;
-  for (const path of ["README.md", "examples/demo/README.md", "docs/snapshots.md"]) {
+  for (const path of ["README.md", "test/fixtures/demo/README.md", "docs/snapshots.md"]) {
     const decision = await reviewPullRequest({ repository: snapshot.repository, policy: "docs-review-v1",
       read: async () => ({ ...snapshot, files: [{ path, status: "modified", patch: "-old\n+clearer docs" }] }),
       infer: async () => { assert.fail("Documentation must not invoke an agent/model"); },

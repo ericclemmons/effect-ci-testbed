@@ -162,11 +162,11 @@ LIVE_OWNED_R2_SOURCE=1 CF_BIN=cf node --test examples/r2-source/src/live.test.ts
 
 ## Historical shared-host proof
 
-The old host adapter remains in [r2-source.ts](../../apps/example-runner/src/r2-source.ts).
+The old host adapter remains in [r2-source.ts](../../test/apps/example-runner/src/r2-source.ts).
 It and its bucket/history are unchanged. These commands describe that older host,
 not the owned deployment above.
 
-After deploying the [example host](../../apps/example-runner), upload the exact
+After deploying the [example host](../../test/apps/example-runner), upload the exact
 manifest bytes and create the native Workflow:
 
 ```sh

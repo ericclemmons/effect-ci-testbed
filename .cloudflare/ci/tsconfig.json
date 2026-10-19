@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": { "types": ["node"] },
-  "include": ["workflow.ts", "../../scripts/monorepo-ci.test.ts"]
+  "include": ["*.ts", "../../scripts/monorepo-ci.test.ts"]
 }

@@ -1,0 +1,17 @@
+name: Effect CI on GitHub (monorepo reference, not the standalone baseline)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ci:
+    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
+    with:
+      workflow: test/fixtures/demo
+    secrets: inherit

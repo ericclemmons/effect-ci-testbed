@@ -5,7 +5,7 @@
   "scripts": {
     "ci:changed-outputs": "cf-ci run --workflow examples/conditional-deploy/.cloudflare/ci/output-changes.ts --format=text",
     "build": "pnpm --filter @effect-ci-testbed/ci build",
-    "check": "pnpm --filter './packages/*' --filter './apps/*' check && node node_modules/typescript/bin/tsc -p .cloudflare/ci/tsconfig.json --noEmit && node scripts/check-examples.ts && pnpm --filter cf-ci-demo check && node scripts/check-example-plans.ts && node --test scripts/check-recipe-docs.test.ts scripts/example-ergonomics.test.ts",
+    "check": "pnpm --filter './packages/*' --filter './apps/*' --filter './test/apps/*' check && node node_modules/typescript/bin/tsc -p .cloudflare/ci/tsconfig.json --noEmit && node scripts/check-examples.ts && pnpm --filter cf-ci-demo check && node scripts/check-example-plans.ts && node --test scripts/check-recipe-docs.test.ts scripts/example-ergonomics.test.ts",
     "ci:hitl-deploy": "EFFECT_CI_APPROVAL=approved EFFECT_CI_EVENT=workflow_dispatch cf-ci run --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts",
     "ci:hitl-deploy:dry-run": "EFFECT_CI_EVENT=workflow_dispatch cf-ci --workflow examples/hitl-deploy/.cloudflare/ci/workflow.ts plan",
     "ci:cloudflare-runner": "EFFECT_CI_EVENT=workflow_dispatch cf-ci run --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts",

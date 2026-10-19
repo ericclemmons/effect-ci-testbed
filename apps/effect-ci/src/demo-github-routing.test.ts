@@ -3,9 +3,10 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 import { worker, type GitHubClient, type WorkerEnvironment } from "@effect-ci-testbed/github-cloudflare/worker";
 import { demoGitHubRun } from "./demo-policy.ts";
+import { monorepoGitHubRun } from "./monorepo-policy.ts";
 
 const secret = "signed-routing-fixture";
-function fixture() {
+function fixture(githubRun = demoGitHubRun) {
   const selected: any[] = [], fallback: any[] = [], checks: any[] = [];
   let tokens = 0, reads = 0;
   const binding = (created: any[]) => ({
@@ -17,7 +18,7 @@ function fixture() {
     } }),
   }) as unknown as Workflow;
   const application = worker({
-    githubRun: demoGitHubRun,
+    githubRun,
     workflow: () => binding(fallback),
     github: {
       createInstallationToken: async () => { tokens++; return "fixture-token"; },
@@ -29,7 +30,7 @@ function fixture() {
     GITHUB_APP_ID: "5089816", GITHUB_PRIVATE_KEY: "unused-by-fixture",
     GITHUB_WEBHOOK_SECRET: secret,
   } as WorkerEnvironment;
-  const context = { exports: { DemoCIWorkflow: binding(selected) } } as unknown as ExecutionContext;
+  const context = { exports: { DemoCIWorkflow: binding(selected), EffectCIWorkflow: binding(selected) } } as unknown as ExecutionContext;
   const dispatch = (id: string, repository = "ericclemmons/effect-ci-testbed", branch = "main",
     installation = 165265172, app = 5089816, valid = true) => {
     const body = JSON.stringify({
@@ -84,4 +85,16 @@ test("signature, App ownership and installation enrollment remain required", asy
   assert.equal(f.checks.length, 0);
   assert.equal(f.fallback.length, 0);
   assert.equal(f.selected.length, 0);
+});
+
+test("the signed monorepo enrollment selects root native CI and deduplicates deliveries, not the demo", async () => {
+  const f = fixture(monorepoGitHubRun);
+  for (const branch of ["main", "feature/tutorial"]) {
+    assert.equal((await f.dispatch(branch, undefined, branch)).status, 202);
+    const duplicate = await (await f.dispatch(branch, undefined, branch)).json() as { duplicate: boolean };
+    assert.equal(duplicate.duplicate, true);
+  }
+  assert.equal(f.selected.length, 2);
+  assert.equal(f.fallback.length, 0);
+  assert.equal(f.checks.length, 2);
 });

@@ -21,7 +21,7 @@ cf-ci run --workflow examples/retry/.cloudflare/ci/workflow.ts
 node --test examples/retry/.cloudflare/ci/tests/retry.test.ts
 ```
 
-Deploy the [example host](../../apps/example-runner), then execute the native check:
+Deploy the [example host](../../test/apps/example-runner), then execute the native check:
 
 ```sh
 cf workflows instances create effect-ci-example-retry --body '{"instance_id":"my-retry-run","params":{"repository":"https://github.com/OWNER/REPO.git","revision":"FULL_COMMIT_SHA"}}'

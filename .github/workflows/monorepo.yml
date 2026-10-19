@@ -17,6 +17,5 @@ jobs:
   ci:
     uses: ./.github/workflows/effect-ci.yml
     with:
-      workflow: .cloudflare/ci/workflow.ts
-      cloudflare-deploy: true
+      workflow: .cloudflare/ci/checks.ts
     secrets: inherit

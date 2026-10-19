@@ -13,7 +13,7 @@ flowchart LR
 
 The project-owned [Dockerfile](./Dockerfile) starts from Debian Trixie, installs Python,
 and copies Cloudflare Sandbox 1.0's `sandbox-shim` into the image. The
-[host app's Cloudflare configuration](../../apps/example-runner/cloudflare.config.ts)
+[host app's Cloudflare configuration](../../test/apps/example-runner/cloudflare.config.ts)
 builds that file with `cf deploy` as the named `workspace` image used by
 `WorkspaceContainer`. The consumer actions do not change between runners.
 

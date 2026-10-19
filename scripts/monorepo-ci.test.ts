@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import * as Effect from "effect/Effect";
 import * as CI from "@effect-ci-testbed/ci";
@@ -23,8 +23,8 @@ async function capture(definition: CI.Workflow<unknown>, failure?: string,
 test("ordinary root CI tests/builds the tutorial without deployment or approval", async () => {
   const { commands, run } = await capture(workflow);
   await run;
-  assert.ok(commands.some(c => c.cwd === "/repo/apps/demo" && c.command === "pnpm test"));
-  assert.ok(commands.some(c => c.cwd === "/repo/apps/demo" && c.command === "pnpm build"));
+  assert.ok(commands.some(c => c.cwd === "/repo/examples/demo" && c.command === "pnpm test"));
+  assert.ok(commands.some(c => c.cwd === "/repo/examples/demo" && c.command === "pnpm build"));
   assert.ok(commands.some(c => c.command === "pnpm check"));
   assert.ok(commands.every(c => !/deploy|publish|approval/.test(c.command)));
 });
@@ -34,9 +34,23 @@ test("normal main push performs CD for platform apps, never tutorial, repair or 
   await run;
   const deployments = commands.filter(c => c.command.includes("cf deploy"));
   assert.deepEqual(deployments.map(c => c.cwd), platformApps.map(app => `/repo/apps/${app}`));
-  assert.ok(deployments.every(c => c.command === "./node_modules/.bin/cf deploy --prebuilt --containers-rollout none"));
+  assert.ok(deployments.every(c => c.command === "./node_modules/.bin/cf deploy --prebuilt"));
+  for (const deployment of deployments) {
+    const index = commands.indexOf(deployment);
+    assert.deepEqual(commands[index - 1], { cwd: deployment.cwd,
+      command: "./node_modules/.bin/cf workers triggers deploy --prebuilt" });
+  }
   assert.ok(!platformApps.some(app => /^(demo|hmd-demo|repair-.*)$/.test(app)));
   assert.ok(commands.every(c => !/scripts\/deploy|access-only|secret/.test(c.command)));
+});
+
+test("failed trigger registration prevents rollout and every later app", async () => {
+  const { commands, run } = await capture(workflow,
+    "./node_modules/.bin/cf workers triggers deploy --prebuilt", { type: "push", ref: "refs/heads/main" });
+  await assert.rejects(run, /Command failed/);
+  assert.ok(commands.some(c => c.command.includes("triggers deploy")));
+  assert.ok(commands.every(c => !c.command.includes("cf deploy")));
+  assert.ok(commands.every(c => c.cwd !== "/repo/apps/effect-ci"));
 });
 
 test("failed validation prevents every platform deployment", async () => {
@@ -47,7 +61,7 @@ test("failed validation prevents every platform deployment", async () => {
 
 test("a failed app build stops CD before that deployment and every later target", async () => {
   const { commands, run } = await capture(workflow,
-    "./node_modules/.bin/cf build", { type: "push", ref: "refs/heads/main" });
+    "pnpm build", { type: "push", ref: "refs/heads/main" });
   await assert.rejects(run, /Command failed/);
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
   assert.ok(!commands.some(c => c.cwd === "/repo/apps/effect-ci"));
@@ -65,15 +79,23 @@ test("feature pushes and manual runs validate without automatic production deplo
   }
 });
 
-test("GitHub enables normal root CD and isolates its credentials to executing main pushes", () => {
+test("every product app is in ordinary CD and test apps stay separate", () => {
+  assert.deepEqual([...platformApps].sort(), readdirSync("apps").sort());
+  assert.ok(readdirSync("test/apps").includes("repair-events"));
+  assert.ok(readdirSync("examples/demo").includes("tutorial"));
+});
+
+test("native Cloudflare runs the same root graph, without a custom deployment protocol", () => {
+  const native = readFileSync("apps/effect-ci/src/monorepo-workflow.ts", "utf8");
+  assert.match(native, /from "\.\.\/\.\.\/\.\.\/\.cloudflare\/ci\/workflow\.ts"/);
+  assert.match(native, /return workflow;/);
+  assert.doesNotMatch(native, /publishPlatform|nativeMonorepoProgram|finalize:|versions\//);
+});
+
+test("GitHub runs supporting checks without Cloudflare deployment credentials", () => {
   const yaml = readFileSync(".github/workflows/monorepo.yml", "utf8");
-  assert.match(yaml, /workflow: \.cloudflare\/ci\/workflow\.ts/);
-  assert.match(yaml, /cloudflare-deploy: true/);
-  assert.doesNotMatch(yaml, /deployPlatform/);
+  assert.match(yaml, /workflow: \.cloudflare\/ci\/checks\.ts/);
+  assert.doesNotMatch(yaml, /cloudflare-deploy|deployPlatform/);
   const reusable = readFileSync(".github/workflows/effect-ci.yml", "utf8");
-  const token = reusable.split("\n").find(line => /^\s+CLOUDFLARE_API_TOKEN: \$\{\{/.test(line))!;
-  assert.match(token, /inputs\.cloudflare-deploy/);
-  assert.match(token, /matrix\.mode == 'execute'/);
-  assert.match(token, /github\.event_name == 'push'/);
-  assert.match(token, /github\.ref == 'refs\/heads\/main'/);
+  assert.doesNotMatch(reusable, /CLOUDFLARE_API_TOKEN|CLOUDFLARE_ACCOUNT_ID/);
 });

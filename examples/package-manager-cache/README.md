@@ -37,7 +37,7 @@ workspace state is not returned in place of running installation.
 
 The repository test runs the Effect workflow once to populate that directory, then
 uses it to install into a fresh workspace with npm's network access disabled. The
-Cloudflare adapter is also bundled in CI. The [hosted example runner](../../apps/example-runner)
+Cloudflare adapter is also bundled in CI. The [hosted example runner](../../test/apps/example-runner)
 completed `coverage-npm-cache-warm-20261008-1`, then a distinct
 `coverage-npm-cache-offline-20261008-2` instance ran `npm ci --offline` and verified
 the dependency. Both instances retain native checkpoints and command output in the

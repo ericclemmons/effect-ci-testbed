@@ -1,6 +1,0 @@
-[
-  {
-    "action": "remove",
-    "files": ["node_modules", "dist", ".vite", ".wrangler", ".effect-ci", ".env", "pnpm-lock.yaml"]
-  }
-]

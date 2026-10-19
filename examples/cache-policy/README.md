@@ -48,7 +48,7 @@ Compare:
 - [Effect CI on GitHub](./.github/workflows/effect-on-github.yml), where the reusable
   runner receives the policy
 - [the portable workflow](./.cloudflare/ci/workflow.ts)
-- [the deployed Cloudflare runner layer](../../apps/example-runner/src/worker.ts)
+- [the deployed Cloudflare runner layer](../../test/apps/example-runner/src/worker.ts)
 
 Run it twice locally to see a miss followed by a hit:
 

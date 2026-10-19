@@ -307,14 +307,21 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   /** Host-owned network policy, reapplied before commands after starts/restores. */
   protected async configureOutbound(): Promise<void> {}
 
+  /** Host-owned per-process environment. Never part of workspace options,
+   * snapshots, command text or Workflow checkpoint values. */
+  protected async processEnvironment(
+    _command: ReadonlyArray<string>, _cwd?: string,
+  ): Promise<Record<string, string> | undefined> { return undefined }
+
   private async run(
     command: ReadonlyArray<string>,
     cwd?: string,
   ): Promise<ContainerExecutionResult> {
     await this.configureOutbound()
+    const environment = await this.processEnvironment(command, cwd)
     const process = await this.container().exec(
       [...command],
-      cwd ? { cwd } : undefined,
+      { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) },
     )
     const output = await process.output()
 

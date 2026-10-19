@@ -188,59 +188,6 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  apps/demo:
-    dependencies:
-      '@cloudflare/kumo':
-        specifier: 2.14.0
-        version: 2.14.0(@date-fns/tz@1.5.0)(@phosphor-icons/react@2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@4.6.1)
-      '@phosphor-icons/react':
-        specifier: 2.1.10
-        version: 2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
-    devDependencies:
-      '@types/react':
-        specifier: 19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.3)(@vitest/ui@5.0.1(vitest@5.0.1))(esbuild@0.28.2)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-      wrangler:
-        specifier: 4.145.0
-        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
-
-  apps/demo-site:
-    dependencies:
-      '@effect-ci-testbed/cloudflare':
-        specifier: workspace:*
-        version: link:../../packages/cloudflare
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
   apps/effect-ci:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -275,231 +222,7 @@ importers:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
-  apps/example-runner:
-    dependencies:
-      '@effect-ci-testbed/ci':
-        specifier: workspace:*
-        version: link:../../packages/ci
-      '@effect-ci-testbed/cloudflare':
-        specifier: workspace:*
-        version: link:../../packages/cloudflare
-      '@effect-ci-testbed/cloudflare-dynamic-worker':
-        specifier: workspace:*
-        version: link:../../packages/cloudflare-dynamic-worker
-      '@effect-ci-testbed/source-tools':
-        specifier: workspace:*
-        version: link:../../packages/source-tools
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/hmd-demo:
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/notification-isolation:
-    dependencies:
-      '@effect-ci-testbed/ci':
-        specifier: workspace:*
-        version: link:../../packages/ci
-      '@effect-ci-testbed/github-cloudflare':
-        specifier: workspace:*
-        version: link:../../packages/github-cloudflare
-      effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/release-manager:
-    dependencies:
-      '@effect-ci-testbed/cloudflare':
-        specifier: workspace:*
-        version: link:../../packages/cloudflare
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/repair-agent:
-    dependencies:
-      '@effect-ci-testbed/flue-budget-provider':
-        specifier: workspace:*
-        version: link:../../packages/flue-budget-provider
-      '@effect-ci-testbed/github':
-        specifier: workspace:*
-        version: link:../../packages/github
-      '@flue/runtime':
-        specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@effect-ci-testbed/flue-cloudflare-config':
-        specifier: workspace:*
-        version: link:../../packages/flue-cloudflare-config
-      '@flue/vite':
-        specifier: 2.2.2
-        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.1.5)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.1)
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      agents:
-        specifier: 0.20.1
-        version: 0.20.1(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(@modelcontextprotocol/server@2.0.0)(react@19.3.0)(rolldown@1.1.5)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.1)
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite:
-        specifier: 8.1.2
-        version: 8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/repair-ai:
-    dependencies:
-      '@effect-ci-testbed/flue-budget-provider':
-        specifier: workspace:*
-        version: link:../../packages/flue-budget-provider
-      '@flue/runtime':
-        specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@earendil-works/pi-ai':
-        specifier: 0.87.1
-        version: 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.1)
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
   apps/github-actions-runner:
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/repair-events:
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 2.0.0-beta.sha-52b0dc0e9
-        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
-      '@cloudflare/workers-types':
-        specifier: 5.20261001.1
-        version: 5.20261001.1
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      cf:
-        specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@26.6.3)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vite:
-        specifier: ^7.1.12
-        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
-
-  apps/repair-incident:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -738,24 +461,18 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@e2e-dev/web':
-        specifier: 0.14.0
-        version: 0.14.0(e2e@0.19.0)
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
       '@types/react-dom':
         specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      e2e:
-        specifier: 0.19.0
-        version: 0.19.0
       vite-plus:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.3)(@vitest/ui@5.0.1(vitest@5.0.1))(esbuild@0.28.2)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-      ws:
-        specifier: 8.21.0
-        version: 8.21.0
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
 
   examples/deploy-hook:
     devDependencies:
@@ -1418,6 +1135,289 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  test/apps/demo-site:
+    dependencies:
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../../packages/cloudflare
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/example-runner:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../../packages/cloudflare
+      '@effect-ci-testbed/cloudflare-dynamic-worker':
+        specifier: workspace:*
+        version: link:../../../packages/cloudflare-dynamic-worker
+      '@effect-ci-testbed/source-tools':
+        specifier: workspace:*
+        version: link:../../../packages/source-tools
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/hmd-demo:
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/notification-isolation:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../../packages/ci
+      '@effect-ci-testbed/github-cloudflare':
+        specifier: workspace:*
+        version: link:../../../packages/github-cloudflare
+      effect:
+        specifier: 4.0.0-beta.19
+        version: 4.0.0-beta.19
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/release-manager:
+    dependencies:
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../../packages/cloudflare
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/repair-agent:
+    dependencies:
+      '@effect-ci-testbed/flue-budget-provider':
+        specifier: workspace:*
+        version: link:../../../packages/flue-budget-provider
+      '@effect-ci-testbed/github':
+        specifier: workspace:*
+        version: link:../../../packages/github
+      '@flue/runtime':
+        specifier: 2.2.2
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@effect-ci-testbed/flue-cloudflare-config':
+        specifier: workspace:*
+        version: link:../../../packages/flue-cloudflare-config
+      '@flue/vite':
+        specifier: 2.2.2
+        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.1.5)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.1)
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      agents:
+        specifier: 0.20.1
+        version: 0.20.1(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(@modelcontextprotocol/server@2.0.0)(react@19.3.0)(rolldown@1.1.5)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.1)
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: 8.1.2
+        version: 8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/repair-ai:
+    dependencies:
+      '@effect-ci-testbed/flue-budget-provider':
+        specifier: workspace:*
+        version: link:../../../packages/flue-budget-provider
+      '@flue/runtime':
+        specifier: 2.2.2
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@earendil-works/pi-ai':
+        specifier: 0.87.1
+        version: 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.1)
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/repair-events:
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/apps/repair-incident:
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 2.0.0-beta.sha-52b0dc0e9
+        version: 2.0.0-beta.sha-52b0dc0e9(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))(workerd@1.20261001.1)
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^7.1.12
+        version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  test/fixtures/demo:
+    dependencies:
+      '@cloudflare/kumo':
+        specifier: 2.14.0
+        version: 2.14.0(@date-fns/tz@1.5.0)(@phosphor-icons/react@2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@4.6.1)
+      '@phosphor-icons/react':
+        specifier: 2.1.10
+        version: 2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@e2e-dev/web':
+        specifier: 0.14.0
+        version: 0.14.0(e2e@0.19.0)
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      e2e:
+        specifier: 0.19.0
+        version: 0.19.0
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.3)(@vitest/ui@5.0.1(vitest@5.0.1))(esbuild@0.28.2)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+      ws:
+        specifier: 8.21.0
+        version: 8.21.0
 
 packages:
 

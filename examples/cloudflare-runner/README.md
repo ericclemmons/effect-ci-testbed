@@ -15,7 +15,7 @@ flowchart LR
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed
+The [hosted example runner](../../test/apps/example-runner) completed
 `coverage-workspace-20261008-3` with `reuseWorkspace: false`. Checkout, install, and
 build each checkpoint their workspace, and subsequent actions restore the preceding
 revision in a real Cloudflare account.

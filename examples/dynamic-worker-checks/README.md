@@ -204,7 +204,7 @@ From this monorepo (workspace packages are still private/unpublished):
 
 ```sh
 CI=true pnpm_config_pm_on_fail=ignore pnpm install --frozen-lockfile
-node --test examples/dynamic-worker-checks/src/ownership.test.ts apps/example-runner/src/source-tools.test.ts
+node --test examples/dynamic-worker-checks/src/ownership.test.ts test/apps/example-runner/src/source-tools.test.ts
 examples/dynamic-worker-checks/node_modules/.bin/tsc -p examples/dynamic-worker-checks/tsconfig.json
 node packages/cli/src/bin.ts run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts --format=json
 ```
@@ -267,7 +267,7 @@ LIVE_OWNED_FORMATTER=1 CF_BIN=cf node --test examples/dynamic-worker-checks/src/
 
 ## Historical shared-host proof
 
-The [hosted example runner](../../apps/example-runner) imported this workflow unchanged.
+The [hosted example runner](../../test/apps/example-runner) imported this workflow unchanged.
 Instance `coverage-dynamic-formatter-20261009-1` completed both actions at immutable
 source `b7c510ed661c1c221072849ba1b1dd93308e702a`. The native Workflow
 `effect-ci-example-dynamic-formatter` recorded only two steps: GitHub source retrieval

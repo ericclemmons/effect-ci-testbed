@@ -2,7 +2,7 @@
 
 > Keep GitHub. Run CI as native Cloudflare Workflows, with GitHub checks and Slack updates.
 
-- **Try the configured demo:** [walkthrough](../../examples/demo/README.md).
+- **Try the configured demo:** [walkthrough](../../test/fixtures/demo/README.md).
 - **Deploy your own host:** [standalone setup](./SELF-HOST.md), including App,
   Access and secret setup. This is not a one-click installer.
 - **Keep GitHub Actions YAML:** use the separate [optional runner](../github-actions-runner/README.md).
@@ -195,8 +195,8 @@ redispatch them for parsing or proof. Read-only regression below reads retained 
 from this app reads the original writer/replay/budget histories plus independent GitHub
 Check/PR/files. Ordinary CI skips it; no native dispatch, deployment or model call.
 
-To reproduce, first follow the [owned Issue enrollment guide](../repair-events/REPRODUCE.md)
-and [private proposal host guide](../repair-agent/README.md), reviewing your host-owned
+To reproduce, first follow the [owned Issue enrollment guide](../../test/apps/repair-events/REPRODUCE.md)
+and [private proposal host guide](../../test/apps/repair-agent/README.md), reviewing your host-owned
 constants and preserving the same budget/history. Configure only the owned App
 installation/repository permissions and private evidence binding; App credentials
 stay host-only, never in project/model/container input. Then:
@@ -288,7 +288,7 @@ uses `RELEASE_MANAGER` RPC to the dedicated `effect-ci-release-manager` broker;
 only that broker holds `HMD_DEPLOY_TOKEN`. No deployment credential or Slack
 credential enters a workspace container.
 
-Deploy the broker first using its [setup guide](../release-manager/README.md),
+Deploy the broker first using its [setup guide](../../test/apps/release-manager/README.md),
 then deploy this app with `cf deploy --secrets-file .secrets.env`. Keep the
 existing Access protection and signature-protected `/webhooks/slack` exception.
 The ignored host secrets file must include `SLACK_BOT_TOKEN`,
@@ -990,8 +990,8 @@ depth prevents an accidentally unprotected route from becoming a public executio
 ### Demo package on the same host
 
 The separately enrolled `DemoCIWorkflow` (`effect-ci-demo`) executes the
-ordinary scripts from `examples/demo/package.json`, using `CI.fromPackageJson`
-and a native container rooted at `examples/demo`. It is mounted at `/demo` on
+ordinary scripts from `test/fixtures/demo/package.json`, using `CI.fromPackageJson`
+and a native container rooted at `test/fixtures/demo`. It is mounted at `/demo` on
 the existing Access-protected host; `/runs`, GitHub and Slack callbacks and all
 existing Workflow/DO namespaces keep their original behavior.
 
@@ -1012,7 +1012,7 @@ credentials configured:
 export PATH="$PWD/node_modules/.bin:$PATH"
 export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL/demo"
 export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
-cd examples/demo
+cd test/fixtures/demo
 cf-ci plan --format=mermaid
 cf-ci run --remote
 ```
@@ -1144,7 +1144,7 @@ pinned in this workspace.
 
 ### Enrolled demo test-suite reuse
 
-`node examples/demo/.cloudflare/ci/attest-tests.ts` signs the actual Vitest suite
+`node test/fixtures/demo/.cloudflare/ci/attest-tests.ts` signs the actual Vitest suite
 from a clean committed checkout, using the existing local operator key and pinned
 Linux image. Push `refs/notes/effect-ci-demo-tests-v1`, then run
 `cf-ci run test build --remote` from the demo. The host independently fingerprints
@@ -1314,7 +1314,7 @@ and calls `CI.Artifact.publish`. The consumer restores that checkpoint into its
 own action container and verifies the raw file bytes against the manifest.
 Neither action is eligible for signed-check reuse.
 
-The project-owned `examples/demo/.cloudflare/ci/artifact.ts` has no network or
+The project-owned `test/fixtures/demo/.cloudflare/ci/artifact.ts` has no network or
 deployment capability. It accepts only those three regular files, rejects
 symlinks/foreign metadata, limits each file to 2 MiB and all files to 4 MiB, and
 atomically replaces only its recognized generated metadata under
@@ -1336,7 +1336,7 @@ native container transport. No website or GitHub Artifacts upload is implied.
 ```sh
 node --test apps/effect-ci/src/artifact-revision-runtime.test.ts \
   apps/effect-ci/src/demo-filesystem-runtime.test.ts \
-  examples/demo/verification/artifact.test.ts
+  test/fixtures/demo/verification/artifact.test.ts
 ```
 
 After deploying this exact merged host through the documented preflight, a clean

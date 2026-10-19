@@ -15,7 +15,7 @@ flowchart LR
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed
+The [hosted example runner](../../test/apps/example-runner) completed
 `coverage-python-toolchain-20261008-1` in a real Cloudflare account. It installs
 Python and pip with apt, installs the pinned package-build tools, and builds the
 Python package across seven native Workflow steps. No project Dockerfile is required.

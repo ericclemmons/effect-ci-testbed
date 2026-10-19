@@ -22,7 +22,7 @@ full healthy native-WOBS gating and production telemetry remain unverified.
 
 Implemented foundations:
 
-- [Dedicated demo Worker](../../apps/hmd-demo) with version-tagged healthy/failing profiles.
+- [Dedicated demo Worker](../../test/apps/hmd-demo) with version-tagged healthy/failing profiles.
 - [Health gate](../../packages/cloudflare/src/health-gate.ts) and tests for uncertainty,
   progression, regression, wrong cohorts, incomplete data, and sampled counts.
 - [Historical confidence-envelope SVG renderer](../../packages/cloudflare/src/health-chart.ts).
@@ -30,7 +30,7 @@ Implemented foundations:
   the previous multi-version split, bounding observations per phase, and requiring
   a health gate after 100% as well as intermediate phases.
 - A host-only Analytics SQL availability probe; no analytics token enters a container.
-- A [private fixed-target release broker](../../apps/release-manager) verified via
+- A [private fixed-target release broker](../../test/apps/release-manager) verified via
   real hosted promotion, replay and exact baseline rollback.
 - A trusted hosted regression controller with checkpointed HTTP cohorts,
   one-minute uncertainty sleeps, non-retryable regression and immutable SVG snapshots.
@@ -92,10 +92,10 @@ Its completion applies only to that exact closed cohort, not ambient traffic or
 a general SQL ingestion watermark. The adapter must authenticate correlation IDs
 and classify native terminal outcomes rather than log lines or DO resets; it must
 not invent identities or reconstruct the expected list from rows that arrived.
-The [separate hosted WOBS probe](../../apps/example-runner/README.md#closed-native-wobs-cohort)
+The [separate hosted WOBS probe](../../test/apps/example-runner/README.md#closed-native-wobs-cohort)
 now verifies twenty real terminal fetch outcomes against independently captured
 edge receipts, including a zero-row query followed by delayed complete ingestion.
-It preserves query-string redaction. The [native WOBS regression lab](../../apps/example-runner/README.md#native-wobs-driven-regression-rollback)
+It preserves query-string redaction. The [native WOBS regression lab](../../test/apps/example-runner/README.md#native-wobs-driven-regression-rollback)
 subsequently verified a real 10% promotion, delayed complete ingestion, three
 uncertainty waits and conclusive rollback using native SQL outcomes only. All
 33 candidate outcomes were failures; the non-retryable gate ran once and restored
@@ -104,7 +104,7 @@ promotion, ambient-traffic completeness or Workflow/cron outcome coverage.
 
 ## Verification and notification work remaining
 
-A bounded [live regression test](../../apps/hmd-demo/ci/tests/live-rollback.test.ts)
+A bounded [live regression test](../../test/apps/hmd-demo/ci/tests/live-rollback.test.ts)
 has shifted the dedicated demo to 10% failing candidate, classified a real SLO
 breach from version-attributed HTTP probes, and restored its exact previous
 allocation. This proves the deployment API path, not a complete hosted controller
@@ -144,7 +144,7 @@ Do not run these simultaneously: one durable release owner guards the target.
 Catchable controller failures restore the baseline and fail the lab, rather than
 being reported as a successful expected regression. Fatal platform termination can
 bypass JavaScript cleanup; the broker now has independently verified
-[controller-death recovery](../../apps/release-manager/README.md#independent-controller-death-recovery).
+[controller-death recovery](../../test/apps/release-manager/README.md#independent-controller-death-recovery).
 Controlled native WOBS regression cohorts are now verified separately; healthy
 four-phase WOBS promotion and ambient windows remain open. The separate hosted
 [HTTP review lab](../../apps/effect-ci/README.md#separate-health-mediated-approval-lab)
@@ -206,7 +206,7 @@ Recorded-run assertions are read-only:
 HMD_REGRESSION_INSTANCE=RECORDED_REGRESSION_ID \
 HMD_EXHAUSTION_INSTANCE=RECORDED_EXHAUSTION_ID \
 HMD_HEALTHY_INSTANCE=RECORDED_HEALTHY_ID \
-node --test apps/example-runner/ci/tests/live-hmd.test.ts
+node --test test/apps/example-runner/ci/tests/live-hmd.test.ts
 ```
 
 1. Upload healthy and failing candidate versions without shifting traffic; record

@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const demo = fileURLToPath(new URL("../examples/demo/", import.meta.url));
+const demo = fileURLToPath(new URL("../test/fixtures/demo", import.meta.url));
 
 test("the conventional comparison stages the baseline without undoing demo adoption", () => {
   const workflow = readFileSync(new URL("../.github/workflows/e2e.yml", import.meta.url), "utf8");
@@ -25,10 +25,11 @@ test("the conventional comparison stages the baseline without undoing demo adopt
   const directory = mkdtempSync(join(tmpdir(), "effect-ci-baseline-staging-"));
   try {
     for (const example of ["demo", "node-pnpm"]) {
-      const source = join(directory, "examples", example);
+      const source = example === "demo" ? join(directory, "test/fixtures/demo") : join(directory, "examples", example);
       mkdirSync(join(source, ".github/workflows"), { recursive: true });
       const original = readFileSync(
-        new URL(`../examples/${example}/.github/workflows/github.yml`, import.meta.url),
+        new URL(example === "demo" ? "../test/fixtures/demo/.github/workflows/github.yml" :
+          `../examples/${example}/.github/workflows/github.yml`, import.meta.url),
         "utf8",
       );
       writeFileSync(join(source, ".github/workflows/github.yml"), original);
@@ -84,7 +85,7 @@ test(
       mkdirSync(join(directory, ".github/workflows"), { recursive: true });
       writeFileSync(
         join(directory, ".github/workflows/github.yml"),
-        "name: Adopted CI\non: [push]\npermissions:\n  contents: read\n  checks: write\njobs:\n  ci:\n    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main\n    with:\n      workflow: examples/demo\n    secrets: inherit\n",
+        "name: Adopted CI\non: [push]\npermissions:\n  contents: read\n  checks: write\njobs:\n  ci:\n    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main\n    with:\n      workflow: test/fixtures/demo\n    secrets: inherit\n",
       );
       // Rehearsals intentionally change this; no original message assertion.
       writeFileSync(

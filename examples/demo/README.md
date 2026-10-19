@@ -1,287 +1,227 @@
-# Adopt Effect CI, one capability at a time
+# Effect CI: a hands-on tour
 
-> How far can an existing Vite project go without replacing its scripts?
+> How do I adopt CI, caching and conditional deployment in my own Vite app?
 
-Legacy hosted verification fixture. For a human walkthrough in your own
-disposable app/repository, use [apps/demo](../../apps/demo/README.md).
-Monorepo commits no longer automatically publish or release this fixture.
+An ordinary Vite app. Your own disposable repository. Make changes, type the
+commands, inspect what happened, then delete what you created.
 
-One app, one rehearsal branch. Make a change, run it, push it, inspect Slack.
-Branch pushes publish previews; main releases through the Slack review.
+This directory is a **template**, not the directory where you rehearse. No setup
+script, worktree, inherited secrets or sibling app imports are required. The app
+installs and builds independently; the unpublished Effect CI CLI/SDK are linked
+from your development checkout while we work on them.
 
-## 0. Set up once
+**Current boundary:** the local app, task cache, source selection, local output
+publication and direct Cloudflare deployment below are runnable. The existing
+host's attestation, Slack, approval and release policies are still enrolled to
+the original fixture repository. A new GitHub repository is **not** automatically
+enrolled by installing the App. Those hosted chapters are not yet a runnable
+continuation of this tutorial. Do not use the monorepo's `main` as a substitute.
 
-> Use this repository and its hosted integration. No new repo or worktree.
+## 0. Prepare the development CLI once
 
-In `examples/demo`, on your usual checkout:
+Use Node 24.11+ and pnpm 12.8.1. In the Effect CI monorepo, keep this shell:
 
 ```sh
 pnpm install
-pnpm build
+export EFFECT_CI_REPO="$PWD"
+export PATH="$EFFECT_CI_REPO/node_modules/.bin:$PATH"
+cf-ci --help
 ```
 
-Use Node 24.11+ or Node 26+. Stay in `examples/demo` and prepare this shell:
+PATH exposes the development CLI without installing a global package. Nothing
+here deploys a CI host or changes your Cloudflare/GitHub login.
+
+## 1. Copy the app out of the monorepo
 
 ```sh
-export PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
-cloudflared access login --quiet https://effect-ci-github-cloudflare.ericclemmons.workers.dev
-cf-ci doctor --remote
+export DEMO_PARENT="$(mktemp -d -t effect-ci-demo)"
+cd "$DEMO_PARENT"
+pnpm dlx tiged ericclemmons/effect-ci-testbed/examples/demo demo
+cd demo
+pnpm install
+pnpm dev
 ```
 
-If you are on `main`, create a rehearsal branch; otherwise keep your branch:
+Open the local Vite URL. Click **Test JavaScript**. Stop the server with Ctrl-C
+when ready to continue. `tiged` copies files without the monorepo's Git history.
+Until this template is merged, use the tutorial PR's branch after `#` in the
+`tiged` source, rather than expecting it to exist on `main`.
+
+The app has no Effect CI dependency yet. Its scripts and Vite configuration are
+ordinary app code. `packages/greeting/message.ts` is a shared source module inside
+this new repo, not an import from the Effect CI checkout.
+
+## 2. Give it its own GitHub repository
+
+Pick a unique name. Keep these values in this shell for teardown:
 
 ```sh
-git switch -c demo/rehearsal
+export DEMO_NAME="effect-ci-demo-$(date +%Y%m%d-%H%M%S)"
+export DEMO_OWNER="$(gh api user --jq .login)"
+export DEMO_REPO="$DEMO_OWNER/$DEMO_NAME"
+export DEMO_WORKER="$DEMO_NAME"
+git init --initial-branch=main
+git add .
+git commit -m "Start the Vite demo"
+gh repo create "$DEMO_REPO" --private --source=. --remote=origin --push
+git remote set-head origin main
 ```
 
-Run `doctor` before presenting: it checks authentication and host capabilities
-without starting work. The URL is in `.env`. The enrolled
-demo uses your existing Access login; no separate API profile is needed for your
-approved identity. Other API-token clients are unchanged. Keep credentials out of
-project env files; never use a deployment token.
+This repository's `main` is the landing/release branch. All tutorial edits happen
+here, never on the Effect CI monorepo's `main`. GitHub login is separate from
+Cloudflare login. Keep the generated repository/Worker names for cleanup if you
+close this shell.
 
-Run `pnpm dev` to edit.
-
-## 1. Discover the project
-
-> Existing package scripts become actions. No workflow file required.
+## 3. Discover and run existing scripts
 
 ```sh
 cf-ci
 cf-ci list
 cf-ci plan --format=mermaid
-```
-
-## 2. Run goals before pushing
-
-> Ask for test and build together, not a hand-maintained setup sequence.
-
-```sh
 cf-ci run test build
+AI_AGENT=true cf-ci run test build
 ```
 
-In `src/message.ts`:
+Human output and structured agent output use the same execution path. Discovery
+does not rewrite the project. An explicit run may create an ignored empty CI
+marker. No GitHub push, Cloudflare deployment or model call is hidden here.
 
-```diff
--export const message = "Hello from the demo app.";
-+export const message = "Hello from my rehearsal.";
-```
-
-```sh
-cf-ci run test build
-```
-
-## 3. Give your agent the same commands
-
-> Structured results without a different CI path.
-
-```sh
-export AI_AGENT=true
-cf-ci list
-cf-ci run test build
-```
-
-## 4. Reuse unchanged task output
-
-> Vite+ validates its task inputs and outputs; no handwritten cache key.
+## 4. See an actual task-cache hit
 
 ```sh
 time cf-ci run build
 time cf-ci run build
 ```
 
-Change `src/message.ts` and repeat. Inspect Vite+'s actual hit/miss output.
-[Cache details](../vite-plus-cache).
+Inspect Vite+'s hit/miss output. Edit the greeting and repeat: changed build
+inputs invalidate the build. Task caching saves computation; it is not a signed
+statement that another runner should trust your laptop.
 
-## 5. Replace the manual GitHub job
+## 5. Adopt a workflow, then distinguish source from output
 
-> Keep package scripts. Replace their YAML execution steps with one workflow reference.
-
-Already adopted here. Compare the [original job](./verification/github-baseline.example.yml)
-with the [current workflow](./.github/workflows/github.yml):
-
-```diff
---- a/.github/workflows/github.yml
-+++ b/.github/workflows/github.yml
-@@
- permissions:
-   contents: read
-+  checks: write
-@@
- jobs:
-   ci:
--    runs-on: ubuntu-latest
--    steps:
--      - uses: actions/checkout@v7
--      - uses: voidzero-dev/setup-vp@v1.21.2
--        with:
--          node-version: 24
--          cache: true
--          run-install: true
--      - run: npm run lint
--      - run: npm run check
--      - run: npm run typecheck
--      - run: npm run test
--      - run: npm run build
-+    uses: ericclemmons/effect-ci-testbed/.github/workflows/effect-ci.yml@main
-+    with:
-+      workflow: examples/demo
-+    secrets: inherit
-```
-
-This reference runs **on GitHub Actions**, not Cloudflare. It uses this repo's
-configured App secrets; it is not a standalone-repo installer.
-Replace the whole job: a reusable-workflow job has no `runs-on` or `steps`.
-[Complete adopted YAML](./verification/effect-on-github.example.yml).
-
-## 6. Make dependencies explicit inside actions
-
-> The workflow requests goals. Each action owns its prerequisites.
-
-```diff
---- /dev/null
-+++ b/.cloudflare/ci/workflow.ts
-+import * as CI from "@effect-ci-testbed/ci";
-+import * as actions from "./actions.ts";
-+export * from "./actions.ts";
-+
-+export default CI.workflow("cf-ci-demo", function* () {
-+  yield* CI.parallel([actions.test(), actions.build()]);
-+});
-```
+The SDK is currently unpublished. Link the development package explicitly; this
+is local tooling, not an application runtime dependency or a hosted enrollment:
 
 ```sh
+mkdir -p node_modules/@effect-ci-testbed
+ln -s "$EFFECT_CI_REPO/packages/ci" node_modules/@effect-ci-testbed/ci
+mkdir -p .cloudflare/ci
+cp tutorial/workflow.ts .cloudflare/ci/workflow.ts
+git add .cloudflare/ci/workflow.ts
+git commit -m "Adopt the demo workflow"
 cf-ci plan --format=mermaid
-cf-ci run test build
+cf-ci run
+cf-ci run
 ```
 
-The shipped [actions](./.cloudflare/ci/actions.ts) share installation and parallel
-lint/check/typecheck prerequisites. Either goal pulls them in; shared work runs once.
-Marker-free script discovery is still conservative and serial in its default workflow.
+Read `.cloudflare/ci/workflow.ts`: ordinary `if` statements, not a condition DSL.
+Shared checkout runs once. The build is requested before output comparison; the
+second run keeps the same local publication when the deployable bytes match.
+This lesson publishes to `.effect-ci/deployed-site`, **not Cloudflare**.
+The SDK symlink is ignored and changes no package/lockfile. Recreate it after a
+fresh install if necessary. It deliberately depends on the developer checkout;
+the app's own source, tests and build do not. Do not commit machine-specific
+`link:` overrides or absolute paths into the disposable repository.
 
-## 7. Push for hosted CI and Slack
-
-> Stay on your branch. The hosted App builds the pushed commit.
+### README change: no TypeScript lint, no changed app output
 
 ```sh
-git add src .cloudflare/ci
-git commit -m "Rehearse the demo"
-git push
+git switch -c demo/readme
+printf '\nA README-only tutorial change.\n' >> README.md
+git add README.md
+git commit -m "Explain the demo"
+cf-ci run
 ```
 
-First push: `git push -u origin demo/rehearsal` (or your branch's name).
-Then just `git push`.
+`source.changed(["**/*.ts", "package.json", "pnpm-lock.yaml"])` selects lint.
+The new repo's recorded default branch supplies the normal comparison. Missing
+comparison data or a dirty checkout conservatively runs work rather than silently
+skipping it. This is an explicit watchlist, not automatic dependency discovery.
 
-Open [#effect-ci in Slack](https://app.slack.com/client/TBXG40NPN/C0C81FU4B5J).
-The card shows status and preview. Failures include redacted output, exit code
-and a text snippet for long logs.
-Click **Dashboard** on that card for the same Cloudflare Workflow run.
-The first thread reply is a live Status/Step table; each linked step opens its reply.
+### Shared-module change: same app source, different app output
 
-The host currently selects its fixed demo program, not uploaded `workflow.ts`.
-
-### Select hosted goals
+Edit `packages/greeting/message.ts` to say `Shared code ships too.` Then:
 
 ```sh
-cf-ci run test build --remote
+git add packages/greeting/message.ts
+git commit -m "Change the shared greeting"
+cf-ci run
+cf-ci run
 ```
 
-Live verified: selected hosted goals share installation and never
-publish or release. The CLI checks host capabilities before dispatch. Without targets,
-`cf-ci run --remote` runs the hosted suite and publishes a preview.
+Lint runs for the TypeScript change. Vite builds the importing app. Its output
+changes even though `src/app.ts` did not. `workspace.changed("dist/**")` publishes
+the new output once, then skips the identical publication. It compares complete
+output bytes/configuration with this destination's last successful publication,
+not Git commits or snapshot IDs. A failed build cannot advance that baseline.
 
-## 8. Let the trusted runner verify it once
+## 6. Deploy a real disposable Cloudflare app
 
-> Trust exact evidence, not an agent saying “tests passed.”
-
-Live verified: remote test/build receipts are reused by SCM CI.
-
-From the clean, pushed commit:
+Use your existing Wrangler login. `wrangler` and the host's `cf` CLI can have
+separate saved OAuth sessions: if necessary, run `pnpm exec wrangler login`.
+Do not copy account tokens into `.env` or project code.
 
 ```sh
-cf-ci run test build --remote
-cf-ci run test build --remote --format=json
+pnpm exec wrangler whoami
+pnpm build
+pnpm exec wrangler deploy --name "$DEMO_WORKER"
 ```
 
-Remote and SCM runs share the same runner and check definitions. Successful tests
-create a host-signed receipt; matching runs verify it instead of rerunning. JSON includes evidence.
-No local signing key or Git-note push is needed.
+Open the exact Workers URL returned by deployment. This serves `dist`, not the
+repository or `.env`. The explicit `--name` avoids overwriting the template's
+default name. Check the account shown before deploying. There are **no AI,
+container, KV, R2, Durable Object or scheduled-trigger bindings** in this app.
+This manual deployment does not yet reuse the local lesson's publication baseline.
+[Cloudflare static-assets deployment](https://developers.cloudflare.com/workers/static-assets/get-started/).
 
-Pure checks reuse their verified results. Build returns a workspace: later runs
-restore its signed snapshot and consume the same files without rebuilding.
-Deployment still executes. Missing, changed or expired evidence runs the work
-normally. A squash/rebase needs fresh verification. Remote requires a pushed commit.
-[Receipt policy and limits](../../packages/cloudflare/src/trusted-runner-receipts.md).
-[Hosted proof](../../apps/effect-ci/TRUSTED-REMOTE.md).
+## 7. Hosted chapters being connected
 
-## 9. Consume the build in a deploy action
+The following belong in this same tour, but are not enabled by the commands above:
 
-> Deployment depends on successful test and build, even when requested alone.
+- Hosted test/build, Slack and exact-source signed attestation; then verify rather
+  than re-execute those results when SCM CI runs.
+- Preview on a feature branch, publish only changed deployable output, and release
+  from this disposable repository's `main` with human Progress/Reject controls.
+- README-only policy approval/merging after canonical diff and required checks;
+  code changes go through normal review. No CODEOWNERS impersonation or CI bypass.
+- Failure inspection and a new attempt that reuses valid completed work without
+  replaying deployments or approvals.
+- A **modeled** error → proposed patch → verification → PR agent flow. No AI binding
+  or paid model execution by default; no always-on repair loop.
 
-```diff
---- a/.cloudflare/ci/workflow.ts
-+++ b/.cloudflare/ci/workflow.ts
-@@
--  yield* CI.parallel([actions.test(), actions.build()]);
-+  yield* actions.deploy();
-```
+`cf-ci doctor --remote` is an optional no-dispatch preflight, not a required ritual.
+Normal remote commands should provide actionable authentication/capability errors.
+Do not point a fresh repo at the fixed demo URL and assume it is enrolled.
+
+## 8. Tear down what you created
+
+Keep this shell in the disposable repo. These commands intentionally prompt:
 
 ```sh
-cf-ci run deploy
+printf 'Worker: %s\nGitHub repo: %s\n' "$DEMO_WORKER" "$DEMO_REPO"
+pnpm exec wrangler delete "$DEMO_WORKER"
+gh repo view "$DEMO_REPO"
+gh repo delete "$DEMO_REPO"
 ```
 
-The local action prints built-file sizes and hashes from `.cloudflare/ci/deploy.ts`,
-with `deploymentPerformed: false`. Hosted publication uses the private publisher.
+Verify the exact names and Cloudflare account before confirming deletion. The
+Worker deletion removes this app's deployed assets; GitHub repository deletion is
+destructive, so retain any commits/evidence you want first. Do not delete the
+shared Effect CI host, App, Access application, account or historical fixtures.
+If you skipped deployment/repo creation, skip its deletion too.
 
-## 10. Open the hosted preview
-
-> The browser receives the same checked build, not a second build.
-
-Open **Preview** on your Slack card. Edit the release message, commit and
-`git push` again to publish a new commit-pinned preview. Production stays unchanged.
-
-These are static previews of this Vite app, not resource-isolated Workers Previews.
-[Publication and resource details](../../apps/demo-site/README.md).
-
-## 11. Release from main
-
-> Main is production; other branches are previews. No special release branch.
-
-```sh
-gh pr create --base main --fill
-```
-
-Merge your rehearsal PR into `main` on GitHub. In Slack, inspect the same build's
-graphs and choose **Progress** or **Reject** at 10%, 25%, 75% and 100%.
-Allow two minutes between phases. Sparse data remains uncertain; Progress accepts
-that risk. Reject/timeout restores the prior allocation. Final Progress commits.
-
-Open [the released app](https://effect-ci-hmd-demo.ericclemmons.workers.dev/).
-[Release configuration and native evidence](../../apps/effect-ci/DEMO-RELEASE.md).
-
-## 12. Close the loop with an error event
-
-> HTTP failure → authenticated event → Flue proposal → exact-commit test → unmerged PR.
-
-A real public500 reached Flue, passed native verification and opened
-[unmerged PR4](https://github.com/ericclemmons/effect-ci-private-github-fixture/pull/4).
-Its bot-identity failure remains; read-only reconciliation confirmed the
-PR and updated the same Slack card.
-[Actual result and retained failure](../../apps/effect-ci/PUBLIC-REPAIR.md).
-[Current incident status](../../apps/repair-events/PUBLIC-ACTIVATION.md).
-
-Verify without another error, model call or write, from the repo root:
-
-```sh
-node examples/flue-repair/verify-public.ts
-```
-
-[Flue integration and actual unmerged proposal](../flue-repair).
+Stop `pnpm dev` if still running. The local directory is yours to keep or move to
+Trash after inspecting it; there is no recursive delete command targeting an
+environment variable. Close the shell to discard the PATH/tooling setup.
 
 ## Verification proof
 
-Maintainer evidence, not adoption steps: [recording notes](./verification/README.md).
-[Actual Kumo main release and read-only checks](./verification/polished-release-20261016.md).
-**Video:** [Historical local recording](./verification/README.md).
-**Measured results:** [Historical capture receipt](./verification/published/local-4ebc193.json).
+**Video:** Pending for this standalone tutorial. The previous hosted walkthrough
+belongs to the retained fixture, not a fresh installation of this template.
+
+**Measured results:** [Fresh-copy integration test](../../scripts/demo-tutorial.test.ts)
+checks installation, README-only lint skipping, shared-source output changes,
+unchanged-output skipping, and preservation of the successful baseline after a
+failed build. It does not claim that the pending hosted chapters ran.
+
 [Proof-page contract](../PROOF-PAGES.md).

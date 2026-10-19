@@ -1,68 +1,64 @@
 import * as CI from "@effect-ci-testbed/ci";
 
-// Project discovery is not deployment authority. This allowlist deliberately
-// excludes apps/demo, hmd-demo, verification fixtures and the repair/AI apps.
-export const platformApps = Object.freeze([
-  "demo-site", "release-manager", "github-actions-runner", "example-runner", "effect-ci",
-] as const);
+// Product apps only. Test hosts live in test/apps; the copy-out tutorial lives
+// in examples/demo. Neither is a production CD target.
+export const platformApps = ["github-actions-runner", "effect-ci"] as const;
 
-const checkout = CI.action("checkout monorepo", function* () {
+const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source;
   return () => source.checkout();
 });
 
-export const check = CI.check("check monorepo", function* () {
+const install = CI.action("install", function* () {
   const workspace = yield* checkout();
+  return () => workspace.exec("pnpm install --frozen-lockfile");
+}, { timeout: "10 minutes", retries: { limit: 0, delay: "1 second" } });
+
+export const check = CI.check("check", function* () {
+  const workspace = yield* install();
   return () => workspace.exec("pnpm check");
 });
 
-export const test = CI.check("test core", function* () {
-  const workspace = yield* checkout();
-  return () => workspace.exec("node --test packages/ci/src/*.test.ts");
-});
+export const test = CI.check("test", function* () {
+  const workspace = yield* install();
+  return () => workspace.exec("node --test --test-concurrency=2 packages/*/src/*.test.ts apps/*/src/*.test.ts test/apps/*/src/*.test.ts scripts/*.test.ts");
+}, { timeout: "15 minutes" });
 
-export const build = CI.action("build monorepo", function* () {
-  const workspace = yield* checkout();
+export const build = CI.action("build", function* () {
+  const workspace = yield* install();
   return () => workspace.exec("pnpm build");
 });
 
 export const tutorial = CI.check("test and build tutorial", function* () {
-  const workspace = yield* checkout();
+  const workspace = (yield* install()).directory("examples/demo");
   return function* () {
-    // Normal validation, not tutorial publication or an approval workflow.
-    yield* workspace.directory("apps/demo").exec("pnpm test");
-    yield* workspace.directory("apps/demo").exec("pnpm build");
+    yield* workspace.exec("pnpm test");
+    yield* workspace.exec("pnpm build");
   };
 });
 
 const validate = () => CI.parallel([check(), test(), build(), tutorial()]);
 
-const appDeployments = platformApps.map(app => CI.action(`deploy ${app}`, function* () {
+const deployments = platformApps.map(app => CI.action(`deploy ${app}`, function* () {
   yield* validate();
-  const workspace = yield* checkout();
+  const workspace = (yield* install()).directory(`apps/${app}`);
   return function* () {
-    const directory = workspace.directory(`apps/${app}`);
-    // The CI host's build wrapper selects its existing profile; routine CD
-    // deliberately does NOT use its Access/secret-reconciling deploy wrapper.
-    yield* directory.exec(app === "effect-ci" ? "pnpm build" : "./node_modules/.bin/cf build");
-    return yield* directory.exec("./node_modules/.bin/cf deploy --prebuilt --containers-rollout none");
+    yield* workspace.exec("pnpm build");
+    yield* workspace.exec("./node_modules/.bin/cf workers triggers deploy --prebuilt");
+    return yield* workspace.exec("./node_modules/.bin/cf deploy --prebuilt");
   };
-}));
+}, { timeout: "15 minutes", retries: { limit: 0, delay: "1 second" } }));
 
-export const deploy = CI.action<void>("deploy platform apps", function* () {
+export const deploy = CI.action<void>("deploy", function* () {
   yield* validate();
   return function* () {
-    // Keep app deployments ordered, and stop on the first failed deployment.
-    for (const deploy of appDeployments) yield* deploy();
+    for (const deployment of deployments) yield* deployment();
   };
 });
 
 export default CI.workflow("monorepo", function* () {
   yield* validate();
-  // Ordinary CD, not a second manual deployment workflow. The demo remains
-  // validation-only because deployment selection is the platform allowlist.
   yield* CI.when(CI.Condition.all(
-    CI.Condition.event("push"),
-    CI.Condition.ref("refs/heads/main"),
+    CI.Condition.event("push"), CI.Condition.ref("refs/heads/main"),
   ), deploy());
 });

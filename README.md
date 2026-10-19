@@ -25,8 +25,8 @@ Keep your package scripts. Help, list and plan inspect them without creating
 files. The first local run adds an empty CI marker; an authored workflow takes
 precedence. Humans get text, detected agents get JSON. Use `--format` to override.
 
-[Walk through the tutorial](./apps/demo/README.md) in a disposable app repository.
-The [legacy hosted fixture](./examples/demo/README.md) records Slack, previews,
+[Walk through the tutorial](./examples/demo/README.md) in a disposable app repository.
+The [legacy hosted fixture](./test/fixtures/demo/README.md) records Slack, previews,
 test attestation and the real error-to-unmerged-PR proof.
 [Browse recipes](./examples/README.md) for one focused capability at a time.
 
@@ -39,9 +39,10 @@ test attestation and the real error-to-unmerged-PR proof.
 
 ## This repository's CI and CD
 
-The root [workflow](./.cloudflare/ci/workflow.ts) runs monorepo checks, core tests,
-SDK build, and the tutorial's normal test/build. GitHub Actions runs that same
-workflow on PRs and `main`. Recipe checks remain enabled for demo-only edits.
+The root [workflow](./.cloudflare/ci/workflow.ts) runs monorepo checks, platform
+tests, SDK build, and the tutorial's normal test/build. GitHub Actions runs the
+shared validation entrypoint on PRs and `main`. Recipe checks remain enabled
+for demo-only edits.
 
 ```sh
 pnpm install
@@ -50,26 +51,42 @@ cf-ci plan
 cf-ci run
 ```
 
-PRs validate; successful pushes to `main` also deploy the platform apps through
-the same root workflow. It builds and deploys the static preview publisher,
-release manager, Actions runner, example runner and CI host, in that order.
-It preserves existing container allocations and does not reconcile Access or
-upload secrets. A failed validation prevents every deployment; a failed app
-deployment stops later targets without rolling back earlier targets. Main runs
-are serialized and running deployments are not cancelled by a newer push.
+The signed GitHub App event selects the root workflow for native Cloudflare
+execution. The host imports that workflow directly, like the other examples.
+After validation, a push to `main` builds each product app and runs:
 
-GitHub CD needs a scoped `CLOUDFLARE_API_TOKEN` repository secret and
-`CLOUDFLARE_ACCOUNT_ID` secret or repository variable. They are passed only to
-the executing main-push workflow, never PRs, plan runs or dependency installation.
-The token is not configured yet; local OAuth is not copied into GitHub. Until
-that credential is installed, main CD cannot authenticate—there is no silent
-successful skip or separate manual deployment required by the design.
+```sh
+cf workers triggers deploy --prebuilt
+cf deploy --prebuilt
+```
 
-`apps/demo` is a human tutorial/template, not a monorepo deployment target.
+That's ordinary CD, including the declared infrastructure—not a separate
+code-only publisher, HMD gate, version-management protocol or manual deploy goal.
+A failed check prevents deployment. A failed trigger/deploy command stops later
+apps. The runner must have Cloudflare deployment credentials and a working
+Docker daemon for app image builds; an App installation is not a Cloudflare
+deployment credential. Supporting GitHub validation jobs do not receive those
+credentials. Nothing here arms an AI flow or uploads a new secret.
+
+`examples/demo` is a human tutorial/template, not a monorepo deployment target.
 Its copied repository owns its own `main` and eventual release policy. The
 monorepo's App webhook no longer starts the legacy demo preview or human release
 gate. Repair/AI apps and verification fixtures are also excluded from this
-explicit platform deployment goal. Discovery alone never grants CD authority.
+enrolled platform deployment path. Discovery alone never grants CD authority.
+
+## Repository layout
+
+- `apps/effect-ci`: the native CI host.
+- `apps/github-actions-runner`: the optional GitHub Actions execution app.
+- `examples/demo`: the standalone, copy-out human tutorial; tested, not deployed.
+- `test/apps`: deployable test hosts (repair, HMD, preview, notification and
+  hosted-example fixtures). They are not required product installations or CD targets.
+- `test/fixtures/demo`: the retained hosted demo/proof app and its original evidence.
+- `packages`: reusable runtime, CLI and provider packages.
+
+Moving a test host does not delete its deployed resources or enable it. The
+repair fixtures remain separately operator-controlled; normal CI does not
+invoke a model or replay an incident.
 
 The [live demo proof](./apps/effect-ci/TRUSTED-REMOTE.md) records exact runs and
 limits. Remote execution requires a pushed commit and an enrolled host program;
@@ -125,7 +142,7 @@ Native hosted builds, real GitHub webhook/check delivery with logs, and Slack ap
 have been exercised, including Access-authenticated CLI remote dispatch and event-stream
 reconnection. See the guide for credentials and the exact supported remote contract.
 
-[`apps/example-runner`](./apps/example-runner) hosts unchanged consumer workflows
+[`test/apps/example-runner`](./test/apps/example-runner) hosts unchanged consumer workflows
 for real Cloudflare coverage checks, separately from the GitHub/Slack service.
 
 Workflows and exported actions serve different entrypoints:

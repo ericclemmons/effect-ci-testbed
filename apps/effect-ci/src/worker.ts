@@ -1,11 +1,10 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
-import workflow from "./workflow.ts";
-import { notificationChannels } from "./notification-policy.ts";
+import { monorepoGitHubRun } from "./monorepo-policy.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
-import { demoRouteAllowed, demoRunAllowed, demoGitHubRun, demoRemoteTargets } from "./demo-policy.ts";
+import { demoRouteAllowed, demoRunAllowed, demoRemoteTargets } from "./demo-policy.ts";
 import { demoAccessRequest } from "./demo-access.ts";
 import { runnerWebhook, type RunnerWebhookEnvironment } from "./runner-webhook.ts";
 import { smallChangeWebhook } from "./small-change-webhook.ts";
@@ -17,7 +16,9 @@ export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicInciden
 export { DemoCandidateRecoveryWorkflow } from "./demo-candidate-recovery.ts";
 export { DemoRoutingDiagnosticWorkflow } from "./demo-routing-diagnostic-workflow.ts";
 
-export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
+export { GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
+export { MonorepoCIWorkflow as EffectCIWorkflow } from "./monorepo-workflow.ts";
+export { WorkspaceContainer } from "./monorepo-container.ts";
 export { HealthChartRenderer } from "./health-renderer.ts";
 export { PrivateSlackImages } from "./private-images.ts";
 export { PrivateSlackCards } from "./private-cards.ts";
@@ -32,7 +33,8 @@ export {
 } from "./repair-writer.ts";
 
 const ci = GitHubCloudflare.worker({
-  githubRun: demoGitHubRun,
+  githubRun: monorepoGitHubRun,
+  remoteRunAllowed: () => false,
 });
 const demo = GitHubCloudflare.worker({
   routePrefix: "/demo",
@@ -78,10 +80,3 @@ export default {
     return ci.fetch(request, environment, context);
   },
 };
-
-export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(workflow, {
-  slackLayout: "status-thread",
-  notificationChannels,
-  root: "examples/github-cloudflare-ci",
-  container: { image: "workspace", instance: "standard-1" },
-});

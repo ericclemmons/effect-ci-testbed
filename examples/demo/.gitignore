@@ -1,9 +1,10 @@
-dist/
 node_modules/
-.effect-ci/
-.e2e/
-.verification/
-.env.local
+dist/
 .vite/
-# Created by an explicit cf-ci run; absent in the initial zero-config demo.
+.wrangler/
+.effect-ci/
+.env
+.env.*
+!.env.example
+.dev.vars*
 .cloudflare/ci/ci.ts

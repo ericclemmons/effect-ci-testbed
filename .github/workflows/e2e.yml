@@ -21,7 +21,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install
-      - run: node --test scripts/demo-tutorial.test.ts scripts/monorepo-ci.test.ts
+      - run: node --test scripts/demo-tutorial.test.ts scripts/monorepo-ci.test.ts scripts/check-example-plans.test.ts apps/effect-ci/src/monorepo-policy.test.ts
 
   standalone-host:
     name: standalone host / credential-free image
@@ -120,7 +120,9 @@ jobs:
         run: |
           example_root="$RUNNER_TEMP/examples/$EXAMPLE"
           mkdir -p "$example_root"
-          cp -R "examples/$EXAMPLE/." "$example_root"
+          source_root="examples/$EXAMPLE"
+          if [ "$EXAMPLE" = "demo" ]; then source_root="test/fixtures/demo"; fi
+          cp -R "$source_root/." "$example_root"
           # Compare conventional Actions, not the demo's adopted monorepo caller.
           # The effect-on-github matrix verifies that caller in its real checkout.
           if [ "$EXAMPLE" = "demo" ]; then
@@ -184,7 +186,7 @@ jobs:
           if [ "${{ matrix.example }}" = "zero-config" ]; then
             workflow="examples/${{ matrix.example }}/.cloudflare/ci/ci.ts"
           elif [ "${{ matrix.example }}" = "demo" ]; then
-            workflow="examples/demo"
+            workflow="test/fixtures/demo"
           fi
           pnpm cf-ci --workflow "$workflow" ${{ matrix.mode == 'execute' && 'run' || 'plan' }} --format=text
 
@@ -381,7 +383,7 @@ jobs:
             workflow: examples/zero-config/.cloudflare/ci/ci.ts
             runs-on: '["ubuntu-latest"]'
           - example: demo
-            workflow: examples/demo
+            workflow: test/fixtures/demo
             runs-on: '["ubuntu-latest"]'
           - example: deploy-hook
             workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
@@ -491,7 +493,7 @@ jobs:
           - example: custom-container-image
             workflow: examples/custom-container-image/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
-    uses: ./.github/workflows/effect-ci.yml
+    uses: .github/workflows/effect-ci.yml
     with:
       workflow: ${{ matrix.workflow }}
       runs-on: ${{ matrix.runs-on }}
@@ -705,15 +707,15 @@ jobs:
       - name: Verify signed dispatch and duplicate delivery
         run: node --test examples/github-cloudflare-ci/.cloudflare/ci/tests/webhook.test.ts
       - name: Verify Slack approvals and single-message progress
-        run: node --test packages/ci/src/*.test.ts packages/github/src/*.test.ts packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/*.test.ts apps/effect-ci/access.config.test.ts apps/example-runner/src/*.test.ts apps/notification-isolation/src/*.test.ts
+        run: node --test packages/ci/src/*.test.ts packages/github/src/*.test.ts packages/github-cloudflare/src/*.test.ts apps/effect-ci/src/*.test.ts apps/effect-ci/access.config.test.ts test/apps/example-runner/src/*.test.ts test/apps/notification-isolation/src/*.test.ts
       - name: Verify remote CLI authentication and event streaming
-        run: node --test packages/cli/src/*test.ts apps/example-runner/src/*test.ts
+        run: node --test packages/cli/src/*test.ts test/apps/example-runner/src/*test.ts
       - name: Verify demo maintainer tools and actual workflow adoption separately from app tests
         run: |
-          node --test examples/demo/verification/*.test.mjs examples/demo/verification/*.test.ts
+          node --test test/fixtures/demo/verification/*.test.mjs test/fixtures/demo/verification/*.test.ts
           node --test scripts/demo-adoption.test.ts
       - name: Verify source exports and HMD health foundations
-        run: node --test packages/cloudflare/src/*.test.ts apps/demo-site/src/*.test.ts apps/hmd-demo/src/*.test.ts apps/release-manager/src/*.test.ts apps/repair-ai/src/*.test.ts
+        run: node --test packages/cloudflare/src/*.test.ts test/apps/demo-site/src/*.test.ts test/apps/hmd-demo/src/*.test.ts test/apps/release-manager/src/*.test.ts test/apps/repair-ai/src/*.test.ts
       - name: Verify genuine pinned tools in capability-denied Dynamic Workers
         run: node --test examples/dynamic-worker-checks/src/*compatibility.test.mjs examples/dynamic-worker-checks/src/vitest-adapter.test.mjs examples/dynamic-worker-checks/src/vitest-trace.test.mjs examples/dynamic-worker-checks/src/vitest-workflow.test.mjs examples/dynamic-worker-checks/src/vitest-fixture.test.ts examples/dynamic-worker-checks/src/vitest-evidence.test.ts packages/cloudflare-dynamic-worker/src/test-protocol.test.ts packages/cloudflare-dynamic-worker/src/static-build*.test.ts
       - name: Verify bounded static build composition and actual compiler bundle

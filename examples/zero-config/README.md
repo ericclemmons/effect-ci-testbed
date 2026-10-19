@@ -55,7 +55,7 @@ of automatic dependency-driven parallelism or of Vite/Node execution in an isola
 The CLI bootstrap regression executes a real dependency-free npm package from a
 fresh temporary directory; it is local proof, not a new hosted coverage result.
 
-The [hosted example runner](../../apps/example-runner) uses the same SDK inference,
+The [hosted example runner](../../test/apps/example-runner) uses the same SDK inference,
 but reads `package.json` from the requested immutable GitHub revision in a native
 Workflow step. It then runs checkout, installation, and the inferred tasks in the
 Cloudflare workspace layer. No task definitions are copied into the host, and the

@@ -59,7 +59,7 @@ and repository matrix run the same program on GitHub's runner.
 ## Run on Cloudflare
 
 Run this unchanged workflow in a real Cloudflare account with the
-[hosted example app](../../apps/example-runner):
+[hosted example app](../../test/apps/example-runner):
 
 ```sh
 pnpm --filter @effect-ci-testbed/example-runner exec cf deploy

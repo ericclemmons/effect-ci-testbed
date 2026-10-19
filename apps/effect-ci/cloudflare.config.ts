@@ -11,6 +11,7 @@ const workspace = defineContainer({
   schedulingPolicy: "durable-object",
   images: {
     workspace: { dockerfile: "./Dockerfile" },
+    ci: { dockerfile: "./Dockerfile.ci" },
     "trusted-demo": { dockerfile: "./Dockerfile.trusted-demo" },
   },
 });

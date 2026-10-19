@@ -72,7 +72,7 @@ a later step.
 ## Hosted coverage
 
 The unchanged workflow also passed in a real Cloudflare Workflow. See the
-[hosted runner and recorded run](../../apps/example-runner#verified-runs).
+[hosted runner and recorded run](../../test/apps/example-runner#verified-runs).
 
 ## Verification proof
 
