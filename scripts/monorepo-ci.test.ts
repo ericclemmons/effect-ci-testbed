@@ -3,12 +3,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import * as Effect from "effect/Effect";
 import * as CI from "@effect-ci-testbed/ci";
-import workflow, { deployPlatform, platformApps } from "../.cloudflare/ci/workflow.ts";
+import workflow, { platformApps } from "../.cloudflare/ci/workflow.ts";
 
-async function capture(definition: CI.Workflow<unknown>, failure?: string) {
+async function capture(definition: CI.Workflow<unknown>, failure?: string,
+  event: CI.WorkflowEventShape = { type: "pull_request", ref: "refs/heads/main" }) {
   const commands: { cwd: string; command: string }[] = [];
   const run = CI.runPromise(definition, {
     output: "silent",
+    event,
     source: { checkout: () => Effect.succeed(CI.Workspace.local("/repo")) },
     executor: { execute: input => {
       commands.push({ cwd: input.workspace.cwd, command: input.command });
@@ -27,8 +29,8 @@ test("ordinary root CI tests/builds the tutorial without deployment or approval"
   assert.ok(commands.every(c => !/deploy|publish|approval/.test(c.command)));
 });
 
-test("explicit CD deploys only platform apps, never tutorial, repair or verification fixtures", async () => {
-  const { commands, run } = await capture(CI.workflow("explicit CD", () => deployPlatform()));
+test("normal main push performs CD for platform apps, never tutorial, repair or verification fixtures", async () => {
+  const { commands, run } = await capture(workflow, undefined, { type: "push", ref: "refs/heads/main" });
   await run;
   const deployments = commands.filter(c => c.command.includes("cf deploy"));
   assert.deepEqual(deployments.map(c => c.cwd), platformApps.map(app => `/repo/apps/${app}`));
@@ -38,21 +40,40 @@ test("explicit CD deploys only platform apps, never tutorial, repair or verifica
 });
 
 test("failed validation prevents every platform deployment", async () => {
-  const { commands, run } = await capture(CI.workflow("failing CD", () => deployPlatform()), "pnpm check");
+  const { commands, run } = await capture(workflow, "pnpm check", { type: "push", ref: "refs/heads/main" });
   await assert.rejects(run, /Command failed/);
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
 });
 
 test("a failed app build stops CD before that deployment and every later target", async () => {
-  const { commands, run } = await capture(CI.workflow("failed app build", () => deployPlatform()),
-    "./node_modules/.bin/cf build");
+  const { commands, run } = await capture(workflow,
+    "./node_modules/.bin/cf build", { type: "push", ref: "refs/heads/main" });
   await assert.rejects(run, /Command failed/);
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
   assert.ok(!commands.some(c => c.cwd === "/repo/apps/effect-ci"));
 });
 
-test("GitHub selects only the non-deploying root workflow", () => {
+test("feature pushes and manual runs validate without automatic production deployment", async () => {
+  for (const event of [
+    { type: "push", ref: "refs/heads/feature/demo" },
+    { type: "workflow_dispatch", ref: "refs/heads/main" },
+    { type: "push" },
+  ] satisfies CI.WorkflowEventShape[]) {
+    const { commands, run } = await capture(workflow, undefined, event);
+    await run;
+    assert.ok(commands.every(c => !c.command.includes("cf deploy")));
+  }
+});
+
+test("GitHub enables normal root CD and isolates its credentials to executing main pushes", () => {
   const yaml = readFileSync(".github/workflows/monorepo.yml", "utf8");
   assert.match(yaml, /workflow: \.cloudflare\/ci\/workflow\.ts/);
-  assert.doesNotMatch(yaml, /deployPlatform|CLOUDFLARE_API_TOKEN/);
+  assert.match(yaml, /cloudflare-deploy: true/);
+  assert.doesNotMatch(yaml, /deployPlatform/);
+  const reusable = readFileSync(".github/workflows/effect-ci.yml", "utf8");
+  const token = reusable.split("\n").find(line => /^\s+CLOUDFLARE_API_TOKEN: \$\{\{/.test(line))!;
+  assert.match(token, /inputs\.cloudflare-deploy/);
+  assert.match(token, /matrix\.mode == 'execute'/);
+  assert.match(token, /github\.event_name == 'push'/);
+  assert.match(token, /github\.ref == 'refs\/heads\/main'/);
 });

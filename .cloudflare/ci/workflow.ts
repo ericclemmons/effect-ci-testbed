@@ -49,9 +49,7 @@ const appDeployments = platformApps.map(app => CI.action(`deploy ${app}`, functi
   };
 }));
 
-// Explicit operator goal: cf-ci run deployPlatform. Uses the operator's existing
-// Cloudflare login. The ordinary GitHub CI job never selects this goal.
-export const deployPlatform = CI.action<void>("deploy platform apps", function* () {
+export const deploy = CI.action<void>("deploy platform apps", function* () {
   yield* validate();
   return function* () {
     // Keep app deployments ordered, and stop on the first failed deployment.
@@ -61,4 +59,10 @@ export const deployPlatform = CI.action<void>("deploy platform apps", function* 
 
 export default CI.workflow("monorepo", function* () {
   yield* validate();
+  // Ordinary CD, not a second manual deployment workflow. The demo remains
+  // validation-only because deployment selection is the platform allowlist.
+  yield* CI.when(CI.Condition.all(
+    CI.Condition.event("push"),
+    CI.Condition.ref("refs/heads/main"),
+  ), deploy());
 });

@@ -48,17 +48,22 @@ pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
 cf-ci plan
 cf-ci run
-cf-ci plan deployPlatform
-cf-ci run deployPlatform
 ```
 
-`deployPlatform` is an explicit operator goal using your existing Cloudflare
-login. It validates first, then builds and deploys the CI host, static preview
-publisher, Actions runner, release manager and example runner. It preserves
-existing container allocations and does not reconcile Access or upload secrets.
-GitHub currently has no Cloudflare deployment credential: push-to-deploy is
-**not enabled** by this CI job. A failed validation prevents all deployments;
-a failed deployment stops later targets, without rolling back earlier targets.
+PRs validate; successful pushes to `main` also deploy the platform apps through
+the same root workflow. It builds and deploys the static preview publisher,
+release manager, Actions runner, example runner and CI host, in that order.
+It preserves existing container allocations and does not reconcile Access or
+upload secrets. A failed validation prevents every deployment; a failed app
+deployment stops later targets without rolling back earlier targets. Main runs
+are serialized and running deployments are not cancelled by a newer push.
+
+GitHub CD needs a scoped `CLOUDFLARE_API_TOKEN` repository secret and
+`CLOUDFLARE_ACCOUNT_ID` secret or repository variable. They are passed only to
+the executing main-push workflow, never PRs, plan runs or dependency installation.
+The token is not configured yet; local OAuth is not copied into GitHub. Until
+that credential is installed, main CD cannot authenticate—there is no silent
+successful skip or separate manual deployment required by the design.
 
 `apps/demo` is a human tutorial/template, not a monorepo deployment target.
 Its copied repository owns its own `main` and eventual release policy. The
