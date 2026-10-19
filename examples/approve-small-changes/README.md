@@ -76,15 +76,13 @@ satisfied merely because the App approved. See
 
 When all required checks and reviews are genuinely satisfied, GitHub's separately
 enabled [auto-merge](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-auto-merge-for-pull-requests-in-your-repository)
-or merge queue can merge. The approval action has no merge capability and does not
+can merge. The approval action has no merge capability and does not
 enable auto-merge, weaken owner requirements or grant itself bypass permissions.
 If the selected paths require a human owner, that review remains required.
 A separately managed machine-user code owner is another account model; this
 example does not create or impersonate one.
 
 ## Verification proof
-
-**Video:** Pending.
 
 **Measured results:** [Local workflow tests](./workflow.test.ts) cover allowed
 READMEs, mixed paths, TypeScript/JSON/security changes, missing/stale evidence,
