@@ -89,11 +89,3 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-toolchain \
 The completed `build python package` step produces a wheel and source archive in the
 materialized workspace. Publishing portable artifacts remains separate from durable
 workspace revisions.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

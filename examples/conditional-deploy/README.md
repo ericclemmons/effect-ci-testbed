@@ -178,11 +178,3 @@ runner uses a fixed, non-login Git read rather than the mutation command adapter
 so inspecting changes cannot claim ownership of the selected action's workspace.
 Missing checkout history still means unknown/run; this does not fetch a base or
 add comparison metadata to check-suite events.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

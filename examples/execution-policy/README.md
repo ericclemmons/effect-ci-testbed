@@ -57,11 +57,3 @@ and interruption behavior live separately in
 
 `limit: 2` means two retries after the initial attempt. Timeout applies to each
 attempt, not to the combined lifetime of all retries.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

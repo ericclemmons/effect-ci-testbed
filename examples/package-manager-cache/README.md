@@ -68,11 +68,3 @@ Run the workflow locally:
 ```sh
 pnpm cf-ci --workflow examples/package-manager-cache/.cloudflare/ci/workflow.ts
 ```
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

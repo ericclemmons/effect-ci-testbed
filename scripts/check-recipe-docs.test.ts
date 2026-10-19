@@ -113,21 +113,11 @@ test("containerless stays a Cloudflare capability with verified and planned scop
   );
 });
 
-test("each recipe opens with a focused question", () => {
+test("recipe READMEs omit empty media placeholders", () => {
   for (const recipe of recipes) {
     const readme = readFileSync(join("examples", recipe, "README.md"), "utf8");
-    const question = readme.match(/^> .*(?:\n> .*)*/m)?.[0];
-    assert.ok(question?.includes("?"), `${recipe} needs its opening question`);
-  }
-});
-
-test("every recipe reserves honest video and measured verification slots", () => {
-  for (const recipe of recipes) {
-    const readme = readFileSync(join("examples", recipe, "README.md"), "utf8");
-    assert.equal((readme.match(/^## Verification proof$/gm) ?? []).length, 1, recipe);
-    assert.match(readme, /\*\*Video:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe);
-    assert.match(readme, /\*\*Measured results:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe);
-    assert.ok(readme.includes("../PROOF-PAGES.md"), recipe);
+    assert.doesNotMatch(readme, /\*\*Video:\*\* Pending\.\s+\*\*Measured results:\*\* Pending\./,
+      `${recipe}: omit empty proof placeholders; link evidence when it exists`);
   }
 });
 

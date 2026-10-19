@@ -74,11 +74,3 @@ The [hosted example runner](../../test/apps/example-runner) executes this unchan
 workflow on Cloudflare. `coverage-node-pnpm-20261008-6` completed all six actions,
 including frozen installation and parallel checks, with 47 native Workflow steps.
 Runner setup installs the pinned pnpm binary; the action stays portable.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -40,11 +40,3 @@ workflow on Cloudflare, with live workspace reuse disabled. Its verified instanc
 `coverage-exported-actions-20261009-2` checks the source after restoring checkout's
 durable snapshot. Named exports define the local CLI surface; the host does not
 expose an HTTP action-discovery endpoint.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

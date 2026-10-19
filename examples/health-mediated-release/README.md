@@ -232,11 +232,3 @@ cron still needs deduplicated run identity, version attribution, and retry compl
 Worker HTTP error rate, terminal Workflow failure rate, and cron lateness are
 separate SLIs—not interchangeable denominators. Custom continuous metrics such as
 latency require their own estimator; this first gate handles binary outcomes only.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -55,11 +55,3 @@ Compare [the conventional GitHub workflow](./.github/workflows/github.yml) with
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). Forced failure and
 double-failure assertions live in
 [`tests/rollback-compensation.test.ts`](./.cloudflare/ci/tests/rollback-compensation.test.ts).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

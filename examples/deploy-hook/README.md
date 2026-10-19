@@ -47,11 +47,3 @@ The standalone conventional YAML also passed on a real GitHub-hosted runner in
 at revision `927ff9093da7c21edacf88a4a6fe28ac428fb2b3`. The root suite stages this
 example independently and runs its `workflow_dispatch` path with `act`, so neither
 the TypeScript config nor the locked dependencies can rely on the monorepo root.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

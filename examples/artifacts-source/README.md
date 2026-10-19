@@ -106,11 +106,3 @@ LIVE_PRIVATE_ROOT_ARTIFACTS=1 CF_BIN=cf node --test examples/artifacts-source/sr
 ```
 
 See the [Artifacts binding API](https://developers.cloudflare.com/artifacts/api/workers-binding/).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

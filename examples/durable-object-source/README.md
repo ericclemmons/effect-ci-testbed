@@ -178,11 +178,3 @@ materialization and checkpoint `94e936dc-b227-4717-817c-a7b21668a24e`. The separ
 downstream native read restored `source from durable object`. Local SQLite/RPC
 tests and the local filesystem recipe also passed. GitHub columns remain
 unverified until their actual jobs pass. No notification is sent by this recipe.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

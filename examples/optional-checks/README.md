@@ -53,11 +53,3 @@ completed, format warned, and the workflow succeeded. See the
 The native command-failure regression also passed in
 `coverage-optional-native-failure-20261008-4`: the format step has one failed native
 attempt, lint passes, and the Workflow completes with format marked as a warning.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -62,11 +62,3 @@ Cloudflare workspace layer. No task definitions are copied into the host, and th
 consumer's `ci.ts` remains empty. This proof supports public GitHub source; arbitrary
 private repository discovery and executing a source-defined workflow module are
 separate concerns.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

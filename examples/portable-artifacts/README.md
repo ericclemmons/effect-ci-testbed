@@ -39,11 +39,3 @@ Compare
 [Effect on GitHub](./.github/workflows/effect-on-github.yml). Artifact planning and
 execution assertions live in
 [`tests/portable-artifacts.test.ts`](./.cloudflare/ci/tests/portable-artifacts.test.ts).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

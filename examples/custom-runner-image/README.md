@@ -48,11 +48,3 @@ Hosted verification: `coverage-custom-image-20261008-1` completed at source revi
 check restored checkout's snapshot and reported `Python 3.13.5`. Live workspace reuse
 was disabled, so the result also verifies that the custom image survives snapshot
 materialization.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

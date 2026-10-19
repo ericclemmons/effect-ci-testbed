@@ -48,11 +48,3 @@ pnpm cf-ci --workflow examples/system-package/.cloudflare/ci/workflow.ts
 
 The example uses ImageMagick because it is a familiar build dependency that is not
 part of the selected slim Node container. Other Debian packages use the same capability.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

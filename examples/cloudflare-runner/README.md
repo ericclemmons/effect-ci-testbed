@@ -117,11 +117,3 @@ are immutable, tied to their image version, and currently have an implicit 30-da
 Portable build artifacts still need a separate artifact store. Restoring one install
 snapshot into several Workspace Durable Objects for lint/test/build fan-out is the next
 slice.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

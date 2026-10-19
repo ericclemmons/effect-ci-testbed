@@ -51,11 +51,3 @@ its snapshot commit, and the authenticated command. The command printed
 `host-authentication-verified` after consuming the restored snapshot; native
 outputs contain only the placeholder and verification result. Full provenance is
 recorded in the [host runner README](../../test/apps/example-runner/README.md).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

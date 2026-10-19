@@ -42,11 +42,3 @@ until an action executes a command or reads the workspace:
 ```sh
 pnpm cf-ci --workflow examples/local-container/.cloudflare/ci/workflow.ts plan
 ```
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

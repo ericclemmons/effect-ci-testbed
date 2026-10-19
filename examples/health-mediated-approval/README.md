@@ -128,11 +128,3 @@ event as approval. The administrative validation used that installed CLI's local
 authenticated request helper to send JSON; it never exported credentials to a
 Worker. That private helper is a development workaround, not a supported setup API.
 Use the dashboard event form above until the CLI exposes arbitrary event payloads.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

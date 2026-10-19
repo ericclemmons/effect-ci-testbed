@@ -111,11 +111,3 @@ The [hosted example runner](../../test/apps/example-runner) completed a warm bui
 `coverage-vite-plus-hit-20261008-2` ran in a separate Workflow instance with a cleaned
 checkout. Vite+ reported `cache hit, replaying` and 201 ms saved across 11 native
 Workflow steps. No explicit task inputs or outputs were added.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

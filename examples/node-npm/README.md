@@ -73,11 +73,3 @@ a later step.
 
 The unchanged workflow also passed in a real Cloudflare Workflow. See the
 [hosted runner and recorded run](../../test/apps/example-runner#verified-runs).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

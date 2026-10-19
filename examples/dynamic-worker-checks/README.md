@@ -292,11 +292,3 @@ it exposed an incorrect attempt to dispose the entrypoint rather than its RPC re
 Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
 the portable [actions](./.cloudflare/ci/actions.ts) and
 [workflow](./.cloudflare/ci/workflow.ts).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

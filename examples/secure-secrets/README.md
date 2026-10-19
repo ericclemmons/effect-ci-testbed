@@ -58,11 +58,3 @@ and neither API result contained the canary. Host deployment
 `be55cd22-c3c1-4b14-b246-24a99c662446`, Workflow version
 `590724dd-82df-4795-8e29-b33623aab149`. This verifies primitive Worker-bound secret
 resolution/redaction and no credential fallback, not actual GitHub authentication.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

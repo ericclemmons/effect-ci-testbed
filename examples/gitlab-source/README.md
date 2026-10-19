@@ -145,11 +145,3 @@ checkpoint restoration, not private GitLab authentication or external CI executi
 The local filesystem variant passed independently. PR118's exact-head full suite
 also passed the Effect-on-GitHub plan/execute jobs for that portable fixture variant;
 the real GitLab network clone proof remains the hosted run above.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

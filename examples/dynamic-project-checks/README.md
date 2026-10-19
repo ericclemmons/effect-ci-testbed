@@ -228,11 +228,3 @@ cf workflows instances create effect-ci-example-dynamic-project --body '{"instan
 ```
 
 Choose a new instance ID and a commit containing this recipe's two project files.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).
