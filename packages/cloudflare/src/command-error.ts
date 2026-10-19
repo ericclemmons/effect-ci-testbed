@@ -14,6 +14,10 @@ export const nativeCommandError = (error: unknown): unknown => {
   return error
 }
 export const restoreCommandError = (error: unknown, expected: { stepId: string; command?: string; cwd?: string }): unknown => {
+  if (expected.command !== undefined && expected.cwd !== undefined) {
+    const unknown = new CI.CommandExecutionError(expected.stepId, expected.command, expected.cwd)
+    if (error instanceof Error && error.message === unknown.message) return unknown
+  }
   const d = CI.decodeCommandDiagnostics(error instanceof Error ? error.message : undefined, expected)
   return d ? new CI.CommandError(d.stepId, d.command, d.cwd, d.exitCode,
     d.output.stderr || d.output.stdout || undefined, d.output) : error
