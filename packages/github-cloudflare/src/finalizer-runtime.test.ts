@@ -200,7 +200,8 @@ test(
         assert.ok(roots.every((m: any) => m.body.blocks.length === 2));
         assert.ok(roots.every((m: any) => !JSON.stringify(m.body.blocks).includes("Release still running")));
         const posts = result.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(posts.length, 3, "one details table, one build reply, one host review reply; no repost on lost ACK");
+        assert.equal(posts.length, 2, "one details table and one host review reply; routine build status does not create a duplicate reply");
+        assert.ok(!posts.some((m: any) => m.body.text === "Preparing build"), "build is represented only in the table");
         assert.equal(posts[0].body.text, "Preparing steps…");
         const summaries = result.messages.filter((m: any) => m.body.ts === "123.000001");
         if (name === "Threaded") {
