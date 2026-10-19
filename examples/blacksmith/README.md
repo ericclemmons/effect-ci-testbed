@@ -49,11 +49,3 @@ does not establish Blacksmith coverage, so those matrix cells stay 🔜 until an
 eligible repository completes both comparisons. No hosted provider job is added
 to the testbed's automatic fanout, avoiding jobs queued for unavailable runners.
 Cloudflare is not applicable to the Blacksmith compute-selection use-case.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

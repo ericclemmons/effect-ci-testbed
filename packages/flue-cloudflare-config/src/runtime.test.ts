@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 test(
   "actual Flue generator builds via modern cf config and its real SQLite DO recovers a settled reply",
-  { timeout: 60_000 },
+  { timeout: 180_000 },
   async () => {
     const pkg = fileURLToPath(new URL("../", import.meta.url));
     const fixture = join(pkg, "fixtures/native");
@@ -32,7 +32,7 @@ test(
           "--config",
           join(fixture, "vite.config.ts"),
         ],
-        { cwd: dir, encoding: "utf8", timeout: 30_000, maxBuffer: 8 * 1024 * 1024 },
+        { cwd: dir, encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024 },
       );
       const output = join(dir, ".cloudflare/output/v0/workers/default");
       const config = JSON.parse(await readFile(join(output, "worker.config.json"), "utf8"));

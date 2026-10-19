@@ -11,7 +11,7 @@ export const syntaxPublicKey = {
   crv: "Ed25519",
   x: "SATmbVsBJhPJ-ahWATsqlbjr24qYPxaX-DUAu7MJAjU",
 };
-export const syntaxRoot = "examples/demo";
+export const syntaxRoot = "test/fixtures/demo";
 export const syntaxPaths = ["package.json", "package-lock.json", "src/message.ts"] as const;
 const parseOnly = `const fs=require('node:fs');const text=new TextDecoder('utf-8',{fatal:true}).decode(fs.readFileSync('src/message.ts'));const js=require('node:module').stripTypeScriptTypes(text,{mode:'strip'});new(require('node:vm').SourceTextModule)(js);`;
 const shellQuote = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;

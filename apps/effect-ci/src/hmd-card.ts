@@ -1,5 +1,5 @@
 import type { WorkflowStep } from "cloudflare:workers"
-import type { HmdReviewObserver } from "../../example-runner/src/hmd-review-runner.ts"
+import type { HmdReviewObserver } from "../../../test/apps/example-runner/src/hmd-review-runner.ts"
 import type { HealthPoint } from "../../../packages/cloudflare/src/health-chart.ts"
 import type { PrivateSlackImageResult } from "../../../packages/github-cloudflare/src/slack-images.ts"
 import type { RunCard } from "../../../packages/github-cloudflare/src/run-card.ts"

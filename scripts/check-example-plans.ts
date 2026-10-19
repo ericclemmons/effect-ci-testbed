@@ -9,6 +9,11 @@ const examples = readdirSync("examples", { withFileTypes: true })
 
 const failures: Array<string> = []
 
+// These are the recipes' documented default plans, not plans for the enclosing
+// repository's push/ref. In native CI the checker itself runs inside cf-ci.
+const recipeEnvironment = Object.fromEntries(Object.entries(process.env)
+  .filter(([name]) => !name.startsWith("GITHUB_") && !name.startsWith("EFFECT_CI_")))
+
 for (const example of examples) {
   const root = join("examples", example)
   const workflow = join(root, ".cloudflare", "ci", "workflow.ts")
@@ -30,7 +35,7 @@ for (const example of examples) {
   const result = spawnSync(
     process.execPath,
     ["packages/cli/src/bin.ts", "--workflow", workflow, "plan", "--format=mermaid"],
-    { encoding: "utf8" },
+    { encoding: "utf8", env: recipeEnvironment },
   )
 
   if (result.status !== 0) {

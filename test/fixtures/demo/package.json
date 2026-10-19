@@ -1,0 +1,35 @@
+{
+  "name": "cf-ci-demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "check": "vpr check:source",
+    "lint": "vpr lint:source",
+    "typecheck": "vpr typecheck:source",
+    "pretest": "vpr typecheck",
+    "test": "vpr test:source",
+    "test:integration": "node --test test/*.test.mjs test/*.test.ts",
+    "prebuild": "vpr typecheck && vpr lint",
+    "build": "vpr build:source",
+    "verify:browser": "node test/run.mjs",
+    "proof:preview": "node test/preview-proof.mjs",
+    "proof:verify-published": "node test/verify-published.mjs"
+  },
+  "dependencies": {
+    "@cloudflare/kumo": "2.14.0",
+    "@phosphor-icons/react": "2.1.10",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@e2e-dev/web": "0.14.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "e2e": "0.19.0",
+    "vite-plus": "1.0.0",
+    "ws": "8.21.0"
+  }
+}

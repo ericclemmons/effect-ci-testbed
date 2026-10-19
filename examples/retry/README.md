@@ -21,7 +21,7 @@ cf-ci run --workflow examples/retry/.cloudflare/ci/workflow.ts
 node --test examples/retry/.cloudflare/ci/tests/retry.test.ts
 ```
 
-Deploy the [example host](../../apps/example-runner), then execute the native check:
+Deploy the [example host](../../test/apps/example-runner), then execute the native check:
 
 ```sh
 cf workflows instances create effect-ci-example-retry --body '{"instance_id":"my-retry-run","params":{"repository":"https://github.com/OWNER/REPO.git","revision":"FULL_COMMIT_SHA"}}'
@@ -31,11 +31,3 @@ There is no checkout or container in this workflow. The native history should sh
 one failed attempt, a one-second retry delay, and one successful attempt in the
 same logical check. [Execution policies](../execution-policy) also cover exhaustion
 and timeouts.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

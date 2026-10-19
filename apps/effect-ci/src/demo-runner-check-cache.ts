@@ -20,7 +20,7 @@ export function demoRunnerCheckCache(runner: Runner, runId: string, authority: R
       const suite = request.stepId === "test" && request.command === testCommand;
       if (request.workflowId !== syntaxWorkflow ||
           (!suite && (request.stepId !== "syntax" || request.command !== syntaxCommand)) ||
-          request.workspace.kind !== "remote" || request.workspace.cwd !== "/workspace/repository/examples/demo") return;
+          request.workspace.kind !== "remote" || request.workspace.cwd !== "/workspace/repository/test/fixtures/demo") return;
       const result = await Effect.runPromise(runner.executor.execute({
         workflowId: request.workflowId, stepId: request.stepId,
         // Check command itself occupies index 1. Distinct native checkpoints

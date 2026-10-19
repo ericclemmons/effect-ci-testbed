@@ -28,7 +28,7 @@ test("org approval is an ordinary inspectable action; planning invokes no capabi
 test("workflow decides eligibility from trusted results; the host receives the exact verdict", async () => {
   for (const eligible of [true, false]) {
     let input = evidence();
-    if (!eligible) input = { ...input, files: [{ path: "examples/demo/src/message.ts", additions: 1, deletions: 1 }],
+    if (!eligible) input = { ...input, files: [{ path: "test/fixtures/demo/src/message.ts", additions: 1, deletions: 1 }],
       review: { ...input.review, kind: "ai", complete: false }, experience: { demo: Array.from({ length: 10 }, (_, i) => i + 1) } };
     let reads = 0, writes = 0;
     const actions = pullRequestPolicy({ read: async () => { reads++; return input; },

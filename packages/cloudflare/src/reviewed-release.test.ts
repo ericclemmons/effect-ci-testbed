@@ -11,7 +11,7 @@ import {
   ReleaseManager,
   type ReleaseJournal,
   type Deployment,
-} from "../../../apps/release-manager/src/release-manager.ts";
+} from "../../../test/apps/release-manager/src/release-manager.ts";
 import { demoCandidatePolicy } from "./demo-candidate.ts";
 const previous = "11111111-1111-4111-8111-111111111111",
   version = "22222222-2222-4222-8222-222222222222";

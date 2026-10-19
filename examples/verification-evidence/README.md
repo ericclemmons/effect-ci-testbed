@@ -130,11 +130,3 @@ Remaining environment/developer-loop coverage is tracked in
 Cross-merge provenance is [#229](https://github.com/ericclemmons/effect-ci-testbed/issues/229):
 squash/rebase does not inherit a different commit's signature.
 PR approval is a workflow policy decision, not a consequence of caching.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

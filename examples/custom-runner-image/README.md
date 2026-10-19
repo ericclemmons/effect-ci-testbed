@@ -13,7 +13,7 @@ flowchart LR
 
 The project-owned [Dockerfile](./Dockerfile) starts from Debian Trixie, installs Python,
 and copies Cloudflare Sandbox 1.0's `sandbox-shim` into the image. The
-[host app's Cloudflare configuration](../../apps/example-runner/cloudflare.config.ts)
+[host app's Cloudflare configuration](../../test/apps/example-runner/cloudflare.config.ts)
 builds that file with `cf deploy` as the named `workspace` image used by
 `WorkspaceContainer`. The consumer actions do not change between runners.
 
@@ -48,11 +48,3 @@ Hosted verification: `coverage-custom-image-20261008-1` completed at source revi
 check restored checkout's snapshot and reported `Python 3.13.5`. Live workspace reuse
 was disabled, so the result also verifies that the custom image survives snapshot
 materialization.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

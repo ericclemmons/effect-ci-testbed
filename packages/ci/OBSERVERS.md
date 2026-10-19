@@ -56,6 +56,6 @@ runtime stops waiting; that is another reason not to retry an uncertain write.
 The generic callbacks are tested locally for success/failure, real business retry
 and rollback behavior, rejected/unavailable approval, required persistence failures,
 independent providers, redaction, quarantine and storage/delivery bounds. The
-[standalone owned fixture](../../apps/notification-isolation) adds real local
+[standalone owned fixture](../../test/apps/notification-isolation) adds real local
 Workflow/SQLite/RPC cases. Its earlier native provider campaign remains distinct
 from any new observer campaign; local tests do not relabel historical deployments.

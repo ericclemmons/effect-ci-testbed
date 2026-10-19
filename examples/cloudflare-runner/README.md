@@ -15,7 +15,7 @@ flowchart LR
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed
+The [hosted example runner](../../test/apps/example-runner) completed
 `coverage-workspace-20261008-3` with `reuseWorkspace: false`. Checkout, install, and
 build each checkpoint their workspace, and subsequent actions restore the preceding
 revision in a real Cloudflare account.
@@ -117,11 +117,3 @@ are immutable, tied to their image version, and currently have an implicit 30-da
 Portable build artifacts still need a separate artifact store. Restoring one install
 snapshot into several Workspace Durable Objects for lint/test/build fan-out is the next
 slice.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

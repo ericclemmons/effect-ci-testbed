@@ -33,7 +33,7 @@ quarantine. The second uses actual **local** workerd Workflow/SQLite checkpoints
 including two real 20-second timeouts, successful business execution and an
 original business failure. These are local fake destinations, not a new Slack,
 GitHub or native hosted-provider fault experiment. No permission or credential
-is added. The separate [private standalone fixture](../../apps/notification-isolation/NATIVE.md)
+is added. The separate [private standalone fixture](../../test/apps/notification-isolation/NATIVE.md)
 now has retained native success, genuine business failure and bounded timeout
 proofs with independent healthy SQLite delivery. General runtime `onEvent`
 callbacks remain separate unfinished acceptance work for #167; this slice does

@@ -54,11 +54,3 @@ The forced first-attempt failure and selective rerun are test-only scenarios in
 This is the portable attempt model. A hosted runner can persist each returned attempt
 under its own ID and map a reused Workspace revision to Cloudflare snapshots, GitHub
 artifacts, or another checkpoint provider.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

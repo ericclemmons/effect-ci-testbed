@@ -17,7 +17,7 @@ flowchart LR
 
 This is a **separate, opt-in policy** from [strict automatic HMD](../health-mediated-release).
 It does not change that example's fail-closed behavior or classify missing data as healthy.
-The [trusted hosted controller](../../apps/example-runner/src/hmd-review-controller.ts)
+The [trusted hosted controller](../../test/apps/example-runner/src/hmd-review-controller.ts)
 uses real version-attributed HTTP cohorts against the dedicated demo Worker, **not WOBS**.
 Local policy tests and native administrative event resume are verified. Actual
 human approval and Slack delivery are not yet verified.
@@ -67,7 +67,7 @@ backstop if platform termination bypasses JavaScript cleanup.
 
 ## Run the dedicated lab
 
-Deploy [apps/example-runner](../../apps/example-runner), then use the authenticated
+Deploy [test/apps/example-runner](../../test/apps/example-runner), then use the authenticated
 `cf` CLI. Do not run concurrently with another HMD lab: they share a fixed target.
 
 ```sh
@@ -115,7 +115,7 @@ These tests neither create instances nor send events nor mutate deployments:
 ```sh
 HMD_REVIEW_RESUME_INSTANCE=coverage-hmd-review-events-20261010-1 \
 HMD_REVIEW_TIMEOUT_INSTANCE=coverage-hmd-review-timeout-20261010-1 \
-node --test apps/example-runner/ci/tests/live-hmd-review.test.ts
+node --test test/apps/example-runner/ci/tests/live-hmd-review.test.ts
 ```
 
 Set `HMD_CF_BIN` if `cf` is not on your path. The positive assertion additionally
@@ -128,11 +128,3 @@ event as approval. The administrative validation used that installed CLI's local
 authenticated request helper to send JSON; it never exported credentials to a
 Worker. That private helper is a development workaround, not a supported setup API.
 Use the dashboard event form above until the CLI exposes arbitrary event payloads.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

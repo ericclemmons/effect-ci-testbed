@@ -22,9 +22,9 @@ deployed. The verification command checks that ordering and the exact patch.
 
 | Responsibility | Implementation |
 | --- | --- |
-| Generated Flue agent; untrusted proposal only | [Agent](../../apps/repair-agent/src/agent.ts) |
-| Durable submission identity and budgeted provider | [Provider](../../apps/repair-agent/src/provider.ts) |
-| Native Workflow dispatch, receipt and ledger checks | [Coordinator](../../apps/repair-agent/src/proposal.ts) |
+| Generated Flue agent; untrusted proposal only | [Agent](../../test/apps/repair-agent/src/agent.ts) |
+| Durable submission identity and budgeted provider | [Provider](../../test/apps/repair-agent/src/provider.ts) |
+| Native Workflow dispatch, receipt and ledger checks | [Coordinator](../../test/apps/repair-agent/src/proposal.ts) |
 | Narrow private-fixture GitHub writer | [Writer](../../packages/github/src/repair.ts) |
 | Independent exact-commit verification | [Verifier](../../packages/github/src/repair-verifier.ts) |
 
@@ -35,7 +35,7 @@ then failed its final acknowledgement on the renamed bot's login.
 [Exact result, retained failure and completed operator reconciliation](../../apps/effect-ci/PUBLIC-REPAIR.md).
 Verify that actual public-error run read-only with `node examples/flue-repair/verify-public.ts`.
 Neither example is a portable fresh-repo
-installer. [Host setup, permissions, budget, native receipts and limits](../../apps/repair-agent/README.md).
+installer. [Host setup, permissions, budget, native receipts and limits](../../test/apps/repair-agent/README.md).
 Do not redispatch the historical instance, reset its budget, or merge/deploy the
 proposal. A genuinely new model task needs separately enrolled source and a
 create-only intent within the existing lifetime authorization.
@@ -65,7 +65,7 @@ writes, native verification or automatic activation; those remain to be wired.
 
 **Video:** Pending. No successful recording is claimed.
 
-**Measured results:** [Original native Flue proposal and limits](../../apps/repair-agent/README.md#recorded-native-proposal).
+**Measured results:** [Original native Flue proposal and limits](../../test/apps/repair-agent/README.md#recorded-native-proposal).
 The read-only command verifies retained histories and current GitHub evidence;
 its runtime is not fresh model latency or a new repair benchmark.
 [Proof-page contract](../PROOF-PAGES.md).

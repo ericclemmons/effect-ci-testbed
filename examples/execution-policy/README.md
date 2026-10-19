@@ -32,9 +32,9 @@ ends native retries immediately. Actions without explicit policies retain indivi
 command checkpoints. Native body results support Workspace, void, or serializable
 data—not arbitrary live service objects.
 
-The [host app](../../apps/example-runner#native-action-body-policy)
+The [host app](../../test/apps/example-runner#native-action-body-policy)
 records live success, timeout, exhaustion, terminal-error, and command-retry proofs.
-Its [checkpoint recovery proof](../../apps/example-runner#cache-and-checkpoint-correctness)
+Its [checkpoint recovery proof](../../test/apps/example-runner#cache-and-checkpoint-correctness)
 also replaces the live container before failing the first commit, then verifies the
 rebuilt second attempt from its saved revision. Retrying the body can repeat commands
 and external effects: use idempotent operations or provider-side deduplication. A
@@ -57,11 +57,3 @@ and interruption behavior live separately in
 
 `limit: 2` means two retries after the initial attempt. Timeout applies to each
 attempt, not to the combined lifetime of all retries.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

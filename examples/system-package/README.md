@@ -15,7 +15,7 @@ flowchart LR
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed
+The [hosted example runner](../../test/apps/example-runner) completed
 `coverage-system-package-20261008-1` in a real Cloudflare account. ImageMagick is
 installed with apt and verified by a downstream action across six native Workflow
 steps; the workflow is unchanged from local and GitHub execution.
@@ -48,11 +48,3 @@ pnpm cf-ci --workflow examples/system-package/.cloudflare/ci/workflow.ts
 
 The example uses ImageMagick because it is a familiar build dependency that is not
 part of the selected slim Node container. Other Debian packages use the same capability.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -42,11 +42,3 @@ It does not upload local edits or the selected TypeScript module. Dirty working 
 are rejected to prevent remote results being mistaken for validation of local changes.
 Access service credentials and the Worker API token are both required; see the
 [setup guide](../../apps/effect-ci/README.md#5-run-the-first-workflow).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).
