@@ -8,7 +8,7 @@ const plugin = await realpath(new URL("../node_modules/@cloudflare/vite-plugin",
 const { Miniflare } = require(require.resolve("miniflare", { paths: [plugin] }));
 const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
 
-test("main deployment commands receive process-only credentials; checks, fixtures and completed runs do not", async () => {
+test("main deployment commands receive only dummy credentials; real credentials remain outside the simulated process backend", async () => {
   const output = await build({
     stdin: { resolveDir: new URL(".", import.meta.url).pathname, loader: "ts", contents: `
       import {WorkspaceContainer} from './monorepo-container.ts';
@@ -18,14 +18,14 @@ test("main deployment commands receive process-only credentials; checks, fixture
         host;
         constructor(ctx,env){
           const calls=[];
-          const container={running:true,destroy:async()=>{container.running=false;},exec:async(command,options)=>{
+          const container={running:true,interceptOutboundHttps:async(host)=>{calls.push({intercept:host});},destroy:async()=>{container.running=false;},exec:async(command,options)=>{
             calls.push({command:command.at(-1),authorized:!!options?.env?.CLOUDFLARE_API_TOKEN});
             return {output:async()=>({exitCode:0,stdout:new TextEncoder().encode(options?.env?.CLOUDFLARE_API_TOKEN??'ok'),stderr:new Uint8Array()})};
           }};
           super(ctx,env);
           this.host=Object.create(WorkspaceContainer.prototype);
           Object.defineProperties(this.host,{
-            ctx:{value:{storage:ctx.storage,container}},env:{value:env},
+            ctx:{value:{storage:ctx.storage,container,id:ctx.id,exports:{CloudflareDeploymentOutbound:()=>({})}}},env:{value:env},
             queue:{value:Promise.resolve(),writable:true},
             materialize:{value:async()=>{}},
           });
@@ -70,10 +70,11 @@ test("main deployment commands receive process-only credentials; checks, fixture
     assert.equal(result.denied.exitCode, 1);
     assert.equal(result.stopped.exitCode, 1);
     assert.equal(result.published.exitCode, 0);
-    assert.equal(result.published.stdout, "[redacted]");
-    const cleanups = result.before.calls.filter((call: any) => call.command.startsWith("/tmp/effect-ci-docker-"));
+    assert.equal(result.published.stdout, "effect-ci-outbound-proxy");
+    assert.deepEqual(result.before.calls.filter((call: any) => call.intercept).map((call: any) => call.intercept), ["api.cloudflare.com", "registry.cloudflare.com"]);
+    const cleanups = result.before.calls.filter((call: any) => call.command?.startsWith("/tmp/effect-ci-docker-"));
     assert.equal(cleanups.length, 1, "remove only this command's generated Docker login directory before commit");
-    assert.deepEqual(result.before.calls.filter((call: any) => !call.command.startsWith("/tmp/effect-ci-docker-"))
+    assert.deepEqual(result.before.calls.filter((call: any) => call.command && !call.command.startsWith("/tmp/effect-ci-docker-"))
       .map((call: any) => call.authorized), [false, false, true, false]);
     assert.ok(result.before.stored.some(([key]: any) => key === "mainDeployment"));
     assert.ok(result.after.stored.every(([key]: any) => key !== "mainDeployment"));

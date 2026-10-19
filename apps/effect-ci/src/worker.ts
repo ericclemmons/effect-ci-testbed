@@ -18,7 +18,7 @@ export { DemoRoutingDiagnosticWorkflow } from "./demo-routing-diagnostic-workflo
 
 export { GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 export { MonorepoCIWorkflow as EffectCIWorkflow } from "./monorepo-workflow.ts";
-export { WorkspaceContainer } from "./monorepo-container.ts";
+export { WorkspaceContainer, CloudflareDeploymentOutbound } from "./monorepo-container.ts";
 export { HealthChartRenderer } from "./health-renderer.ts";
 export { PrivateSlackImages } from "./private-images.ts";
 export { PrivateSlackCards } from "./private-cards.ts";

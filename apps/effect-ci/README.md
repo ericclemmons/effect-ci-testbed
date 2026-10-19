@@ -57,6 +57,12 @@ This single-tenant service runs in your Cloudflare account. The host owns creden
 source enrollment and notification destinations; project actions get none of those
 credentials. GitHub App events start native Workflow instances, not GitHub Actions jobs.
 
+Native main CD uses ordinary `cf workers triggers deploy --prebuilt` followed by
+`cf deploy --prebuilt`. `CLOUDFLARE_API_TOKEN` stays in the host Worker's environment.
+The container's outbound HTTPS proxy adds Cloudflare authentication outside the
+container; the CLI and Docker see only dummy account/registry login tokens.
+The proxy is active only during the main deployment commands, not checks or builds.
+
 Historical remote proof: the CLI, through a real `cloudflared` Access
 session, completed instance `d94238ee-afdf-404f-aa63-ec013f8fcba1` at source
 `cb851662300487cb033e1f1bd5586351f28c60eb`: checkout, install, build, streamed output,

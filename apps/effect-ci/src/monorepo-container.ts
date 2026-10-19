@@ -1,15 +1,24 @@
 import { WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
 import { platformApps } from "../../../.cloudflare/ci/workflow.ts";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { DeploymentProxy, deploymentToken } from "./deployment-proxy.ts";
+
+export class CloudflareDeploymentOutbound extends WorkerEntrypoint<unknown, { workspaceId: string; capability: string }> {
+  override fetch(request: Request): Promise<Response> {
+    const namespace = (this.ctx.exports as unknown as { WorkspaceContainer: DurableObjectNamespace<WorkspaceContainer> }).WorkspaceContainer;
+    return namespace.get(namespace.idFromString(this.ctx.props.workspaceId)).deploymentFetch(request, this.ctx.props.capability);
+  }
+}
 
 const commands = new Set([
   "./node_modules/.bin/cf workers triggers deploy --prebuilt",
   "./node_modules/.bin/cf deploy --prebuilt",
 ]);
 
-/** Normal cf commands get a main-only deployment environment. Checks,
- * package installation and builds never receive the account credential. */
+/** Normal cf commands use host-authenticated outbound HTTPS. No real account
+ * or registry credential enters a process environment, disk or snapshot. */
 export class WorkspaceContainer extends Base {
-  private deployment: { command: string; cwd: string; env: Record<string, string> } | undefined;
+  private deployment: { command: string; cwd: string; env: Record<string, string>; capability: string; proxy: DeploymentProxy } | undefined;
   private queue: Promise<unknown> = Promise.resolve();
 
   async allowMainDeployment(revision: string) {
@@ -20,6 +29,22 @@ export class WorkspaceContainer extends Base {
   protected override async processEnvironment(command: ReadonlyArray<string>, cwd?: string) {
     const active = this.deployment;
     return active && command.at(-1) === active.command && cwd === active.cwd ? active.env : undefined;
+  }
+
+  protected override async configureOutbound() {
+    const active = this.deployment;
+    if (!active) return;
+    const outbound = (this.ctx.exports as unknown as {
+      CloudflareDeploymentOutbound(options: { props: { workspaceId: string; capability: string } }): Fetcher;
+    }).CloudflareDeploymentOutbound({ props: { workspaceId: this.ctx.id.toString(), capability: active.capability } });
+    for (const host of ["api.cloudflare.com", "registry.cloudflare.com"])
+      await this.ctx.container!.interceptOutboundHttps(host, outbound);
+  }
+
+  async deploymentFetch(request: Request, capability: string): Promise<Response> {
+    const active = this.deployment;
+    return active && capability === active.capability ? active.proxy.fetch(request)
+      : new Response("Deployment proxy inactive", { status: 403 });
   }
 
   override execute(...args: Parameters<Base["execute"]>): ReturnType<Base["execute"]> {
@@ -33,8 +58,9 @@ export class WorkspaceContainer extends Base {
       if (!env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID)
         return { exitCode: 1, stdout: "", stderr: "Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID on the CI host for native main CD." };
       const dockerConfig = `/tmp/effect-ci-docker-${crypto.randomUUID()}`;
-      this.deployment = { command, cwd, env: {
-        CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+      this.deployment = { command, cwd, capability: crypto.randomUUID(),
+        proxy: new DeploymentProxy(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN), env: {
+        CLOUDFLARE_API_TOKEN: deploymentToken, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
         DOCKER_CONFIG: dockerConfig,
       } };
       try {
@@ -43,8 +69,7 @@ export class WorkspaceContainer extends Base {
         return { ...result, stdout: redact(result.stdout), stderr: redact(result.stderr) };
       } finally {
         this.deployment = undefined;
-        // cf performs a short-lived registry login. Remove that process's
-        // generated login directory before the workspace can be checkpointed.
+        // Remove Docker's dummy login directory before checkpointing too.
         const cleanup = await this.ctx.container!.exec(["rm", "-rf", dockerConfig]);
         if ((await cleanup.output()).exitCode !== 0)
           throw Error("Could not clear the deployment registry login");
