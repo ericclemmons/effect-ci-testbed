@@ -83,7 +83,7 @@ The repair PR must remain OPEN and UNMERGED; no repair is deployed.
 This is connected host source, **not yet native end-to-end proof**. The receiver
 enrollment is version-pinned. The one genuine public exception reached WOBS and
 authenticated capture, but title admission stopped before a proposal Workflow
-or new inference. The [receiver guide](../repair-events/PUBLIC-ACTIVATION.md)
+or new inference. The [receiver guide](../../test/apps/repair-events/PUBLIC-ACTIVATION.md)
 records the failed boundary and exact token-masking regression. Historical
 operator-driven repairs remain unchanged and unmerged. Do not replay this event
 or call its capture an automatic-repair success.
@@ -93,7 +93,7 @@ were independently verified: receiver `092e6d05-131e-428a-9c1e-707fb34af1c7`, ag
 `bade956c-d460-4d45-ae30-0a7b0ef0b1c1`, App `67f2e868-1736-4dcd-ab80-47522cb56a6c`.
 All previous binding identities/secrets/exports and the committed demo allocation
 were preserved. The final source version and enrollment are documented in the
-[receiver guide](../repair-events/PUBLIC-ACTIVATION.md). These deployments alone
+[receiver guide](../../test/apps/repair-events/PUBLIC-ACTIVATION.md). These deployments alone
 are not automatic incident/proposal evidence.
 
 ## Authority and ordering
@@ -155,10 +155,10 @@ acceptance must read the actual Issue/occurrence and match all counterparts.
 
 ```sh
 node --test packages/github/src/public-*.test.ts
-node --test apps/repair-agent/src/public-proposal-runtime.test.ts
+node --test test/apps/repair-agent/src/public-proposal-runtime.test.ts
 node --test apps/effect-ci/src/public-incident-repair-runtime.test.ts
-node --test apps/repair-events/src/public-activation-runtime.test.ts
-node --test apps/repair-incident/src/*.test.ts
+node --test test/apps/repair-events/src/public-activation-runtime.test.ts
+node --test test/apps/repair-incident/src/*.test.ts
 ```
 
 The generated-agent/real local Workflow test uses a fake SQLite AI broker seeded

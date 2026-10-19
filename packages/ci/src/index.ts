@@ -1632,6 +1632,11 @@ const makeLocalCommandExecutor = (output: "inherit" | "silent" = "inherit"): Com
   execute: ({ command, onOutput, stepId, workspace }) => Effect.callback<CommandExecutionResult, CommandError>((resume) => {
     const stdout: Array<string> = []
     const stderr: Array<string> = []
+    // This descriptor belongs to the current runtime/reporter process pair.
+    // Business commands have only stdin/stdout/stderr, not that event pipe.
+    // Nested SDK/CLI processes must not write into a stale descriptor or
+    // impersonate this workflow's events. The parent's emitter stays required.
+    const { EFFECT_CI_EVENT_FD: _eventPipe, ...commandEnvironment } = process.env
     const colorDepth = output === "inherit"
       && process.env.FORCE_COLOR === undefined
       && process.env.NO_COLOR === undefined
@@ -1644,8 +1649,8 @@ const makeLocalCommandExecutor = (output: "inherit" | "silent" = "inherit"): Com
     const child = spawn(command, {
       cwd: workspace.cwd,
       env: colorDepth > 1
-        ? { ...process.env, FORCE_COLOR: colorDepth >= 24 ? "3" : colorDepth >= 8 ? "2" : "1" }
-        : process.env,
+        ? { ...commandEnvironment, FORCE_COLOR: colorDepth >= 24 ? "3" : colorDepth >= 8 ? "2" : "1" }
+        : commandEnvironment,
       shell: true,
       stdio: ["inherit", "pipe", "pipe"],
     })

@@ -1,18 +1,19 @@
 # Recipe proof pages
 
 Every recipe is a customer need, a runnable program, and an inspectable proof.
-Use this shape for future work even before a recording exists. Do not fabricate
+Keep READMEs focused on running the example. Link evidence when it exists;
+do not add empty video or measurement placeholders. Do not fabricate
 videos, measurements, verification badges, or a hosted result to fill the page.
 
 ## README shape
 
-1. **What / why:** a customer-facing title, one focused question, and the benefit.
+1. **What / why:** a clear title and the task it demonstrates.
 2. **Plan:** Mermaid generated from the actual definition. Existing plan checks
    detect drift; diagrams are not a substitute for execution.
 3. **Run it:** setup, supported commands, expected result and intentional failure.
    Own fixtures/config/bindings. Import packages, not another example's host.
-4. **Verification proof:** actual same-run video, transcript, immutable evidence
-   and independently reported outcomes/timings per environment.
+4. **Evidence, when available:** link actual same-run video, tests or retained
+   results. Keep detailed recording and publication notes out of the quick start.
 5. **Boundaries:** what remains unsupported, uncertain, shared-host-only or unverified.
 
 Existing recipes retain their setup and historical evidence while the proof section

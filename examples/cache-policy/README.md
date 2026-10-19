@@ -48,7 +48,7 @@ Compare:
 - [Effect CI on GitHub](./.github/workflows/effect-on-github.yml), where the reusable
   runner receives the policy
 - [the portable workflow](./.cloudflare/ci/workflow.ts)
-- [the deployed Cloudflare runner layer](../../apps/example-runner/src/worker.ts)
+- [the deployed Cloudflare runner layer](../../test/apps/example-runner/src/worker.ts)
 
 Run it twice locally to see a miss followed by a hit:
 
@@ -71,11 +71,3 @@ Native `effect-ci-example-cache-policy` instances on October 9, 2026:
 
 All three completed with real snapshot restoration and command execution. The earlier
 `cold-20261009-1` attempt used an unfetchable abbreviated Git ref and is not proof.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -1,5 +1,5 @@
 import * as CI from "@effect-ci-testbed/ci";
-import manifest from "../../../examples/demo/package.json" with { type: "json" };
+import manifest from "../../../test/fixtures/demo/package.json" with { type: "json" };
 import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 import * as Effect from "effect/Effect";

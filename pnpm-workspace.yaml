@@ -1,5 +1,7 @@
 packages:
   - apps/*
+  - test/apps/*
+  - test/fixtures/*
   - packages/*
   - examples/*
   - examples/ordered-deploy/apps/*

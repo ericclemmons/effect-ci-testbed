@@ -15,7 +15,7 @@ flowchart LR
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) completed
+The [hosted example runner](../../test/apps/example-runner) completed
 `coverage-python-toolchain-20261008-1` in a real Cloudflare account. It installs
 Python and pip with apt, installs the pinned package-build tools, and builds the
 Python package across seven native Workflow steps. No project Dockerfile is required.
@@ -89,11 +89,3 @@ pnpm exec wrangler workflows trigger effect-ci-cloudflare-toolchain \
 The completed `build python package` step produces a wheel and source archive in the
 materialized workspace. Publishing portable artifacts remains separate from durable
 workspace revisions.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

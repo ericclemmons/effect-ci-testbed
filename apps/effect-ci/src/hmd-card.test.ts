@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { WorkflowStep } from "cloudflare:workers"
-import type { HmdObservation } from "../../example-runner/src/hmd-review-runner.ts"
+import type { HmdObservation } from "../../../test/apps/example-runner/src/hmd-review-runner.ts"
 import { RunCard } from "../../../packages/github-cloudflare/src/run-card.ts"
 import { hmdCardObserver } from "./hmd-card.ts"
-import { runHumanReviewedHmd } from "../../example-runner/src/hmd-review-runner.ts"
+import { runHumanReviewedHmd } from "../../../test/apps/example-runner/src/hmd-review-runner.ts"
 
 function observation(phase: 10 | 25 | 75 | 100): HmdObservation {
   return { owner: "run", phase, snapshot: String(phase).padStart(64, "0"), expiresAt: 5000,

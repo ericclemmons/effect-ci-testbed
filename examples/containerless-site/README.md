@@ -77,7 +77,7 @@ Static Assets upload, a new deployment API call per build, or evidence that the
 `cf` CLI runs inside a DO. The separate [direct-assets upload recipe](../static-assets-source/README.md)
 now has its own native upload/deployment and served-byte proof; that proof does
 not change this example's Dynamic Worker/DO hosting boundary. Its
-[authority document](../static-assets-source/PROPOSAL.md) records the separate credential approval.
+[authority document](../static-assets-source/AUTHORITY.md) records the separate credential approval.
 The operator uses `cf` locally; no OAuth or deployment secret is stored here.
 
 ## Verification proof

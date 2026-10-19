@@ -38,11 +38,3 @@ To exercise it against a deployed Worker, trigger the Workflow with:
 ```sh
 pnpm trigger -- '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"main"}'
 ```
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

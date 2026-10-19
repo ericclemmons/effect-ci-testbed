@@ -13,7 +13,7 @@ test("native runs reuse a signed build snapshot, publish its bytes, and rebuild 
   // snapshots and commands. No actual container, upload or production traffic.
   const output = await build({ stdin: { contents: `
     import {DurableObject,WorkerEntrypoint} from 'cloudflare:workers';
-    import manifest from '../../../examples/demo/package.json';
+    import manifest from '../../../test/fixtures/demo/package.json';
     import {demoSite,demoSiteUrl} from '@effect-ci-testbed/cloudflare/demo-site';
     export {DemoCIWorkflow} from './demo-workflow.ts';
     export {TrustedDemoChecks} from './trusted-demo-checks.ts';

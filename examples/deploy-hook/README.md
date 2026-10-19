@@ -36,7 +36,7 @@ with [Effect CI on GitHub](./.github/workflows/effect-on-github.yml). Receiving 
 hook and creating a hosted Cloudflare Workflow instance remains part of the hosted
 service adapter, not this portable workflow.
 
-The [hosted example runner](../../apps/example-runner) verifies both supported
+The [hosted example runner](../../test/apps/example-runner) verifies both supported
 event types using fresh durable workspaces: frozen installation, a real build,
 and a credential-free deployment dry-run. A pull-request event skips the whole
 deployment branch without starting a container. No production release occurs;
@@ -47,11 +47,3 @@ The standalone conventional YAML also passed on a real GitHub-hosted runner in
 at revision `927ff9093da7c21edacf88a4a6fe28ac428fb2b3`. The root suite stages this
 example independently and runs its `workflow_dispatch` path with `act`, so neither
 the TypeScript config nor the locked dependencies can rely on the monorepo root.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

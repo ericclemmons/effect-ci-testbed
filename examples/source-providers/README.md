@@ -35,11 +35,3 @@ node --test examples/source-providers/.cloudflare/ci/tests/source-providers.test
 The [Durable Object source recipe](../durable-object-source) now supplies immutable
 host-only RPC revisions. [GitLab source](../gitlab-source) reuses Git checkout with
 a pinned public GitLab repository instead of inventing a platform-specific action.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

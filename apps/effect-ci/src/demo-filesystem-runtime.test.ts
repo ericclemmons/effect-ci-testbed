@@ -26,7 +26,7 @@ test(
       import {DurableObject,WorkerEntrypoint} from "cloudflare:workers";
       import {demoSite,demoSiteUrl} from '@effect-ci-testbed/cloudflare/demo-site';
       import {demoCandidatePolicy} from '@effect-ci-testbed/cloudflare/demo-candidate';
-      import manifest from "../../../examples/demo/package.json";
+      import manifest from "../../../test/fixtures/demo/package.json";
       export {DemoCIWorkflow} from "./demo-workflow.ts";
       export {TrustedDemoChecks} from "./trusted-demo-checks.ts";
       import {workflowEntrypoint} from '@effect-ci-testbed/github-cloudflare';
@@ -36,14 +36,14 @@ test(
       export const PrepareFailureWorkflow=workflowEntrypoint((env,p)=>makeDemoProgram({revision:p.revision,
         publish:files=>env.DEMO_SITE.publish(p.revision,files),
         prepare:(revision,digest)=>env.RELEASE_MANAGER.prepareCandidate(revision,digest)}).workflow,
-        {root:'examples/demo',cache:false});
+        {root:'test/fixtures/demo',cache:false});
       const reads=[],exists=[],commands=[],snapshots=[],restores=[],publications=[];let missingLock=false,cacheReads=0,prepareFailure=false,publicationFailure=false,prepareCalls=0;
       const assets={'index.html':'<h1>actual fixture</h1>','app.js':'export const x=1','message.js':'export const message="hello"'};
       export class Publisher extends WorkerEntrypoint {
         async publish(revision,files){if(publicationFailure)throw Error('Bearer fake-publication-secret');publications.push({revision,files});const site=await demoSite(revision,files);return {revision,digest:site.digest,url:demoSiteUrl(site)};}
         async prepareCandidate(revision,digest){prepareCalls++;if(prepareFailure)throw Error('Candidate upload uncertain or rejected (identity, HTTP 200, version 11111111-1111-4111-8111-111111111111); reconcile the pending identity, never retry automatically');return {revision,digest,moduleDigest:'b'.repeat(64),policy:demoCandidatePolicy,version:'11111111-1111-4111-8111-111111111111',script:'effect-ci-hmd-demo'};}
       }
-      const cwd="/workspace/repository/examples/demo";
+      const cwd="/workspace/repository/test/fixtures/demo";
       export class WorkspaceContainer extends DurableObject {
         async checkout(){}
         async restore(snapshot){restores.push(snapshot.id);}
@@ -155,7 +155,7 @@ test(
       assert.ok(
         state.reads.some(
           (read: { path: string; root: string }) =>
-            read.path === "package.json" && read.root.endsWith("/examples/demo"),
+            read.path === "package.json" && read.root.endsWith("/test/fixtures/demo"),
         ),
       );
       assert.ok(state.exists.includes("package-lock.json"));

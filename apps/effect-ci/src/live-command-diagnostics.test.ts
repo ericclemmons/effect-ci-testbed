@@ -29,7 +29,7 @@ test("retained real native lint failure preserves same-attempt stdout/stderr for
   const d = decodeCommandDiagnostics(full.error?.message);
   assert.ok(d); assert.ok(Buffer.byteLength(full.error.message) <= commandDiagnosticLimit);
   assert.equal(d.stepId, "lint"); assert.equal(d.command, 'npm run "lint"'); assert.equal(d.exitCode, 1);
-  assert.equal(d.cwd, "/workspace/repository/examples/demo"); assert.equal(d.output.truncated, false);
+  assert.equal(d.cwd, "/workspace/repository/test/fixtures/demo"); assert.equal(d.output.truncated, false);
   assert.match(d.output.stdout, /eslint\(no-undef\)/); assert.match(d.output.stdout, /'process' is not defined/);
   assert.match(d.output.stdout, /'console' is not defined/); assert.match(d.output.stderr, /npm notice/);
   assert.match(remoteErrorMessage(full.error.message)!, /stdout:/);

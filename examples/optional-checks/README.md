@@ -48,16 +48,8 @@ pnpm cf-ci --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
 
 The same required/optional policy passed in a native Cloudflare Workflow: lint
 completed, format warned, and the workflow succeeded. See the
-[hosted runner and recorded run](../../apps/example-runner#verified-runs).
+[hosted runner and recorded run](../../test/apps/example-runner#verified-runs).
 
 The native command-failure regression also passed in
 `coverage-optional-native-failure-20261008-4`: the format step has one failed native
 attempt, lint passes, and the Workflow completes with format marked as a warning.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

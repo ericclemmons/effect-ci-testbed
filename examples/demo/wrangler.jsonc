@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "effect-ci-tutorial",
+  "compatibility_date": "2026-10-07",
+  "assets": { "directory": "./dist" },
+}
