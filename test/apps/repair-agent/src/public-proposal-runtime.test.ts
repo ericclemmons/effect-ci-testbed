@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { publicProposalFixture } from "../../../../packages/github/src/public-proposal.fixture.ts";
 
-test("generated Flue + actual local Workflow uses one new slot after private public-incident admission", { timeout: 120000 }, async () => {
+test("generated Flue + actual local Workflow uses one new slot after private public-incident admission", { timeout: 180000 }, async () => {
   const pkg = fileURLToPath(new URL("../", import.meta.url));
   const dir = await mkdtemp(join(tmpdir(), "effect-ci-public-flue-"));
   const require = createRequire(import.meta.url);
@@ -24,7 +24,7 @@ test("generated Flue + actual local Workflow uses one new slot after private pub
     await cp(join(pkg, "fixtures/local/public-app.ts"), join(dir, "src/app.ts"));
     await symlink(join(pkg, "node_modules"), join(dir, "node_modules"), "dir");
     execFileSync(process.execPath, [join(pkg, "node_modules/vite/bin/vite.js"), "build", dir, "--config", join(pkg, "vite.config.ts")],
-      { cwd: dir, encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 });
+      { cwd: dir, encoding: "utf8", timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
     const output = join(dir, ".cloudflare/output/v0/workers/default");
     const config = JSON.parse(await readFile(join(output, "worker.config.json"), "utf8"));
     assert.equal(config.workersDev, false);

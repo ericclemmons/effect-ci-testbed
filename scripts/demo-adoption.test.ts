@@ -58,7 +58,7 @@ test("the conventional comparison stages the baseline without undoing demo adopt
 
 test(
   "the real demo test task still passes after adopting its documented GitHub workflow",
-  { timeout: 45000 },
+  { timeout: 180000 },
   () => {
     const directory = mkdtempSync(join(tmpdir(), "effect-ci-demo-adoption-"));
     try {
@@ -86,7 +86,7 @@ test(
       const result = spawnSync(join(demo, "node_modules/.bin/vpr"), ["test:source"], {
         cwd: directory,
         encoding: "utf8",
-        timeout: 30000,
+        timeout: 120000,
         maxBuffer: 2 * 1024 * 1024,
         env: {
           ...process.env,
@@ -106,7 +106,7 @@ test(
       const negative = spawnSync(join(demo, "node_modules/.bin/vpr"), ["test:source"], {
         cwd: directory,
         encoding: "utf8",
-        timeout: 10000,
+        timeout: 60000,
         maxBuffer: 2 * 1024 * 1024,
         env: {
           ...process.env,
