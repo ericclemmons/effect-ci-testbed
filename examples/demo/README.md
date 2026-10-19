@@ -30,7 +30,6 @@ pnpm dev
 ```
 
 Open the Vite URL and click **Test JavaScript**. Stop with Ctrl-C.
-Until this PR merges, append its branch after `#` in the `tiged` source.
 
 Give the app its own repository:
 
