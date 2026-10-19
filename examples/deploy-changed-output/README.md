@@ -78,8 +78,6 @@ See [source conditions](../conditional-deploy) for the runnable source-query rec
 
 ## Verification proof
 
-**Video:** Pending for this standalone recipe.
-
 **Measured results:** [CLI regression](./workflow.test.ts) builds and publishes across separate
 processes, skips identical output, republishes after a shared-only edit, and skips
 after an unrelated README edit. It also checks that failed builds do not advance
