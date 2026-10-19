@@ -36,6 +36,11 @@ revision, then attach a signed Git note. Working-file feedback is not attestatio
 
 ## Checkout and build artifacts
 
+[Deploy changed output](./deploy-changed-output) is a standalone app and shared
+module: build, publish once, skip identical output, then republish when a shared
+dependency changes the app's HTML. Source-based lint selection and output-based
+deployment are separate decisions; it shows both without requiring a build cache.
+
 [Checkout from local files or Git](./source-providers) → [Checkout from R2](./r2-source) or
 [Checkout from Cloudflare Artifacts](./artifacts-source) or [Checkout from a Durable Object](./durable-object-source).
 
