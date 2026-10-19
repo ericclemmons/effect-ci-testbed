@@ -3,6 +3,7 @@ node_modules/
 .wrangler/
 **/.effect-ci/cache/
 examples/conditional-deploy/.effect-ci/deployments/
+examples/deploy-changed-output/.effect-ci/deployments/
 **/.cloudflare/types/
 **/.cloudflare/output/
 **/.cloudflare/state/

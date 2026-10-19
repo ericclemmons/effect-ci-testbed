@@ -250,6 +250,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | --- | :---: | :---: | :---: | :---: |
 | [Deploy only on matching branches or events](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | [Approve a README-only PR](./examples/approve-small-changes) | — | ✅ | 🔜 | 🔜 |
+| [Deploy only changed build output](./examples/deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
