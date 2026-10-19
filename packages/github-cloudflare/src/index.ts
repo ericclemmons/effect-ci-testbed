@@ -483,7 +483,9 @@ export const workflowEntrypoint = <A>(
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
           const threadKey = runtimeEvent.type === "step.command.failed" ? runtimeEvent.stepId :
-            runtimeEvent.type === "step.status" && !["planned", "queued"].includes(runtimeEvent.status) ? runtimeEvent.stepId :
+            // Routine status belongs in the maintained table, not another reply.
+            // Keep attention-worthy detail and update existing approval/failure replies.
+            runtimeEvent.type === "step.status" && (["failed", "warning"].includes(runtimeEvent.status) || threadMessages.has(runtimeEvent.stepId)) ? runtimeEvent.stepId :
             runtimeEvent.type === "approval.requested" || runtimeEvent.type === "approval.resolved" ? runtimeEvent.stepId : undefined
           await notify(key, () => card.update(runtimeEvent), undefined, false,
             threadKey ?? (runtimeEvent.type === "workflow.completed" ? latestThread : undefined))
