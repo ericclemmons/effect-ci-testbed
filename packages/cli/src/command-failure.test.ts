@@ -64,3 +64,18 @@ test("agent JSON distinguishes checkpoint uncertainty from a verified process ex
     assert.equal("output" in value.error.details, false)
   } finally { process.stdout.write = original }
 })
+
+test("agent JSON does not invent an exit code for a missing container result", async () => {
+  const writes: string[] = [], original = process.stdout.write
+  process.stdout.write = ((value: string | Uint8Array) => { writes.push(String(value)); return true }) as typeof process.stdout.write
+  try {
+    const workflow = CI.workflow("unknown-container-fixture", () => Effect.fail(new CI.CommandExecutionError("test", "node --test", "/workspace")))
+    assert.equal(await main({ workflow }, ["run", "--format=json"]), 1)
+    const value = JSON.parse(writes.join(""))
+    assert.equal(value.error.code, "CI_COMMAND_OUTCOME_UNKNOWN")
+    assert.deepEqual(value.error.details, { command: "node --test", cwd: "/workspace", stepId: "test",
+      stage: "container-execution", processExitCode: null, effects: "unknown" })
+    assert.equal("exitCode" in value.error.details, false)
+    assert.equal("output" in value.error.details, false)
+  } finally { process.stdout.write = original }
+})

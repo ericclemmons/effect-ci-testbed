@@ -36,7 +36,7 @@ export const executeCommandStep = async (
   }).catch((error: unknown) => {
     error = restoreCommandError(error, { stepId: request.stepId, command: request.command, cwd: request.workspace.cwd })
     error = commandCheckpointError(error, { ...request, checkpoint: checkpointName })
-    if (error instanceof CI.CommandError || error instanceof CI.CommandCheckpointError) throw error
+    if (error instanceof CI.CommandError || error instanceof CI.CommandCheckpointError || error instanceof CI.CommandExecutionError) throw error
     // Workflow failures cross a serialization boundary. Restore command error
     // metadata from our own exact message format rather than replacing exit 7
     // (or its stderr) with a generic exit 1.

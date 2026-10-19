@@ -460,7 +460,25 @@ export class CommandCheckpointError extends Error {
   }
 }
 
-export type CommandFailure = CommandError | CommandCheckpointError
+/** The container executor returned no process result. This is not an exit 1. */
+export class CommandExecutionError extends Error {
+  readonly _tag = "CommandExecutionError"
+  readonly stage = "container-execution"
+  readonly processExitCode = null
+  readonly effects = "unknown"
+  readonly stepId: string
+  readonly command: string
+  readonly cwd: string
+  constructor(stepId: string, command: string, cwd: string) {
+    super(`Container command result unavailable (stage=container-execution; process exit unknown): ${command}. External effects may already exist; reconcile the same identity, never retry automatically`)
+    this.name = "CommandExecutionError"
+    this.stepId = stepId
+    this.command = command
+    this.cwd = cwd
+  }
+}
+
+export type CommandFailure = CommandError | CommandCheckpointError | CommandExecutionError
 
 export interface ApprovalRequest {
   readonly title: string
