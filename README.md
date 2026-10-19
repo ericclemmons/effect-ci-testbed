@@ -25,8 +25,9 @@ Keep your package scripts. Help, list and plan inspect them without creating
 files. The first local run adds an empty CI marker; an authored workflow takes
 precedence. Humans get text, detected agents get JSON. Use `--format` to override.
 
-[Walk through the demo](./examples/demo/README.md) for remote setup, Slack,
-previews, test attestation and the real error-to-unmerged-PR proof.
+[Walk through the tutorial](./apps/demo/README.md) in a disposable app repository.
+The [legacy hosted fixture](./examples/demo/README.md) records Slack, previews,
+test attestation and the real error-to-unmerged-PR proof.
 [Browse recipes](./examples/README.md) for one focused capability at a time.
 
 ## What works
@@ -35,6 +36,35 @@ previews, test attestation and the real error-to-unmerged-PR proof.
 - Verify remote tests and restore signed build snapshots in later SCM runs.
 - Approve eligible README-only PRs without a model; leave code changes for review.
 - Push a branch for a preview. Release main through Slack's Progress/Reject gates.
+
+## This repository's CI and CD
+
+The root [workflow](./.cloudflare/ci/workflow.ts) runs monorepo checks, core tests,
+SDK build, and the tutorial's normal test/build. GitHub Actions runs that same
+workflow on PRs and `main`. Recipe checks remain enabled for demo-only edits.
+
+```sh
+pnpm install
+export PATH="$PWD/node_modules/.bin:$PATH"
+cf-ci plan
+cf-ci run
+cf-ci plan deployPlatform
+cf-ci run deployPlatform
+```
+
+`deployPlatform` is an explicit operator goal using your existing Cloudflare
+login. It validates first, then builds and deploys the CI host, static preview
+publisher, Actions runner, release manager and example runner. It preserves
+existing container allocations and does not reconcile Access or upload secrets.
+GitHub currently has no Cloudflare deployment credential: push-to-deploy is
+**not enabled** by this CI job. A failed validation prevents all deployments;
+a failed deployment stops later targets, without rolling back earlier targets.
+
+`apps/demo` is a human tutorial/template, not a monorepo deployment target.
+Its copied repository owns its own `main` and eventual release policy. The
+monorepo's App webhook no longer starts the legacy demo preview or human release
+gate. Repair/AI apps and verification fixtures are also excluded from this
+explicit platform deployment goal. Discovery alone never grants CD authority.
 
 The [live demo proof](./apps/effect-ci/TRUSTED-REMOTE.md) records exact runs and
 limits. Remote execution requires a pushed commit and an enrolled host program;

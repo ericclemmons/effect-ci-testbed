@@ -60,18 +60,17 @@ test("a signed check suite for an installed but unenrolled repo starts no defaul
   assert.equal(f.selected.length, 0);
 });
 
-test("main and ordinary preview branches still select and deduplicate the actual demo workflow", async () => {
+test("monorepo main and feature branches never start tutorial deployments or approval gates", async () => {
   const f = fixture();
   for (const branch of ["main", "feature/rehearsal"]) {
     assert.equal((await f.dispatch(branch, undefined, branch)).status, 202);
-    const duplicate = await (await f.dispatch(branch, undefined, branch)).json() as { duplicate: boolean };
-    assert.equal(duplicate.duplicate, true);
+    assert.deepEqual(await (await f.dispatch(branch, undefined, branch)).json(),
+      { accepted: false, reason: "workflow not enrolled" });
   }
-  assert.equal(f.selected.length, 2);
+  assert.equal(f.selected.length, 0);
   assert.equal(f.fallback.length, 0);
-  assert.equal(f.checks.length, 2);
-  assert.equal(f.counts().tokens, 2);
-  assert.deepEqual(f.selected.map(value => value.params.ref), ["refs/heads/main", "refs/heads/feature/rehearsal"]);
+  assert.equal(f.checks.length, 0);
+  assert.equal(f.counts().tokens, 0);
 });
 
 test("signature, App ownership and installation enrollment remain required", async () => {

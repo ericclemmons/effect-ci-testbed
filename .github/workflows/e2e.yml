@@ -3,17 +3,26 @@ name: GitHub Actions / Recipe checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - 'examples/demo/**'
   push:
     branches: [main]
-    paths-ignore:
-      - 'examples/demo/**'
 
 permissions:
   contents: read
 
 jobs:
+  tutorial:
+    name: tutorial / standalone copy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install
+      - run: node --test scripts/demo-tutorial.test.ts scripts/monorepo-ci.test.ts
+
   standalone-host:
     name: standalone host / credential-free image
     runs-on: ubuntu-latest

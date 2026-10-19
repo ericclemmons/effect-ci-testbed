@@ -1,4 +1,4 @@
-import type { WorkerOptions, WorkflowParameters } from "@effect-ci-testbed/github-cloudflare/worker";
+import type { WorkerOptions } from "@effect-ci-testbed/github-cloudflare/worker";
 
 /** Host enrollment, not an incoming repository/module selector. */
 export const demoGitHubRef = "refs/heads/main";
@@ -21,13 +21,13 @@ export const demoGitHubAllowed = (input: {
   input.ref.startsWith("refs/heads/") && input.ref.length > "refs/heads/".length &&
   input.ref.length <= 1024 && !/[\x00-\x20\x7f]/.test(input.ref);
 
-/** The App can be installed broadly; this hosted program is enrolled separately. */
-export const demoGitHubRun: NonNullable<WorkerOptions["githubRun"]> = (identity, _environment, context) => {
-  if (!demoGitHubAllowed(identity)) return false;
-  const workflow = (context?.exports as unknown as { DemoCIWorkflow?: Workflow<WorkflowParameters> } | undefined)?.DemoCIWorkflow;
-  if (!workflow) throw Error("DemoCIWorkflow is not exported");
-  return { workflow, detailsUrl: `https://dash.cloudflare.com/0db135ec469e2f216fcea26426f29755/workers/workflows/effect-ci-demo/instance/${encodeURIComponent(identity.deliveryId)}` };
-};
+/**
+ * Automatic SCM execution of the legacy hosted demo is retired. Root cf-ci
+ * owns this monorepo's CI; tutorial CD belongs to the copied app repository.
+ * Return false (not undefined) to prevent fallback to the example pipeline.
+ * Explicit, enrolled /demo computation-only remote goals remain available.
+ */
+export const demoGitHubRun: NonNullable<WorkerOptions["githubRun"]> = () => false;
 
 /** Only canonical authenticated main runs can obtain release authority. */
 export const demoProductionAllowed = (input: Parameters<typeof demoGitHubAllowed>[0]): boolean =>
