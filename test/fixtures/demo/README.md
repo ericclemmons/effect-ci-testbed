@@ -2,9 +2,8 @@
 
 > How far can an existing Vite project go without replacing its scripts?
 
-Legacy hosted verification fixture. For a human walkthrough in your own
-disposable app/repository, use [examples/demo](../../../examples/demo/README.md).
-Monorepo commits no longer automatically publish or release this fixture.
+Historical hosted fixture; no automatic publication. For the disposable human
+tutorial, use [examples/demo](../../../examples/demo/README.md).
 
 One app, one rehearsal branch. Make a change, run it, push it, inspect Slack.
 Branch pushes publish previews; main releases through the Slack review.
