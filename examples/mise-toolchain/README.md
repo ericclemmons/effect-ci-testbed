@@ -49,11 +49,3 @@ pnpm cf-ci --workflow examples/mise-toolchain/.cloudflare/ci/workflow.ts
 The official Mise Debian image supplies only the runner capability. Tool versions stay
 in the project configuration, and later runner layers can cache the capability-owned
 paths without changing this workflow.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

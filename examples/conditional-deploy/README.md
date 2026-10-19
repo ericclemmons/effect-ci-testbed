@@ -166,7 +166,7 @@ not in the workflow entry point.
 
 ## Hosted coverage
 
-The [hosted example runner](../../apps/example-runner) verifies both branches:
+The [hosted example runner](../../test/apps/example-runner) verifies both branches:
 `coverage-conditional-push-20261008-1` executes the echo-only deployment for a main
 push; `coverage-conditional-pull_request-20261008-1` skips deployment without
 starting checkout. Its returned plan retains the inspectable condition.
@@ -178,11 +178,3 @@ runner uses a fixed, non-login Git read rather than the mutation command adapter
 so inspecting changes cannot claim ownership of the selected action's workspace.
 Missing checkout history still means unknown/run; this does not fetch a base or
 add comparison metadata to check-suite events.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

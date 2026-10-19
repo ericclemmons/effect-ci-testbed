@@ -17,7 +17,7 @@ test("native demo Workflow mints and later returns the same receipt without re-e
     files: testPaths.map(path => ({ path, size: 1, sha256: testFixedInputs[path] ?? "3".repeat(64) })) };
   const output = await build({ stdin: { contents: `
     import {DurableObject} from 'cloudflare:workers';
-    import manifest from '../../../examples/demo/package.json';
+    import manifest from '../../../test/fixtures/demo/package.json';
     export {DemoCIWorkflow} from './demo-workflow.ts';
     export {TrustedDemoChecks} from './trusted-demo-checks.ts';
     const commands=[];

@@ -77,11 +77,3 @@ cf-ci run --local --workflow examples/cloudflare-hitl-release/.cloudflare/ci/wor
 
 It uses the terminal approval adapter rather than `waitForEvent`. For native Workflow
 emulator development, use the app guide's `cf dev` instructions and local explorer.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

@@ -10,7 +10,7 @@ const cf = fileURLToPath(
 );
 for (const [file, enrollment] of [
   [
-    "apps/repair-agent/src/live-proposal.test.ts",
+    "test/apps/repair-agent/src/live-proposal.test.ts",
     { LIVE_FLUE_INSTANCE: "coverage-flue-proposal-20261014-1" },
   ],
   [

@@ -44,11 +44,3 @@ pnpm cf-ci --workflow examples/runner-selection/.cloudflare/ci/workflow.ts
 
 Cloudflare is marked not applicable for this use-case because a Cloudflare Container,
 not a GitHub runner label, selects that compute.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

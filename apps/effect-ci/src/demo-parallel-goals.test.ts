@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
-import * as actions from "../../../examples/demo/.cloudflare/ci/actions.ts";
+import * as actions from "../../../test/fixtures/demo/.cloudflare/ci/actions.ts";
 
 const workflow = CI.workflow("test-and-build", function* () {
   yield* CI.parallel([actions.test(), actions.build()]);

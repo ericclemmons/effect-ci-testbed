@@ -18,7 +18,7 @@ constructs a fresh, fixed-destination request with the real credential, and retu
 only a success bit. It forwards neither arbitrary request headers nor upstream
 response bodies/headers; redirects and errors fail closed.
 
-The [host adapter](../../apps/example-runner/src/secret-outbound.ts) uses a random,
+The [host adapter](../../test/apps/example-runner/src/secret-outbound.ts) uses a random,
 per-container test credential held in Durable Object storage. It has no privileges
 on a real service. Production integrations should resolve Worker secrets or Secrets
 Store values in the same host boundary, with service-specific operation scopes.
@@ -30,7 +30,7 @@ This proves scoped host-side authentication, not complete network confinement:
 ordinary internet access remains enabled for checkout, and HTTPS interception is
 not exercised. The virtual endpoint is an internal binding, not a public HTTP route.
 
-Run through the [authenticated hosted example runner](../../apps/example-runner):
+Run through the [authenticated hosted example runner](../../test/apps/example-runner):
 
 ```sh
 cf workflows instances create effect-ci-example-secret-outbound \
@@ -40,7 +40,7 @@ cf workflows instances create effect-ci-example-secret-outbound \
 Proxy policy regressions run with:
 
 ```sh
-node --test apps/example-runner/src/credential-proxy.test.ts
+node --test test/apps/example-runner/src/credential-proxy.test.ts
 ```
 
 Ordinary local Node execution has no virtual-host interceptor yet; it must not
@@ -50,12 +50,4 @@ Hosted verification: `coverage-secret-outbound-20261009-1` completed checkout,
 its snapshot commit, and the authenticated command. The command printed
 `host-authentication-verified` after consuming the restored snapshot; native
 outputs contain only the placeholder and verification result. Full provenance is
-recorded in the [host runner README](../../apps/example-runner/README.md).
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).
+recorded in the [host runner README](../../test/apps/example-runner/README.md).

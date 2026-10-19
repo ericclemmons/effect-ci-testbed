@@ -162,11 +162,11 @@ LIVE_OWNED_R2_SOURCE=1 CF_BIN=cf node --test examples/r2-source/src/live.test.ts
 
 ## Historical shared-host proof
 
-The old host adapter remains in [r2-source.ts](../../apps/example-runner/src/r2-source.ts).
+The old host adapter remains in [r2-source.ts](../../test/apps/example-runner/src/r2-source.ts).
 It and its bucket/history are unchanged. These commands describe that older host,
 not the owned deployment above.
 
-After deploying the [example host](../../apps/example-runner), upload the exact
+After deploying the [example host](../../test/apps/example-runner), upload the exact
 manifest bytes and create the native Workflow:
 
 ```sh
@@ -185,11 +185,3 @@ Verified native instance `coverage-r2-source-20261010-1`, Workflow version
 `d309cecf-6d9c-4461-a3a3-8bb8eb7fbbbd`, and a separate downstream read restoring
 `source from r2`. This verifies the R2 provider in Cloudflare; the local runner uses
 the included filesystem source. GitHub workflow coverage is tracked separately.
-
-## Verification proof
-
-**Video:** Pending.
-
-**Measured results:** Pending.
-
-[Proof requirements](../PROOF-PAGES.md) · [Backend coverage](../../README.md#recipes-by-feature).

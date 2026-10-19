@@ -51,7 +51,7 @@ test("native SQLite reviewer consumes host-verified receipts, journals one appro
         if(path==='/seed'){
           const authority=ctx.exports.TrustedDemoChecks.getByName('demo-trusted-runner-v1');
           await authority.record({identity:{kind:'check',repository:syntaxRepository,revision:head,workflowId:syntaxWorkflow,stepId:'test',command:testCommand,policyDigest:await demoRunnerPolicyDigest(true),sourceDigest:'c'.repeat(64),toolchainDigest:'d'.repeat(64)},runId:'fixture-execution',completedAt:'2026-10-18T00:00:00.000Z',exitCode:0,stdoutDigest:'e'.repeat(64),stderrDigest:'f'.repeat(64)});
-          await authority.recordStepResult({identity:await demoBuildIdentity(head,env.VERSION_METADATA.id),runId:'fixture-build',completedAt:'2026-10-18T00:00:00.000Z',conclusion:'success',result:{kind:'workspace',provider:'cloudflare-container',cwd:'/workspace/repository/examples/demo',snapshot:{id:'fixture-snapshot',size:100}}});
+          await authority.recordStepResult({identity:await demoBuildIdentity(head,env.VERSION_METADATA.id),runId:'fixture-build',completedAt:'2026-10-18T00:00:00.000Z',conclusion:'success',result:{kind:'workspace',provider:'cloudflare-container',cwd:'/workspace/repository/test/fixtures/demo',snapshot:{id:'fixture-snapshot',size:100}}});
           return Response.json({seeded:true});
         }
         if(path==='/lost'){failReview=true;return Response.json(await owner(51).evaluate(51))}

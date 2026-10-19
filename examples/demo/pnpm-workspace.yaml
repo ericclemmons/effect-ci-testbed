@@ -1,0 +1,8 @@
+packages:
+  - .
+
+# Keep native-tool installation reproducible after copying out of the monorepo.
+# No account credentials or inherited monorepo settings are needed.
+allowBuilds:
+  esbuild: true
+  workerd: true

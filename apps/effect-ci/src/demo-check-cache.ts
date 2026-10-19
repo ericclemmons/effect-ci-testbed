@@ -38,7 +38,7 @@ export const demoCheckCache = (
         request.workflowId !== syntaxWorkflow ||
         (!suite && (request.stepId !== "syntax" || request.command !== syntaxCommand)) ||
         request.workspace.kind !== "remote" ||
-        request.workspace.cwd !== "/workspace/repository/examples/demo"
+        request.workspace.cwd !== "/workspace/repository/test/fixtures/demo"
       )
         return false;
       // Inspect in its own native command checkpoint, before the evidence step.

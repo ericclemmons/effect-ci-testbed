@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release preview · Effect CI</title>
+    <!-- kumo-styles -->
+    <style>
+      :root {
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        color: #202127;
+        background: #f8f9fb;
+      }
+      body {
+        margin: 0;
+      }
+      #app {
+        isolation: isolate;
+        min-height: 100vh;
+      }
+      .topbar {
+        border-bottom: 1px solid #e1e4e8;
+        background: white;
+      }
+      .topbar div {
+        max-width: 960px;
+        margin: auto;
+        padding: 22px 32px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .brand {
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+      .brand-mark {
+        color: #d95b0b;
+      }
+      .topbar small {
+        border-left: 1px solid #d5d9df;
+        padding-left: 14px;
+        color: #626975;
+      }
+      main {
+        max-width: 960px;
+        margin: auto;
+        padding: 64px 32px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(30px, 5vw, 42px);
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1.2;
+      }
+      .intro {
+        color: #626975;
+        margin: 0 0 36px;
+        line-height: 1.6;
+      }
+      .release {
+        background: white;
+        border: 1px solid #dfe3e8;
+        border-top: 3px solid #f6821f;
+        border-radius: 8px;
+        padding: 32px;
+      }
+      h2 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+      }
+      #release-label {
+        color: #626975;
+      }
+      #message {
+        font-size: clamp(24px, 4vw, 34px);
+        letter-spacing: -0.025em;
+        line-height: 1.4;
+        margin: 16px 0 24px;
+        overflow-wrap: anywhere;
+      }
+      .hint {
+        color: #626975;
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
+      }
+      code {
+        font-family: ui-monospace, monospace;
+        background: #f0f2f5;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .browser-check {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 28px 0;
+        border-bottom: 1px solid #dfe3e8;
+      }
+      #interaction {
+        color: #626975;
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 8px 0 0;
+      }
+      footer {
+        color: #747b86;
+        font-size: 12px;
+        margin-top: 28px;
+      }
+      @media (max-width: 560px) {
+        main {
+          padding: 40px 20px;
+        }
+        .release {
+          padding: 24px;
+        }
+        .topbar div {
+          padding: 20px;
+        }
+        .browser-check {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div>
+          <span class="brand"><span class="brand-mark" aria-hidden="true">↗</span> Effect CI</span
+          ><small>Demo application</small>
+        </div>
+      </header>
+      <main>
+        <h1>Release preview</h1>
+        <p class="intro">Change the message. Check the build. See exactly what shipped.</p>
+        <section class="release" aria-labelledby="release-label">
+          <h2 id="release-label">Release message</h2>
+          <p id="message" aria-labelledby="release-label">Loading this build's message…</p>
+          <p class="hint">
+            This message comes from <code>src/message.ts</code> in the built application.
+          </p>
+        </section>
+        <section class="browser-check" aria-labelledby="browser-label">
+          <div>
+            <h2 id="browser-label">Browser check</h2>
+            <p id="interaction" role="status" aria-live="polite">
+              Ready to test this page's browser code.
+            </p>
+          </div>
+          <!-- kumo-button -->
+        </section>
+        <footer>Built with Vite + Kumo · Served from the checked build output</footer>
+      </main>
+    </div>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>

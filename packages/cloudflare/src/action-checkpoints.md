@@ -73,5 +73,5 @@ the adapter, **not** another native failure or proof that the new message has be
 deployed. The historical failed instance remains unchanged.
 
 ```sh
-node --test packages/cloudflare/src/action-checkpoint-error.test.ts apps/example-runner/src/action-step.test.ts apps/example-runner/src/command-step.test.ts packages/cli/src/command-failure.test.ts
+node --test packages/cloudflare/src/action-checkpoint-error.test.ts test/apps/example-runner/src/action-step.test.ts test/apps/example-runner/src/command-step.test.ts packages/cli/src/command-failure.test.ts
 ```

@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import type { ReleaseManager } from "../../release-manager/src/release-manager.ts"
+import type { ReleaseManager } from "../../../test/apps/release-manager/src/release-manager.ts"
 
 export interface HmdCapability { readonly owner: string; readonly phase: number; readonly snapshot: string; readonly token: string }
 interface ReviewRecord extends HmdCapability { readonly context: string; readonly expiresAt: number; readonly sample?: number; readonly state: "waiting" | "refreshing" | "sending" | "submitted" | "closed";

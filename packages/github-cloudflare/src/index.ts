@@ -98,6 +98,11 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.
    * Use sibling step.do/waitForEvent calls for durable side effects; never uploaded project code.
    */
   readonly finalize?: (context: HostFinalization<A>) => Promise<void>
+  /** Opt-in separation of successful code checks from deployment finalization.
+   * Only GitHub runs create the separate check. Mandatory execution evidence
+   * still gates CI; finalization failure still errors the native Workflow.
+   */
+  readonly finalizationCheck?: (parameters: WorkflowParameters) => string | undefined
   /** Public evidence only, attached to the terminal plan. Runs in a durable
    * host checkpoint; never expose keys, raw logs or project capabilities here. */
   readonly executionEvidence?: (context: {
@@ -227,6 +232,7 @@ export const workflowEntrypoint = <A>(
       this.env.EFFECT_CI_DETAILS_URL,
       event.instanceId,
     )
+    const finalizationName = github && options.finalize ? options.finalizationCheck?.(event.payload) : undefined
     const reporter = github && token ? new GitHub.Reporter(
       {
         executionEnvironment: "Cloudflare",
@@ -234,6 +240,7 @@ export const workflowEntrypoint = <A>(
         repository: github.repositoryName,
         sha: event.payload.revision,
         summaryCheckId: github.summaryCheckId,
+        ...(finalizationName ? { completionScope: "ci" as const } : {}),
         externalId: github.deliveryId,
         ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
       },
@@ -406,7 +413,34 @@ export const workflowEntrypoint = <A>(
     }
 
     let deferredCompletion: Extract<CI.RuntimeEvent, { type: "workflow.completed" }> | undefined
+    let finalizationCheck: GitHub.CheckRun | undefined
+    let evidence: unknown
+    let evidenceCollected = false
+    const finalizationOnce = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const
+    const collectEvidence = async () => {
+      if (options.executionEvidence) {
+        evidence = await step.do("host-execution-evidence", () => options.executionEvidence!({
+          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId,
+        }) as Promise<any>)
+      }
+      evidenceCollected = true
+    }
+    const finishFinalizationCheck = async (conclusion: "success" | "failure") => {
+      if (!github || !token || !finalizationCheck || !finalizationName) return
+      const checkId = finalizationCheck.id
+      await step.do(`github:finalization-check:${conclusion}`, finalizationOnce, async () => GitHub.updateCheck({
+        token: await token(), repository: github.repositoryName, checkId, name: finalizationName,
+        status: "completed", conclusion,
+        title: conclusion === "success" ? "Deployment finalization completed" : "Deployment finalization needs attention",
+        summary: conclusion === "success"
+          ? "Code checks and required evidence passed; the separate deployment finalizer completed."
+          : "Code checks and required evidence passed. Deployment finalization did not complete; inspect the native release/approval/rollback history. This is not a deployment success or a new approval.",
+        ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
+      }))
+    }
     try {
+      if (finalizationName !== undefined && (typeof finalizationName !== "string" || !finalizationName.trim() || finalizationName.length > 128 || /[\x00-\x1f\x7f]/.test(finalizationName)))
+        throw Error("Invalid deployment finalization check name")
       const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(definition, {
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
@@ -476,6 +510,19 @@ export const workflowEntrypoint = <A>(
 
       if (options.finalize) {
         if (!deferredCompletion) throw new Error("Missing successful build completion")
+        if (finalizationName && github && token && reporter) {
+          // Proof persistence is part of CI, never something a separate release
+          // check may bypass. Keep the default combined behavior unchanged.
+          await collectEvidence()
+          await reporter.report(deferredCompletion)
+          finalizationCheck = await step.do("github:finalization-check:create", finalizationOnce, async () => GitHub.createCheck({
+            token: await token(), repository: github.repositoryName, sha: event.payload.revision,
+            name: finalizationName, title: "Deployment finalization is running",
+            summary: "Code checks and required evidence passed. Deployment, human review and rollback are tracked separately; no deployment success is claimed yet.",
+            status: "in_progress", externalId: `${github.deliveryId}:finalization`,
+            ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
+          }))
+        }
         await options.finalize({
           environment: this.env, parameters: event.payload, instanceId: event.instanceId,
           step, exports: this.ctx.exports, value: result.value, card,
@@ -500,24 +547,23 @@ export const workflowEntrypoint = <A>(
             return notify(`host-finalize:custom:${key}`, () => true, presentation, true, threadKey ?? key)
           },
         })
+        await finishFinalizationCheck("success")
       }
-      let evidence: unknown
-      if (options.executionEvidence) {
-        evidence = await step.do("host-execution-evidence", () => options.executionEvidence!({
-          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId,
-        }) as Promise<any>)
-      }
+      if (!evidenceCollected) await collectEvidence()
       if (deferredCompletion) {
-        await reporter?.report(deferredCompletion)
+        if (!reporter?.isComplete) await reporter?.report(deferredCompletion)
         const completion = deferredCompletion
         await notify("host-finalize:completed", () => card.update(completion))
       }
       return options.executionEvidence ? { ...result.plan, evidence } : result.plan
     } catch (error) {
+      // A failed/expired deployment never rewrites already-completed CI. The
+      // separate check and native Workflow still retain their actual failure.
+      try { await finishFinalizationCheck("failure") } catch { /* retain original failure, never retry an uncertain create */ }
       if (deferredCompletion) {
         const failure = { ...deferredCompletion, conclusion: "failure" as const }
         // Delivery failures must not replace the original release/controller failure.
-        try { await reporter?.report(failure) } catch { /* abort below retains failure */ }
+        try { if (!reporter?.isComplete) await reporter?.report(failure) } catch { /* abort below retains failure */ }
         notificationQueue = notificationQueue.catch(() => undefined)
         // A distinct terminal update to a known message is safe; never re-create an unacknowledged root.
         if (slackMessageTs || discordMessageId) {

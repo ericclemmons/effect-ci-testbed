@@ -25,8 +25,22 @@ function fixture() {
   for (const path of testPaths) {
     const dest = join(cwd, path);
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, readFileSync(new URL(`../../../examples/demo/${path}`, import.meta.url)));
+    writeFileSync(dest, readFileSync(new URL(`../../../test/fixtures/demo/${path}`, import.meta.url)));
   }
+  // The enrolled policy deliberately keeps its original manifest bytes. The
+  // maintenance fixture's test-folder rename is not a new signing enrollment.
+  const manifest = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8"));
+  const originalScripts: Record<string, string> = {
+    "test:verification": "node --test verification/*.test.mjs verification/*.test.ts",
+    "verify:browser": "node verification/run.mjs",
+    "proof:preview": "node verification/preview-proof.mjs",
+    "proof:verify-published": "node verification/verify-published.mjs",
+  };
+  manifest.scripts = Object.fromEntries(Object.entries(manifest.scripts).map(([key, value]) => {
+    const original = key === "test:integration" ? "test:verification" : key;
+    return [original, originalScripts[original] ?? value];
+  }));
+  writeFileSync(join(cwd, "package.json"), JSON.stringify(manifest, null, 2) + "\n");
   mkdirSync(join(cwd, "node_modules"));
   writeFileSync(join(cwd, "node_modules/dependency.js"), "fixed dependency");
   const inspect = () =>
@@ -64,6 +78,11 @@ test("inspector rejects executable message, changed test/config and extra source
     writeFileSync(join(f.cwd, path!), text!);
     assert.throws(f.inspect);
   }
+});
+test("maintenance script changes do not silently enroll a different manifest", () => {
+  const f = fixture();
+  writeFileSync(join(f.cwd, "package.json"), readFileSync(new URL("../../../test/fixtures/demo/package.json", import.meta.url)));
+  assert.throws(f.inspect, /Changed suite policy/);
 });
 test("inspector rejects dependency links outside its isolated prepared tree", () => {
   const f = fixture();

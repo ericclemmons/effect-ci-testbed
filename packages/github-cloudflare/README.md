@@ -41,6 +41,20 @@ failure fails the native Workflow and GitHub summary; successful build checks
 remain truthful build checks. Build failure never enters the continuation.
 Without `finalize`, existing reporting and return values are unchanged.
 
+For hosts that deliberately separate code checks from a deployment, opt in with
+`finalizationCheck: parameters => "Deployment / my-app"` (or return `undefined`
+for runs without a release). Required execution evidence is persisted **before**
+CI is marked successful. The finalizer then gets a distinct in-progress check;
+its success or failure completes that check without rewriting completed CI.
+Build/evidence failure never enters release finalization. Native Workflow failure,
+human-approval requirements, rollback, Slack status and the default combined
+behavior remain unchanged. A red deployment check can still make GitHub's overall
+commit indicator red; separating it is not a way to hide an unapproved release.
+
+The separate check's create/update checkpoints have zero retries. An uncertain
+create acknowledgment must be inspected, not blindly posted again. This API
+does not change historical checks or grant any release/merge authority.
+
 By default, `publish` updates the same acknowledged Slack bot message rather than opening a
 separate release card. Stable keys must match `[A-Za-z0-9:_-]{1,128}`. Host updates
 use zero retries and a 20-second timeout, and delivery rejection fails closed.

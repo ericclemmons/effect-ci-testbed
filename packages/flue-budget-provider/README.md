@@ -35,5 +35,5 @@ Pending, failed or mismatched calls must not cause a new paid call automatically
 
 This extraction does not deploy or activate a hosted agent. Existing budget,
 provider, negative lifecycle, text-proposal and restart tests in
-`apps/repair-ai` now exercise this shared implementation. Local fake-model tests
+`test/apps/repair-ai` now exercise this shared implementation. Local fake-model tests
 are not native inference or end-to-end repair proof.

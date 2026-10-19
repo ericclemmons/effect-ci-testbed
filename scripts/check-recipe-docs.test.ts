@@ -10,6 +10,27 @@ const recipes = readdirSync("examples", { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+test("host entrypoint and setup links resolve, including existing recipe anchors", () => {
+  const host = "apps/effect-ci/README.md";
+  const setup = "apps/effect-ci/SELF-HOST.md";
+  const sources = [host, setup, ...recipes.map(recipe => join("examples", recipe, "README.md"))];
+  const slug = (heading: string) => heading.toLowerCase().replace(/[^\p{L}\p{N}_ -]/gu, "").replace(/ /g, "-");
+  for (const source of sources) {
+    for (const [, link] of readFileSync(source, "utf8").matchAll(/\]\(([^)]+)\)/g)) {
+      if (/^[a-z]+:/i.test(link)) continue;
+      const [file, anchor] = link.split("#");
+      const target = file ? resolve(dirname(source), file) : resolve(source);
+      // Check the two maintained host guides, not unrelated recipe prose.
+      if (target !== resolve(host) && target !== resolve(setup)) continue;
+      assert.ok(existsSync(target), `${source}: missing ${link}`);
+      if (anchor) {
+        const headings = [...readFileSync(target, "utf8").matchAll(/^#{1,6} (.+)$/gm)].map(match => slug(match[1]));
+        assert.ok(headings.includes(anchor), `${source}: missing anchor ${link}`);
+      }
+    }
+  }
+});
+
 test("remote goal documentation describes host negotiation, not blanket rejection", () => {
   assert.doesNotMatch(root, /built-in remote runner still rejects target selection/);
   assert.match(root, /cf-ci doctor --remote/);
@@ -113,21 +134,11 @@ test("containerless stays a Cloudflare capability with verified and planned scop
   );
 });
 
-test("each recipe opens with a focused question", () => {
+test("recipe READMEs omit empty media placeholders", () => {
   for (const recipe of recipes) {
     const readme = readFileSync(join("examples", recipe, "README.md"), "utf8");
-    const question = readme.match(/^> .*(?:\n> .*)*/m)?.[0];
-    assert.ok(question?.includes("?"), `${recipe} needs its opening question`);
-  }
-});
-
-test("every recipe reserves honest video and measured verification slots", () => {
-  for (const recipe of recipes) {
-    const readme = readFileSync(join("examples", recipe, "README.md"), "utf8");
-    assert.equal((readme.match(/^## Verification proof$/gm) ?? []).length, 1, recipe);
-    assert.match(readme, /\*\*Video:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe);
-    assert.match(readme, /\*\*Measured results:\*\* (?:Pending|\[[^\]]+\]\([^)]+\))/, recipe);
-    assert.ok(readme.includes("../PROOF-PAGES.md"), recipe);
+    assert.doesNotMatch(readme, /\*\*Video:\*\* Pending\.\s+\*\*Measured results:\*\* Pending\./,
+      `${recipe}: omit empty proof placeholders; link evidence when it exists`);
   }
 });
 

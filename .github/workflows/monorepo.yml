@@ -1,0 +1,21 @@
+name: Effect CI / Monorepo
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monorepo-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: .cloudflare/ci/checks.ts
+    secrets: inherit

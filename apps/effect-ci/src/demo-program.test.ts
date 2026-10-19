@@ -9,7 +9,7 @@ import { syntaxCommand } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 
 test("native demo enrollment selects the same package suite as local discovery, without release or approval", async () => {
-  const root = fileURLToPath(new URL("../../../examples/demo/", import.meta.url));
+  const root = fileURLToPath(new URL("../../../test/fixtures/demo", import.meta.url));
   const result = await CI.runPromise(demoProgram.workflow, {
     mode: "plan",
     output: "silent",
@@ -68,7 +68,7 @@ test("demo enrollment rejects foreign repositories, mutable revisions and unenro
 });
 
 test("remote test/build goals share preparation and cannot invoke the default publisher or release", async () => {
-  const root = fileURLToPath(new URL("../../../examples/demo/", import.meta.url));
+  const root = fileURLToPath(new URL("../../../test/fixtures/demo", import.meta.url));
   const program = makeDemoProgram(
     {
       revision: "a".repeat(40),

@@ -72,7 +72,7 @@ revocation and lost-response replay. Tree hashing is compared to independent
 `git hash-object`; that command does not write Git objects. No GitHub repository
 mutation, native writer, Flue agent, actual verifier or proposed repair PR is
 claimed by these tests. Separately, the
-[operator proof](../../apps/repair-ai/scripts/README.md) created a real one-file
+[operator proof](../../test/apps/repair-ai/scripts/README.md) created a real one-file
 private PR after a local exact-commit check; it records source, timings and
 boundaries rather than relabeling that replay as hosted Flue execution.
 
