@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as CI from "@effect-ci-testbed/ci";
 import workflow, { platformApps } from "../.cloudflare/ci/workflow.ts";
 
-async function capture(definition: CI.Workflow<unknown>, failure?: string,
+async function capture(definition: CI.Workflow<unknown>, failure?: string | { command: string; cwd: string },
   event: CI.WorkflowEventShape = { type: "pull_request", ref: "refs/heads/main" }) {
   const commands: { cwd: string; command: string }[] = [];
   const run = CI.runPromise(definition, {
@@ -14,7 +14,9 @@ async function capture(definition: CI.Workflow<unknown>, failure?: string,
     source: { checkout: () => Effect.succeed(CI.Workspace.local("/repo")) },
     executor: { execute: input => {
       commands.push({ cwd: input.workspace.cwd, command: input.command });
-      return Effect.succeed({ exitCode: input.command === failure ? 1 : 0, stdout: "", stderr: "" });
+      const failed = typeof failure === "string" ? input.command === failure :
+        failure && input.command === failure.command && input.workspace.cwd === failure.cwd;
+      return Effect.succeed({ exitCode: failed ? 1 : 0, stdout: "", stderr: "" });
     } },
   });
   return { commands, run };
@@ -57,12 +59,40 @@ test("failed validation prevents every platform deployment", async () => {
   const { commands, run } = await capture(workflow, "pnpm check", { type: "push", ref: "refs/heads/main" });
   await assert.rejects(run, /Command failed/);
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
+  assert.deepEqual(commands.map(c => c.command), ["pnpm install --frozen-lockfile", "pnpm check"],
+    "do not start test/build/tutorial work after the first required validation fails");
+});
+
+test("personal monorepo validations run one at a time without dropping any required work", async () => {
+  let active = 0, peak = 0;
+  const commands: { cwd: string; command: string }[] = [];
+  await CI.runPromise(workflow, {
+    output: "silent", event: { type: "pull_request", ref: "refs/heads/main" },
+    source: { checkout: () => Effect.succeed(CI.Workspace.local("/repo")) },
+    executor: { execute: input => Effect.tryPromise(async () => {
+      active++; peak = Math.max(peak, active);
+      commands.push({ cwd: input.workspace.cwd, command: input.command });
+      try {
+        await new Promise(resolve => setTimeout(resolve, 10));
+        return { exitCode: 0, stdout: "", stderr: "" };
+      } finally { active--; }
+    }) },
+  });
+  assert.equal(peak, 1);
+  assert.deepEqual(commands.map(c => c.command), [
+    "pnpm install --frozen-lockfile", "pnpm check",
+    "node --test --test-concurrency=2 packages/*/src/*.test.ts apps/*/src/*.test.ts test/apps/*/src/*.test.ts scripts/*.test.ts",
+    "pnpm build", "pnpm test", "pnpm build",
+  ]);
+  assert.deepEqual(commands.slice(-2).map(c => c.cwd), ["/repo/examples/demo", "/repo/examples/demo"]);
 });
 
 test("a failed app build stops CD before that deployment and every later target", async () => {
   const { commands, run } = await capture(workflow,
-    "pnpm build", { type: "push", ref: "refs/heads/main" });
+    { command: "pnpm build", cwd: "/repo/apps/github-actions-runner" }, { type: "push", ref: "refs/heads/main" });
   await assert.rejects(run, /Command failed/);
+  assert.ok(commands.some(c => c.cwd === "/repo" && c.command === "pnpm build"), "root validation passed first");
+  assert.ok(commands.some(c => c.cwd === "/repo/apps/github-actions-runner" && c.command === "pnpm build"));
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
   assert.ok(!commands.some(c => c.cwd === "/repo/apps/effect-ci"));
 });

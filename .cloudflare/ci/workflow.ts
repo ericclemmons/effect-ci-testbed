@@ -37,7 +37,14 @@ export const tutorial = CI.check("test and build tutorial", function* () {
   };
 });
 
-const validate = () => CI.parallel([check(), test(), build(), tutorial()]);
+// Keep this personal project's validation bounded and fail fast. All required
+// checks remain; later work starts only after the preceding check succeeds.
+export function* validate() {
+  yield* check();
+  yield* test();
+  yield* build();
+  yield* tutorial();
+}
 
 const deployments = platformApps.map(app => CI.action(`deploy ${app}`, function* () {
   yield* validate();
