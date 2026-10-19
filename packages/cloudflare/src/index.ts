@@ -867,11 +867,18 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
-          const execute = () => container.execute(
-            command, workspace.cwd, stepId,
-            revision?.value as ContainerSnapshotValue | undefined,
-            options.cache?.paths, targetDirectory, options.container,
-          )
+          const execute = async () => {
+            try {
+              return await container.execute(
+                command, workspace.cwd, stepId,
+                revision?.value as ContainerSnapshotValue | undefined,
+                options.cache?.paths, targetDirectory, options.container,
+              )
+            } catch {
+              // Redact the host cause before crossing any native checkpoint.
+              throw new CI.CommandExecutionError(stepId, command, workspace.cwd)
+            }
+          }
           const result = activeBodies.has(stepId) ? await execute() : await executeCommand(
             { command, ...(commandIndex === undefined ? {} : { commandIndex }), stepId, workspace, options: stepOptions },
             execute,
@@ -883,9 +890,11 @@ export const makeRunner = (options: RunnerOptions): Runner => {
 
           return result
         },
-        catch: (error) => error instanceof CI.CommandError || error instanceof CI.CommandCheckpointError
+        catch: (error) => error instanceof CI.CommandError || error instanceof CI.CommandCheckpointError || error instanceof CI.CommandExecutionError
           ? error
-          : new CI.CommandError(stepId, command, workspace.cwd, 1),
+          // RPC/setup/output failures do not establish a child process exit.
+          // Do not copy arbitrary provider causes (which may contain secrets).
+          : new CI.CommandExecutionError(stepId, command, workspace.cwd),
       }),
     },
     fileSystem: {

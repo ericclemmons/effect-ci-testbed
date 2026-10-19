@@ -21,6 +21,11 @@ verified child failures remain `CI.CommandError` with their actual exit/status
 and bounded output. The CLI reports `CI_COMMAND_OUTCOME_UNKNOWN` with this metadata;
 the CLI's own failure exit is not presented as a child process exit.
 
+Likewise, a container RPC/setup/output exception produces `CI.CommandExecutionError`
+with `stage=container-execution`, an unknown process exit and no provider cause text.
+That distinction diagnoses missing results; it does not establish why a container
+operation failed or prove that its command did not run.
+
 This diagnostic adds no retry, restart, rollback, success conversion or automatic
 reconciliation. Existing action policy remains unchanged. Inspect the retained
 failed attempt, then read the **same** external artifact/operation identity and
