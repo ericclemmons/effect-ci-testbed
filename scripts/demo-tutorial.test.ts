@@ -37,7 +37,20 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   // a symlinked hoist directory; no app source or install state is inherited.
   mkdirSync(join(root, ".cloudflare/ci"), { recursive: true });
   cpSync(join(root, "tutorial/workflow.ts"), join(root, ".cloudflare/ci/workflow.ts"));
-  const environment = { ...process.env, AI_AGENT: "true", EFFECT_CI_REMOTE_URL: "", EFFECT_CI_REMOTE_TOKEN: "", GITHUB_EVENT_PATH: "", GITHUB_EVENT_NAME: "" };
+  // This is a NEW independent Git repository, not the checkout which launched
+  // the test. An inherited GITHUB_SHA would correctly make its local diff
+  // unknown/stale and run lint. Do not import the parent's source identity,
+  // event, approval, transport or remote authority into this tutorial fixture.
+  // Keep unrelated parent metadata present even outside GitHub so removing
+  // this isolation reproduces the hosted failure in a local run as well.
+  const parentEnvironment = { ...process.env, GITHUB_SHA: "f".repeat(40),
+    GITHUB_REF: "refs/pull/123/merge", EFFECT_CI_REVISION: "e".repeat(40),
+    EFFECT_CI_EVENT: "pull_request" };
+  const environment = {
+    ...Object.fromEntries(Object.entries(parentEnvironment).filter(([name]) =>
+      !name.startsWith("GITHUB_") && !name.startsWith("EFFECT_CI_"))),
+    AI_AGENT: "true", EFFECT_CI_REMOTE_URL: "", EFFECT_CI_REMOTE_TOKEN: "",
+  };
   const run = (command: string, args: string[], ok = true) => {
     const result = spawnSync(command, args, { cwd: root, env: environment, encoding: "utf8", timeout: 90_000, maxBuffer: 4 * 1024 * 1024 });
     if (ok) assert.equal(result.status, 0, result.stdout + result.stderr + String(result.error ?? ""));
