@@ -32,14 +32,23 @@ export class WorkspaceContainer extends Base {
       const env = this.env as { CLOUDFLARE_API_TOKEN?: string; CLOUDFLARE_ACCOUNT_ID?: string };
       if (!env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID)
         return { exitCode: 1, stdout: "", stderr: "Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID on the CI host for native main CD." };
+      const dockerConfig = `/tmp/effect-ci-docker-${crypto.randomUUID()}`;
       this.deployment = { command, cwd, env: {
         CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+        DOCKER_CONFIG: dockerConfig,
       } };
       try {
         const result = await super.execute(...args);
         const redact = (value: string) => value.replaceAll(env.CLOUDFLARE_API_TOKEN!, "[redacted]");
         return { ...result, stdout: redact(result.stdout), stderr: redact(result.stderr) };
-      } finally { this.deployment = undefined; }
+      } finally {
+        this.deployment = undefined;
+        // cf performs a short-lived registry login. Remove that process's
+        // generated login directory before the workspace can be checkpointed.
+        const cleanup = await this.ctx.container!.exec(["rm", "-rf", dockerConfig]);
+        if ((await cleanup.output()).exitCode !== 0)
+          throw Error("Could not clear the deployment registry login");
+      }
     });
     this.queue = run.catch(() => undefined);
     return run;

@@ -71,7 +71,10 @@ test("main deployment commands receive process-only credentials; checks, fixture
     assert.equal(result.stopped.exitCode, 1);
     assert.equal(result.published.exitCode, 0);
     assert.equal(result.published.stdout, "[redacted]");
-    assert.deepEqual(result.before.calls.map((call: any) => call.authorized), [false, false, true, false]);
+    const cleanups = result.before.calls.filter((call: any) => call.command.startsWith("/tmp/effect-ci-docker-"));
+    assert.equal(cleanups.length, 1, "remove only this command's generated Docker login directory before commit");
+    assert.deepEqual(result.before.calls.filter((call: any) => !call.command.startsWith("/tmp/effect-ci-docker-"))
+      .map((call: any) => call.authorized), [false, false, true, false]);
     assert.ok(result.before.stored.some(([key]: any) => key === "mainDeployment"));
     assert.ok(result.after.stored.every(([key]: any) => key !== "mainDeployment"));
     assert.ok(!JSON.stringify(result).includes("private-fixture-token"));

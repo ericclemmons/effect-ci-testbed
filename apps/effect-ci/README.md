@@ -2,14 +2,24 @@
 
 > Keep GitHub. Run CI as native Cloudflare Workflows, with GitHub checks and Slack updates.
 
-- **Try the configured demo:** [walkthrough](../../test/fixtures/demo/README.md).
+- **Try the standalone tutorial:** [walkthrough](../../examples/demo/README.md).
 - **Deploy your own host:** [standalone setup](./SELF-HOST.md), including App,
   Access and secret setup. This is not a one-click installer.
 - **Keep GitHub Actions YAML:** use the separate [optional runner](../github-actions-runner/README.md).
 - **Inspect the flywheel:** [public error → verified, unmerged repair PR](./PUBLIC-REPAIR.md).
 
-The detailed evidence below records what ran, where, and with whose approval.
-It is not extra setup for the demo.
+## This repository dogfoods this host
+
+The signed App event selects the [root workflow](../../.cloudflare/ci/workflow.ts).
+It runs the normal checks, tests and build on Cloudflare. On main, each product
+app runs `cf workers triggers deploy --prebuilt`, then `cf deploy --prebuilt`.
+There is no HMD, version-management layer or second publisher in that path.
+
+`apps/` contains this host and the optional Actions runner. The copy-out tutorial
+is `examples/demo`; deployable test hosts are `test/apps`. Those are tested but
+not automatically deployed. The [legacy hosted demo](../../test/fixtures/demo/README.md)
+and the detailed evidence below are retained verification history, not required
+installation steps or an automatically enabled repair loop.
 
 The new [trusted-runner receipt path](../../packages/cloudflare/src/trusted-runner-receipts.md)
 uses one host authority for remote and SCM checks. The demo's separate
