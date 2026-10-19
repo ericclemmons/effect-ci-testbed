@@ -25,6 +25,10 @@ Likewise, a container RPC/setup/output exception produces `CI.CommandExecutionEr
 with `stage=container-execution`, an unknown process exit and no provider cause text.
 That distinction diagnoses missing results; it does not establish why a container
 operation failed or prove that its command did not run.
+When a process boundary identifies the failure, an optional fixed `phase` is
+`prepare`, `start` or `output`. It describes the internal container process,
+which may be workspace preparation rather than the user's command. No arbitrary
+provider message is retained, and an unidentified RPC failure has no phase.
 
 This diagnostic adds no retry, restart, rollback, success conversion or automatic
 reconciliation. Existing action policy remains unchanged. Inspect the retained

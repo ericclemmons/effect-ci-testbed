@@ -29,6 +29,16 @@ const defaultImage = "cloudflare/debian-trixie"
 const defaultTargetDirectory = "/workspace/repository"
 const uncheckpointedContainerLost = "Workspace has uncheckpointed changes but its container stopped; inspect the failed action, never restore an ancestor or rerun its commands automatically"
 
+// Fixed host-owned protocol only. Never retain arbitrary platform cause text.
+const processFailure = (phase: CI.CommandExecutionPhase) => new Error(`Effect CI container process failure: ${phase}`)
+const processFailurePhase = (error: unknown): CI.CommandExecutionPhase | undefined => {
+  if (!(error instanceof Error)) return
+  const message = Object.getOwnPropertyDescriptor(error, "message")
+  if (!message || !("value" in message) || typeof message.value !== "string") return
+  const match = /^(?:Error: )?Effect CI container process failure: (prepare|start|output)$/.exec(message.value)
+  return match?.[1] as CI.CommandExecutionPhase | undefined
+}
+
 export interface ContainerExecutionResult {
   readonly exitCode: number
   readonly stderr: string
@@ -317,19 +327,27 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     command: ReadonlyArray<string>,
     cwd?: string,
   ): Promise<ContainerExecutionResult> {
-    await this.configureOutbound()
-    const environment = await this.processEnvironment(command, cwd)
-    const process = await this.container().exec(
-      [...command],
-      cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
-    )
-    const output = await process.output()
+    let environment: Record<string, string> | undefined
+    try {
+      await this.configureOutbound()
+      environment = await this.processEnvironment(command, cwd)
+    } catch { throw processFailure("prepare") }
+    let process: ExecProcess
+    try {
+      process = await this.container().exec(
+        [...command],
+        cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
+      )
+    } catch { throw processFailure("start") }
+    try {
+      const output = await process.output()
 
-    return {
-      exitCode: output.exitCode,
-      stderr: decoder.decode(output.stderr),
-      stdout: decoder.decode(output.stdout),
-    }
+      return {
+        exitCode: output.exitCode,
+        stderr: decoder.decode(output.stderr),
+        stdout: decoder.decode(output.stdout),
+      }
+    } catch { throw processFailure("output") }
   }
 
   async getCachedSnapshot(key: string): Promise<ContainerSnapshotValue | undefined> {
@@ -874,9 +892,9 @@ export const makeRunner = (options: RunnerOptions): Runner => {
                 revision?.value as ContainerSnapshotValue | undefined,
                 options.cache?.paths, targetDirectory, options.container,
               )
-            } catch {
+            } catch (error) {
               // Redact the host cause before crossing any native checkpoint.
-              throw new CI.CommandExecutionError(stepId, command, workspace.cwd)
+              throw new CI.CommandExecutionError(stepId, command, workspace.cwd, processFailurePhase(error))
             }
           }
           const result = activeBodies.has(stepId) ? await execute() : await executeCommand(

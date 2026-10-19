@@ -460,6 +460,8 @@ export class CommandCheckpointError extends Error {
   }
 }
 
+export type CommandExecutionPhase = "prepare" | "start" | "output"
+
 /** The container executor returned no process result. This is not an exit 1. */
 export class CommandExecutionError extends Error {
   readonly _tag = "CommandExecutionError"
@@ -469,12 +471,15 @@ export class CommandExecutionError extends Error {
   readonly stepId: string
   readonly command: string
   readonly cwd: string
-  constructor(stepId: string, command: string, cwd: string) {
-    super(`Container command result unavailable (stage=container-execution; process exit unknown): ${command}. External effects may already exist; reconcile the same identity, never retry automatically`)
+  readonly phase: CommandExecutionPhase | undefined
+  constructor(stepId: string, command: string, cwd: string, phase?: CommandExecutionPhase) {
+    const knownPhase = phase === "prepare" || phase === "start" || phase === "output" ? phase : undefined
+    super(`Container command result unavailable (stage=container-execution${knownPhase ? `; phase=${knownPhase}` : ""}; process exit unknown): ${command}. External effects may already exist; reconcile the same identity, never retry automatically`)
     this.name = "CommandExecutionError"
     this.stepId = stepId
     this.command = command
     this.cwd = cwd
+    this.phase = knownPhase
   }
 }
 

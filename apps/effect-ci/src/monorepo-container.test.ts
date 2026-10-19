@@ -114,7 +114,7 @@ test("main deployment commands receive only dummy credentials; real credentials 
     assert.equal(result.stopped.exitCode, 1);
     assert.equal(result.published.exitCode, 0);
     assert.equal(result.published.stdout, "effect-ci-outbound-proxy");
-    assert.match(result.trustError, /Could not trust/);
+    assert.equal(result.trustError, "Effect CI container process failure: prepare");
     assert.equal(result.afterTrustFailure.calls.filter((call: any) => call.authorized).length, 1,
       "a missing/uninstallable runtime CA must prevent any publication command");
     const publication = result.before.calls.find((call: any) => call.authorized);

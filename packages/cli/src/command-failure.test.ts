@@ -79,3 +79,20 @@ test("agent JSON does not invent an exit code for a missing container result", a
     assert.equal("output" in value.error.details, false)
   } finally { process.stdout.write = original }
 })
+
+test("agent JSON retains only a host-owned container phase", async () => {
+  const writes: string[] = [], original = process.stdout.write
+  process.stdout.write = ((value: string | Uint8Array) => { writes.push(String(value)); return true }) as typeof process.stdout.write
+  try {
+    const workflow = CI.workflow("unknown-output-fixture", () => Effect.fail(new CI.CommandExecutionError("test", "node --test", "/workspace", "output")))
+    assert.equal(await main({ workflow }, ["run", "--format=json"]), 1)
+    const value = JSON.parse(writes.join(""))
+    assert.equal(value.error.code, "CI_COMMAND_OUTCOME_UNKNOWN")
+    assert.equal(value.error.details.phase, "output")
+    assert.equal(value.error.details.processExitCode, null)
+    assert.equal("exitCode" in value.error.details, false)
+    const unknown = new CI.CommandExecutionError("test", "node --test", "/workspace", "private-provider-text" as any)
+    assert.equal(unknown.phase, undefined)
+    assert.ok(!unknown.message.includes("private-provider-text"))
+  } finally { process.stdout.write = original }
+})
