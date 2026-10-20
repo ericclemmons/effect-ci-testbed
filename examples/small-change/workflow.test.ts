@@ -4,12 +4,24 @@ import * as CI from "@effect-ci-testbed/ci"
 import { approveSmallChanges } from "./workflow.ts"
 import { evidence } from "./demo.ts"
 
+test("README-only approval needs no line threshold, author history, checks or AI review", async () => {
+  const initial = evidence("README.md")
+  let approved = false
+  const result = await CI.runPromise(approveSmallChanges({
+    read: async () => ({ ...initial, files: [{path:"README.md",additions:10000,deletions:10000}],
+      checks: [], experience: {}, review: {...initial.review,complete:false} }),
+    approve: async () => { approved = true },
+  }), {output:"silent"})
+  assert.equal(result.value?.eligible, true)
+  assert.equal(approved, true)
+})
+
 test("README policy produces an approval action only for eligible exact-head evidence", async () => {
   for (const path of ["README.md", "docs/README.md", "src/app.ts", "package.json", "AGENTS.md", ".github/README.md", "README.md.ts"]) {
     let writes = 0
     const result = await CI.runPromise(approveSmallChanges({ read: async () => evidence(path),
       approve: async (before, decision) => { assert.equal(decision.head, before.head); writes++ } }), { output: "silent" })
-    const expected = ["README.md", "docs/README.md"].includes(path)
+    const expected = path === "README.md"
     assert.equal(result.value?.eligible, expected, path)
     assert.equal(writes, expected ? 1 : 0, path)
     assert.equal(result.plan.nodes.some(node => node.id === "approve small change"), expected)
@@ -19,10 +31,10 @@ test("README policy produces an approval action only for eligible exact-head evi
 test("absence of TypeScript is not sufficient; mixed, unknown, stale and incomplete evidence cannot approve", async () => {
   const initial = evidence("README.md")
   for (const change of [
-    { complete: false }, { files: [] }, { draft: true }, { checks: [] },
+    { complete: false }, { files: [] }, { draft: true }, { open: false },
     { files: [...initial.files, { path: "package.json", additions: 1, deletions: 0 }] },
-    { files: [{ path: "README.md", additions: 50, deletions: 50 }] },
-    { review: { ...initial.review, complete: false } }, { experience: {} },
+    { files: [{ path: "README.md", additions: -1, deletions: 0 }] },
+    { files: [...initial.files, ...initial.files] }, { head: "unknown" },
     { files: [...initial.files, { path: "src/renamed.ts", additions: 0, deletions: 0 }] },
   ]) {
     const result = await CI.runPromise(approveSmallChanges({ read: async () => ({ ...initial, ...change }),

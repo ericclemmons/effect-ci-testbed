@@ -5,9 +5,9 @@ import { approveSmallChanges } from "./workflow.ts"
 export const evidence = (path: string): SmallChangeEvidence => ({
   head: "a".repeat(40), base: "b".repeat(40), open: true, draft: false, complete: true,
   files: [{ path, additions: 2, deletions: 1 }],
-  checks: ["test", "build"].map(name => ({ name, head: "a".repeat(40), conclusion: "success" })),
-  review: { head: "a".repeat(40), base: "b".repeat(40), complete: true, kind: "documentation-policy", findings: [] },
-  experience: { docs: [1] },
+  checks: [],
+  review: { head: "a".repeat(40), base: "b".repeat(40), complete: false, kind: "documentation-policy", findings: [] },
+  experience: {},
 })
 
 if (import.meta.main) {

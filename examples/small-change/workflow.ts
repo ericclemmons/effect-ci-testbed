@@ -1,19 +1,12 @@
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
-import { smallChange, type SmallChangeDecision, type SmallChangeEvidence, type SmallChangePolicy } from "../../packages/github/src/small-change.ts"
+import { smallChange, type SmallChangeDecision, type SmallChangeEvidence } from "../../packages/github/src/small-change.ts"
 
 // Trusted organization policy, not a file loaded from the PR under review.
-// These thresholds and two README paths are deliberately arbitrary demo choices.
-export const policy: SmallChangePolicy = {
-  maxChangedLines: 100,
-  maxServices: 1,
-  minMergedPullRequests: 1,
-  requiredChecks: ["test", "build"],
-  service: path => ["README.md", "docs/README.md"].includes(path) ? "docs" : undefined,
-}
+export const policy = ({files}: SmallChangeEvidence) => files.length === 1 && files[0]?.path === "README.md"
 
 export interface Host {
-  /** Complete canonical PR diff, verified checks and deterministic README review. */
+  /** Complete canonical PR diff pinned to the current base and head. */
   read: () => Promise<SmallChangeEvidence>
   /** Journaled exact-head writer; revalidates evidence using the SAME policy. */
   approve: (evidence: SmallChangeEvidence, decision: SmallChangeDecision) => Promise<void>
@@ -46,7 +39,7 @@ export function approveSmallChanges(host: Host) {
     }
   }, { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" })
 
-  return CI.workflow("approve-small-changes", function* () {
+  return CI.workflow("small-change", function* () {
     const decision = yield* isSmallChange()
     if ((yield* CI.executionMode) === "plan" || decision?.eligible) yield* approve()
     return decision
