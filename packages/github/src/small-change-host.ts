@@ -148,7 +148,9 @@ export async function publishSmallChange(host: SmallChangeHost, number: number, 
   if (canonical !== JSON.stringify(await readSmallChange(host, number))) throw Error("PR changed; no review published");
   const pending: SmallChangeOperation = { state: "pending", marker, decision };
   if (!await store.claim(marker, pending)) throw Error("Small-change operation already claimed");
-  const body = decision.eligible ? "Small change: verified checks and org review passed." : decision.reasons.join("\n").slice(0, 60_000);
+  const body = decision.eligible ? (typeof host.policy === "function"
+    ? "Small change: trusted organization policy passed."
+    : "Small change: verified checks and org review passed.") : decision.reasons.join("\n").slice(0, 60_000);
   const check = await host.request("/check-runs", "POST", { name: "small-change", head_sha: before.head,
     external_id: marker, status: "completed", conclusion: decision.eligible ? "success" : "neutral",
     output: { title: decision.eligible ? "Small change" : "Normal review required", summary: body } });

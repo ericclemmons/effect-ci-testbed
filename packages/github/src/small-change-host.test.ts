@@ -74,6 +74,8 @@ test("a trusted App can choose a plain README rule without author history or a r
   const approved = await runSmallChange(f.host, 50, f.store);
   assert.equal(approved.decision.eligible, true);
   assert.equal(f.reviews[0].commit_id, head);
+  assert.doesNotMatch(f.reviews[0].body,/verified checks|org review passed/,
+    "A plain rule must not claim checks or review evidence it did not require");
   f.code();
   const normal = await runSmallChange(f.host, 50, f.store);
   assert.equal(normal.decision.eligible, false);
