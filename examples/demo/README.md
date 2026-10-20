@@ -45,6 +45,8 @@ pnpm exec cf-ci plan --format=mermaid
 Change `src/message.ts`, then run test and build again. Your package scripts
 remain the source of truth.
 
+[Script discovery](../zero-config)
+
 ## 3. The same commands for people and agents
 
 An author or agent uses the same workflow, with structured results when useful:
@@ -68,7 +70,13 @@ Change `packages/greeting/message.ts` and repeat. The importing app rebuilds,
 even though `src/app.ts` did not change. The task runner owns its dependency
 graph and cache; Effect CI keeps using the same build command.
 
+There are three different things to reuse: dependency downloads, task output,
+and verified CI results. Download caching still performs the locked install;
+task caching avoids recomputation; signed results are covered in chapter 9.
+Choose cache paths and input keys explicitly, or disable caching for a workload.
+
 [Vite+ caching](../vite-plus-cache) · [Turborepo caching](../turborepo-cache) ·
+[Dependency downloads](../package-manager-cache) · [Cache policy](../cache-policy) ·
 [Dependency-aware reruns](../dependency-aware-reruns)
 
 ## 5. Parallel checks, shared prerequisites
@@ -111,6 +119,11 @@ if (yield * source.changed(["**/*.ts", "package.json", "pnpm-lock.yaml"])) {
 
 Missing comparison information runs the check conservatively. The change rule
 belongs to your workflow, not a separately maintained path-filter configuration.
+Event and branch conditions are separate: use `CI.when` with event/ref conditions
+when, for example, only a push to main should release. Those conditions appear
+in the plan; ordinary JavaScript branches only describe the path being planned.
+
+[Conditional execution](../conditional-deploy)
 
 ## 7. Publish only changed output
 
@@ -139,13 +152,12 @@ The standalone host runs authored workflows inside an isolated container, not
 inside the privileged host process. Whole-workflow execution is supported;
 named-target negotiation for arbitrary authored workflows is still being connected.
 
-Choose the environment the work needs: a local process, a container, Cloudflare,
-or another runner. Runtime versions, system packages, custom images, and Docker
-can be action prerequisites rather than hidden machine setup.
+Keep the workflow and move its execution from your laptop to the hosted runner.
+Cloudflare workflows retain action checkpoints and workspace snapshots across
+durable execution. Remote log streaming lets the CLI follow the same run; a lost
+connection must not cause it to dispatch the work again.
 
-[Host setup](../../apps/effect-ci/SELF-HOST.md) · [Runner selection](../runner-selection) ·
-[Custom images](../custom-runner-image) · [Toolchains](../mise-toolchain) ·
-[Docker inside CI](../docker-in-docker)
+[Host setup](../../apps/effect-ci/SELF-HOST.md) · [Durable runner](../cloudflare-runner)
 
 ## 9. Signed results and reusable build workspaces
 
@@ -166,6 +178,8 @@ belongs in the app, and a local Vite+ cache hit is not a signed result.
 The conference flow is edit → commit → push → inspect the run in Slack. The
 GitHub App starts CI for the pushed commit; Slack keeps one parent progress bar
 and a compact, maintained step table. Failures link to the affected step.
+Release reviews can add health charts and direct decisions on the same thread,
+instead of making the presenter switch between disconnected dashboards.
 
 An authored workflow can also run through GitHub Actions. Where it executes is
 separate from the workflow's dependencies and checks.
@@ -221,7 +235,6 @@ configured rollback policy; reaching 100% still needs the final health check.
 
 This is a hosted release chapter, not a command to deploy the copied app or
 replay an existing rollout.
-
 [Health-gated rollout](../health-mediated-release) ·
 [Human review of uncertain health](../health-mediated-approval) ·
 [Slack approvals](../cloudflare-hitl-release) · [Rollback](../rollback-compensation)
@@ -246,12 +259,13 @@ Deterministic formatters and linters are the first choice when they can fix it.
 - [Secret requirements and redaction](../secure-secrets) and
   [host-authenticated outbound requests](../secret-outbound) keep credentials out
   of project code and containers.
-- [Alternative sources](../source-providers), [GitLab](../gitlab-source),
-  [R2](../r2-source), and [Artifacts](../artifacts-source) use the same action model.
-- [Worker-isolate checks](../dynamic-worker-checks),
-  [project HTTP checks](../dynamic-project-checks), and [D1 migrations](../d1-migration)
-  cover work beyond a Node build.
+- [Worker-isolate checks](../dynamic-worker-checks) and
+  [project HTTP checks](../dynamic-project-checks) show lightweight work running
+  without a container. A [containerless publication](../containerless-site) can
+  also build and serve a small site in isolates; that is not arbitrary Vite/npm support.
 
 The point is one connected app that grows through the whole tour—not a separate
 toy project for every feature. The focused examples explain individual pieces;
 this README keeps the full route together.
+Other runner, source, package-manager, and toolchain combinations belong in the
+[capability matrix](../README.md), not extra detours in this presentation.

@@ -23,6 +23,8 @@ test("the demo is a standalone kitchen-sink tour without implicit hosted authori
   assert.match(readme, /AI is off/);
   for (const chapter of ["Existing scripts", "Parallel", "Source-aware", "Remote", "Signed", "Slack", "Safe-change", "Previews", "Health", "Auto-fix"])
     assert.match(readme, new RegExp(`^## .*${chapter}`, "m"), `keep the ${chapter} chapter in the conference tour`);
+  assert.doesNotMatch(readme, /blacksmith|GitHub environment approvals/i,
+    "runner compatibility and GitHub environment gates belong in the capability matrix, not the Effect CI showcase");
   assert.doesNotMatch(readme, /pnpm demo:setup|git worktree|rm -rf|--yes/);
   assert.ok(!existsSync(join(template, ".env")));
   for (const path of ["package-lock.json", "degit.json", "verification", "TALKING-SCRIPT.md", "AGENTS.md"])
