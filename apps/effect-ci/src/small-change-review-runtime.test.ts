@@ -9,7 +9,7 @@ const pluginPath = await realpath(new URL("../node_modules/@cloudflare/vite-plug
 const { Miniflare } = require(require.resolve("miniflare", { paths: [pluginPath] }));
 const { build } = require(require.resolve("esbuild", { paths: [pluginPath] }));
 
-test("native SQLite reviewer approves README-only changes without history or receipts, journals once and reconciles lost ACK", { timeout: 30_000 }, async () => {
+test("native SQLite source guard approves non-code diffs, journals once and reconciles lost ACK", { timeout: 30_000 }, async () => {
   const output = await build({ stdin: { resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "review-probe.ts", loader: "ts", contents: `
     import {SmallChangeReviews,withSmallChangeToken} from './small-change-review.ts';
     export {SmallChangeReviews};
@@ -77,7 +77,7 @@ test("native SQLite reviewer approves README-only changes without history or rec
     assert.equal(observed.checks.length, 1);
     assert.match(observed.reviews[0].body, /trusted organization policy passed/);
     assert.doesNotMatch(observed.reviews[0].body, /verified checks and org review passed/);
-    assert.match(observed.reviews[0].body, /effect-ci-small-change:demo-readme-only-v2:/);
+    assert.match(observed.reviews[0].body, /effect-ci-small-change:demo-non-code-v3:/);
     assert.match((await get("/lost")).error, /transport unavailable/);
     assert.equal((await get("/reconcile")).state, "complete");
     observed = await get("/observed");
@@ -104,17 +104,20 @@ test("native SQLite reviewer approves README-only changes without history or rec
     assert.ok(completed, "Native org policy did not complete");
     assert.equal(completed.decision.eligible, true);
     assert.equal(completed.reviewId, 3);
-    assert.deepEqual(completed.workflowPlan.nodes.map((node: any) => node.id), ["inspect PR", "review", "approve PR"]);
+    assert.deepEqual(completed.workflowPlan.nodes.map((node: any) => node.id), ["approve PR"]);
     assert.ok(completed.workflowPlan.nodes.every((node: any) => node.status === "complete"));
     assert.equal((await get("/observed")).reviews.length, 3);
-    for (const scenario of ["code", "nested", "rename", "mixed"]) {
+    const nested = await get("/nested");
+    assert.equal(nested.decision.eligible, true);
+    assert.equal(nested.reviewId, 4);
+    for (const scenario of ["code", "rename", "mixed"]) {
       const normal = await get(`/${scenario}`);
       assert.equal(normal.state, "complete", JSON.stringify(normal));
       assert.equal(normal.decision.eligible, false);
       assert.equal(normal.reviewId, undefined);
     }
     const final = await get("/observed");
-    assert.equal(final.reviews.length, 3, "Non-README changes never receive APPROVE");
+    assert.equal(final.reviews.length, 4, "Code changes never receive APPROVE");
     assert.ok(final.requests.every((r: any) => !r.path.endsWith("/pulls") && !/\/pulls\/\d+\/files/.test(r.path)),
       "The simple policy never reads author history");
     const requestsBeforeStale = (await get("/observed")).requests.length;

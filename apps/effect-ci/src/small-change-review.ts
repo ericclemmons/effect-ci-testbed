@@ -4,7 +4,7 @@ import { publishSmallChange, readSmallChange, type SmallChangeHost, type SmallCh
 import type { SmallChangeDecision, SmallChangeEvidence } from "../../../packages/github/src/small-change.ts";
 import * as CI from "@effect-ci-testbed/ci";
 import { makeActionExecutor } from "../../../packages/cloudflare/src/action-step.ts";
-import { policyId, pullRequestPolicy, smallChangePolicy } from "./workflows/pull-request.ts";
+import { policyId, pullRequestPolicy, smallChangePolicy } from "./pull-request-policy.ts";
 import { syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 import { demoBuildIdentity, demoRunnerPolicyDigest } from "./demo-runner-policy.ts";
@@ -94,7 +94,7 @@ export class SmallChangeReviews extends DurableObject<Environment> {
     return withSmallChangeToken(this.env, request => operation({
       repository, appId, botId, policyId, request,
       policy: smallChangePolicy,
-      // Checks remain independent merge gates. This README-only policy needs
+      // Checks remain independent merge gates. This non-code policy needs
       // no attestation, author history or model review to decide eligibility.
       verifiedChecks: async () => [],
     }));
@@ -124,9 +124,10 @@ export class SmallChangeReviews extends DurableObject<Environment> {
   async evaluate(number: number) {
     const revision = this.env.VERSION_METADATA?.id;
     this.#validate(number, revision);
-    const { value } = await CI.runPromise(pullRequestPolicy({
+    const policy = pullRequestPolicy({
       read: () => this.read(number, revision!), publish: (evidence, decision) => this.publish(number, evidence, decision, revision!),
-    }).workflow, { env: "cloudflare", ci: true, output: "silent" });
+    });
+    const { value } = await CI.runPromise(policy.workflow, { source: policy.source, env: "cloudflare", ci: true, output: "silent" });
     if (!value) throw Error("PR workflow produced no decision");
     return value;
   }
@@ -144,10 +145,11 @@ export class SmallChangeReviewWorkflow extends WorkflowEntrypoint<Environment, {
     // owner's capability after a rollout. This value is host metadata, not payload.
     const revision = this.env.VERSION_METADATA?.id;
     if (!revision) throw Error("Org policy version metadata unavailable");
-    const { value, plan } = await CI.runPromise(pullRequestPolicy({
+    const policy = pullRequestPolicy({
       read: () => owner.read(event.payload.number, revision),
       publish: (evidence, decision) => owner.publish(event.payload.number, evidence, decision, revision),
-    }).workflow, { env: "cloudflare", ci: true, output: "silent",
+    });
+    const { value, plan } = await CI.runPromise(policy.workflow, { source: policy.source, env: "cloudflare", ci: true, output: "silent",
       actionExecutor: makeActionExecutor(step, new Set()),
     });
     if (!value) throw Error("PR workflow produced no decision");

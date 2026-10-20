@@ -1,4 +1,4 @@
-/** Portable repository/workspace-relative glob vocabulary shared by selectors. */
+/** Portable relative globs: *, **, ?, and literal alternatives such as (ts|tsx|json). */
 export function pathGlob(pattern: string): RegExp {
   if (!pattern || pattern.length > 4096 || pattern.startsWith("/") || pattern.split("/").some(part => part === ".." || part === ".") ||
       /[\\\[\]{}!\x00-\x1f]/.test(pattern)) throw Error("Expected a relative glob using *, ** or ?")
@@ -13,6 +13,11 @@ export function pathGlob(pattern: string): RegExp {
       else expression += "[\\s\\S]*"
     } else if (c === "*") expression += "[^/]*"
     else if (c === "?") expression += "[^/]"
+    else if (c === "(" && /^\([\w-]+(?:\|[\w-]+)+\)/.test(pattern.slice(i))) {
+      const group = pattern.slice(i).match(/^\([\w-]+(?:\|[\w-]+)+\)/)![0]
+      expression += `(?:${group.slice(1, -1)})`
+      i += group.length - 1
+    }
     else expression += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   }
   return new RegExp(expression + "$")

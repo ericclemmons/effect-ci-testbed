@@ -88,6 +88,9 @@ if (yield* source.changed(["apps/site/**", "packages/ui/**"])) {
 `source.changes()` exposes the comparison and changed paths. The event adapter
 normally supplies the base; local runs use the remote default branch. Unknown
 comparisons run work. An explicit `{ base, head }` override remains available.
+Globs support literal alternatives: `**/*.(ts|tsx|json)` matches those extensions
+at the root or in nested directories. Unknown comparisons return `true`, so a
+negated `source.changed(...)` guard never approves an unknown diff.
 See [changed-file conditions](../../examples/conditional-deploy#start-with-a-source-query)
 for glob support, deployment baselines and the planning boundary. This does not
 infer dependencies or authorize attestation reuse. Action-owned rollback runs in

@@ -37,7 +37,8 @@ Computing the Git diff itself still needs source access.
 
 `source.changes()` returns `status: "known"` with `base`, `head`, and
 `paths`, or `status: "unknown"`. `changed` matches any supplied glob and supports
-`*`, `**`, and `?`. Braces, negation, and character classes are not implemented.
+`*`, `**`, `?`, and literal alternatives such as `**/*.(ts|tsx|json)`.
+Braces, negation, and character classes are not implemented.
 Added/deleted files and both sides of renames count. Missing history, dirty
 checkouts, incomplete diffs, and provider failures conservatively return `true`.
 No baseline also returns `true`, unless the source provider supplies a complete
