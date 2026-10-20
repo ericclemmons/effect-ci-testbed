@@ -47,7 +47,9 @@ detected package manager, then runs `cf-ci run --local` inside the workspace.
 It discovers the project's `.cloudflare/ci/workflow.ts` (including a configured
 nested root), or uses the CLI's package-script discovery when no workflow exists.
 The host does not import project code. `cf-ci run --remote` runs the whole workflow;
-named remote targets are not advertised before project discovery.
+`cf-ci run test build --remote` selects exported actions. The standalone host
+advertises project goal discovery, then validates the requested names through the
+real CLI inside the isolated workspace. Fixed-goal hosts keep their allowlists.
 The standalone image includes Node 24.22, pnpm 12.8.1 and the locked CLI/SDK
 runtime. Building the standalone profile packages its production dependencies;
 project manifests do not need a local SDK link.
@@ -142,6 +144,7 @@ From a clean, committed and pushed project with the App installed:
 
 ```sh
 cf-ci run --remote
+cf-ci run test build --remote
 ```
 
 The CLI selects the host's advertised goals, streams native events and exits with

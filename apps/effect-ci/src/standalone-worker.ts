@@ -8,15 +8,18 @@ export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/gith
 export default GitHubCloudflare.worker({
   // The whole project workflow is discoverable inside the workspace. Do not
   // advertise a guessed fixed target list before reading an authored workflow.
+  remoteTargetDiscovery: "project",
   remoteResult: true,
   remoteAuthentication: ["api-token"],
 });
 
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
-  (environment) => {
+  (environment, parameters) => {
     const root =
       (environment as unknown as { EFFECT_CI_PROJECT_ROOT?: string }).EFFECT_CI_PROJECT_ROOT ?? ".";
-    return standaloneProgram(root).workflow;
+    const targets = parameters.trigger === "remote"
+      ? parameters.targets ?? (parameters.target ? [parameters.target] : []) : [];
+    return standaloneProgram(root, targets).workflow;
   },
   {
     remoteGitHubCheckout: true,

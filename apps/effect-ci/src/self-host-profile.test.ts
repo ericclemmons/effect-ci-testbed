@@ -83,7 +83,7 @@ test("the actual standalone deployment config has no cross-Worker demo dependenc
   assert.equal(config.containers[0].images.workspace.dockerfile, "./Dockerfile.standalone");
 });
 
-test("standalone runs root and nested authored workflows in the workspace, not fixed host goals", async () => {
+test("standalone selects authored goals in root and nested workspaces without running the default", async () => {
   const repository = mkdtempSync(join(tmpdir(), "effect-ci-hosted-workflow-"));
   try {
   for (const root of [".", "apps/web"]) {
@@ -96,14 +96,28 @@ test("standalone runs root and nested authored workflows in the workspace, not f
       readFileSync(new URL("../../../examples/node-pnpm/pnpm-lock.yaml", import.meta.url), "utf8"));
     writeFileSync(join(project, ".cloudflare/ci/workflow.ts"), `
       import * as CI from "@effect-ci-testbed/ci";
+      const setup = CI.action("shared setup", () => function* () {
+        const source = yield* CI.Source;
+        yield* (yield* source.checkout()).exec("printf setup >> setup.txt");
+      });
       export const notes = CI.action("conference notes", () => function* () {
+        yield* setup();
         const source = yield* CI.Source;
         return yield* (yield* source.checkout()).exec("printf authored > notes.txt");
       });
-      export default CI.workflow("my conference workflow", () => notes());
+      export const build = CI.action("build", () => function* () {
+        yield* setup();
+        const source = yield* CI.Source;
+        return yield* (yield* source.checkout()).exec("printf built > build.txt");
+      });
+      const all = CI.action("default suite", () => function* () {
+        const source = yield* CI.Source;
+        return yield* (yield* source.checkout()).exec("printf default > default.txt");
+      });
+      export default CI.workflow("my conference workflow", () => all());
     `);
     const commands: Array<{ cwd: string; command: string }> = [];
-    await CI.runPromise(standaloneProgram(root).workflow, {
+    const run = (targets: ReadonlyArray<string> = []) => CI.runPromise(standaloneProgram(root, targets).workflow, {
       output: "silent",
       ci: true,
       source: { checkout: () => Effect.succeed(CI.Workspace.local(repository)) },
@@ -130,10 +144,26 @@ test("standalone runs root and nested authored workflows in the workspace, not f
         }),
       },
     });
+    await run(["notes", "build"]);
     assert.equal(readFileSync(join(project, "notes.txt"), "utf8"), "authored");
+    assert.equal(readFileSync(join(project, "build.txt"), "utf8"), "built");
+    assert.equal(readFileSync(join(project, "setup.txt"), "utf8"), "setup");
+    assert.equal(existsSync(join(project, "default.txt")), false);
     assert.ok(commands.every((command) => command.cwd === project));
     assert.equal(commands.filter((command) => command.command.includes("install")).length, 1);
     assert.ok(commands.find((command) => command.command.includes("install"))?.command.includes("--frozen-lockfile"));
+    await assert.rejects(run(["notes", "missing"]));
+    assert.equal(readFileSync(join(project, "setup.txt"), "utf8"), "setup",
+      "all requested goals are checked before any authored action executes");
+    assert.equal(existsSync(join(project, "default.txt")), false);
+    await run();
+    assert.equal(readFileSync(join(project, "default.txt"), "utf8"), "default");
   }
   } finally { rmSync(repository, { recursive: true, force: true }); }
+});
+
+test("standalone rejects shell syntax and ambiguous goal lists before workspace execution", () => {
+  for (const targets of [["--help"], ["notes; echo unsafe"], ["notes", "notes"], Array(17).fill("notes")]) {
+    assert.throws(() => standaloneProgram(".", targets), /Invalid project goals/);
+  }
 });

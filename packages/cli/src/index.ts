@@ -249,18 +249,20 @@ const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType
   } catch (error) {
     if (error instanceof CliFailure) throw error
   }
-  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown } | undefined
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown } | undefined
   const targets = descriptor?.targets
   if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
       targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
-      new Set(targets).size !== targets.length)
+      new Set(targets).size !== targets.length ||
+      (descriptor.targetDiscovery !== undefined && descriptor.targetDiscovery !== "project"))
     throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
       "The remote host did not return compatible capabilities. No run was dispatched; check the endpoint and Access login, or update the host.")
   if (accessOnly && (!Array.isArray(descriptor.authentication) ||
     !descriptor.authentication.includes("cloudflare-access-identity")))
     throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
       "This host has not enrolled Access-only remote authentication. Configure its private API profile; no run was dispatched.")
-  return targets as string[]
+  return { targets: targets as string[],
+    ...(descriptor.targetDiscovery === "project" ? { targetDiscovery: "project" as const } : {}) }
 }
 
 const builtInRemote = async (
@@ -297,7 +299,7 @@ const builtInRemote = async (
     // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
     // selected-goal invocation can never silently execute the default suite.
     const enrolled = await remoteCapabilities(connection)
-    if (targets.some(target => !enrolled.includes(target))) {
+    if (enrolled.targetDiscovery !== "project" && targets.some(target => !enrolled.targets.includes(target))) {
       throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
         "This host has not enrolled every requested goal. No run was dispatched; update/select a compatible host or run these goals locally.")
     }
@@ -898,10 +900,12 @@ export const main = async (
     }
 
     if (invocation.command === "doctor") {
-      const targets = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
-      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets, dispatched: false }
+      const capabilities = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", ...capabilities, dispatched: false }
       if (format === "json") printJson(result)
-      else console.log(`Remote access ready. Enrolled goals: ${targets.join(", ") || "default workflow only"}. No workflow started.`)
+      else console.log(capabilities.targetDiscovery === "project"
+        ? "Remote access ready. Selected goals are discovered inside the project workspace. No workflow started."
+        : `Remote access ready. Enrolled goals: ${capabilities.targets.join(", ") || "default workflow only"}. No workflow started.`)
       return ExitCode.success
     }
 
