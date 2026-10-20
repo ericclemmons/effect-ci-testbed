@@ -7,6 +7,10 @@ RUN apt-get update \
 
 RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
 
+# Prepared from locked production packages by scripts/standalone-runtime.ts.
+# Root-owned runtime is separate from the project-writable checkout.
+COPY .standalone-runtime /opt/effect-ci
+
 COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476f7d8ad39fe97c57965f044e4b0a0dcc93eac06 \
   /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
 

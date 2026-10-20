@@ -7,6 +7,9 @@ import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 test("standalone uid/non-login policy cannot restore the old root runner's transport snapshot", async () => {
   assert.equal(standaloneContainerOptions.loginShell, false);
@@ -80,46 +83,51 @@ test("the actual standalone deployment config has no cross-Worker demo dependenc
   assert.equal(config.containers[0].images.workspace.dockerfile, "./Dockerfile.standalone");
 });
 
-test("standalone build uses another project's package manager and root without demo capabilities", async () => {
-  for (const goals of [undefined, ["test", "build"]]) {
+test("standalone runs root and nested authored workflows in the workspace, not fixed host goals", async () => {
+  const repository = mkdtempSync(join(tmpdir(), "effect-ci-hosted-workflow-"));
+  try {
+  for (const root of [".", "apps/web"]) {
+    const project = join(repository, root);
+    mkdirSync(join(project, ".cloudflare/ci"), { recursive: true });
+    writeFileSync(join(project, "package.json"), JSON.stringify({ type: "module", packageManager: "pnpm@12.8.1" }));
+    writeFileSync(join(project, ".cloudflare/ci/workflow.ts"), `
+      import * as CI from "@effect-ci-testbed/ci";
+      export const notes = CI.action("conference notes", () => function* () {
+        const source = yield* CI.Source;
+        return yield* (yield* source.checkout()).exec("printf authored > notes.txt");
+      });
+      export default CI.workflow("my conference workflow", () => notes());
+    `);
     const commands: Array<{ cwd: string; command: string }> = [];
-    const result = await CI.runPromise(standaloneProgram("apps/web", goals).workflow, {
+    await CI.runPromise(standaloneProgram(root).workflow, {
       output: "silent",
-      source: { checkout: () => Effect.succeed(CI.Workspace.local("/acme")) },
+      source: { checkout: () => Effect.succeed(CI.Workspace.local(repository)) },
       workspaceFileSystem: {
         readFile: (workspace, path) =>
-          Effect.succeed(
-            path === "package.json" && workspace.cwd === "/acme/apps/web"
-              ? JSON.stringify({ packageManager: "pnpm@12.8.1", scripts: { build: "vite build" } })
-              : undefined,
-          ),
-        exists: (workspace, path) =>
-          Effect.succeed(workspace.cwd === "/acme/apps/web" && path === "pnpm-lock.yaml"),
+          Effect.sync(() => { try { return readFileSync(join(workspace.cwd, path), "utf8"); } catch { return undefined; } }),
+        exists: () => Effect.succeed(false),
       },
       executor: {
-        execute: (command) => {
+        execute: (command) => Effect.sync(() => {
           commands.push({ cwd: command.workspace.cwd, command: command.command });
-          return Effect.succeed({ exitCode: 0, stdout: "", stderr: "" });
-        },
+          // Only the transport's image-local runtime path changes for this local
+          // process proof. The real CLI discovers and imports the project itself.
+          const local = command.command.replace("/opt/effect-ci/src/hosted.ts",
+            fileURLToPath(new URL("../../../packages/cli/src/hosted.ts", import.meta.url)));
+          try {
+            const stdout = execFileSync("/bin/sh", ["-c", local], { cwd: command.workspace.cwd,
+              env: { PATH: process.env.PATH }, encoding: "utf8", timeout: 20_000 });
+            return { exitCode: 0, stdout, stderr: "" };
+          } catch (error) {
+            const failure = error as { status: number; stdout: string; stderr: string };
+            return { exitCode: failure.status ?? 1, stdout: failure.stdout, stderr: failure.stderr };
+          }
+        }),
       },
     });
-    assert.deepEqual(
-      result.plan.nodes.map((node) => node.id).sort(),
-      ["checkout", "install", ...(goals ?? ["build"])].sort(),
-    );
-    assert.ok(commands.length >= 2);
-    assert.ok(commands.every((command) => command.cwd === "/acme/apps/web"));
-    assert.ok(
-      commands.some(
-        (command) => command.command.includes("pnpm") && command.command.includes("install"),
-      ),
-    );
-    assert.ok(
-      commands.some(
-        (command) => command.command.includes("pnpm") && command.command.includes("build"),
-      ),
-    );
+    assert.equal(readFileSync(join(project, "notes.txt"), "utf8"), "authored");
+    assert.ok(commands.every((command) => command.cwd === project));
     assert.equal(commands.filter((command) => command.command.includes("install")).length, 1);
   }
-  assert.throws(() => standaloneProgram(".", ["release"]));
+  } finally { rmSync(repository, { recursive: true, force: true }); }
 });
