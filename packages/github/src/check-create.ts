@@ -47,7 +47,8 @@ export async function createReportedCheck(
     const check = matches[0]
     if (!check) return
     if (check.status !== desired.status || (check.conclusion ?? null) !== (desired.conclusion ?? null) ||
-      (check.details_url ?? null) !== (desired.details_url ?? null) ||
+      // GitHub fills an omitted details_url with the App's default homepage.
+      (desired.details_url !== undefined && check.details_url !== desired.details_url) ||
       check.output?.title !== desired.output.title || check.output?.summary !== desired.output.summary ||
       (check.output?.text ?? null) !== (desired.output.text ?? null))
       throw Error("Cannot reconcile GitHub check creation: operation payload changed")

@@ -55,6 +55,25 @@ test("a creation response lost after commit adopts the unique matching check wit
   } finally { globalThis.fetch = original }
 })
 
+test("GitHub's default App details URL is allowed only when the request omitted details_url", async () => {
+  const original = globalThis.fetch
+  try {
+    for (const explicit of [false, true]) {
+      const methods: string[] = []
+      globalThis.fetch = async (_url, init) => {
+        methods.push(init?.method ?? "GET")
+        return methods.length === 1 ? new Response("", { status: 500 }) : json({
+          total_count: 1, check_runs: [check({ details_url: "https://app.example.invalid" })],
+        })
+      }
+      const request = { ...options, ...(explicit ? { detailsUrl: "https://expected.example.invalid" } : {}) }
+      if (explicit) await assert.rejects(createCheck(request), /operation payload changed/)
+      else assert.equal((await createCheck(request)).id, 42)
+      assert.deepEqual(methods, ["POST", "GET"])
+    }
+  } finally { globalThis.fetch = original }
+})
+
 test("the real reporter can continue a step after the captured initial-creation 500", async () => {
   const original = globalThis.fetch
   const methods: string[] = []
