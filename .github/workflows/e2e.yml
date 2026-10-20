@@ -319,6 +319,9 @@ jobs:
       - name: Verify persisted output-change decisions through the CLI
         if: matrix.example == 'conditional-deploy'
         run: node --test examples/conditional-deploy/verification/output-changes.test.ts examples/deploy-changed-output/workflow.test.ts
+      - name: Verify README-only approval policy
+        if: matrix.example == 'conditional-deploy'
+        run: node --test examples/small-change/workflow.test.ts
 
   automatic-data-tracking:
     name: vite-plus-cache / automatic data tracking

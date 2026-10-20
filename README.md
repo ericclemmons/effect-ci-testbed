@@ -249,6 +249,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Deploy only on matching branches or events](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
+| [Approve a README-only PR](./examples/small-change) | — | ✅ | 🔜 | 🔜 |
 | [Deploy only changed build output](./examples/deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |

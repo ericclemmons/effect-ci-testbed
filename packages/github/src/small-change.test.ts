@@ -11,6 +11,20 @@ const evidence: SmallChangeEvidence = { head, base, open: true, draft: false, co
   review: { head, base, complete: true, kind: "documentation-policy", findings: [] },
   experience: { demo: Array.from({ length: 10 }, (_, i) => i + 1) } };
 
+test("even a permissive trusted rule cannot bypass complete canonical diff and readiness guards", () => {
+  let evaluations = 0;
+  const rule = () => { evaluations++; return true; };
+  for (const change of [
+    {head:"unknown"}, {base:"unknown"}, {complete:false}, {open:false}, {draft:true}, {files:[]},
+    {files:[...evidence.files,...evidence.files]},
+    ...["../README.md","/README.md","a\\README.md","a//README.md","README.md\n"].map(path=>({files:[{path,additions:1,deletions:0}]})),
+    {files:[{path:"README.md",additions:NaN,deletions:0}]},
+  ]) assert.equal(smallChange({...evidence,...change},rule).eligible,false);
+  assert.equal(evaluations,0,"Invalid evidence must not reach the selected rule");
+  assert.equal(smallChange(evidence,rule).eligible,true);
+  assert.equal(evaluations,1);
+});
+
 test("README approval uses existing exact-head checks and deterministic review, not an agent", async () => {
   let writes = 0;
   const result = await approveSmallChange({ policy, read: async () => structuredClone(evidence),

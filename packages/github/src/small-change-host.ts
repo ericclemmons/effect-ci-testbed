@@ -1,4 +1,4 @@
-import { smallChange, type SmallChangeDecision, type SmallChangeEvidence, type SmallChangePolicy } from "./small-change.ts";
+import { smallChange, type SmallChangeDecision, type SmallChangeEvidence, type SmallChangeRule } from "./small-change.ts";
 
 /** These callbacks are host capabilities, not remote RPC inputs. The HTTP
  * adapter pins api.github.com, scopes/revokes its token and never returns it. */
@@ -7,7 +7,7 @@ export interface SmallChangeHost {
   appId: number
   botId: number
   policyId: string
-  policy: SmallChangePolicy
+  policy: SmallChangeRule
   request: (path: string, method?: "GET" | "POST", body?: unknown) => Promise<any>
   verifiedChecks: (head: string) => Promise<SmallChangeEvidence["checks"]>
   /** Read completed org-owned review evidence, never invoke inference here.
@@ -44,10 +44,11 @@ export async function readSmallChange(host: SmallChangeHost, number: number): Pr
     // Both ends of a rename participate in sensitive/shared-path exclusions.
     ...(file.status === "renamed" ? [{ path: file.previous_filename, additions: 0, deletions: 0 }] : []),
   ]);
-  const services = new Set(changed.map(file => host.policy.service(file.path)).filter((s): s is string => !!s));
+  const servicePolicy = typeof host.policy === "function" ? undefined : host.policy;
+  const services = new Set(changed.map(file => servicePolicy?.service(file.path)).filter((s): s is string => !!s));
   const experience: Record<string, number[]> = Object.fromEntries([...services].map(s => [s, []]));
   let examined = 0;
-  history: for (let page = 1; page <= 3 && services.size; page++) {
+  history: for (let page = 1; page <= 3 && services.size && servicePolicy; page++) {
     const history = rows(await host.request(`/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=${page}`));
     for (const old of history) {
       if (!old.merged_at || old.user?.id !== pr.user.id || old.number === number || !positive(old.number) ||
@@ -57,10 +58,10 @@ export async function readSmallChange(host: SmallChangeHost, number: number): Pr
       if (++examined > 100) break history;
       const priorFiles = rows(await host.request(`${prPath(old.number)}/files?per_page=100`));
       for (const service of services) {
-        if (priorFiles.some(file => typeof file.filename === "string" && host.policy.service(file.filename) === service))
+        if (priorFiles.some(file => typeof file.filename === "string" && servicePolicy.service(file.filename) === service))
           experience[service]!.push(old.number);
       }
-      if ([...services].every(service => new Set(experience[service]).size >= host.policy.minMergedPullRequests)) break history;
+      if ([...services].every(service => new Set(experience[service]).size >= servicePolicy.minMergedPullRequests)) break history;
     }
     if (history.length < 100) break;
   }
@@ -71,7 +72,8 @@ export async function readSmallChange(host: SmallChangeHost, number: number): Pr
     !file.filename.split("/").some((part: string) => part.startsWith(".")));
   const review: SmallChangeEvidence["review"] = docs
     ? { head: pr.head.sha, base: pr.base.sha, complete: true, kind: "documentation-policy", findings: [] }
-    : host.readReview ? await host.readReview(reviewInput)
+    // Plain rules use the canonical diff directly, not an incidental reviewer.
+    : servicePolicy && host.readReview ? await host.readReview(reviewInput)
     : { head: pr.head.sha, base: pr.base.sha, complete: false, kind: "ai", findings: [] };
   return { head: pr.head.sha, base: pr.base.sha, open: pr.state === "open", draft: pr.draft !== false,
     complete, files: changed, checks: await host.verifiedChecks(pr.head.sha), review, experience };
@@ -146,7 +148,9 @@ export async function publishSmallChange(host: SmallChangeHost, number: number, 
   if (canonical !== JSON.stringify(await readSmallChange(host, number))) throw Error("PR changed; no review published");
   const pending: SmallChangeOperation = { state: "pending", marker, decision };
   if (!await store.claim(marker, pending)) throw Error("Small-change operation already claimed");
-  const body = decision.eligible ? "Small change: verified checks and org review passed." : decision.reasons.join("\n").slice(0, 60_000);
+  const body = decision.eligible ? (typeof host.policy === "function"
+    ? "Small change: trusted organization policy passed."
+    : "Small change: verified checks and org review passed.") : decision.reasons.join("\n").slice(0, 60_000);
   const check = await host.request("/check-runs", "POST", { name: "small-change", head_sha: before.head,
     external_id: marker, status: "completed", conclusion: decision.eligible ? "success" : "neutral",
     output: { title: decision.eligible ? "Small change" : "Normal review required", summary: body } });

@@ -29,6 +29,10 @@ export interface SmallChangePolicy {
   readonly service: (path: string) => string | undefined
 }
 
+/** A trusted App can select a plain rule instead of the legacy threshold policy.
+ * The complete canonical diff/readiness guard still runs before this rule. */
+export type SmallChangeRule = SmallChangePolicy | ((evidence: SmallChangeEvidence) => boolean)
+
 export interface SmallChangeDecision {
   readonly eligible: boolean
   readonly reasons: ReadonlyArray<string>
@@ -36,7 +40,22 @@ export interface SmallChangeDecision {
   readonly base: string
 }
 
-export function smallChange(evidence: SmallChangeEvidence, policy: SmallChangePolicy): SmallChangeDecision {
+export function smallChange(evidence: SmallChangeEvidence, policy: SmallChangeRule): SmallChangeDecision {
+  if (typeof policy === "function") {
+    const paths = new Set<string>();
+    const canonical = /^[a-f0-9]{40}$/.test(evidence.head) && /^[a-f0-9]{40}$/.test(evidence.base)
+      && evidence.open === true && evidence.draft === false && evidence.complete === true
+      && Array.isArray(evidence.files) && evidence.files.length > 0 && evidence.files.every(file => {
+        if (!file || typeof file.path !== "string" || !file.path || file.path.startsWith("/") || file.path.includes("\\")
+          || /[\x00-\x1f\x7f]/.test(file.path) || file.path.split("/").some((p: string) => !p || p === "." || p === "..")
+          || paths.has(file.path) || ![file.additions, file.deletions].every(n => Number.isSafeInteger(n) && n >= 0)) return false;
+        paths.add(file.path);
+        return true;
+      });
+    const eligible = canonical && policy(evidence) === true;
+    return { eligible, reasons: eligible ? [] : [canonical ? "Normal review required." : "Complete, ready canonical PR diff required."],
+      head: evidence.head, base: evidence.base };
+  }
   if (![policy.maxChangedLines, policy.maxServices, policy.minMergedPullRequests]
     .every(n => Number.isSafeInteger(n) && n > 0) || !policy.requiredChecks.length ||
     new Set(policy.requiredChecks).size !== policy.requiredChecks.length)
@@ -91,7 +110,7 @@ export function smallChange(evidence: SmallChangeEvidence, policy: SmallChangePo
  * changes continue through normal review, without a synthetic rejection.
  * Writer owns idempotency/reconciliation. No merge capability is supplied. */
 export async function approveSmallChange(options: {
-  policy: SmallChangePolicy
+  policy: SmallChangeRule
   read: () => Promise<SmallChangeEvidence>
   publish: (decision: SmallChangeDecision) => Promise<void>
 }): Promise<SmallChangeDecision> {

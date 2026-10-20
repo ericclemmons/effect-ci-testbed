@@ -62,6 +62,37 @@ test("canonical README PR publishes an exact-head check and one bot approval; re
   assert.equal(f.writes(), 2);
 });
 
+test("a trusted App can choose a plain README rule without author history or a reviewer", async () => {
+  const f = fixture(), request = f.host.request;
+  f.host.policy = evidence => evidence.files.length === 1 && evidence.files[0]?.path === "README.md";
+  f.host.verifiedChecks = async () => [];
+  f.host.readReview = async () => assert.fail("A path-only policy must not ask a reviewer");
+  f.host.request = async (path, ...args) => {
+    assert(!path.startsWith("/pulls?"), "No author-history lookup for the simple rule");
+    return request(path, ...args);
+  };
+  const approved = await runSmallChange(f.host, 50, f.store);
+  assert.equal(approved.decision.eligible, true);
+  assert.equal(f.reviews[0].commit_id, head);
+  assert.doesNotMatch(f.reviews[0].body,/verified checks|org review passed/,
+    "A plain rule must not claim checks or review evidence it did not require");
+  f.code();
+  const normal = await runSmallChange(f.host, 50, f.store);
+  assert.equal(normal.decision.eligible, false);
+  assert.equal(f.reviews.length, 1, "Code changes must not create another approval");
+  const canonicalRequest = f.host.request;
+  f.host.request = async (path,...args) => path.startsWith("/compare/")
+    ? {base_commit:{sha:base},files:[{filename:"README.md",previous_filename:"src/auth.ts",status:"renamed",additions:1,deletions:0,patch:"+text"}]}
+    : canonicalRequest(path,...args);
+  assert.equal((await runSmallChange(f.host,50,f.store)).decision.eligible,false,"Both rename paths participate");
+  assert.equal(f.reviews.length,1);
+  f.host.policyId = "human-review-only";
+  f.host.policy = () => false;
+  const selected = await runSmallChange(f.host, 50, f.store);
+  assert.equal(selected.decision.eligible, false);
+  assert.equal(f.reviews.length, 1);
+});
+
 test("a lost review ACK reconciles the same numeric bot identity; a lost check ACK never approves", async () => {
   for (const lost of ["check", "review"]) {
     const f = fixture(); f.lose(lost);
