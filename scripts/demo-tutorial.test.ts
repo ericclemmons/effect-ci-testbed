@@ -7,7 +7,7 @@ import test from "node:test";
 
 const template = resolve("examples/demo");
 
-test("the demo is a standalone app with short local instructions and no implicit hosted authority", () => {
+test("the demo is a standalone kitchen-sink tour without implicit hosted authority", () => {
   const pkg = JSON.parse(readFileSync(join(template, "package.json"), "utf8"));
   const readme = readFileSync(join(template, "README.md"), "utf8");
   const worker = JSON.parse(readFileSync(join(template, "wrangler.jsonc"), "utf8").replace(/,\s*([}\]])/g, "$1"));
@@ -21,6 +21,10 @@ test("the demo is a standalone app with short local instructions and no implicit
   assert.match(readme, /pnpm link \/path\/to\/effect-ci-testbed\/packages\/cli/);
   assert.doesNotMatch(readme, /export |DEMO_REPO|wrangler |cf-ci --help|ln -s/);
   assert.match(readme, /AI is off/);
+  for (const chapter of ["Existing scripts", "Parallel", "Source-aware", "Remote", "Signed", "Slack", "Safe-change", "Previews", "Health", "Auto-fix"])
+    assert.match(readme, new RegExp(`^## .*${chapter}`, "m"), `keep the ${chapter} chapter in the conference tour`);
+  assert.doesNotMatch(readme, /blacksmith|GitHub environment approvals/i,
+    "runner compatibility and GitHub environment gates belong in the capability matrix, not the Effect CI showcase");
   assert.doesNotMatch(readme, /pnpm demo:setup|git worktree|rm -rf|--yes/);
   assert.ok(!existsSync(join(template, ".env")));
   for (const path of ["package-lock.json", "degit.json", "verification", "TALKING-SCRIPT.md", "AGENTS.md"])
