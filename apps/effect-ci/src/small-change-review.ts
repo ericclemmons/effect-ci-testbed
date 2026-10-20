@@ -128,8 +128,7 @@ export class SmallChangeReviews extends DurableObject<Environment> {
       read: () => this.read(number, revision!), publish: (evidence, decision) => this.publish(number, evidence, decision, revision!),
     });
     const { value } = await CI.runPromise(policy.workflow, { source: policy.source, env: "cloudflare", ci: true, output: "silent" });
-    if (!value) throw Error("PR workflow produced no decision");
-    return value;
+    return value ?? { state: "unchanged" as const };
   }
   fetch() { return new Response("Not found", { status: 404 }); }
 }
@@ -152,7 +151,6 @@ export class SmallChangeReviewWorkflow extends WorkflowEntrypoint<Environment, {
     const { value, plan } = await CI.runPromise(policy.workflow, { source: policy.source, env: "cloudflare", ci: true, output: "silent",
       actionExecutor: makeActionExecutor(step, new Set()),
     });
-    if (!value) throw Error("PR workflow produced no decision");
-    return { ...value, workflowPlan: plan };
+    return { ...(value ?? { state: "unchanged" as const }), workflowPlan: plan };
   }
 }

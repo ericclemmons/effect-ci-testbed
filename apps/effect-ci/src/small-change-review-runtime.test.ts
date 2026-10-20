@@ -112,12 +112,13 @@ test("native SQLite source guard approves non-code diffs, journals once and reco
     assert.equal(nested.reviewId, 4);
     for (const scenario of ["code", "rename", "mixed"]) {
       const normal = await get(`/${scenario}`);
-      assert.equal(normal.state, "complete", JSON.stringify(normal));
-      assert.equal(normal.decision.eligible, false);
+      assert.equal(normal.state, "unchanged", JSON.stringify(normal));
+      assert.equal(normal.decision, undefined);
       assert.equal(normal.reviewId, undefined);
     }
     const final = await get("/observed");
     assert.equal(final.reviews.length, 4, "Code changes never receive APPROVE");
+    assert.equal(final.checks.length, 4, "Normal review is the default: no synthetic check or review write");
     assert.ok(final.requests.every((r: any) => !r.path.endsWith("/pulls") && !/\/pulls\/\d+\/files/.test(r.path)),
       "The simple policy never reads author history");
     const requestsBeforeStale = (await get("/observed")).requests.length;

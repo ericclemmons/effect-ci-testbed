@@ -28,13 +28,12 @@ export function pullRequestPolicy(capabilities: PullRequestCapabilities) {
       return { status: "known", base: evidence.base, head: evidence.head, paths: evidence.files.map(file => file.path) };
     }),
   };
-  const publish = (id: string, eligible: boolean) => CI.action<SmallChangeOperation | undefined>(id, () => function* () {
+  const approve = CI.action<SmallChangeOperation | undefined>("approve PR", () => function* () {
     if ((yield* CI.executionMode) === "plan") return;
     const evidence = yield* Effect.tryPromise({ try: read, catch: error => error });
-    const decision = smallChange(evidence, eligible ? smallChangePolicy : () => false);
+    const decision = smallChange(evidence, smallChangePolicy);
+    if (!decision.eligible) return;
     return yield* Effect.tryPromise({ try: () => capabilities.publish(evidence, decision), catch: error => error });
   }, { retries: { limit: 0, delay: "1 second" }, timeout: "10 minutes" });
-  const approve = publish("approve PR", true);
-  const review = publish("normal review", false);
-  return { source, review, approve, workflow: pullRequestWorkflow(approve, review) };
+  return { source, approve, workflow: pullRequestWorkflow(approve) };
 }

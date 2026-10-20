@@ -18,12 +18,12 @@ test("org approval is an ordinary inspectable action; planning invokes no capabi
   const actions = pullRequestPolicy({ read: async () => assert.fail("plan read GitHub"),
     publish: async () => assert.fail("plan wrote GitHub") });
   const result = await CI.runPromise(actions.workflow, { mode: "plan", output: "silent" });
-  assert.deepEqual(result.plan.nodes.map(node => node.id), ["normal review"]);
-  assert.equal(result.plan.nodes[0]?.options.retries?.limit, 0);
+  assert.deepEqual(result.plan.nodes, []);
+  const approvalPlan = await CI.runPromise(CI.workflow("approval-plan", () => actions.approve()), { mode: "plan", output: "silent" });
+  assert.equal(approvalPlan.plan.nodes[0]?.options.retries?.limit, 0);
   assert.equal(CI.isAction(approve), true);
-  assert.deepEqual((await CI.runPromise(authored, { mode: "plan", output: "silent" })).plan.nodes.map(node => node.id),
-    result.plan.nodes.map(node => node.id));
-  await assert.rejects(CI.runPromise(authored, { output: "silent" }), /requires its trusted host capabilities/);
+  assert.deepEqual((await CI.runPromise(authored, { mode: "plan", output: "silent" })).plan.nodes, []);
+  await assert.rejects(CI.runPromise(CI.workflow("unbound-approval", () => approve()), { output: "silent" }), /requires its trusted host capabilities/);
 });
 
 test("source guard approves non-code changes and leaves TS, TSX and JSON on normal review", async () => {
@@ -39,10 +39,9 @@ test("source guard approves non-code changes and leaves TS, TSX and JSON on norm
         assert.equal(decision.eligible, eligible);
         return { state: "complete", marker: "fixture", decision, checkId: 1, ...(eligible ? { reviewId: 2 } : {}) }; } });
     const result = await CI.runPromise(actions.workflow, { output: "silent", source: actions.source });
-    assert.ok(result.value);
-    assert.equal(result.value.decision.eligible, eligible);
-    assert.equal(result.value.reviewId, eligible ? 2 : undefined);
-    assert.equal(reads, 1); assert.equal(writes, 1);
+    assert.equal(result.value?.decision.eligible, eligible ? true : undefined);
+    assert.equal(result.value?.reviewId, eligible ? 2 : undefined);
+    assert.equal(reads, 1); assert.equal(writes, eligible ? 1 : 0);
     assert.ok(result.plan.nodes.every(node => node.status === "complete"));
   }
 });
@@ -63,28 +62,22 @@ test("unknown or invalid canonical diffs cannot pass the negated source guard", 
     { files: [{ path: "../README.md", additions: 1, deletions: 0 }] },
   ]) {
     const policy = pullRequestPolicy({ read: async () => ({ ...initial, ...change }),
-      publish: async (_evidence, decision) => {
-        assert.equal(decision.eligible, false);
-        return { state: "complete", marker: "fixture", decision, checkId: 1 };
-      } });
+      publish: async () => assert.fail("Invalid diff must leave approval unchanged") });
     const result = await CI.runPromise(policy.workflow, { source: policy.source, output: "silent" });
-    assert.equal(result.value?.decision.eligible, false);
-    assert.deepEqual(result.plan.nodes.map(node => node.id), ["normal review"]);
+    assert.equal(result.value, undefined);
+    assert.deepEqual(result.plan.nodes, []);
   }
   const offline = pullRequestPolicy({ read: async () => { throw Error("Diff unavailable"); },
     publish: async () => assert.fail("Unknown diff must not publish approval") });
-  await assert.rejects(CI.runPromise(offline.workflow, { source: offline.source, output: "silent" }), /Diff unavailable/);
+  assert.equal((await CI.runPromise(offline.workflow, { source: offline.source, output: "silent" })).value, undefined);
 });
 
 test("a caller cannot substitute a non-code Source to approve canonical code changes", async () => {
   const policy = pullRequestPolicy({ read: async () => ({ ...evidence(), files: [{ path: "src/index.tsx", additions: 1, deletions: 1 }] }),
-    publish: async (_evidence, decision) => {
-      assert.equal(decision.eligible, false);
-      return { state: "complete", marker: "fixture", decision, checkId: 1 };
-    } });
+    publish: async () => assert.fail("Substituted source must not authorize a write") });
   const result = await CI.runPromise(policy.workflow, { output: "silent", source: {
     checkout: policy.source.checkout,
     changes: () => Effect.succeed({ status: "known", base: "b".repeat(40), head: "a".repeat(40), paths: ["README.md"] }),
   } });
-  assert.equal(result.value?.decision.eligible, false);
+  assert.equal(result.value, undefined);
 });
