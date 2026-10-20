@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
 const template = resolve("examples/demo");
-const cli = resolve("packages/cli/src/bin.ts");
 
-test("the tutorial is a standalone app with explicit setup and teardown, no implicit host or model authority", () => {
+test("the demo is a standalone app with short local instructions and no implicit hosted authority", () => {
   const pkg = JSON.parse(readFileSync(join(template, "package.json"), "utf8"));
   const readme = readFileSync(join(template, "README.md"), "utf8");
   const worker = JSON.parse(readFileSync(join(template, "wrangler.jsonc"), "utf8").replace(/,\s*([}\]])/g, "$1"));
@@ -19,9 +18,9 @@ test("the tutorial is a standalone app with explicit setup and teardown, no impl
   assert.deepEqual(Object.keys(worker).sort(), ["$schema", "assets", "compatibility_date", "name"]);
   assert.match(readme, /mktemp -d/);
   assert.match(readme, /tiged ericclemmons\/effect-ci-testbed\/examples\/demo demo/);
-  assert.match(readme, /gh repo create/);
-  assert.match(readme, /wrangler delete "\$DEMO_WORKER"/);
-  assert.match(readme, /gh repo delete "\$DEMO_REPO"/);
+  assert.match(readme, /pnpm link \/path\/to\/effect-ci-testbed\/packages\/cli/);
+  assert.doesNotMatch(readme, /export |DEMO_REPO|wrangler |cf-ci --help|ln -s/);
+  assert.match(readme, /AI is off/);
   assert.doesNotMatch(readme, /pnpm demo:setup|git worktree|rm -rf|--yes/);
   assert.ok(!existsSync(join(template, ".env")));
   for (const path of ["package-lock.json", "degit.json", "verification", "TALKING-SCRIPT.md", "AGENTS.md"])
@@ -60,8 +59,7 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   };
   run("pnpm", ["install", "--prefer-offline"]);
   run("pnpm", ["check"]);
-  mkdirSync(join(root, "node_modules/@effect-ci-testbed"), { recursive: true });
-  symlinkSync(resolve("packages/ci"), join(root, "node_modules/@effect-ci-testbed/ci"), "dir");
+  run("pnpm", ["link", resolve("packages/cli"), resolve("packages/ci")]);
   run("git", ["init", "--initial-branch=main"]);
   run("git", ["config", "user.name", "Local tutorial test"]);
   run("git", ["config", "user.email", "tutorial@example.invalid"]);
@@ -70,7 +68,7 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   run("git", ["remote", "add", "origin", "https://github.com/example/tutorial.git"]);
   run("git", ["update-ref", "refs/remotes/origin/main", "HEAD"]);
   run("git", ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
-  const invoke = (ok = true) => run(process.execPath, [cli, "run", "--format=json"], ok);
+  const invoke = (ok = true) => run("pnpm", ["exec", "cf-ci", "run", "--format=json"], ok);
   const parsed = () => JSON.parse(invoke().stdout);
   const pointer = join(root, ".effect-ci/deployed-site/current.json");
   const hasPublish = (result: any) => result.plan.nodes.some((node: any) => node.id === "publish local site");

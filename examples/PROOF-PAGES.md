@@ -1,24 +1,18 @@
-# Recipe proof pages
+# Recording and publication notes
 
-Every recipe is a customer need, a runnable program, and an inspectable proof.
-Keep READMEs focused on running the example. Link evidence when it exists;
-do not add empty video or measurement placeholders. Do not fabricate
-videos, measurements, verification badges, or a hosted result to fill the page.
+These are maintainer notes for recording runs, not a template for example READMEs.
+READMEs explain the user's problem, show the useful code, and describe how to try it.
+Keep recording metadata, execution audits and publication checklists out of them.
 
 ## README shape
 
 1. **What / why:** a clear title and the task it demonstrates.
-2. **Plan:** Mermaid generated from the actual definition. Existing plan checks
-   detect drift; diagrams are not a substitute for execution.
-3. **Run it:** setup, supported commands, expected result and intentional failure.
-   Own fixtures/config/bindings. Import packages, not another example's host.
-4. **Evidence, when available:** link actual same-run video, tests or retained
-   results. Keep detailed recording and publication notes out of the quick start.
-5. **Boundaries:** what remains unsupported, uncertain, shared-host-only or unverified.
+2. **Useful code:** the smallest part that solves that problem; a diagram only if helpful.
+3. **Try it:** essential setup, commands, and what happens.
+4. **Limitations:** only those that matter to someone using the example.
 
-Existing recipes retain their setup and historical evidence while the proof section
-is filled in. A pending recording does not demote an already verified run. Conversely,
-an existing green coverage cell does not imply a video or timing manifest exists.
+Recorded artifacts and historical results remain separate. A documentation rewrite
+does not change a run's outcome or an environment's coverage status.
 
 ## What the E2E harness records
 

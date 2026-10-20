@@ -27,10 +27,6 @@ for (const example of examples) {
 
   const markdown = readFileSync(readme, "utf8")
   const documented = markdown.match(/```mermaid\n([\s\S]*?)\n```/)?.[1]
-  if (!documented) {
-    failures.push(`${example}: README has no Mermaid plan`)
-    continue
-  }
 
   const result = spawnSync(
     process.execPath,
@@ -43,7 +39,8 @@ for (const example of examples) {
     continue
   }
 
-  if (documented !== result.stdout.trim()) {
+  // Diagrams are optional; every recipe must still produce a valid plan.
+  if (documented && documented !== result.stdout.trim()) {
     failures.push(`${example}: README plan differs from generated plan`)
   }
 }

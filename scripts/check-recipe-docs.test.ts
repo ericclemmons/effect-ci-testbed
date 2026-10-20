@@ -40,7 +40,7 @@ test("remote goal documentation describes host negotiation, not blanket rejectio
 test("the root guide has one quick start and separates hosted proof from roadmap coverage", () => {
   assert.equal((root.match(/^## Try it locally$/gm) ?? []).length, 1);
   assert.ok(root.includes("./apps/effect-ci/TRUSTED-REMOTE.md"));
-  assert.ok(root.includes("./examples/artifacts-source/README.md#verification"));
+  assert.ok(root.includes("./examples/artifacts-source/README.md"));
   assert.ok(root.includes("https://github.com/ericclemmons/effect-ci-testbed/issues/229"));
   assert.doesNotMatch(root, /The next containerless recipes should build on each other/);
 });
@@ -57,13 +57,12 @@ test("trusted-result SDK entrypoints are discoverable without implying standalon
   assert.match(selfHost, /does not automatically enroll signing keys/);
 });
 
-test("the check-reuse guide separates current remote receipts from historical Git-note proof", () => {
+test("the check-reuse recipe explains the useful API and the host trust boundary", () => {
   const readme = readFileSync("examples/verification-evidence/README.md", "utf8");
   assert.ok(readme.includes("../../apps/effect-ci/TRUSTED-REMOTE.md"));
-  assert.match(readme, /host-issued receipts/);
-  assert.match(readme, /fixed demo test suite/);
-  assert.ok(readme.includes("refs/notes/effect-ci-hosted-checks-v1"));
-  assert.ok(readme.includes("refs/notes/effect-ci-verification"));
+  assert.match(readme, /host-issued\s+receipts/);
+  assert.match(readme, /reuse: \{ scope: "commit" \}/);
+  assert.match(readme, /host chooses trusted signers/i);
   assert.doesNotMatch(readme, /It does \*\*not\*\* yet reuse lint or the test suite/);
   assert.doesNotMatch(readme, /Full test-suite reuse, the remaining/);
 });
@@ -140,6 +139,18 @@ test("recipe READMEs omit empty media placeholders", () => {
     assert.doesNotMatch(readme, /\*\*Video:\*\* Pending\.\s+\*\*Measured results:\*\* Pending\./,
       `${recipe}: omit empty proof placeholders; link evidence when it exists`);
   }
+});
+
+test("example READMEs are user recipes, not execution audit reports", () => {
+  for (const file of ["examples/README.md", ...recipes.map(recipe => join("examples", recipe, "README.md"))]) {
+    const readme = readFileSync(file, "utf8");
+    assert.doesNotMatch(readme, /^#{1,6} .*?(?:verification proof|hosted coverage|verified runs|historical.*proof|fresh standalone native proof)/gim, file);
+    assert.doesNotMatch(readme, /PROOF-PAGES\.md|coverage-[a-z-]+-\d{8}/, file);
+  }
+  const smallChange = readFileSync("examples/small-change/README.md", "utf8");
+  assert.match(smallChange, /source\.changed/);
+  assert.match(smallChange, /self-merge/);
+  assert.doesNotMatch(smallChange, /README-only|Verification proof/);
 });
 
 test("recipe names describe user tasks rather than source implementation jargon", () => {

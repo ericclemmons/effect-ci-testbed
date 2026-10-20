@@ -1,41 +1,20 @@
 # Share build artifacts between jobs
 
-> When a later workload needs build output, what crosses the runner boundary?
+Publish build output when another workload needs to restore it.
 
-```mermaid
-flowchart LR
-  step_artifact_checkout["artifact checkout"]
-  step_publish_build["publish build"]
-  step_restore_build["restore build"]
-  step_artifact_checkout --> step_publish_build
-  step_publish_build --> step_restore_build
-```
+`CI.Artifact.publish` records the selected paths and checkpoints the workspace.
+`restore` retrieves it through the runner, without exposing storage-specific IDs.
 
----
-
-Most actions should simply return the next `CI.Workspace`. An explicit artifact is for
-cross-workload or retained output. `CI.Artifact.publish` records owned paths and asks the
-runner to checkpoint the workspace; `restore` materializes it using the same runner
-configuration. User code never handles a Cloudflare snapshot ID, GitHub artifact ID, or
-local path.
-
-The first slice checkpoints the whole workspace while preserving the selected paths in
-the plan. Runners can later optimize transport to those paths without changing this API.
-
-Run the canonical workflow locally:
+## Run it
 
 ```sh
-pnpm cf-ci --workflow examples/portable-artifacts/.cloudflare/ci/workflow.ts
+pnpm exec cf-ci run --workflow examples/portable-artifacts/.cloudflare/ci/workflow.ts
 ```
 
-The [host app](../../test/apps/example-runner/README.md#verified-runs) verifies the same
-workflow with real Cloudflare snapshots: the downstream action restores the published
-revision and checks the artifact file. This is a small artifact fixture, not a real
-Worker build or deployment. It verifies transport within one Workflow; cross-account
-downloads and long-term retention are separate capabilities.
+The example writes, publishes, and restores a small file. This adapter currently
+transports the whole workspace; the selected paths remain in the plan.
 
-Compare
-[the conventional GitHub workflow](./.github/workflows/github.yml) with
-[Effect on GitHub](./.github/workflows/effect-on-github.yml). Artifact planning and
-execution assertions live in
-[`tests/portable-artifacts.test.ts`](./.cloudflare/ci/tests/portable-artifacts.test.ts).
+For ordinary dependent actions, simply return a `CI.Workspace` instead.
+
+[Actions](./.cloudflare/ci/actions.ts) ·
+[GitHub Actions comparison](./.github/workflows/github.yml)

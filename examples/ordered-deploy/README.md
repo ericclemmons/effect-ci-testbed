@@ -1,43 +1,22 @@
 # Deploy apps in dependency order
 
-> How do I guarantee that the backend deploys before the frontend that consumes it?
-
-```mermaid
-flowchart LR
-  step_checkout["checkout"]
-  step_build_applications["build applications"]
-  step_deploy_backend["deploy backend"]
-  step_deploy_frontend["deploy frontend"]
-  step_deploy["deploy (conditional)"]
-  step_checkout --> step_build_applications
-  step_build_applications --> step_deploy_backend
-  step_deploy_backend --> step_deploy_frontend
-  step_deploy_backend --> step_deploy
-  step_deploy_frontend --> step_deploy
-```
-
----
-
-The outer deployment owns the ordering constraint:
+Deploy the backend before the frontend that needs it.
 
 ```text
-checkout → build applications → deploy → backend, then frontend
+build applications → deploy backend → deploy frontend
 ```
 
-The private `deploy()` action yields both application deployments in their required
-order. Each application deployment yields the shared build itself, so it remains valid
-when reused by another action. The workflow asks for the aggregate desired state;
-the action is intentionally not exported as a public `cf-ci` target.
+Each deployment depends on the shared build. The aggregate deploy action calls
+the two deployments in order; the build runs once.
 
-That separation is intentional. Workflows route external events such as pushes,
-deleted branches, deployment hooks, or observability incidents. Projects may expose
-selected actions as local commands, but a production deploy should not become one by
-accident.
+## Run it
 
-The fixture contains two real Workers. Both are built with `cf build`; then the backend
-and frontend are deployed in order with `cf deploy --prebuilt --dry-run`. Dry-run mode
-exercises the production bundling and deployment path without credentials or writes.
+```sh
+pnpm exec cf-ci run --workflow examples/ordered-deploy/.cloudflare/ci/workflow.ts
+```
 
-Compare the conventional [GitHub Actions workflow](./.github/workflows/github.yml) with
-the portable [actions](./.cloudflare/ci/actions.ts) and
-[workflow](./.cloudflare/ci/workflow.ts).
+The two Workers build with `cf build` and deploy with
+`cf deploy --prebuilt --dry-run`. No credentials or live deployment are needed.
+
+[Actions](./.cloudflare/ci/actions.ts) ·
+[GitHub Actions comparison](./.github/workflows/github.yml)

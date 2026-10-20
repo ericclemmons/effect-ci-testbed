@@ -1,51 +1,22 @@
 # Install runtimes with Mise
 
-> How do I install every runtime declared by my project's Mise configuration?
-
-```mermaid
-flowchart LR
-  step_checkout["checkout"]
-  step_install_toolchain["install toolchain"]
-  step_verify_node["verify node"]
-  step_verify_python["verify python"]
-  step_checkout --> step_install_toolchain
-  step_install_toolchain --> step_verify_node
-  step_install_toolchain --> step_verify_python
-  step_verify_node --> step_verify_python
-```
-
----
-
-The project declares Node and Python in [`mise.toml`](./mise.toml). Its action acquires the
-workspace-bound Mise capability and returns the workspace after installation:
+Use the Node and Python versions already declared in [mise.toml](./mise.toml).
 
 ```ts
-export const installToolchain = CI.action("install toolchain", () => function* () {
-  const workspace = yield* checkout()
-  const mise = yield* CI.Toolchain.Mise(workspace)
-
-  return yield* mise.install()
-})
+const mise = yield* CI.Toolchain.Mise(workspace)
+return yield* mise.install()
 ```
 
-`CI.Toolchain.Mise` owns `.effect-ci/cache/mise`; workflows do not need to know Mise's
-data or download-cache layout. Commands use `mise.exec(...)` so shell activation is not
-required in local or CI environments. The workflow exports its `local` runner so both
-the executable entrypoint and Effect CI's GitHub adapter use the same Mise image.
+Later commands use `mise.exec(...)`, so no shell activation is needed.
+Tool downloads live under `.effect-ci/cache/mise`.
 
-Compare:
-
-- [plain GitHub Actions using `jdx/mise-action`](./.github/workflows/github.yml)
-- [Effect CI on GitHub](./.github/workflows/effect-on-github.yml)
-- [the portable actions](./.cloudflare/ci/actions.ts)
-- [the local-container entrypoint](./.cloudflare/ci/workflow.ts)
+## Run it
 
 With Docker running:
 
 ```sh
-pnpm cf-ci --workflow examples/mise-toolchain/.cloudflare/ci/workflow.ts
+pnpm exec cf-ci run --workflow examples/mise-toolchain/.cloudflare/ci/workflow.ts
 ```
 
-The official Mise Debian image supplies only the runner capability. Tool versions stay
-in the project configuration, and later runner layers can cache the capability-owned
-paths without changing this workflow.
+[Actions](./.cloudflare/ci/actions.ts) ·
+[GitHub Actions comparison](./.github/workflows/github.yml)
