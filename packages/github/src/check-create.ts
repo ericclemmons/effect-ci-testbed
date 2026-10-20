@@ -23,7 +23,7 @@ export async function createReportedCheck(
     for (let page = 1; page <= 10; page++) {
       const query = new URLSearchParams({ filter: "all", per_page: "100", page: String(page), check_name: options.name })
       const response = await fetch(`https://api.github.com/repos/${options.repository}/commits/${options.sha}/check-runs?${query}`, {
-        method: "GET", headers, redirect: "error", signal: AbortSignal.timeout(15_000),
+        method: "GET", headers, redirect: "manual", signal: AbortSignal.timeout(15_000),
       })
       if (!response.ok) throw Error("Cannot reconcile GitHub check creation: history unavailable")
       const history = await response.json() as { total_count: number; check_runs: any[] }

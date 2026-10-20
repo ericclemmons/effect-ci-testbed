@@ -77,7 +77,7 @@ export const createCheck = async (
     },
   })
   const response = await createReportedCheck(options, body, requestHeaders,
-    () => fetch(url, { method: "POST", headers: requestHeaders, body, redirect: "error" }),
+    () => fetch(url, { method: "POST", headers: requestHeaders, body, redirect: "manual" }),
   )
   if (!(response instanceof Response)) return response
 
