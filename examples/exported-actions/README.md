@@ -1,42 +1,20 @@
 # Run a single check from the CLI
 
-> How do I let an agent or developer run one action without making every internal
-> action a public CLI target?
-
-```mermaid
-flowchart LR
-  step_checkout["checkout"]
-  step_check["check"]
-  step_checkout --> step_check
-```
-
----
-
-The workflow default-exports the complete pipeline and explicitly re-exports only
-`check`:
+Expose useful goals without exposing every setup step.
 
 ```ts
-const workflow = CI.workflow("exported-actions", () => actions.check())
-
 export { check } from "./actions.ts"
-export default workflow
+export default CI.workflow("exported-actions", () => actions.check())
 ```
 
-`checkout` remains an implementation detail even though `check` depends on it. From
-this example directory:
+From this example directory:
 
 ```sh
 pnpm exec cf-ci list
 pnpm exec cf-ci run check
-pnpm exec cf-ci run checkout # CI_UNKNOWN_TARGET
 ```
 
-The CLI discovers `.cloudflare/ci/workflow.ts` from the current directory. It treats
-only named exports created by `CI.action` as direct targets, so runner configuration
-and ordinary helper functions cannot accidentally become commands.
+`check` runs its checkout prerequisite automatically. Checkout remains private:
+only named `CI.action` exports become CLI targets.
 
-The [hosted example runner](../../test/apps/example-runner) executes this same default
-workflow on Cloudflare, with live workspace reuse disabled. Its verified instance
-`coverage-exported-actions-20261009-2` checks the source after restoring checkout's
-durable snapshot. Named exports define the local CLI surface; the host does not
-expose an HTTP action-discovery endpoint.
+[Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)

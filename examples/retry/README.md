@@ -1,33 +1,21 @@
 # Retry a flaky test
 
-> How do I prove a transient first-attempt failure is retried and the second attempt passes?
+Give a transient failure another chance, with a bounded delay.
 
-```mermaid
-flowchart LR
-  step_flaky_test["flaky test"]
+```ts
+{ retries: { limit: 1, delay: "1 second" } }
 ```
 
----
-
-The check fails deliberately when `CI.Attempt` is `1`; attempt `2` succeeds.
-Its retry policy allows one retry after one second. The local interpreter applies
-the policy; the Cloudflare interpreter passes it to native `step.do`. No module
-counter or container marker decides the attempt, so Worker restarts do not reset
-the retry decision. This is a deterministic validation example, not advice to
-hide genuinely flaky tests.
+## Run it
 
 ```sh
-cf-ci run --workflow examples/retry/.cloudflare/ci/workflow.ts
-node --test examples/retry/.cloudflare/ci/tests/retry.test.ts
+pnpm exec cf-ci run --workflow examples/retry/.cloudflare/ci/workflow.ts
 ```
 
-Deploy the [example host](../../test/apps/example-runner), then execute the native check:
+The check deliberately fails on `CI.Attempt` 1 and passes on attempt 2.
+One retry means two total attempts.
 
-```sh
-cf workflows instances create effect-ci-example-retry --body '{"instance_id":"my-retry-run","params":{"repository":"https://github.com/OWNER/REPO.git","revision":"FULL_COMMIT_SHA"}}'
-```
+Use retries for operations safe to repeat. They do not make external writes
+idempotent. See [timeouts and execution policy](../execution-policy).
 
-There is no checkout or container in this workflow. The native history should show
-one failed attempt, a one-second retry delay, and one successful attempt in the
-same logical check. [Execution policies](../execution-policy) also cover exhaustion
-and timeouts.
+[Actions](./.cloudflare/ci/actions.ts)

@@ -130,7 +130,7 @@ available. Reuse and PR approval stay in host/workflow policy.
 
 [SDK and adapter contracts](./packages/ci/README.md) ·
 [Hosted setup](./apps/effect-ci/README.md) ·
-[Proof requirements](./examples/PROOF-PAGES.md)
+[Examples](./examples/README.md)
 
 ## Deployable apps
 
@@ -249,7 +249,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Deploy only on matching branches or events](./examples/conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
-| [Approve a README-only PR](./examples/small-change) | — | ✅ | 🔜 | 🔜 |
+| [Self-merge safe changes](./examples/small-change) | — | ✅ | 🔜 | 🔜 |
 | [Deploy only changed build output](./examples/deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
@@ -327,7 +327,7 @@ Inspect an existing verified Flue repair, then distinguish it from automatic hea
 
 - The demo's Cloudflare cell covers the enrolled hosted program. It does not prove
   arbitrary uploaded workflow execution. [Actual runs](./apps/effect-ci/TRUSTED-REMOTE.md).
-- [Artifacts source proof](./examples/artifacts-source/README.md#verification)
+- [Artifacts source example](./examples/artifacts-source/README.md)
   includes a private repository-root fixture, revoked upload tokens and anonymous
   Git rejection. It is Artifacts upload/binding proof, not private GitHub remote import.
 - Containerless recipes verify bounded formatting, project ESM and static-site

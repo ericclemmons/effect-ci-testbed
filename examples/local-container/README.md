@@ -1,44 +1,24 @@
 # Run CI in a local container
 
-> How can I run the same Effect CI workflow in an isolated local container?
+Keep CI's tools and system packages out of your machine.
 
-```mermaid
-flowchart LR
-  step_checkout["checkout"]
-  step_install["install"]
-  step_verify_container["verify container"]
-  step_test["test"]
-  step_checkout --> step_install
-  step_install --> step_verify_container
-  step_install --> step_test
-  step_verify_container --> step_test
-```
+The [workflow](./.cloudflare/ci/workflow.ts) selects `node:24-bookworm`. Effect CI
+starts one Docker container, mounts the example at `/workspace`, and runs its
+actions there. Source edits remain visible on the host.
 
----
-
-The workflow selects `node:24-bookworm` at its local entrypoint. Effect CI starts one
-long-lived Docker container lazily, bind-mounts the example as `/workspace`, and uses
-that container for every action. Repository changes remain visible on the host, while
-tools or operating-system packages installed during CI remain inside the container.
-The exported `local` runner is shared by the executable entrypoint and Effect CI's
-GitHub adapter, so both environments interpret the workflow the same way.
-
-Compare:
-
-- [plain GitHub Actions using a job container](./.github/workflows/github.yml)
-- [Effect CI on GitHub](./.github/workflows/effect-on-github.yml)
-- [the portable actions](./.cloudflare/ci/actions.ts)
-- [the workflow and local runner selection](./.cloudflare/ci/workflow.ts)
+## Run it
 
 With Docker running:
 
 ```sh
-pnpm cf-ci --workflow examples/local-container/.cloudflare/ci/workflow.ts
+pnpm exec cf-ci run --workflow examples/local-container/.cloudflare/ci/workflow.ts
 ```
 
-`plan` is intentionally Docker-free because the runner does not start its container
-until an action executes a command or reads the workspace:
+Planning does not start a container:
 
 ```sh
-pnpm cf-ci --workflow examples/local-container/.cloudflare/ci/workflow.ts plan
+pnpm exec cf-ci plan --workflow examples/local-container/.cloudflare/ci/workflow.ts
 ```
+
+[Actions](./.cloudflare/ci/actions.ts) ·
+[GitHub job-container comparison](./.github/workflows/github.yml)
