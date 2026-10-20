@@ -23,6 +23,7 @@ export class MonorepoCIWorkflow extends Base {
     const binding = (this.ctx.exports as unknown as { WorkspaceContainer: {
       getByName(name: string): { stop(): Promise<void>; allowMainDeployment(revision: string): Promise<void> };
     } }).WorkspaceContainer;
+    let failed = false;
     try {
       const parameters = event.payload;
       if (parameters.trigger === "github" && monorepoAllowed(parameters) && parameters.ref === "refs/heads/main")
@@ -30,15 +31,29 @@ export class MonorepoCIWorkflow extends Base {
           async () => { for (const app of platformApps)
             await binding.getByName(`${event.instanceId}:step=deploy ${app}`).allowMainDeployment(parameters.revision); });
       return await super.run(event, step);
+    } catch (error) {
+      failed = true;
+      throw error;
     }
     finally {
-      await step.do("monorepo:cleanup", { timeout: "30 seconds", retries: { limit: 0, delay: "1 second", backoff: "constant" } },
-        async () => {
-          const steps = ["checkout", "install", "check", "test", "build", "test and build tutorial", "deploy",
-            ...platformApps.map(app => `deploy ${app}`)];
-          for (const name of [event.instanceId, ...steps.map(id => `${event.instanceId}:step=${id}`)])
-            await binding.getByName(name).stop();
-        });
+      try {
+        await step.do("monorepo:cleanup", { timeout: "30 seconds", retries: { limit: 0, delay: "1 second", backoff: "constant" } },
+          async () => {
+            const steps = ["checkout", "install", "check", "test", "build", "test and build tutorial", "deploy",
+              ...platformApps.map(app => `deploy ${app}`)];
+            // Every workspace is independent. A stuck provider stop must not
+            // prevent the other containers/host-only deployment leases clearing.
+            const results = await Promise.allSettled([event.instanceId, ...steps.map(id => `${event.instanceId}:step=${id}`)]
+              .map(async name => binding.getByName(name).stop()));
+            if (results.some(result => result.status === "rejected"))
+              throw Error("One or more monorepo containers could not stop");
+          });
+      } catch (error) {
+        // The cleanup checkpoint retains its own failure. Do not overwrite the
+        // actual CI error with its timeout or leak arbitrary provider details.
+        if (!failed) throw error;
+        console.error("Monorepo cleanup failed after CI failure; see cleanup checkpoint");
+      }
     }
   }
 }
