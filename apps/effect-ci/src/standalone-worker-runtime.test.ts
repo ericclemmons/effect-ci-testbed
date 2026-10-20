@@ -60,7 +60,7 @@ test(
       assert.equal(response.status, 200);
       const capabilities = await response.json();
       assert.equal(capabilities.protocol, "effect-ci-remote-v1");
-      assert.deepEqual(capabilities.targets, ["test", "build"]);
+      assert.deepEqual(capabilities.targets, []);
       assert.deepEqual(capabilities.authentication, ["api-token"]);
       assert.equal((await request("/demo/capabilities", authenticated)).status, 404);
       assert.equal((await request("/webhooks/github", { method: "POST", body: "{}" })).status, 401);

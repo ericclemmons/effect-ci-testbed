@@ -10,4 +10,6 @@ examples/deploy-changed-output/.effect-ci/deployments/
 dist/
 .DS_Store
 *.tsbuildinfo
+.standalone-runtime/
+.standalone-runtime-build-*/
 .secrets.env

@@ -2,3 +2,9 @@
 !Dockerfile
 !Dockerfile.trusted-demo
 !Dockerfile.standalone
+!.standalone-runtime
+!.standalone-runtime/package.json
+!.standalone-runtime/src
+!.standalone-runtime/src/**
+!.standalone-runtime/node_modules
+!.standalone-runtime/node_modules/**

@@ -6,21 +6,17 @@ export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/gith
 // No demo enrollment, Slack destination, release/repair binding or external
 // Worker is imported. The installed App and API token establish the host boundary.
 export default GitHubCloudflare.worker({
-  remoteTargets: ["test", "build"],
+  // The whole project workflow is discoverable inside the workspace. Do not
+  // advertise a guessed fixed target list before reading an authored workflow.
   remoteResult: true,
   remoteAuthentication: ["api-token"],
 });
 
 export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
-  (environment, parameters) => {
+  (environment) => {
     const root =
       (environment as unknown as { EFFECT_CI_PROJECT_ROOT?: string }).EFFECT_CI_PROJECT_ROOT ?? ".";
-    return standaloneProgram(
-      root,
-      parameters.trigger === "remote"
-        ? (parameters.targets ?? (parameters.target ? [parameters.target] : undefined))
-        : undefined,
-    ).workflow;
+    return standaloneProgram(root).workflow;
   },
   {
     remoteGitHubCheckout: true,

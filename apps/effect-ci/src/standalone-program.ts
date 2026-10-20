@@ -7,15 +7,9 @@ export const standaloneContainerOptions = {
   readyCommand: "/usr/local/bin/node -e 'if(process.getuid()!==1000)process.exit(1)'",
 } as const;
 
-/** Host-authored example policy, not uploaded project code. Customize the
- * default goals here; package scripts still run inside the checked-out workspace. */
-export function standaloneProgram(root: string, goals: ReadonlyArray<string> = ["build"]) {
-  if (
-    !goals.length ||
-    goals.some((goal) => goal !== "test" && goal !== "build") ||
-    new Set(goals).size !== goals.length
-  )
-    throw Error("Standalone goals are test and build");
+/** Host chooses checkout/root; authored workflow discovery and execution happen
+ * only in the unprivileged workspace through the same CLI used locally. */
+export function standaloneProgram(root: string) {
   const checkout = CI.action(
     "checkout",
     () =>
@@ -34,21 +28,12 @@ export function standaloneProgram(root: string, goals: ReadonlyArray<string> = [
         return yield* pm.install();
       },
   );
-  const script = (name: string) =>
-    CI.action(
-      name,
-      () =>
-        function* () {
-          const workspace = yield* install();
-          const pm = yield* CI.PackageManager.JavaScript(workspace);
-          return yield* pm.run(name);
-        },
-    );
-  const actions = { test: script("test"), build: script("build") };
+  const run = CI.action("project workflow", () => function* () {
+    const workspace = yield* install();
+    // Explicit local execution cannot recurse into the host's remote endpoint.
+    return yield* workspace.exec("node /opt/effect-ci/src/hosted.ts run --local --format=json");
+  });
   return {
-    ...actions,
-    workflow: CI.workflow("hosted-ci", () =>
-      CI.parallel(goals.map((goal) => actions[goal as keyof typeof actions]())),
-    ),
+    workflow: CI.workflow("hosted-ci", () => run()),
   };
 }

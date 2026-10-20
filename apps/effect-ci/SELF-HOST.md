@@ -43,11 +43,14 @@ project env file. [CLI authentication](#cli-authentication) shows its format;
 own authentication and capability checks.
 
 The [standalone workflow](./src/standalone-program.ts) installs with the project's
-detected package manager and runs `build` by default. `test build` selects both
-goals with shared installation. Edit this host-authored workflow to encode your
-org policy; project scripts execute inside the workspace, not the host.
-The standalone image includes Node 24.22 and pnpm 12.8.1; it does not require
-pnpm to happen to be installed in the base image.
+detected package manager, then runs `cf-ci run --local` inside the workspace.
+It discovers the project's `.cloudflare/ci/workflow.ts` (including a configured
+nested root), or uses the CLI's package-script discovery when no workflow exists.
+The host does not import project code. `cf-ci run --remote` runs the whole workflow;
+named remote targets are not advertised before project discovery.
+The standalone image includes Node 24.22, pnpm 12.8.1 and the locked CLI/SDK
+runtime. Building the standalone profile packages its production dependencies;
+project manifests do not need a local SDK link.
 Project commands run as uid 1000 in a non-login shell; Node and pnpm stay
 root-owned. Add system tools when building your image, not from project scripts.
 Transport caches are isolated by the platform-resolved image and container policy.
@@ -179,9 +182,10 @@ should keep the template's explicit `standalone` choice.
 
 The standalone profile is built with a different Worker name and project root.
 Local workerd tests check its real entrypoint, API authentication and capabilities;
-graph tests use another project's pnpm files. The actual image also runs a clean
-tracked pnpm fixture's install/test/build with networking disabled and no host
-secrets. A separate CI job builds this profile without Cloudflare credentials or
+graph tests execute root and nested authored workflows through the real CLI.
+The actual image runs a clean tracked pnpm fixture's install/test/build and custom
+root/nested workflows with networking disabled, uid 1000 and no host secrets.
+A separate CI job builds this profile without Cloudflare credentials or
 owned demo services. These are not a fresh-account live
 deployment. The existing live demo is a separate regression fixture.
 
@@ -190,6 +194,10 @@ and [keep a private commit journal](../../packages/cloudflare/src/execution-jour
 This profile does not automatically enroll signing keys, verify complete inputs or
 restore reusable outputs. The demo's fixed signing/repair policy is not required
 to deploy a basic CI host.
+The outer host currently reports checkout/install/project-workflow boundaries,
+not individual authored actions. Authored execution is not yet connected to host
+approval, attestation or deployment capabilities; it does not restore the full
+conference demo by itself.
 GitHub event runs use the installed App's scoped checkout credential. Remote CLI
 runs resolve your App's installation for that repository and borrow a
 Contents-read token for checkout, then revoke it. Install the App on private

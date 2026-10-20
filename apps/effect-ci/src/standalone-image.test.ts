@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,7 @@ import test from "node:test";
 
 /** Credential-free image proof, not a native Cloudflare deployment. */
 test(
-  "standalone image runs a clean pnpm fixture install/test/build without network or host secrets",
+  "standalone image runs scripts and root/nested authored workflows without network or host secrets",
   {
     skip: process.env.VERIFY_STANDALONE_IMAGE !== "1",
     timeout: 180_000,
@@ -41,6 +41,21 @@ test(
       const manifest = JSON.parse(readFileSync(join(fixture, "package.json"), "utf8"));
       assert.equal(manifest.packageManager, "pnpm@12.8.1");
       assert.equal(manifest.scripts.test, "node --test");
+      for (const root of [".", "apps/web"]) {
+        const project = join(fixture, root);
+        mkdirSync(join(project, ".cloudflare/ci"), { recursive: true });
+        if (root !== ".") writeFileSync(join(project, "package.json"), '{"type":"module"}');
+        writeFileSync(join(project, ".cloudflare/ci/workflow.ts"), `
+          import * as CI from "@effect-ci-testbed/ci";
+          export const notes = CI.action("conference notes", () => function* () {
+            if (process.getuid() !== 1000 || process.env.CLOUDFLARE_API_TOKEN || process.env.GITHUB_TOKEN || process.env.EFFECT_CI_API_TOKEN)
+              throw Error("Unexpected workspace authority");
+            const source = yield* CI.Source;
+            return yield* (yield* source.checkout()).exec("printf authored > notes.txt");
+          });
+          export default CI.workflow(${JSON.stringify(`authored ${root}`)}, () => notes());
+        `);
+      }
       // Public tracked fixture only; the image's default uid reads it, never writes it.
       chmodSync(fixture, 0o755);
       const result = spawnSync(
@@ -62,7 +77,7 @@ test(
           "/bin/sh",
           container.images.workspace.localReference,
           "-c",
-          'test "$(id -u)" = 1000 && test ! -w /usr/local/bin/node && test ! -w /usr/local/bin/pnpm && node --version && pnpm --version && mkdir repository && cp -R /fixture/. repository/ && cd repository && pnpm --ignore-workspace install --offline && pnpm --ignore-workspace run test && pnpm --ignore-workspace run build && cmp src/index.js dist/index.js && echo UNPRIVILEGED_BUILD_VERIFIED',
+          'test "$(id -u)" = 1000 && test ! -w /usr/local/bin/node && test ! -w /usr/local/bin/pnpm && test ! -w /opt/effect-ci/src/hosted.ts && node --version && pnpm --version && mkdir repository && cp -R /fixture/. repository/ && cd repository && pnpm --ignore-workspace install --offline && pnpm --ignore-workspace run test && pnpm --ignore-workspace run build && cmp src/index.js dist/index.js && node /opt/effect-ci/src/hosted.ts run --local --format=json && test "$(cat notes.txt)" = authored && cd apps/web && node /opt/effect-ci/src/hosted.ts run --local --format=json && test "$(cat notes.txt)" = authored && echo UNPRIVILEGED_BUILD_VERIFIED',
         ],
         { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 },
       );
@@ -71,6 +86,9 @@ test(
       assert.match(result.stdout, /^v24\.22\.0$/m);
       assert.match(result.stdout, /^12\.8\.1$/m);
       assert.match(result.stdout, /tests 1/);
+      assert.match(result.stdout, /"workflow": "authored \."/);
+      assert.match(result.stdout, /"workflow": "authored apps\/web"/);
+      assert.equal((result.stdout.match(/"id": "conference notes"/g) ?? []).length, 2);
       assert.match(result.stdout, /^UNPRIVILEGED_BUILD_VERIFIED$/m);
     } finally {
       // Only this test's uniquely named container and generated fixture.

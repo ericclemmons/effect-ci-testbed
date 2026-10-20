@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "files": ["src/**/*.ts", "!src/**/*.test.ts"],
   "exports": {
     ".": "./src/index.ts",
     "./command-diagnostics": "./src/command-diagnostics.ts",
