@@ -17,6 +17,7 @@ const reporter = new Reporter({
   token: required("GITHUB_TOKEN"),
   repository: required("GITHUB_REPOSITORY"),
   sha: required("EFFECT_CI_SHA"),
+  ...(process.env.EFFECT_CI_APP_SLUG ? { appSlug: process.env.EFFECT_CI_APP_SLUG } : {}),
   ...(process.env.EFFECT_CI_DETAILS_URL
     ? { detailsUrl: process.env.EFFECT_CI_DETAILS_URL }
     : {}),

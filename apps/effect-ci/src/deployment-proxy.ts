@@ -34,7 +34,31 @@ export class DeploymentProxy {
         ? `Bearer ${this.registryBearer}`
         : `Basic ${btoa(`${this.registry!.username}:${this.registry!.password}`)}`);
     try {
-      const response = await this.upstream(new Request(request, { headers, redirect: "manual" }));
+      let preparationBody: string | undefined;
+      if (api && request.method === "POST" && !url.search && url.pathname === `/client/v4/accounts/${this.account}/containers/image-preparations`) {
+        const body = await request.clone().text();
+        try {
+          const value = body.length <= 4096 ? JSON.parse(body) : undefined;
+          const prefix = `registry.cloudflare.com/${this.account}/`;
+          if (value && Object.keys(value).length === 1 && typeof value.image === "string"
+            && value.image.startsWith(prefix)
+            && /^[a-z0-9._/-]+@sha256:[a-f0-9]{64}$/.test(value.image.slice(prefix.length))) preparationBody = body;
+        } catch { /* Unknown requests keep their original one-shot behavior. */ }
+      }
+      const outbound = new Request(request, { headers, redirect: "manual",
+        ...(preparationBody === undefined ? {} : { body: preparationBody }) });
+      let response: Response;
+      for (let attempt = 0; ; attempt++) {
+        response = await this.upstream(preparationBody === undefined ? outbound : new Request(outbound, { body: preparationBody }));
+        // Cloudflare explicitly defines preparation as idempotent for this
+        // digest-pinned image: https://developers.cloudflare.com/api/resources/containers/subresources/images/methods/prepare/
+        // Never extend this policy to uploads, deployments, registry pushes,
+        // transport exceptions, or arbitrary POSTs. Pin the exact body above.
+        const delay = [250, 750, 1500][attempt];
+        if (preparationBody === undefined || delay === undefined || ![500, 502, 503, 504].includes(response.status)) break;
+        await response.body?.cancel();
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
       // cf's Docker login also stays outside the VM: Docker receives dummy
       // credentials and this same outbound proxy authenticates registry traffic.
       if (api && url.pathname === `/client/v4/accounts/${this.account}/containers/registries/registry.cloudflare.com/credentials`
