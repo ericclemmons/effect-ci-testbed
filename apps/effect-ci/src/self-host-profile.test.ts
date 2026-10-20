@@ -7,7 +7,7 @@ import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -90,6 +90,10 @@ test("standalone runs root and nested authored workflows in the workspace, not f
     const project = join(repository, root);
     mkdirSync(join(project, ".cloudflare/ci"), { recursive: true });
     writeFileSync(join(project, "package.json"), JSON.stringify({ type: "module", packageManager: "pnpm@12.8.1" }));
+    // Exercise the real frozen CI install, not an ambient local-mode install.
+    // Reuse the tracked no-dependency fixture's locked package-manager identity.
+    writeFileSync(join(project, "pnpm-lock.yaml"),
+      readFileSync(new URL("../../../examples/node-pnpm/pnpm-lock.yaml", import.meta.url), "utf8"));
     writeFileSync(join(project, ".cloudflare/ci/workflow.ts"), `
       import * as CI from "@effect-ci-testbed/ci";
       export const notes = CI.action("conference notes", () => function* () {
@@ -101,11 +105,12 @@ test("standalone runs root and nested authored workflows in the workspace, not f
     const commands: Array<{ cwd: string; command: string }> = [];
     await CI.runPromise(standaloneProgram(root).workflow, {
       output: "silent",
+      ci: true,
       source: { checkout: () => Effect.succeed(CI.Workspace.local(repository)) },
       workspaceFileSystem: {
         readFile: (workspace, path) =>
           Effect.sync(() => { try { return readFileSync(join(workspace.cwd, path), "utf8"); } catch { return undefined; } }),
-        exists: () => Effect.succeed(false),
+        exists: (workspace, path) => Effect.sync(() => existsSync(join(workspace.cwd, path))),
       },
       executor: {
         execute: (command) => Effect.sync(() => {
@@ -128,6 +133,7 @@ test("standalone runs root and nested authored workflows in the workspace, not f
     assert.equal(readFileSync(join(project, "notes.txt"), "utf8"), "authored");
     assert.ok(commands.every((command) => command.cwd === project));
     assert.equal(commands.filter((command) => command.command.includes("install")).length, 1);
+    assert.ok(commands.find((command) => command.command.includes("install"))?.command.includes("--frozen-lockfile"));
   }
   } finally { rmSync(repository, { recursive: true, force: true }); }
 });
