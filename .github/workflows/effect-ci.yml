@@ -93,6 +93,7 @@ jobs:
       - name: Run ${{ inputs.workflow }} (${{ matrix.mode }})
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          EFFECT_CI_APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
           EFFECT_CI_EVENT: ${{ inputs.event || github.event_name }}
           EFFECT_CI_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
