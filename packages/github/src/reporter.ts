@@ -19,6 +19,7 @@ export interface ReporterOptions {
   readonly executionEnvironment?: "GitHub Actions" | "Cloudflare" | "Local"
   readonly detailsUrl?: string
   readonly externalId?: string
+  readonly appSlug?: string
   readonly repository: string
   readonly sha: string
   readonly summaryCheckId?: number

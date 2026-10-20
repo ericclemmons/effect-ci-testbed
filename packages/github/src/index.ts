@@ -1,4 +1,5 @@
 import { updateVisibleCheck } from "./check-update.ts"
+import { createReportedCheck } from "./check-create.ts"
 
 export type CheckConclusion =
   | "action_required"
@@ -21,6 +22,8 @@ export interface CreateCheckOptions {
   readonly conclusion?: CheckConclusion
   readonly detailsUrl?: string
   readonly externalId?: string
+  /** Trusted App identity from the installation-token issuer; enables scoped recovery. */
+  readonly appSlug?: string
 }
 
 export interface CheckRun {
@@ -57,26 +60,26 @@ const responseError = async (operation: string, response: Response) => {
 export const createCheck = async (
   options: CreateCheckOptions,
 ): Promise<CheckRun> => {
-  const response = await fetch(
-    `https://api.github.com/repos/${options.repository}/check-runs`,
-    {
-      method: "POST",
-      headers: headers(options.token),
-      body: JSON.stringify({
-        name: options.name,
-        head_sha: options.sha,
-        status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
-        ...(options.conclusion ? { conclusion: options.conclusion } : {}),
-        ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
-        ...(options.externalId ? { external_id: options.externalId } : {}),
-        output: {
-          title: options.title,
-          summary: options.summary,
-          ...(options.text ? { text: options.text } : {}),
-        },
-      }),
+  options = { ...options }
+  const url = `https://api.github.com/repos/${options.repository}/check-runs`
+  const requestHeaders = headers(options.token)
+  const body = JSON.stringify({
+    name: options.name,
+    head_sha: options.sha,
+    status: options.conclusion ? "completed" : (options.status ?? "in_progress"),
+    ...(options.conclusion ? { conclusion: options.conclusion } : {}),
+    ...(options.detailsUrl ? { details_url: options.detailsUrl } : {}),
+    ...(options.externalId ? { external_id: options.externalId } : {}),
+    output: {
+      title: options.title,
+      summary: options.summary,
+      ...(options.text ? { text: options.text } : {}),
     },
+  })
+  const response = await createReportedCheck(options, body, requestHeaders,
+    () => fetch(url, { method: "POST", headers: requestHeaders, body, redirect: "error" }),
   )
+  if (!(response instanceof Response)) return response
 
   if (!response.ok) {
     throw await responseError("create check", response)
