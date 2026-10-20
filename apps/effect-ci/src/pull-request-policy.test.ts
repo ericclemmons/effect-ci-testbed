@@ -6,10 +6,10 @@ import type { SmallChangeEvidence } from "../../../packages/github/src/small-cha
 
 const evidence = (): SmallChangeEvidence => ({
   head: "a".repeat(40), base: "b".repeat(40), open: true, draft: false, complete: true,
-  files: [{ path: "README.md", additions: 1, deletions: 1 }],
-  checks: ["test", "build"].map(name => ({ name, head: "a".repeat(40), conclusion: "success" })),
-  review: { head: "a".repeat(40), base: "b".repeat(40), complete: true, kind: "documentation-policy", findings: [] },
-  experience: { docs: Array.from({ length: 10 }, (_, i) => i + 1) },
+  files: [{ path: "README.md", additions: 5000, deletions: 5000 }],
+  checks: [],
+  review: { head: "a".repeat(40), base: "b".repeat(40), complete: false, kind: "ai", findings: [] },
+  experience: {},
 });
 
 test("org approval is an ordinary inspectable action; planning invokes no capabilities", async () => {

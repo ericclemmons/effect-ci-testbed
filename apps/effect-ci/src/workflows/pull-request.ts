@@ -1,21 +1,14 @@
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
-import { smallChange, type SmallChangeDecision, type SmallChangeEvidence, type SmallChangePolicy } from "../../../../packages/github/src/small-change.ts";
+import { smallChange, type SmallChangeDecision, type SmallChangeEvidence } from "../../../../packages/github/src/small-change.ts";
 import type { SmallChangeOperation } from "../../../../packages/github/src/small-change-host.ts";
 
 // Org policy belongs to this trusted workflow revision, not PR-supplied code.
 // Change these rules here; the runner only supplies scoped read/write capabilities.
-// Retain the existing journal policy ID while the actual rules are unchanged.
-export const policyId = "demo-small-change-v1";
-export const smallChangePolicy: SmallChangePolicy = {
-  maxChangedLines: 1000,
-  maxServices: 1,
-  minMergedPullRequests: 10,
-  requiredChecks: ["test", "build"],
-  service: path => path === "README.md" ? "docs" : path.startsWith("test/fixtures/demo/") &&
-    !path.includes("/.cloudflare/") && !path.includes("/.github/") &&
-    !/(^|\/)(AGENTS|CLAUDE|SECURITY|POLICY)\.md$/i.test(path) ? "demo" : undefined,
-};
+// A new policy identity keeps the old threshold-policy journal separate.
+export const policyId = "demo-readme-only-v2";
+export const smallChangePolicy = ({ files }: SmallChangeEvidence) =>
+  files.length === 1 && files[0]?.path === "README.md";
 
 export interface PullRequestCapabilities {
   readonly read: () => Promise<SmallChangeEvidence>;

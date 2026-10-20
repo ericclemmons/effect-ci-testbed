@@ -91,13 +91,12 @@ export class SmallChangeReviews extends DurableObject<Environment> {
       throw Error("Org policy revision changed; no approval capability");
   }
   #withHost<T>(operation: (host: SmallChangeHost) => Promise<T>) {
-    const authority = (this.ctx.exports as unknown as { TrustedDemoChecks: { getByName(name: string): ReviewAuthority } })
-      .TrustedDemoChecks.getByName("demo-trusted-runner-v1");
     return withSmallChangeToken(this.env, request => operation({
       repository, appId, botId, policyId, request,
       policy: smallChangePolicy,
-      verifiedChecks: head => verifiedDemoReviewChecks(authority, head, this.env.VERSION_METADATA?.id),
-      // No paid reviewer is configured. Non-README code stays on normal review.
+      // Checks remain independent merge gates. This README-only policy needs
+      // no attestation, author history or model review to decide eligibility.
+      verifiedChecks: async () => [],
     }));
   }
   #store(): SmallChangeStore {
