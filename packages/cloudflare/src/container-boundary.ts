@@ -6,7 +6,7 @@ const FailureCode = Schema.Literals(["ECONNRESET", "EPIPE", "ETIMEDOUT", "ENOTFO
 const HttpStatus = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 100, maximum: 599 }))
 export const ContainerBoundary = Schema.Struct({
   scope: Schema.Literals(["workspace", "readiness", "command", "auxiliary"]),
-  phase: Schema.Literals(["materialize", "restore", "start", "configuration", "exec", "exit", "output", "decode"]),
+  phase: Schema.Literals(["materialize", "restore", "start", "configuration", "exec", "exit", "output", "decode", "readback"]),
   state: Schema.Literals(["started", "received", "completed", "failed"]),
   running: Schema.Boolean,
   hasSnapshot: Schema.optionalKey(Schema.Boolean),
@@ -15,6 +15,7 @@ export const ContainerBoundary = Schema.Struct({
   dirty: Schema.optionalKey(Schema.Boolean),
   hasMutation: Schema.optionalKey(Schema.Boolean),
   exitCode: Schema.optionalKey(Schema.Number.check(Schema.isInt())),
+  recovered: Schema.optionalKey(Schema.Boolean),
   errorName: Schema.optionalKey(FailureName),
   errorCode: Schema.optionalKey(FailureCode),
   httpStatus: Schema.optionalKey(HttpStatus),

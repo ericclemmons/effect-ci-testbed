@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { makeCommandStepExecutor } from "../../../packages/cloudflare/src/command-step.ts";
 
 // Exercise the actual provider class. Only the platform container/storage are
@@ -27,6 +31,50 @@ const compiled = await build({
 });
 const { WorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
+
+test("the actual workspace executor returns a recorded nonzero result after transport loss without replay or restoring an ancestor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "effect-ci-captured-workspace-"));
+  const boot = join(root, "boot"), effects = join(root, "effects");
+  await writeFile(boot, "fixture-boot");
+  const stored = new Map<string, unknown>(), boundaries: any[] = [];
+  let commands = 0, starts = 0;
+  class CapturedWorkspace extends WorkspaceContainer {
+    constructor(ctx: any, environment: any) { super(ctx, environment); }
+    captureExecutionResult() { return true; }
+    executionObserver() { return (event: any) => boundaries.push(event); }
+  }
+  const container = { running: true,
+    start() { starts++; throw Error("Never restore an ancestor for result recovery"); },
+    async exec(input: string[], options: { cwd?: string } = {}) {
+      const argv = [...input];
+      const business = argv.length > 6 && argv[5] === "/proc/sys/kernel/random/boot_id";
+      if (argv[5] === "/proc/sys/kernel/random/boot_id") argv[5] = boot;
+      if (business) commands++;
+      const output = await new Promise<any>((resolve, reject) => {
+        const child = spawn(argv[0]!, argv.slice(1), { cwd: options.cwd, stdio: ["ignore", "pipe", "pipe"] });
+        const stdout: Buffer[] = [], stderr: Buffer[] = [];
+        child.stdout.on("data", bytes => stdout.push(bytes)); child.stderr.on("data", bytes => stderr.push(bytes));
+        child.on("error", reject);
+        child.on("close", exitCode => resolve({ exitCode, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }));
+      });
+      return { output: async () => { if (business) throw Error("lost provider exec channels"); return output; } };
+    },
+  };
+  const workspace = new CapturedWorkspace({ container, storage: {
+    get: async (key: string) => stored.get(key), put: async (key: string, value: unknown) => { stored.set(key, value); },
+  } }, {});
+  try {
+    const result = await workspace.execute('printf x >> effects; printf original; printf failure >&2; exit 7', root, "test",
+      undefined, [], root, { loginShell: false });
+    assert.deepEqual(result, { exitCode: 7, stdout: "original", stderr: "failure" });
+    assert.equal(await readFile(effects, "utf8"), "x");
+    assert.equal(commands, 1); assert.equal(starts, 0);
+    assert.ok(boundaries.some(event => event.phase === "readback" && event.recovered && event.exitCode === 7));
+    await assert.rejects(workspace.execute("must not run", root, "another-action"), /another action/);
+    assert.equal(commands, 1);
+    assert.ok(stored.has("workingMutation"), "recovered result does not pretend that workspace publication already happened");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 function fixture() {
   const stored = new Map<string, any>([["activeCheckpoint", revision]]);

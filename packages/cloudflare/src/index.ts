@@ -12,6 +12,7 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { containerShell } from "./container-shell.ts"
+import { capturedCommand } from "./captured-command.ts"
 import { containerFailure, type ContainerBoundary, type ContainerObserver } from "./container-boundary.ts"
 export { ContainerBoundary, type ContainerObserver } from "./container-boundary.ts"
 import { makeHostAttemptHandler, type HostAttemptHandler } from "./host-attempt.ts"
@@ -339,6 +340,10 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   /** Host-only diagnostic enrollment; observers receive only a closed schema. */
   protected executionObserver(): ContainerObserver | undefined { return undefined }
 
+  /** Host enrollment only: a trusted native command can retain its real result
+   * independently of the exec transport. Untrusted projects stay on direct exec. */
+  protected captureExecutionResult(_options: WorkspaceContainerOptions): boolean { return false }
+
   private boundary(event: Omit<ContainerBoundary, "running">, failure?: unknown): void {
     try {
       const observer = this.executionObserver()
@@ -383,10 +388,18 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       await this.configureOutbound()
       return this.processEnvironment(command, cwd)
     })
-    const process = await observed("exec", () => this.container().exec(
-      [...this.processCommand(command, cwd, options)],
-      cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
-    ))
+    const argv = [...this.processCommand(command, cwd, options)]
+    const execOptions = cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined
+    if (scope === "command" && this.captureExecutionResult(options)) {
+      const output = await observed("output", () => capturedCommand({ argv,
+        directory: `/tmp/effect-ci-command-${crypto.randomUUID()}`,
+        running: () => this.container().running,
+        exec: args => this.container().exec([...args], execOptions),
+      }), value => value.exitCode)
+      report({ phase: "readback", state: "completed", exitCode: output.exitCode, recovered: output.recovered })
+      return { exitCode: output.exitCode, stdout: decoder.decode(output.stdout), stderr: decoder.decode(output.stderr) }
+    }
+    const process = await observed("exec", () => this.container().exec(argv, execOptions))
     if (observer) {
       try { void process.exitCode.then(exitCode => report({ phase: "exit", state: "received", exitCode }),
         error => report({ phase: "exit", state: "failed" }, error)) }

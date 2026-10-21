@@ -28,6 +28,10 @@ export class WorkspaceContainer extends Base {
   private queue: Promise<unknown> = Promise.resolve();
   private tracedOperation: string | undefined;
 
+  protected override captureExecutionResult(options: Parameters<Base["captureExecutionResult"]>[0]): boolean {
+    return options.image === "ci" && this.tracedOperation !== undefined;
+  }
+
   protected override executionObserver(): ReturnType<Base["executionObserver"]> {
     const operation = this.tracedOperation;
     if (!operation) return undefined;
