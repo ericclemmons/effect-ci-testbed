@@ -1574,9 +1574,14 @@ export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, a
       effects,
       (effect) => effect,
       { concurrency: "unbounded", discard: true },
-    ).pipe(Effect.mapError(errors => errors.length === 1 ? errors[0] : new AggregateError(
-      errors, `${errors.length} parallel actions failed. Inspect the failed action checkpoints.`,
-    )))
+    ).pipe(Effect.mapError(errors => {
+      // Memoized prerequisites can fail through several dependent paths.
+      // Preserve that original failure once; do not invent independent errors.
+      const distinct = [...new Set(errors)]
+      return distinct.length === 1 ? distinct[0] : new AggregateError(
+        distinct, `${distinct.length} parallel actions failed. Inspect the failed action checkpoints.`,
+      )
+    }))
   })
 }
 

@@ -7,6 +7,8 @@ type DemoServices = Effect.Services<ReturnType<CI.Workspace["readFile"]>> | CI.A
  * by incoming source. Project commands receive no publication credential. */
 export interface DemoDelivery<Receipt> {
   readonly install?: boolean;
+  /** Trusted hosted source enrollment, before any package or project script runs. */
+  readonly beforeInstall?: (workspace: CI.Workspace) => Effect.Effect<void, unknown, DemoServices>;
   /** A trusted host can attest a direct test task rather than a local task-cache hit. */
   readonly testCommand?: string;
   readonly publishStep: string;
@@ -23,7 +25,10 @@ export function createDemoProgram<Receipt>(delivery: DemoDelivery<Receipt>) {
   const install = CI.action("install", function* () {
     const workspace = yield* checkout();
     const manager = yield* CI.PackageManager.JavaScript(workspace);
-    return () => manager.install();
+    return function* () {
+      if (delivery.beforeInstall) yield* delivery.beforeInstall(workspace);
+      return yield* manager.install();
+    };
   });
   const prepared = () => (delivery.install ? install() : checkout());
   const lint = CI.check(

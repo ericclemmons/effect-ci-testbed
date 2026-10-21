@@ -3,10 +3,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const fixed = require("./showcase-check-inputs.json");
+if (process.argv.length !== 2 && !(process.argv.length === 3 && process.argv[2] === "--source-only"))
+  throw Error("Invalid showcase inspector mode");
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const root = fs.realpathSync(".");
 if (root !== "/workspace/repository/examples/demo" || process.getuid() !== 1000)
   throw Error("Untrusted showcase workspace");
+// A parent package-manager hook must not run before the source is enrolled.
+// Check presence only: never read or reflect configuration or credentials.
+for (let directory = root; directory !== "/"; directory = path.dirname(directory)) {
+  for (const name of [".npmrc", ".pnpmfile.cjs"])
+    if (fs.existsSync(path.join(directory, name))) throw Error("Unexpected package-manager configuration");
+  if (directory === "/workspace") break;
+}
 const allowed = new Set([...Object.keys(fixed).map(name => name.split("/")[0]), "packages", "node_modules", "dist",
   "README.md", ".gitignore", ".github", "tutorial", "wrangler.jsonc", ".cloudflare", ".effect-ci"]);
 if (fs.readdirSync(".").some(name => !allowed.has(name))) throw Error("Unexpected showcase input");
@@ -32,6 +41,11 @@ let literal;
 try { literal = JSON.parse(greeting.slice(prefix.length, -1)); }
 catch { throw Error("Nonliteral greeting"); }
 if (typeof literal !== "string" || greeting !== prefix + JSON.stringify(literal) + ";") throw Error("Nonliteral greeting");
+
+if (process.argv[2] === "--source-only") {
+  if (fs.existsSync("node_modules") || fs.existsSync(".effect-ci")) throw Error("Source enrollment requires a fresh checkout");
+  process.exit(0);
+}
 
 const dependencies = path.join(root, "node_modules");
 if (fs.realpathSync(dependencies) !== dependencies) throw Error("External dependency root");

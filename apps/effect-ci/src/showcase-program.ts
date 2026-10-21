@@ -5,7 +5,7 @@ import { demoAssetNames, demoAssets, demoSite, demoSiteUrl, type DemoAssets } fr
 import { readPublishedDemo } from "@effect-ci-testbed/cloudflare/demo-candidate";
 import { demoPublicationError } from "./demo-release-error.ts";
 import { ShowcaseRevision, decodeShowcasePublication } from "./showcase-protocol.ts";
-import { showcaseTestCommand } from "./showcase-check-policy.ts";
+import { showcaseTestCommand, showcaseSourceInspectCommand } from "./showcase-check-policy.ts";
 export type { ShowcaseSiteReceipt } from "./showcase-protocol.ts";
 
 /** Closed host capability. No destination, credential or arbitrary module enters
@@ -19,6 +19,7 @@ export function showcaseProgram(options: {
   catch { throw Error("Full showcase revision required"); }
   return createDemoProgram({
     install: true,
+    beforeInstall: workspace => workspace.exec(showcaseSourceInspectCommand).pipe(Effect.asVoid),
     testCommand: showcaseTestCommand,
     publishStep: "publish preview",
     publish: workspace => Effect.gen(function* () {

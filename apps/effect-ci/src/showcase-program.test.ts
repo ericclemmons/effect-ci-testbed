@@ -7,6 +7,27 @@ import { showcaseProgram } from "./showcase-program.ts";
 import { demoSite, demoSiteUrl, type DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import { showcaseTestCommand } from "./showcase-check-policy.ts";
 
+test("hosted source enrollment fails before any project installation or script runs", async () => {
+  const commands: string[] = [];
+  let publications = 0;
+  const expected = "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp /usr/local/bin/node /opt/effect-ci-showcase/inspect-check.cjs --source-only";
+  const program = showcaseProgram({ revision: "a".repeat(40), publish: async () => { publications++; return {}; } });
+  await assert.rejects(CI.runPromise(program.workflow, {
+    output: "silent", ci: true,
+    source: { checkout: () => Effect.succeed(CI.Workspace.local("/workspace/repository/examples/demo")) },
+    workspaceFileSystem: {
+      readFile: () => Effect.succeed('{"packageManager":"pnpm@12.8.1"}'),
+      exists: (_, path) => Effect.succeed(path === "pnpm-lock.yaml"),
+    },
+    executor: { execute: ({ command }) => Effect.sync(() => {
+      commands.push(command);
+      return { exitCode: command === expected ? 7 : 0, stdout: "", stderr: "" };
+    }) },
+  }), error => error instanceof CI.CommandError && error.command === expected && error.exitCode === 7);
+  assert.deepEqual(commands, [expected]);
+  assert.equal(publications, 0);
+});
+
 test("one authored demo validates its build before publication and waits for a human before release", async () => {
   const calls: string[] = [];
   let decide!: (result: CI.ApprovalResult) => void;

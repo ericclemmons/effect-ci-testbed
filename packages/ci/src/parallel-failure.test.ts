@@ -31,3 +31,18 @@ test("multiple typed parallel failures have a native-serializable Error message"
     return true
   })
 })
+
+test("a shared prerequisite is one failure, not one error per dependent", async () => {
+  const original = Error("source preparation failed")
+  let preparations = 0, bodies = 0
+  const prepare = CI.action<void>("prepare", () => function* () { preparations++; yield* Effect.fail(original) })
+  const dependent = (name: string) => CI.action<void>(name, function* () {
+    yield* prepare()
+    return function* () { bodies++ }
+  })
+  await assert.rejects(CI.runPromise(CI.workflow("shared-failure", () => CI.parallel([dependent("lint")(), dependent("test")()])), {
+    output: "silent",
+  }), error => error === original)
+  assert.equal(preparations, 1)
+  assert.equal(bodies, 0)
+})

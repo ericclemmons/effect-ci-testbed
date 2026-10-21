@@ -8,6 +8,7 @@ import { showcaseProcessPrefix } from "./showcase-process-policy.ts";
 
 export const showcaseTestCommand = "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp CI=true ./node_modules/.bin/vp test --run";
 export const showcaseInspectCommand = "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp /usr/local/bin/node /opt/effect-ci-showcase/inspect-check.cjs";
+export const showcaseSourceInspectCommand = `${showcaseInspectCommand} --source-only`;
 const digest = (value: unknown) => runnerReceiptDigest(new TextEncoder().encode(JSON.stringify(value)));
 const Count = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0), Schema.isLessThanOrEqualTo(100_000));
 const Descriptor = Schema.fromJsonString(Schema.Struct({
@@ -28,6 +29,7 @@ export async function showcaseTestPolicyDigest(hostVersion: string) {
   Schema.decodeUnknownSync(ShowcaseVersion)(hostVersion);
   return digest(["showcase-prepared-tests-v2", showcaseRoot, inputs, "literal-greeting-only", showcaseTestCommand,
     showcaseProcessPrefix, "uid-1000/no-capabilities/no-new-privileges/readiness-verified",
+    showcaseSourceInspectCommand, "source-enrollment-before-any-project-install",
     showcaseInspectCommand, "root-owned-inspector/uid-1000/frozen-dependencies/before-and-after", hostVersion]);
 }
 
