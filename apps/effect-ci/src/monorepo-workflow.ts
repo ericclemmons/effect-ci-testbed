@@ -13,7 +13,7 @@ const Base = GitHubCloudflare.workflowEntrypoint((_environment, parameters) => {
   slackProgressSteps: parameters => ["checkout", "install", "check", "test", "build", "test and build tutorial", "deploy",
     ...(parameters.trigger === "github" && parameters.ref === "refs/heads/main"
       ? platformApps.map(app => `deploy ${app}`) : [])],
-  container: { image: "ci", instance: "standard-1", loginShell: false,
+  container: { image: "ci", instance: "standard-2", loginShell: false,
     entrypoint: ["sh", "-c", "dockerd --iptables=false --ip6tables=false --ip-forward=false --storage-driver=vfs >/tmp/dockerd.log 2>&1 & exec sleep infinity"],
     readyCommand: "for attempt in $(seq 1 100); do timeout 1 docker info >/dev/null 2>&1 && exit 0; sleep 0.2; done; cat /tmp/dockerd.log >&2; exit 1",
   } });
