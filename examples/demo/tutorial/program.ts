@@ -7,6 +7,8 @@ type DemoServices = Effect.Services<ReturnType<CI.Workspace["readFile"]>> | CI.A
  * by incoming source. Project commands receive no publication credential. */
 export interface DemoDelivery<Receipt> {
   readonly install?: boolean;
+  /** A trusted host can attest a direct test task rather than a local task-cache hit. */
+  readonly testCommand?: string;
   readonly publishStep: string;
   readonly publish: (workspace: CI.Workspace) => Effect.Effect<Receipt, unknown, DemoServices>;
   readonly release?: (receipt: Receipt) => Effect.Effect<unknown, unknown, DemoServices>;
@@ -41,7 +43,7 @@ export function createDemoProgram<Receipt>(delivery: DemoDelivery<Receipt>) {
     function* () {
       const workspace = yield* prepared();
       return function* () {
-        yield* workspace.exec("pnpm test");
+        yield* workspace.exec(delivery.testCommand ?? "pnpm test");
       };
     },
     { reuse: { scope: "commit" } },

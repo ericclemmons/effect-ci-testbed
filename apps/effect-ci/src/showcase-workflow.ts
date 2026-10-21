@@ -11,6 +11,8 @@ import type { RunnerStepAuthority } from "@effect-ci-testbed/cloudflare/runner-s
 import * as Effect from "effect/Effect";
 import { decodeShowcasePublication } from "./showcase-protocol.ts";
 import { cleanupShowcase } from "./showcase-cleanup.ts";
+import { showcaseCheckCache } from "./showcase-check-cache.ts";
+import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 
 const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, parameters) => {
   const selection = showcaseSelection(parameters);
@@ -45,6 +47,10 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   },
   finalize: finalizeShowcaseRun,
   finalizationCheck: parameters => showcaseProductionAllowed(parameters) ? "Rollout / conference demo" : "Preview / conference demo",
+  checkCache: (environment, { runner, exports, instanceId }) => {
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerCheckAuthority } }).TrustedDemoChecks.getByName("showcase-trusted-runner-v1");
+    return showcaseCheckCache(runner, instanceId, authority, (environment as { VERSION_METADATA?: { id: string } }).VERSION_METADATA?.id);
+  },
   stepResultCache: (environment, { runner, exports, instanceId }) => {
     const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerStepAuthority } }).TrustedDemoChecks.getByName("showcase-trusted-runner-v1");
     const version = (environment as { VERSION_METADATA?: { id: string } }).VERSION_METADATA?.id;

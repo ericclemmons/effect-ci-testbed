@@ -1,0 +1,11 @@
+{
+  "package.json": "3d270e657ac2ab6c03f6944fef0639a52f4757f5b66e1ad5042fb73f5a96ea55",
+  "pnpm-lock.yaml": "58fa0c89e9ece74cbf327b05b9f1730de97d8ef84351955be78948ecd74d3b33",
+  "pnpm-workspace.yaml": "bfb8b907cc0a9478d60fdb680204b5167ca3982856367123ad44050efac44a67",
+  "vite.config.ts": "a42de2f614d8c41487483f06f6978d131f4d85729e95696b32abe5646f5517fe",
+  "tsconfig.json": "23afb848127fccbedff9e5c4a65a27798e53ace59d434294912f154b96245ebd",
+  "index.html": "e7554d5c3c632c2bcba87292bd523f25cdb67915b6001b6c63f78e242fb82c31",
+  "src/app.ts": "04b8af3ea0986e7719a2155bd6c4fd5f909a9fc8a87e6cb5cd9875c1b497c0d4",
+  "src/message.ts": "81e0a716d769c707b52beb657a9fdc9234b8b28b4feafa10ae03b1862676c865",
+  "src/message.test.ts": "8e7ba13fa8cec1fb1121a19d28579a8dcbb5b314fda617f2f85e3ef580d087ef"
+}

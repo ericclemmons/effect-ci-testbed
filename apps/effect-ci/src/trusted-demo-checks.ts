@@ -6,6 +6,7 @@ import { syntaxCommand, syntaxRepository, syntaxWorkflow } from "@effect-ci-test
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 import { demoRunnerPolicyDigest, demoBuildIdentity } from "./demo-runner-policy.ts";
 import { showcaseBuildIdentity, showcaseRoot } from "./showcase-runner-policy.ts";
+import { showcaseTestCommand, showcaseTestPolicyDigest } from "./showcase-check-policy.ts";
 import { runnerStepFingerprint, signRunnerStepReceipt, verifyRunnerStepReceipt,
   type RunnerStepIdentity, type RunnerStepClaim } from "@effect-ci-testbed/cloudflare/runner-step-result";
 
@@ -32,6 +33,9 @@ export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: 
     });
   }
   async #eligible(identity: HostedCheckIdentity) {
+    if (identity?.repository === syntaxRepository && identity.workflowId === "demo" && identity.stepId === "test" &&
+      identity.command === showcaseTestCommand && this.env.VERSION_METADATA?.id)
+      return identity.policyDigest === await showcaseTestPolicyDigest(this.env.VERSION_METADATA.id);
     return identity?.repository === syntaxRepository && identity.workflowId === syntaxWorkflow &&
       ((identity.stepId === "syntax" && identity.command === syntaxCommand && identity.policyDigest === await demoRunnerPolicyDigest(false)) ||
        (identity.stepId === "test" && identity.command === testCommand && identity.policyDigest === await demoRunnerPolicyDigest(true)));

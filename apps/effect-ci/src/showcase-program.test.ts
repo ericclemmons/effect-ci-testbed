@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import { createDemoProgram } from "../../../examples/demo/tutorial/program.ts";
 import { showcaseProgram } from "./showcase-program.ts";
 import { demoSite, demoSiteUrl, type DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
+import { showcaseTestCommand } from "./showcase-check-policy.ts";
 
 test("one authored demo validates its build before publication and waits for a human before release", async () => {
   const calls: string[] = [];
@@ -83,7 +84,7 @@ test("the hosted adapter publishes the checked app bytes and independently verif
       },
       executor: { execute: ({ command }) => Effect.sync(() => {
         commands.push(command);
-        return { exitCode: command === `pnpm ${failure}` || failure === "extra-asset" && command.includes("verify-build.cjs") ? 7 : 0, stdout: "", stderr: "" };
+        return { exitCode: command === `pnpm ${failure}` || failure === "test" && command === showcaseTestCommand || failure === "extra-asset" && command.includes("verify-build.cjs") ? 7 : 0, stdout: "", stderr: "" };
       }) },
     });
     if (failure) await assert.rejects(run);

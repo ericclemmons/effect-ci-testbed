@@ -3,6 +3,7 @@ import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
+import { showcaseTestCommand } from "./showcase-check-policy.ts";
 
 test("native showcase checkpoints authored actions, consumes the checked build and maintains its Slack card", { timeout: 30_000 }, async () => {
   const require = createRequire(import.meta.url);
@@ -123,7 +124,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       const state = await call({ op: "state" });
       assert.ok(state.stopped > 0, "finished showcase compute containers are stopped");
       assert.equal(state.commands.filter((c: any) => c.command.includes("install")).length, 1);
-      assert.ok(state.commands.some((c: any) => c.command === "pnpm test"));
+      assert.ok(state.commands.some((c: any) => c.command === showcaseTestCommand));
       assert.ok(result.output.nodes.some((n: any) => n.id === "test" && n.status === "complete"));
       assert.equal(state.publications.length, targets ? 0 : 1);
       assert.equal(state.messages.filter((m: any) => m.path.endsWith("chat.postMessage") && !m.body.thread_ts).length, 1);
