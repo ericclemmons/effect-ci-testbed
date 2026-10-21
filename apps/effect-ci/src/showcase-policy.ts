@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
-import type { WorkerOptions } from "@effect-ci-testbed/github-cloudflare/worker";
+import { detailsUrl, type WorkerOptions, type WorkerEnvironment } from "@effect-ci-testbed/github-cloudflare/worker";
 import { ShowcaseSelection, ShowcaseRevision, ShowcaseRerun } from "./showcase-protocol.ts";
 
 export const showcasePreviewRef = "refs/heads/demo/showcase-preview";
@@ -39,10 +39,19 @@ const routes = ["/showcase", "/showcase/", "/showcase/capabilities", "/showcase/
   "/showcase/executions", "/showcase/runs/:id", "/showcase/runs/:id/events"].map(pathname => new URLPattern({ pathname }));
 export const showcaseRouteAllowed = (url: string) => routes.some(route => route.test(url));
 
+/** The host's default template names product CI; the owned showcase is a
+ * separate native Workflow. Preserve custom host templates and instance escaping. */
+export const showcaseDetailsUrl = (environment: WorkerEnvironment, instanceId: string) =>
+  detailsUrl(environment.EFFECT_CI_DETAILS_URL?.replace(
+    "/workers/workflows/effect-ci-github-cloudflare/",
+    "/workers/workflows/effect-ci-showcase/",
+  ), instanceId);
+
 /** Only two explicit owned showcase branches, never main/tutorial auto-CD. */
-export const showcaseGitHubRun: NonNullable<WorkerOptions["githubRun"]> = (identity, _environment, context) => {
+export const showcaseGitHubRun: NonNullable<WorkerOptions["githubRun"]> = (identity, environment, context) => {
   if (!showcaseGitHubAllowed(identity)) return undefined;
   const workflow = (context?.exports as unknown as { ShowcaseCIWorkflow?: Workflow } | undefined)?.ShowcaseCIWorkflow;
   if (!workflow) throw Error("ShowcaseCIWorkflow is not exported");
-  return { workflow };
+  const url = showcaseDetailsUrl(environment, identity.deliveryId);
+  return { workflow, ...(url ? { detailsUrl: url } : {}) };
 };

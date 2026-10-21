@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { makeCommandStepExecutor } from "../../../packages/cloudflare/src/command-step.ts";
 
 // Exercise the actual provider class. Only the platform container/storage are
@@ -12,7 +16,7 @@ const { build } = require(require.resolve("esbuild", { paths: [plugin] }));
 const compiled = await build({
   stdin: {
     resolveDir: new URL(".", import.meta.url).pathname,
-    contents: 'export { WorkspaceContainer, makeRunner } from "@effect-ci-testbed/cloudflare"; export { runPromise, gen } from "effect/Effect"; export { Workspace, Source, workflow, action, runPromise as runWorkflow } from "@effect-ci-testbed/ci";',
+    contents: 'export { WorkspaceContainer, makeRunner } from "@effect-ci-testbed/cloudflare"; export { WorkspaceContainer as NativeWorkspaceContainer } from "./monorepo-container.ts"; export { runPromise, gen } from "effect/Effect"; export { Workspace, Source, workflow, action, runPromise as runWorkflow } from "@effect-ci-testbed/ci";',
     loader: "ts",
   },
   bundle: true, write: false, format: "esm", platform: "node", target: "esnext",
@@ -25,8 +29,88 @@ const compiled = await build({
     ` }));
   } }],
 });
-const { WorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+const { WorkspaceContainer, NativeWorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
+
+test("native result capture is limited to enrolled CI commands and reports only their closed result", async () => {
+  const root = await mkdtemp(join(tmpdir(), "effect-ci-native-result-")), boot = join(root, "boot");
+  await writeFile(boot, "fixture-boot");
+  const reports: unknown[] = [], originalInfo = console.info;
+  console.info = (label, event) => { reports.push({ label, event }); };
+  try {
+    for (const mode of ["native", "foreign-action", "showcase"] as const) {
+      const calls: string[][] = [], stored = new Map<string, unknown>();
+      const host = new NativeWorkspaceContainer({ container: { running: true,
+        async exec(input: string[]) {
+          const argv = [...input]; calls.push([...argv]);
+          const capture = argv.length > 6 && argv[5] === "/proc/sys/kernel/random/boot_id";
+          if (argv[5] === "/proc/sys/kernel/random/boot_id") argv[5] = boot;
+          // Only the platform process backend is simulated: execute a fixed
+          // shell fixture instead of pnpm, never the actual project command.
+          if (capture) argv.splice(6, argv.length - 6, "sh", "-c", "printf fixture-output; exit 7");
+          const output = mode !== "native" ? { exitCode: 7, stdout: Buffer.from("fixture-output"), stderr: Buffer.alloc(0) }
+            : await new Promise<any>((resolve, reject) => {
+              const child = spawn(argv[0]!, argv.slice(1), { stdio: ["ignore", "pipe", "pipe"] });
+              const stdout: Buffer[] = [], stderr: Buffer[] = [];
+              child.stdout.on("data", bytes => stdout.push(bytes)); child.stderr.on("data", bytes => stderr.push(bytes));
+              child.on("error", reject); child.on("close", exitCode => resolve({ exitCode, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }));
+            });
+          return { output: async () => output };
+        },
+      }, storage: { get: async (key: string) => stored.get(key), put: async (key: string, value: unknown) => { stored.set(key, value); } } }, {});
+      assert.deepEqual(await host.execute("pnpm check", "/workspace/repository", mode === "foreign-action" ? "foreign" : "check",
+        undefined, [], "/workspace/repository", { image: mode === "showcase" ? "showcase" : "ci", loginShell: false }),
+      { exitCode: 7, stdout: "fixture-output", stderr: "" });
+      assert.equal(calls.some(argv => argv[5] === "/proc/sys/kernel/random/boot_id"), mode === "native");
+      if (mode === "showcase") assert.equal(calls[0]?.[0], "/usr/bin/setpriv", "showcase restrictions remain in front of its direct command");
+    }
+    assert.deepEqual(reports, [{ label: "[native-command-result]", event: { operation: "check", exitCode: 7, recovered: false } }]);
+  } finally { console.info = originalInfo; await rm(root, { recursive: true, force: true }); }
+});
+
+test("the actual workspace executor returns a recorded nonzero result after transport loss without replay or restoring an ancestor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "effect-ci-captured-workspace-"));
+  const boot = join(root, "boot"), effects = join(root, "effects");
+  await writeFile(boot, "fixture-boot");
+  const stored = new Map<string, unknown>(), boundaries: any[] = [];
+  let commands = 0, starts = 0;
+  class CapturedWorkspace extends WorkspaceContainer {
+    constructor(ctx: any, environment: any) { super(ctx, environment); }
+    captureExecutionResult() { return true; }
+    capturedExecutionResult(event: any) { boundaries.push(event); throw Error("A failed result logger cannot change execution"); }
+  }
+  const container = { running: true,
+    start() { starts++; throw Error("Never restore an ancestor for result recovery"); },
+    async exec(input: string[], options: { cwd?: string } = {}) {
+      const argv = [...input];
+      const business = argv.length > 6 && argv[5] === "/proc/sys/kernel/random/boot_id";
+      if (argv[5] === "/proc/sys/kernel/random/boot_id") argv[5] = boot;
+      if (business) commands++;
+      const output = await new Promise<any>((resolve, reject) => {
+        const child = spawn(argv[0]!, argv.slice(1), { cwd: options.cwd, stdio: ["ignore", "pipe", "pipe"] });
+        const stdout: Buffer[] = [], stderr: Buffer[] = [];
+        child.stdout.on("data", bytes => stdout.push(bytes)); child.stderr.on("data", bytes => stderr.push(bytes));
+        child.on("error", reject);
+        child.on("close", exitCode => resolve({ exitCode, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }));
+      });
+      return { output: async () => { if (business) throw Error("lost provider exec channels"); return output; } };
+    },
+  };
+  const workspace = new CapturedWorkspace({ container, storage: {
+    get: async (key: string) => stored.get(key), put: async (key: string, value: unknown) => { stored.set(key, value); },
+  } }, {});
+  try {
+    const result = await workspace.execute('printf x >> effects; printf original; printf failure >&2; exit 7', root, "test",
+      undefined, [], root, { loginShell: false });
+    assert.deepEqual(result, { exitCode: 7, stdout: "original", stderr: "failure" });
+    assert.equal(await readFile(effects, "utf8"), "x");
+    assert.equal(commands, 1); assert.equal(starts, 0);
+    assert.deepEqual(boundaries, [{ exitCode: 7, recovered: true }]);
+    await assert.rejects(workspace.execute("must not run", root, "another-action"), /another action/);
+    assert.equal(commands, 1);
+    assert.ok(stored.has("workingMutation"), "recovered result does not pretend that workspace publication already happened");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 function fixture() {
   const stored = new Map<string, any>([["activeCheckpoint", revision]]);
@@ -35,6 +119,8 @@ function fixture() {
   let failSnapshot: "none" | "running" | "stopped" = "none", failRelease = false, failStorageAck = false;
   let queryResponse: string | undefined;
   let outputResponse: string | undefined;
+  let failCommandOutput = false;
+  let failReadiness = false;
   const container = {
     running: true, images: {},
     start(options: any) { starts++; const saved = snapshots.get(options.containerSnapshot.id); if (!saved) throw Error("Ancestor snapshot unavailable"); files = [...saved]; this.running = true; },
@@ -51,6 +137,7 @@ function fixture() {
     },
     async exec(command: string[]) {
       let exitCode = 0, stdout = new Uint8Array();
+      if (failReadiness && command.at(-1) === "fixed-ready") exitCode = 1;
       if (command[0] === "/usr/bin/python3" && outputResponse !== undefined) {
         stdout = new TextEncoder().encode(outputResponse);
       }
@@ -60,7 +147,10 @@ function fixture() {
       else if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
       else if (command[0] === "test") exitCode = command.at(-1) === "." || files.includes(command.at(-1)!) ? 0 : 1;
       else if (command[0] === "cat") stdout = new TextEncoder().encode(files.at(-1)!);
-      return { output: async () => ({ exitCode, stdout, stderr: new Uint8Array() }) };
+      return { exitCode: Promise.resolve(exitCode), output: async () => {
+        if (failCommandOutput && command[0] === "sh") throw Error("private-provider-cause-not-for-logs");
+        return { exitCode, stdout, stderr: new Uint8Array() };
+      } };
     },
   };
   const ctx = { container, blockConcurrencyWhile: (operation: () => Promise<unknown>) => operation(), storage: {
@@ -78,7 +168,11 @@ function fixture() {
     { cwd: "/workspace/repository", stepId: "install", revision });
   return {
     install: () => workspace.execute("npm ci", "/workspace/repository", "install", revision),
+    installWithReadiness: () => workspace.execute("npm ci", "/workspace/repository", "install", revision, [], "/workspace/repository",
+      { readyCommand: "fixed-ready", loginShell: false }),
     commit, restart: () => { workspace = new WorkspaceContainer(ctx, {}); },
+    failCommandOutput: () => { failCommandOutput = true; },
+    failReadiness: () => { failReadiness = true; },
     fail: (mode: typeof failSnapshot) => { failSnapshot = mode; },
     releaseFailure: () => { failRelease = true; },
     storageFailure: () => { failStorageAck = true; },
@@ -100,6 +194,19 @@ function fixture() {
     running: () => container.running,
   };
 }
+
+test("an unavailable direct exec result remains unknown and never re-executes the command", async () => {
+  const f = fixture();
+  f.failCommandOutput();
+  await assert.rejects(f.install(), /private-provider-cause-not-for-logs/);
+  assert.equal(f.counts().commands, 1, "observing a lost output never re-executes the command");
+});
+
+test("a failed restored-container readiness probe is not reported as a started business command", async () => {
+  const f = fixture(); f.failReadiness();
+  await assert.rejects(f.installWithReadiness(), /Container readiness check failed/);
+  assert.equal(f.counts().commands, 0);
+});
 
 test("snapshot output reads stop their inspection VM without creating a business checkpoint", async () => {
   const f = fixture();

@@ -30,6 +30,7 @@ function fixture(githubRun = demoGitHubRun) {
   const environment = {
     GITHUB_APP_ID: "5089816", GITHUB_PRIVATE_KEY: "unused-by-fixture",
     GITHUB_WEBHOOK_SECRET: secret,
+    EFFECT_CI_DETAILS_URL: "https://dash.cloudflare.com/account/workers/workflows/effect-ci-github-cloudflare/instance/{id}",
   } as WorkerEnvironment;
   const context = { exports: { DemoCIWorkflow: binding(selected), EffectCIWorkflow: binding(selected), ShowcaseCIWorkflow: binding(showcase) } } as unknown as ExecutionContext;
   const dispatch = (id: string, repository = "ericclemmons/effect-ci-testbed", branch = "main",
@@ -69,9 +70,15 @@ test("signed showcase branches select the authored showcase while main keeps pro
     assert.equal((await f.dispatch(branch, undefined, branch)).status, 202);
   }
   assert.equal(f.showcase.length, 2);
+  for (const run of f.showcase) {
+    const expected = `https://dash.cloudflare.com/account/workers/workflows/effect-ci-showcase/instance/${encodeURIComponent(run.id)}`;
+    assert.equal(run.params.detailsUrl, expected);
+    assert.equal(f.checks.find(check => check.externalId === run.id)?.detailsUrl, expected);
+  }
   assert.equal(f.selected.length, 0);
   assert.equal((await f.dispatch("ordinary-main", undefined, "main")).status, 202);
   assert.equal(f.selected.length, 1);
+  assert.equal(f.checks.at(-1).detailsUrl, "https://dash.cloudflare.com/account/workers/workflows/effect-ci-github-cloudflare/instance/ordinary-main");
   assert.equal(f.showcase.length, 2);
   const before = f.counts().tokens;
   assert.equal((await f.dispatch("unsigned-showcase", undefined, "demo/showcase", 165265172, 5089816, false)).status, 401);

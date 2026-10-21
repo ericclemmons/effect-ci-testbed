@@ -12,6 +12,7 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { containerShell } from "./container-shell.ts"
+import { capturedCommand } from "./captured-command.ts"
 import { makeHostAttemptHandler, type HostAttemptHandler } from "./host-attempt.ts"
 export { makeHostAttemptHandler, type HostAttemptHandler, type HostAttemptContext } from "./host-attempt.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
@@ -317,24 +318,36 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   protected processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
     _options: WorkspaceContainerOptions): ReadonlyArray<string> { return command }
 
+  /** Host enrollment only: a trusted native command can retain its real result
+   * independently of the exec transport. Untrusted projects stay on direct exec. */
+  protected captureExecutionResult(_options: WorkspaceContainerOptions): boolean { return false }
+
+  /** A host may record completed command identity/outcome, never raw output. */
+  protected capturedExecutionResult(_result: { readonly exitCode: number; readonly recovered: boolean }): void {}
+
   private async run(
     command: ReadonlyArray<string>,
     cwd?: string,
     options: WorkspaceContainerOptions = {},
+    businessCommand = false,
   ): Promise<ContainerExecutionResult> {
     await this.configureOutbound()
     const environment = await this.processEnvironment(command, cwd)
-    const process = await this.container().exec(
-      [...this.processCommand(command, cwd, options)],
-      cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
-    )
-    const output = await process.output()
-
-    return {
-      exitCode: output.exitCode,
-      stderr: decoder.decode(output.stderr),
-      stdout: decoder.decode(output.stdout),
+    const argv = [...this.processCommand(command, cwd, options)]
+    const execOptions = cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined
+    if (businessCommand && this.captureExecutionResult(options)) {
+      const output = await capturedCommand({ argv,
+        directory: `/tmp/effect-ci-command-${crypto.randomUUID()}`,
+        running: () => this.container().running,
+        exec: args => this.container().exec([...args], execOptions),
+      })
+      try { this.capturedExecutionResult({ exitCode: output.exitCode, recovered: output.recovered }) }
+      catch { /* reporting cannot change or replay the completed command */ }
+      return { exitCode: output.exitCode, stdout: decoder.decode(output.stdout), stderr: decoder.decode(output.stderr) }
     }
+    const process = await this.container().exec(argv, execOptions)
+    const output = await process.output()
+    return { exitCode: output.exitCode, stderr: decoder.decode(output.stderr), stdout: decoder.decode(output.stdout) }
   }
 
   async getCachedSnapshot(key: string): Promise<ContainerSnapshotValue | undefined> {
@@ -514,7 +527,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(containerShell(command, options), cwd, options)
+    const result = await this.run(containerShell(command, options), cwd, options, true)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])
