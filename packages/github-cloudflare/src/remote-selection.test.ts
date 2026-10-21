@@ -44,3 +44,29 @@ test("remote goals require explicit host enrollment; malformed or unsupported se
   assert.equal((await dispatch({ ...input, target: "build" })).status, 202)
   assert.equal(created[1].params.target, "build")
 })
+
+test("project-discovery hosts accept bounded goal names without bypassing authentication or admission", async () => {
+  assert.throws(() => worker({ remoteTargetDiscovery: "project", remoteTargets: ["test"] }),
+    /Choose fixed remote targets or project discovery/)
+  const created: any[] = []
+  const environment = { EFFECT_CI_API_TOKEN: "fixture" } as WorkerEnvironment
+  const application = worker({ remoteTargetDiscovery: "project",
+    remoteRunAllowed: input => input.repository === "https://github.com/owner/repo.git",
+    workflow: () => ({ create: async (input: unknown) => { created.push(input) } }) as unknown as Workflow })
+  const request = (path: string, body?: unknown, authenticated = true) => application.fetch(
+    new Request("https://ci.invalid" + path, { ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
+      headers: authenticated ? { authorization: "Bearer fixture" } : {} }), environment)
+  const input = { repository: "https://github.com/owner/repo.git", revision: "a".repeat(40), targets: ["notes", "package:build"] }
+  assert.equal((await request("/capabilities", undefined, false)).status, 401)
+  assert.deepEqual(await (await request("/capabilities")).json(), {
+    protocol: "effect-ci-remote-v1", targets: [], targetDiscovery: "project",
+  })
+  assert.equal((await request("/runs", input, false)).status, 401)
+  assert.equal((await request("/runs", { ...input, repository: "https://github.com/other/repo.git" })).status, 403)
+  for (const targets of [["--help"], ["notes;echo leak"], ["notes", "notes"], [], Array(17).fill("notes")]) {
+    assert.equal((await request("/runs", { ...input, targets })).status, 400)
+  }
+  assert.equal(created.length, 0)
+  assert.equal((await request("/runs", input)).status, 202)
+  assert.deepEqual(created[0].params, { trigger: "remote", ...input })
+})

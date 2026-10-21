@@ -9,7 +9,12 @@ export const standaloneContainerOptions = {
 
 /** Host chooses checkout/root; authored workflow discovery and execution happen
  * only in the unprivileged workspace through the same CLI used locally. */
-export function standaloneProgram(root: string) {
+export function standaloneProgram(root: string, targets: ReadonlyArray<string> = []) {
+  // Validate even for direct workflow-binding callers, before touching a workspace.
+  if (targets.length > 16 || new Set(targets).size !== targets.length ||
+      targets.some(target => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(target))) {
+    throw new Error("Invalid project goals");
+  }
   const checkout = CI.action(
     "checkout",
     () =>
@@ -31,7 +36,8 @@ export function standaloneProgram(root: string) {
   const run = CI.action("project workflow", () => function* () {
     const workspace = yield* install();
     // Explicit local execution cannot recurse into the host's remote endpoint.
-    return yield* workspace.exec("node /opt/effect-ci/src/hosted.ts run --local --format=json");
+    return yield* workspace.exec(["node /opt/effect-ci/src/hosted.ts run", ...targets,
+      "--local --format=json"].join(" "));
   });
   return {
     workflow: CI.workflow("hosted-ci", () => run()),

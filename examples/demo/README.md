@@ -147,11 +147,13 @@ your laptop:
 ```sh
 pnpm exec cf-ci doctor --remote
 pnpm exec cf-ci run --remote
+pnpm exec cf-ci run test build --remote
 ```
 
 The standalone host runs authored workflows inside an isolated container, not
-inside the privileged host process. Whole-workflow execution is supported;
-named-target negotiation for arbitrary authored workflows is still being connected.
+inside the privileged host process. Hosts advertising project goal discovery can
+also run selected exported actions. The project CLI validates every requested
+goal before executing any of them; older fixed-goal hosts retain their allowlist.
 
 Keep the workflow and move its execution from your laptop to the hosted runner.
 Cloudflare workflows retain action checkpoints and workspace snapshots across

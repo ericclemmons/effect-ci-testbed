@@ -53,6 +53,8 @@ export interface WorkerOptions {
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   /** Explicit host opt-in; selected goals must be consumed by its workflow factory. */
   readonly remoteTargets?: ReadonlyArray<string>
+  /** Discover selected goals inside the isolated project CLI, never in the host. */
+  readonly remoteTargetDiscovery?: "project"
   /** The terminal status contains public execution evidence for the CLI. */
   readonly remoteResult?: boolean
   /** Declaration only; the trusted host must independently enforce each method. */
@@ -212,7 +214,7 @@ const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
   workflow: Workflow<WorkflowParameters>,
-  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets" | "remoteResult"> = {},
+  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets" | "remoteTargetDiscovery" | "remoteResult"> = {},
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -222,7 +224,8 @@ const remoteRun = async (
 
   if (!input) return new Response("Invalid remote run", { status: 400 })
   const selection = selectedTargets(input)
-  if (selection && (!options.remoteTargets || selection.some(target => !options.remoteTargets!.includes(target)))) {
+  if (selection && options.remoteTargetDiscovery !== "project" &&
+      (!options.remoteTargets || selection.some(target => !options.remoteTargets!.includes(target)))) {
     return new Response("Remote goals are not enrolled", { status: 403 })
   }
   if (options.remoteRunAllowed && !options.remoteRunAllowed(input)) {
@@ -330,6 +333,10 @@ const resolveApproval = async (
 
 export const worker = (options: WorkerOptions = {}) => {
   const prefix = options.routePrefix ?? ""
+  if ((options.remoteTargetDiscovery !== undefined && options.remoteTargetDiscovery !== "project") ||
+      (options.remoteTargetDiscovery && options.remoteTargets !== undefined)) {
+    throw new Error("Choose fixed remote targets or project discovery")
+  }
   const remoteTargets = options.remoteTargets === undefined ? Object.freeze([] as string[]) : selectedTargets({ targets: options.remoteTargets })!
   if (prefix !== "" && !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(prefix)) {
     throw new Error("Invalid workflow route prefix")
@@ -360,6 +367,7 @@ export const worker = (options: WorkerOptions = {}) => {
       if (request.method === "GET" && pathname === "/capabilities") {
         if (!isAuthorized(request, environment)) return new Response("Unauthorized", { status: 401 })
         return Response.json({ protocol: "effect-ci-remote-v1", targets: remoteTargets,
+          ...(options.remoteTargetDiscovery ? { targetDiscovery: options.remoteTargetDiscovery } : {}),
           ...(options.remoteAuthentication ? { authentication: options.remoteAuthentication } : {}),
         }, {
           headers: { "cache-control": "no-store" },
