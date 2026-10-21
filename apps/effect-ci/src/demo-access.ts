@@ -1,12 +1,26 @@
 import { accessIdentityVerifier } from "@effect-ci-testbed/github-cloudflare/access-identity";
 import { demoAccessIdentity, demoAccessOrigin } from "./demo-access-policy.ts";
+import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 
 const verifyIdentity = accessIdentityVerifier(demoAccessIdentity);
+const showcaseRunRoutes = ["/showcase/runs/:id", "/showcase/runs/:id/events"]
+  .map(pathname => new URLPattern({ pathname }));
+const showcaseRunId = Schema.decodeUnknownOption(Schema.String.check(Schema.isUUID(undefined)));
 
 /** This identity grants demo run/read access, never approval or other CI routes. */
 export const demoRemoteAccessRoute = (request: Request): boolean => {
   const url = new URL(request.url), path = url.pathname;
   if (url.origin !== demoAccessOrigin) return false;
+  if (path.startsWith("/showcase/")) {
+    if (request.method === "POST") return path === "/showcase/runs";
+    if (request.method !== "GET") return false;
+    if (path === "/showcase/capabilities" || path === "/showcase/executions") return true;
+    return showcaseRunRoutes.some(route => {
+      const id = route.exec(url)?.pathname.groups.id;
+      return id !== undefined && Option.isSome(showcaseRunId(id));
+    });
+  }
   return (request.method === "GET" && path === "/demo/capabilities") ||
     (request.method === "POST" && path === "/demo/runs") ||
     (request.method === "GET" && /^\/demo\/runs\/[A-Za-z0-9_-]+(?:\/events)?$/.test(path));
