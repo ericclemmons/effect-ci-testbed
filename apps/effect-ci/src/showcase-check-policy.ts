@@ -4,6 +4,7 @@ import type { HostedCheckIdentity } from "@effect-ci-testbed/cloudflare/check-ev
 import inputs from "../showcase-check-inputs.json" with { type: "json" };
 import { ShowcaseDigest, ShowcaseRevision, ShowcaseVersion } from "./showcase-protocol.ts";
 import { showcaseRepository, showcaseRoot } from "./showcase-runner-policy.ts";
+import { showcaseProcessPrefix } from "./showcase-process-policy.ts";
 
 export const showcaseTestCommand = "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp CI=true ./node_modules/.bin/vp test --run";
 export const showcaseInspectCommand = "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp /usr/local/bin/node /opt/effect-ci-showcase/inspect-check.cjs";
@@ -25,7 +26,8 @@ const Descriptor = Schema.fromJsonString(Schema.Struct({
  */
 export async function showcaseTestPolicyDigest(hostVersion: string) {
   Schema.decodeUnknownSync(ShowcaseVersion)(hostVersion);
-  return digest(["showcase-prepared-tests-v1", showcaseRoot, inputs, "literal-greeting-only", showcaseTestCommand,
+  return digest(["showcase-prepared-tests-v2", showcaseRoot, inputs, "literal-greeting-only", showcaseTestCommand,
+    showcaseProcessPrefix, "uid-1000/no-capabilities/no-new-privileges/readiness-verified",
     showcaseInspectCommand, "root-owned-inspector/uid-1000/frozen-dependencies/before-and-after", hostVersion]);
 }
 

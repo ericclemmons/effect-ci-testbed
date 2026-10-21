@@ -13,6 +13,7 @@ import { decodeShowcasePublication } from "./showcase-protocol.ts";
 import { cleanupShowcase } from "./showcase-cleanup.ts";
 import { showcaseCheckCache } from "./showcase-check-cache.ts";
 import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
+import { showcaseReadyCommand } from "./showcase-process-policy.ts";
 
 const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, parameters) => {
   const selection = showcaseSelection(parameters);
@@ -30,7 +31,7 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   root: "examples/demo",
   cache: false,
   container: { image: "showcase", instance: "standard-1", loginShell: false,
-    readyCommand: "/usr/local/bin/node -e 'if(process.getuid()!==1000)process.exit(1)'" },
+    readyCommand: showcaseReadyCommand },
   slackLayout: "status-thread",
   slackCommandOutput: "failed",
   slackCommandLog: ({ exports, instanceId, stepId, threadTs, text }) => {

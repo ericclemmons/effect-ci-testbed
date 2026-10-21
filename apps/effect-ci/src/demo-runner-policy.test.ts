@@ -17,7 +17,7 @@ test("trusted demo can build without private registry access and cannot send pro
   assert.doesNotMatch(dockerfile, /registry\.cloudflare\.com/);
   assert.match(dockerfile, /^USER node$/m);
   assert.deepEqual(readFileSync(new URL("../.dockerignore", import.meta.url), "utf8").trim().split("\n"),
-    ["**", "!Dockerfile", "!Dockerfile.trusted-demo", "!Dockerfile.showcase", "!showcase-verify-build.cjs", "!showcase-inspect-check.cjs", "!showcase-check-inputs.json", "!Dockerfile.standalone",
+    ["**", "!Dockerfile", "!Dockerfile.trusted-demo", "!Dockerfile.showcase", "!showcase-verify-build.cjs", "!showcase-inspect-check.cjs", "!showcase-verify-process.cjs", "!showcase-check-inputs.json", "!Dockerfile.standalone",
       "!.standalone-runtime", "!.standalone-runtime/package.json", "!.standalone-runtime/src",
       "!.standalone-runtime/src/**", "!.standalone-runtime/node_modules", "!.standalone-runtime/node_modules/**"]);
   for (const suite of [false, true]) assert.match(demoRunnerInspectCommand(suite), /process\.getuid\?\.\(\)!==1000/);

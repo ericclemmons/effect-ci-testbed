@@ -4,6 +4,7 @@
 !Dockerfile.showcase
 !showcase-verify-build.cjs
 !showcase-inspect-check.cjs
+!showcase-verify-process.cjs
 !showcase-check-inputs.json
 !Dockerfile.standalone
 !.standalone-runtime

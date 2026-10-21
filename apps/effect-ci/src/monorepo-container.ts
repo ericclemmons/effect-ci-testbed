@@ -2,6 +2,7 @@ import { WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
 import { platformApps } from "../../../.cloudflare/ci/workflow.ts";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { DeploymentProxy, deploymentToken } from "./deployment-proxy.ts";
+import { showcaseProcessPrefix } from "./showcase-process-policy.ts";
 
 export class CloudflareDeploymentOutbound extends WorkerEntrypoint<unknown, { workspaceId: string; capability: string }> {
   override fetch(request: Request): Promise<Response> {
@@ -20,6 +21,11 @@ const commands = new Set([
 export class WorkspaceContainer extends Base {
   private deployment: { command: string; cwd: string; env: Record<string, string>; capability: string; proxy: DeploymentProxy } | undefined;
   private queue: Promise<unknown> = Promise.resolve();
+
+  protected override processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
+    options: Parameters<Base["processCommand"]>[2]): ReadonlyArray<string> {
+    return options.image === "showcase" ? [...showcaseProcessPrefix, ...command] : command;
+  }
 
   async allowMainDeployment(revision: string) {
     if (!/^[a-f0-9]{40}$/.test(revision)) throw Error("Invalid main deployment revision");
