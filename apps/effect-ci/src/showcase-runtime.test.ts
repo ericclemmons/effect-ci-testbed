@@ -106,6 +106,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
     env: { VERSION_METADATA: { type: "json", value: { id: "11111111-1111-4111-8111-111111111111" } }, DEMO_SITE: { type: "worker", worker: name, exportName: "Publisher" },
       RELEASE_MANAGER: { type: "worker", worker: name, exportName: "Broker" },
       GITHUB_APP_ID: { type: "text", value: "5089816" }, GITHUB_PRIVATE_KEY: { type: "text", value: privateKey },
+      EFFECT_CI_DETAILS_URL: { type: "text", value: "https://dash.cloudflare.com/account/workers/workflows/effect-ci-github-cloudflare/instance/{id}" },
       SLACK_BOT_TOKEN: { type: "text", value: "fake-slack-token" }, SLACK_CHANNEL_ID: { type: "text", value: "C1" },
       SLACK_APP_ID: { type: "text", value: "A1" }, SLACK_TEAM_ID: { type: "text", value: "T1" },
       SLACK_SIGNING_SECRET: { type: "text", value: "local-test-signing-secret" }, SLACK_APPROVER_IDS: { type: "text", value: "U1" } },
@@ -146,6 +147,9 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       }
       assert.equal(result.status, "complete");
       const state = await call({ op: "state" });
+      assert.ok(JSON.stringify(state.messages).includes(`https://dash.cloudflare.com/account/workers/workflows/effect-ci-showcase/instance/${id}`),
+        "remote-run Slack cards link to their actual native showcase instance");
+      assert.equal(JSON.stringify(state.messages).includes("/workflows/effect-ci-github-cloudflare/"), false);
       assert.ok(state.stopped > 0, "finished showcase compute containers are stopped");
       assert.equal(state.commands.filter((c: any) => c.command.includes("install")).length, 1);
       assert.ok(state.commands.some((c: any) => c.command === showcaseTestCommand));
@@ -186,6 +190,8 @@ test("native showcase checkpoints authored actions, consumes the checked build a
     }
     assert.equal(rejected,true);assert.equal(terminal.status,'errored');
     const state=await call({op:'state'});
+    assert.ok(state.github.some((check: any) => check.details_url === "https://dash.cloudflare.com/account/workers/workflows/effect-ci-showcase/instance/release-reject"));
+    assert.equal(JSON.stringify(state.github).includes("/workflows/effect-ci-github-cloudflare/"), false);
     assert.equal(state.prepared,0);assert.equal(state.phase,0);assert.equal(state.commits,0);
     assert.equal(state.publications.length,1,"a human reviews the checked immutable preview, not an unbuilt promise");
     for(const mode of ['progress','reject-10','deadline-10']){

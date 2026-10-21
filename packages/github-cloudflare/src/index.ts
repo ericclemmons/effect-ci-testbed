@@ -72,6 +72,9 @@ export interface HostFailure extends Omit<HostFinalization<never>, "value" | "pu
 }
 
 export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache"> {
+  /** Host-owned display link for this selected native Workflow, shared by
+   * GitHub checks, Slack cards and finalization. Never project parameters. */
+  readonly detailsUrl?: (environment: Environment, instanceId: string) => string | undefined
   /** Host-authored only. Journal each side effect using the supplied native step;
    * never automatically replay a command whose result is unavailable. */
   readonly onFailure?: (context: HostFailure) => Promise<void>
@@ -252,7 +255,7 @@ export const workflowEntrypoint = <A>(
       workspaceId: event.instanceId,
     })
     let operation = 0
-    const workflowDetailsUrl = github?.detailsUrl ?? detailsUrl(
+    const workflowDetailsUrl = options.detailsUrl?.(this.env, event.instanceId) ?? github?.detailsUrl ?? detailsUrl(
       this.env.EFFECT_CI_DETAILS_URL,
       event.instanceId,
     )
