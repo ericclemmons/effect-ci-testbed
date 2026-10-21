@@ -4,7 +4,7 @@ import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import type { DemoAssets } from "@effect-ci-testbed/cloudflare/demo-site";
 import { showcaseProgram } from "./showcase-program.ts";
 import { finalizeShowcaseRun } from "./showcase-release.ts";
-import { showcaseGitHubAllowed, showcaseProductionAllowed, showcaseRunAllowed, showcaseSelection } from "./showcase-policy.ts";
+import { showcaseDetailsUrl, showcaseGitHubAllowed, showcaseProductionAllowed, showcaseRunAllowed, showcaseSelection } from "./showcase-policy.ts";
 import { demoWorkspaceResultCache } from "./demo-workspace-result-cache.ts";
 import { showcaseBuildIdentity, showcaseRoot, showcaseAuthorityName } from "./showcase-runner-policy.ts";
 import type { RunnerStepAuthority } from "@effect-ci-testbed/cloudflare/runner-step-result";
@@ -36,6 +36,7 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   return CI.workflow("demo", () => CI.parallel(selection.map(goal => program[goal]())));
 }, {
   root: "examples/demo",
+  detailsUrl: showcaseDetailsUrl,
   cache: false,
   container: { image: "showcase", instance: "standard-1", loginShell: false,
     readyCommand: showcaseReadyCommand },
