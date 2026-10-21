@@ -109,6 +109,8 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.
     readonly exports: unknown
     readonly parameters: WorkflowParameters
     readonly instanceId: string
+    /** Trusted adapter must explicitly select public fields; never return a Workspace. */
+    readonly value: A
   }) => Promise<unknown>
 }
 
@@ -417,10 +419,10 @@ export const workflowEntrypoint = <A>(
     let evidence: unknown
     let evidenceCollected = false
     const finalizationOnce = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const
-    const collectEvidence = async () => {
+    const collectEvidence = async (value: A) => {
       if (options.executionEvidence) {
         evidence = await step.do("host-execution-evidence", () => options.executionEvidence!({
-          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId,
+          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId, value,
         }) as Promise<any>)
       }
       evidenceCollected = true
@@ -513,7 +515,7 @@ export const workflowEntrypoint = <A>(
         if (finalizationName && github && token && reporter) {
           // Proof persistence is part of CI, never something a separate release
           // check may bypass. Keep the default combined behavior unchanged.
-          await collectEvidence()
+          await collectEvidence(result.value)
           await reporter.report(deferredCompletion)
           finalizationCheck = await step.do("github:finalization-check:create", finalizationOnce, async () => GitHub.createCheck({
             token: await token(), repository: github.repositoryName, sha: event.payload.revision,
@@ -549,7 +551,7 @@ export const workflowEntrypoint = <A>(
         })
         await finishFinalizationCheck("success")
       }
-      if (!evidenceCollected) await collectEvidence()
+      if (!evidenceCollected) await collectEvidence(result.value)
       if (deferredCompletion) {
         if (!reporter?.isComplete) await reporter?.report(deferredCompletion)
         const completion = deferredCompletion

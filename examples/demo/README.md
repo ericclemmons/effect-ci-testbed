@@ -86,7 +86,8 @@ Adopt the supplied workflow when you want more control:
 ```sh
 mkdir -p .cloudflare/ci
 cp tutorial/workflow.ts .cloudflare/ci/workflow.ts
-git add .cloudflare/ci/workflow.ts
+cp tutorial/program.ts .cloudflare/ci/program.ts
+git add .cloudflare/ci
 git commit -m "Add CI workflow"
 pnpm exec cf-ci run
 ```

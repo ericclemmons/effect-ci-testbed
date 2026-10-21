@@ -42,6 +42,7 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   // a symlinked hoist directory; no app source or install state is inherited.
   mkdirSync(join(root, ".cloudflare/ci"), { recursive: true });
   cpSync(join(root, "tutorial/workflow.ts"), join(root, ".cloudflare/ci/workflow.ts"));
+  cpSync(join(root, "tutorial/program.ts"), join(root, ".cloudflare/ci/program.ts"));
   // This is a NEW independent Git repository, not the checkout which launched
   // the test. An inherited GITHUB_SHA would correctly make its local diff
   // unknown/stale and run lint. Do not import the parent's source identity,

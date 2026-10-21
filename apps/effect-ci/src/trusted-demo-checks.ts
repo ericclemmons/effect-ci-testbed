@@ -5,6 +5,7 @@ import { runnerCheckFingerprint, signRunnerCheckReceipt, verifyRunnerCheckReceip
 import { syntaxCommand, syntaxRepository, syntaxWorkflow } from "@effect-ci-testbed/cloudflare/node-syntax-check";
 import { testCommand } from "@effect-ci-testbed/cloudflare/demo-test-check";
 import { demoRunnerPolicyDigest, demoBuildIdentity } from "./demo-runner-policy.ts";
+import { showcaseBuildIdentity, showcaseRoot } from "./showcase-runner-policy.ts";
 import { runnerStepFingerprint, signRunnerStepReceipt, verifyRunnerStepReceipt,
   type RunnerStepIdentity, type RunnerStepClaim } from "@effect-ci-testbed/cloudflare/runner-step-result";
 
@@ -53,8 +54,9 @@ export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: 
     });
   }
   async #eligibleStep(identity: RunnerStepIdentity) {
-    if (!identity || identity.repository !== syntaxRepository || identity.workflowId !== syntaxWorkflow || identity.stepId !== "build" || !this.env.VERSION_METADATA?.id) return false;
-    return await runnerStepFingerprint(identity) === await runnerStepFingerprint(await demoBuildIdentity(identity.revision, this.env.VERSION_METADATA.id));
+    if (!identity || identity.repository !== syntaxRepository || identity.stepId !== "build" || !this.env.VERSION_METADATA?.id) return false;
+    const identify = identity.workflowId === syntaxWorkflow ? demoBuildIdentity : identity.workflowId === "demo" ? showcaseBuildIdentity : undefined;
+    return identify !== undefined && await runnerStepFingerprint(identity) === await runnerStepFingerprint(await identify(identity.revision, this.env.VERSION_METADATA.id));
   }
   async stepResult(identity: RunnerStepIdentity) {
     if (!await this.#eligibleStep(identity)) return;
@@ -62,7 +64,7 @@ export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: 
     return verifyRunnerStepReceipt(receipt, identity, new Map([[keyId, this.#keys.publicKey]]));
   }
   async recordStepResult(claim: RunnerStepClaim): Promise<void> {
-    if (!await this.#eligibleStep(claim.identity) || claim.result.cwd !== "/workspace/repository/test/fixtures/demo")
+    if (!await this.#eligibleStep(claim.identity) || claim.result.cwd !== (claim.identity.workflowId === "demo" ? showcaseRoot : "/workspace/repository/test/fixtures/demo"))
       throw Error("Unenrolled workspace result");
     const fingerprint = await runnerStepFingerprint(claim.identity);
     const key = `step-result:${claim.identity.revision}:${fingerprint}`;

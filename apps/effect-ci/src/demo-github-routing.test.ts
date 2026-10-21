@@ -4,10 +4,11 @@ import test from "node:test";
 import { worker, type GitHubClient, type WorkerEnvironment } from "@effect-ci-testbed/github-cloudflare/worker";
 import { demoGitHubRun } from "./demo-policy.ts";
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
+import { showcaseGitHubRun } from "./showcase-policy.ts";
 
 const secret = "signed-routing-fixture";
 function fixture(githubRun = demoGitHubRun) {
-  const selected: any[] = [], fallback: any[] = [], checks: any[] = [];
+  const selected: any[] = [], showcase: any[] = [], fallback: any[] = [], checks: any[] = [];
   let tokens = 0, reads = 0;
   const binding = (created: any[]) => ({
     create: async (input: any) => { created.push(input); },
@@ -30,7 +31,7 @@ function fixture(githubRun = demoGitHubRun) {
     GITHUB_APP_ID: "5089816", GITHUB_PRIVATE_KEY: "unused-by-fixture",
     GITHUB_WEBHOOK_SECRET: secret,
   } as WorkerEnvironment;
-  const context = { exports: { DemoCIWorkflow: binding(selected), EffectCIWorkflow: binding(selected) } } as unknown as ExecutionContext;
+  const context = { exports: { DemoCIWorkflow: binding(selected), EffectCIWorkflow: binding(selected), ShowcaseCIWorkflow: binding(showcase) } } as unknown as ExecutionContext;
   const dispatch = (id: string, repository = "ericclemmons/effect-ci-testbed", branch = "main",
     installation = 165265172, app = 5089816, valid = true) => {
     const body = JSON.stringify({
@@ -45,7 +46,7 @@ function fixture(githubRun = demoGitHubRun) {
       },
     }), environment, context);
   };
-  return { dispatch, selected, fallback, checks, counts: () => ({ tokens, reads }) };
+  return { dispatch, selected, showcase, fallback, checks, counts: () => ({ tokens, reads }) };
 }
 
 test("a signed check suite for an installed but unenrolled repo starts no default pipeline or checks", async () => {
@@ -59,6 +60,25 @@ test("a signed check suite for an installed but unenrolled repo starts no defaul
   assert.equal(f.checks.length, 0);
   assert.equal(f.fallback.length, 0);
   assert.equal(f.selected.length, 0);
+});
+
+test("signed showcase branches select the authored showcase while main keeps product-only CI", async () => {
+  const f = fixture((identity, environment, context) =>
+    showcaseGitHubRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context));
+  for (const branch of ["demo/showcase-preview", "demo/showcase"]) {
+    assert.equal((await f.dispatch(branch, undefined, branch)).status, 202);
+  }
+  assert.equal(f.showcase.length, 2);
+  assert.equal(f.selected.length, 0);
+  assert.equal((await f.dispatch("ordinary-main", undefined, "main")).status, 202);
+  assert.equal(f.selected.length, 1);
+  assert.equal(f.showcase.length, 2);
+  const before = f.counts().tokens;
+  assert.equal((await f.dispatch("unsigned-showcase", undefined, "demo/showcase", 165265172, 5089816, false)).status, 401);
+  await f.dispatch("unenrolled-showcase", "other/repo", "demo/showcase");
+  assert.equal(f.counts().tokens, before);
+  assert.equal(f.showcase.length, 2);
+  assert.equal(f.fallback.length, 0);
 });
 
 test("monorepo main and feature branches never start tutorial deployments or approval gates", async () => {

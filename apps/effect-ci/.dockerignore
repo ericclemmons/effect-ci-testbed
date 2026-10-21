@@ -1,6 +1,7 @@
 **
 !Dockerfile
 !Dockerfile.trusted-demo
+!Dockerfile.showcase
 !Dockerfile.standalone
 !.standalone-runtime
 !.standalone-runtime/package.json
