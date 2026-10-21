@@ -1,8 +1,8 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
-import { showcaseGitHubRun, showcaseRunAllowed, showcaseSelection, showcaseRouteAllowed } from "./showcase-policy.ts";
-import { ShowcaseGoal } from "./showcase-protocol.ts";
+import { showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
+import { showcaseApi as showcase } from "./showcase-api.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
@@ -38,21 +38,6 @@ export {
 const ci = GitHubCloudflare.worker({
   githubRun: (identity, environment, context) => showcaseGitHubRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context),
   remoteRunAllowed: () => false,
-});
-const showcase = GitHubCloudflare.worker({
-  routePrefix: "/showcase",
-  remoteTargets: ShowcaseGoal.literals,
-  remoteResult: true,
-  remoteAuthentication: ["api-token", "cloudflare-access-identity"],
-  remoteRunAllowed: input => {
-    if (!showcaseRunAllowed(input)) return false;
-    try { showcaseSelection(input); return true; } catch { return false; }
-  },
-  workflow: (_environment, context) => {
-    const binding = (context?.exports as unknown as { ShowcaseCIWorkflow?: Workflow<GitHubCloudflare.WorkflowParameters> } | undefined)?.ShowcaseCIWorkflow;
-    if (!binding) throw Error("ShowcaseCIWorkflow is not exported");
-    return binding;
-  },
 });
 const demo = GitHubCloudflare.worker({
   routePrefix: "/demo",

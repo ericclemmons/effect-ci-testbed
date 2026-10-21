@@ -19,10 +19,10 @@ test("actual SQLite authority signs once, verifies on another run, and never exp
       if(operation==='deny'){try{await owner.record(claim);return Response.json({rejected:false})}catch{return Response.json({rejected:true})}}
       return Response.json({verified:await owner.lookup(claim.identity),receipt:await owner.receipt(claim.identity),key:await owner.publicKey()});
     }};`, resolveDir: new URL(".", import.meta.url).pathname, sourcefile: "trusted-probe.ts", loader: "ts" },
-    bundle: true, write: false, format: "esm", target: "esnext", external: ["cloudflare:workers"] });
+    bundle: true, write: false, format: "esm", target: "esnext", external: ["cloudflare:workers", "node:*"] });
   const name = "trusted-runner-probe";
   const runtime = new Miniflare({ workers: [{ config: {
-    name, compatibilityDate: "2026-10-07",
+    name, compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
     manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: output.outputFiles[0].text } } },
     exports: { TrustedDemoChecks: { type: "durable-object", storage: "sqlite" } },
     env: { CHECKS: { type: "durable-object", worker: name, exportName: "TrustedDemoChecks" } },

@@ -6,7 +6,7 @@ import { showcaseProgram } from "./showcase-program.ts";
 import { finalizeShowcaseRun } from "./showcase-release.ts";
 import { showcaseGitHubAllowed, showcaseProductionAllowed, showcaseRunAllowed, showcaseSelection } from "./showcase-policy.ts";
 import { demoWorkspaceResultCache } from "./demo-workspace-result-cache.ts";
-import { showcaseBuildIdentity, showcaseRoot } from "./showcase-runner-policy.ts";
+import { showcaseBuildIdentity, showcaseRoot, showcaseAuthorityName } from "./showcase-runner-policy.ts";
 import type { RunnerStepAuthority } from "@effect-ci-testbed/cloudflare/runner-step-result";
 import * as Effect from "effect/Effect";
 import { decodeShowcasePublication } from "./showcase-protocol.ts";
@@ -14,6 +14,12 @@ import { cleanupShowcase } from "./showcase-cleanup.ts";
 import { showcaseCheckCache } from "./showcase-check-cache.ts";
 import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { showcaseReadyCommand } from "./showcase-process-policy.ts";
+import { retainShowcaseAttempt, restoreShowcaseAttempt } from "./showcase-attempt.ts";
+import { ShowcaseRerun } from "./showcase-protocol.ts";
+import * as Schema from "effect/Schema";
+import { prepareExecutionClaim } from "@effect-ci-testbed/cloudflare/execution-receipt";
+import { showcaseExecutionContext, showcaseExecutionIdentity, showcaseExecutionVersion,
+  type ShowcaseExecutionAuthority } from "./showcase-execution.ts";
 
 const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, parameters) => {
   const selection = showcaseSelection(parameters);
@@ -48,23 +54,71 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   },
   finalize: finalizeShowcaseRun,
   finalizationCheck: parameters => showcaseProductionAllowed(parameters) ? "Rollout / conference demo" : "Preview / conference demo",
-  checkCache: (environment, { runner, exports, instanceId }) => {
-    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerCheckAuthority } }).TrustedDemoChecks.getByName("showcase-trusted-runner-v1");
+  onAttempt: async (attempt, { environment, exports, parameters, instanceId }) => {
+    const context = showcaseExecutionContext(parameters);
+    const identity = await showcaseExecutionIdentity(context, showcaseExecutionVersion(environment));
+    // Hash SDK workspace values here, before RPC transports erase their classes.
+    const claim = await prepareExecutionClaim({ identity, instanceId, attempt });
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): ShowcaseExecutionAuthority } }).TrustedDemoChecks;
+    const store = authority.getByName(showcaseAuthorityName);
+    await store.recordExecution(context, claim);
+    const retained = retainShowcaseAttempt(attempt, { revision: parameters.revision,
+      version: showcaseExecutionVersion(environment), instanceId });
+    if (retained) await store.retainCompute(retained);
+  },
+  rerun: async (environment, { runner, exports, instanceId, parameters, step }) => {
+    const { rerunFrom } = Schema.decodeUnknownSync(ShowcaseRerun)(parameters);
+    if (rerunFrom === undefined) return;
+    if (parameters.trigger !== "remote") throw Error("Only explicit remote compute reruns are enrolled");
+    const steps = parameters.targets ?? [parameters.target!];
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): ShowcaseExecutionAuthority } }).TrustedDemoChecks;
+    const retained = await step.do("showcase:compute-rerun-input", {
+      retries: { limit: 0, delay: "1 second" }, timeout: "1 minute",
+    }, async () => {
+      const previous = await authority.getByName(showcaseAuthorityName).computeAttempt(parameters.revision, rerunFrom);
+      if (!previous) throw Error("No completed same-commit compute attempt is available");
+      return previous;
+    });
+    const previous = restoreShowcaseAttempt(retained, { revision: parameters.revision,
+      version: showcaseExecutionVersion(environment), instanceId });
+    const selection = CI.planRerun(previous.plan, steps);
+    for (const id of selection.reuse) {
+      const value = previous.outputs[id];
+      if (value instanceof CI.Workspace && !await Effect.runPromise(runner.fileSystem.exists(value, ".", id)))
+        throw Error("Previous compute snapshot is unavailable; start a fresh computation");
+    }
+    return { previous, steps };
+  },
+  checkCache: (environment, { runner, exports, instanceId, parameters }) => {
+    // An explicit rerun recomputes affected nodes. Unaffected nodes come from
+    // the retained attempt; old signed checks are not rewritten or revoked.
+    if (parameters.trigger === "remote" && parameters.rerunFrom)
+      return { lookup: () => Effect.succeed(false), record: () => Effect.void };
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerCheckAuthority } }).TrustedDemoChecks.getByName(showcaseAuthorityName);
     return showcaseCheckCache(runner, instanceId, authority, (environment as { VERSION_METADATA?: { id: string } }).VERSION_METADATA?.id);
   },
-  stepResultCache: (environment, { runner, exports, instanceId }) => {
-    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerStepAuthority } }).TrustedDemoChecks.getByName("showcase-trusted-runner-v1");
+  stepResultCache: (environment, { runner, exports, instanceId, parameters }) => {
+    if (parameters.trigger === "remote" && parameters.rerunFrom)
+      return { lookup: () => Effect.succeed(undefined), record: () => Effect.void };
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): RunnerStepAuthority } }).TrustedDemoChecks.getByName(showcaseAuthorityName);
     const version = (environment as { VERSION_METADATA?: { id: string } }).VERSION_METADATA?.id;
     return demoWorkspaceResultCache(runner, instanceId, authority, version,
       { workflowId: "demo", cwd: showcaseRoot, identity: showcaseBuildIdentity });
   },
   executionEvidence: async ({ exports, parameters, value }) => {
-    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): { forCommit(revision: string): Promise<object> } } }).TrustedDemoChecks.getByName("showcase-trusted-runner-v1");
-    const signed = await authority.forCommit(parameters.revision);
-    if (showcaseSelection(parameters)) return signed;
+    const authority = (exports as { TrustedDemoChecks: { getByName(name: string): { forCommit(revision: string): Promise<{
+      keyId: string; publicKey: JsonWebKey; receipts: ReadonlyArray<unknown>;
+    }> } } }).TrustedDemoChecks.getByName(showcaseAuthorityName);
+    const privateResults = await authority.forCommit(parameters.revision);
+    // Snapshot-bearing workspace-result receipts stay in private host storage.
+    // Public execution observations commit their outputs without exposing handles.
+    const signed = { keyId: privateResults.keyId, publicKey: privateResults.publicKey, receipts: privateResults.receipts };
+    const journal = (exports as { TrustedDemoChecks: { getByName(name: string): ShowcaseExecutionAuthority } }).TrustedDemoChecks;
+    const executions = await journal.getByName(showcaseAuthorityName).executionHistory(parameters.revision);
+    if (showcaseSelection(parameters)) return { ...signed, executions };
     // Add only the decoded public publication receipt, not the workflow's
     // unchecked value, a live Workspace, or raw command output.
-    return { ...signed, publication: await Effect.runPromise(decodeShowcasePublication(value)) };
+    return { ...signed, executions, publication: await Effect.runPromise(decodeShowcasePublication(value)) };
   },
 });
 

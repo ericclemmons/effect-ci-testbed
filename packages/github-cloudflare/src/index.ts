@@ -61,6 +61,14 @@ export interface HostFinalization<A> {
 }
 
 export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache"> {
+  /** Private host hydration; projects cannot supply a previous attempt object. */
+  readonly rerun?: (environment: Environment, context: {
+    readonly runner: Cloudflare.Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: WorkflowParameters
+    readonly step: WorkflowStep
+  }) => Promise<CI.WorkflowRerun | undefined>
   /** Opt-in for self-hosted remote runs: resolve this host App's installation,
    * borrow a repository-only Contents-read token, revoke after checkout. */
   readonly remoteGitHubCheckout?: boolean
@@ -444,7 +452,10 @@ export const workflowEntrypoint = <A>(
     try {
       if (finalizationName !== undefined && (typeof finalizationName !== "string" || !finalizationName.trim() || finalizationName.length > 128 || /[\x00-\x1f\x7f]/.test(finalizationName)))
         throw Error("Invalid deployment finalization check name")
+      const rerun = await options.rerun?.(this.env, { runner, exports: this.ctx.exports,
+        instanceId: event.instanceId, parameters: event.payload, step })
       const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(definition, {
+        ...(rerun ? { rerun } : {}),
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
             card.setReviewUrl(url)
@@ -479,13 +490,14 @@ export const workflowEntrypoint = <A>(
           const key = runtimeEvent.type === "step.status"
               ? `${runtimeEvent.stepId}:${runtimeEvent.status}`
               : runtimeEvent.type === "step.command.failed" ? `${runtimeEvent.stepId}:command-failed`
+              : runtimeEvent.type === "step.command.unavailable" ? `${runtimeEvent.stepId}:command-unavailable`
               : runtimeEvent.type === "approval.resolved"
                 ? `${runtimeEvent.requestId}:${runtimeEvent.decision}`
                 : runtimeEvent.type === "approval.requested"
                   ? `${runtimeEvent.requestId}:waiting`
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
-          const threadKey = runtimeEvent.type === "step.command.failed" ? runtimeEvent.stepId :
+          const threadKey = runtimeEvent.type === "step.command.failed" || runtimeEvent.type === "step.command.unavailable" ? runtimeEvent.stepId :
             // Routine status belongs in the maintained table, not another reply.
             // Keep attention-worthy detail and update existing approval/failure replies.
             runtimeEvent.type === "step.status" && (["failed", "warning"].includes(runtimeEvent.status) || threadMessages.has(runtimeEvent.stepId)) ? runtimeEvent.stepId :

@@ -32,6 +32,7 @@ test("the showcase consumes a signed checked build in another run and rebuilds e
       if(input.op==='start'){await ctx.exports.ShowcaseCIWorkflow.create({id:input.id,params:{trigger:'remote',repository:'https://github.com/ericclemmons/effect-ci-testbed.git',revision:input.revision??'a'.repeat(40)}});return Response.json(true)}
       if(input.op==='status')return Response.json(await(await ctx.exports.ShowcaseCIWorkflow.get(input.id)).status());
       if(input.op==='expire'){snapshots.delete(input.snapshot);return Response.json(true)}
+      if(input.op==='private-receipt')return Response.json(await ctx.exports.TrustedDemoChecks.getByName('showcase-trusted-runner-v1').forCommit('a'.repeat(40)));
       return Response.json({builds,publications});
     }};
   ` }, bundle: true, write: false, format: "esm", platform: "neutral", target: "esnext", conditions: ["workerd", "import"], external: ["cloudflare:workers", "node:*"] });
@@ -56,7 +57,8 @@ test("the showcase consumes a signed checked build in another run and rebuilds e
     const first = await run("first");
     const second = await run("second");
     assert.equal(second.nodes.find((node: any) => node.id === "build").status, "reused");
-    const receipt = first.evidence.stepResults[0];
+    assert.equal(first.evidence.stepResults, undefined, "public workflow results must not export snapshot capabilities");
+    const receipt = (await call({ op: "private-receipt" })).stepResults[0];
     const key = await crypto.subtle.importKey("jwk", first.evidence.publicKey, "Ed25519", false, ["verify"]);
     assert.deepEqual(await verifyRunnerStepReceipt(JSON.stringify(receipt), receipt.claim.identity, new Map([[first.evidence.keyId, key]])), receipt.claim.result);
     let state = await call({ op: "state" });

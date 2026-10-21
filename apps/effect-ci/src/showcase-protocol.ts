@@ -7,6 +7,9 @@ export const ShowcaseSelection = Schema.Struct({
   target: Schema.optionalKey(ShowcaseGoal),
   targets: Schema.optionalKey(ShowcaseGoals),
 });
+export const ShowcaseRerun = Schema.Struct({
+  rerunFrom: Schema.optionalKey(Schema.String.check(Schema.isUUID(undefined))),
+});
 export const ShowcaseRevision = Schema.String.check(Schema.isLowercased()).pipe(
   Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(20, 20))),
 );

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as CI from "@effect-ci-testbed/ci";
 import { signExecutionReceipt, verifyExecutionReceipt, type ExecutionIdentity } from "./execution-receipt.ts";
+import * as Execution from "./execution-receipt.ts";
 
 const identity: ExecutionIdentity = {
   issuer: "https://ci.acme.example", repository: "https://git.acme.example/team/project.git",
@@ -19,6 +20,22 @@ const execute = async (fail = false, value: unknown = { private: "PRIVATE_RESULT
   assert.ok(attempt);
   return attempt;
 };
+
+test("host prepares portable observation commitments before crossing the private signing RPC", async () => {
+  const keys = await keyPair();
+  const attempt = await execute(false, CI.Workspace.remote("private-owner", "/workspace/repository", {
+    provider: "cloudflare-container", value: { id: "PRIVATE_SNAPSHOT_CAPABILITY", size: 10 },
+  }));
+  const claim = await Execution.prepareExecutionClaim({ identity, instanceId: "native-observation", attempt });
+  const portable = JSON.parse(JSON.stringify(claim));
+  assert.ok(!JSON.stringify(portable).includes("PRIVATE_SNAPSHOT_CAPABILITY"));
+  assert.equal(portable.steps.find((step: any) => step.id === "arbitrary-action").output.kind, "workspace");
+  const receipt = await Execution.signExecutionClaim({ keyId: "acme", key: keys.privateKey, claim: portable });
+  const verified = await verifyExecutionReceipt(JSON.stringify(receipt), identity, new Map([["acme", keys.publicKey]]));
+  assert.deepEqual(verified, claim);
+  assert.deepEqual((await signExecutionReceipt({ keyId: "acme", key: keys.privateKey, identity,
+    instanceId: "native-observation", attempt })).claim, claim);
+});
 
 test("receipts sign arbitrary actual checks/actions and workflow outcomes without exposing outputs", async () => {
   const keys = await keyPair();

@@ -127,6 +127,10 @@ export class RunCard {
         this.commandFailures.set(event.stepId, output)
         return true
       }
+      case "step.command.unavailable":
+        if (event.stage !== "container-execution" && event.stage !== "checkpoint-ack") return false
+        this.setFailure(event.stepId, `Command result unavailable (${event.stage}). Process exit unknown. No stdout or stderr was captured. External effects may already exist; reconcile this run and do not rerun automatically.`)
+        return true
       case "dependency.added":
         this.check(event.stepId).dependencies.add(event.dependency)
 

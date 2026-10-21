@@ -23,14 +23,15 @@ const recordKey = async (instanceId: string, attempt: number) => {
   return `execution:${await hash([instanceId, attempt])}`;
 };
 
-/** Private RPC only. The operator supplies current trust; project code receives
- * neither this binding nor a signing key. No receipt can enroll its own key. */
-export function executionJournal<Environment>(options: {
-  readonly keys: (environment: Environment) => ReadonlyMap<string, CryptoKey> | Promise<ReadonlyMap<string, CryptoKey>>;
-}) {
-  return class ExecutionJournal extends DurableObject<Environment> {
+/** The same private immutable journal can live behind an existing host capability;
+ * composing it does not require another binding or expose a new HTTP writer. */
+export class ExecutionJournalState {
+    constructor(private readonly storage: DurableObjectStorage,
+      private readonly loadKeys: () => ReadonlyMap<string, CryptoKey> | Promise<ReadonlyMap<string, CryptoKey>>,
+      private readonly options: { readonly partitionByCommit?: boolean } = {}) {}
+    private prefix(owner: string) { return this.options.partitionByCommit ? `${owner}:` : ""; }
     async #keys() {
-      try { return await options.keys(this.env); }
+      try { return await this.loadKeys(); }
       catch { throw Error("Execution trust unavailable"); }
     }
 
@@ -38,23 +39,25 @@ export function executionJournal<Environment>(options: {
       const claim = await verifyExecutionReceipt(serialized, expected, await this.#keys());
       if (!claim) throw Error("Execution receipt rejected");
       const owner = await executionCommitName(claim.identity);
-      const key = await recordKey(claim.instanceId, claim.attempt);
-      return this.ctx.storage.transaction(async storage => {
-        const current = await storage.get<string>("owner");
+      const prefix = this.prefix(owner), ownerKey = `${prefix}owner`;
+      const key = prefix + await recordKey(claim.instanceId, claim.attempt);
+      return this.storage.transaction(async storage => {
+        const current = await storage.get<string>(ownerKey);
         if (current !== undefined && current !== owner) throw Error("Execution journal belongs to another commit");
         const existing = await storage.get<string>(key);
         if (existing !== undefined) {
           if (existing !== serialized) throw Error("Immutable execution record conflict");
           return { created: false };
         }
-        await storage.put({ owner, [key]: serialized });
+        await storage.put({ [ownerKey]: owner, [key]: serialized });
         return { created: true };
       });
     }
 
     async get(expected: ExecutionIdentity, instanceId: string, attempt: number): Promise<string | undefined> {
-      if (await this.ctx.storage.get("owner") !== await executionCommitName(expected)) return;
-      const serialized = await this.ctx.storage.get<string>(await recordKey(instanceId, attempt));
+      const owner = await executionCommitName(expected), prefix = this.prefix(owner);
+      if (await this.storage.get(`${prefix}owner`) !== owner) return;
+      const serialized = await this.storage.get<string>(prefix + await recordKey(instanceId, attempt));
       const claim = await verifyExecutionReceipt(serialized, expected, await this.#keys());
       return claim?.instanceId === instanceId && claim.attempt === attempt ? serialized : undefined;
     }
@@ -65,10 +68,11 @@ export function executionJournal<Environment>(options: {
       receipts: string[]; unverified: number; next?: string;
     }> {
       const owner = await executionCommitName(subject);
-      if (await this.ctx.storage.get("owner") !== owner) return { receipts: [], unverified: 0 };
+      const partition = this.prefix(owner), prefix = `${partition}execution:`;
+      if (await this.storage.get(`${partition}owner`) !== owner) return { receipts: [], unverified: 0 };
       if (after !== undefined && !/^[a-f0-9]{64}$/.test(after)) throw Error("Invalid execution history cursor");
-      const entries = await this.ctx.storage.list<string>({ prefix: "execution:", limit: 26,
-        ...(after ? { startAfter: `execution:${after}` } : {}) });
+      const entries = await this.storage.list<string>({ prefix, limit: 26,
+        ...(after ? { startAfter: `${prefix}${after}` } : {}) });
       const keys = await this.#keys(), receipts: string[] = [];
       let unverified = 0;
       const page = [...entries].slice(0, 25);
@@ -77,13 +81,25 @@ export function executionJournal<Environment>(options: {
           if (typeof serialized !== "string" || serialized.length > 131_072) throw Error();
           const receipt = JSON.parse(serialized) as ExecutionReceipt;
           const claim = await verifyExecutionReceipt(serialized, receipt.claim.identity, keys);
-          if (!claim || await executionCommitName(claim.identity) !== owner || await recordKey(claim.instanceId, claim.attempt) !== key) throw Error();
+          if (!claim || await executionCommitName(claim.identity) !== owner || partition + await recordKey(claim.instanceId, claim.attempt) !== key) throw Error();
           receipts.push(serialized);
         } catch { unverified++; }
       }
-      return { receipts, unverified, ...(entries.size > 25 ? { next: page.at(-1)![0].slice("execution:".length) } : {}) };
+      return { receipts, unverified, ...(entries.size > 25 ? { next: page.at(-1)![0].slice(prefix.length) } : {}) };
     }
 
+}
+
+/** Private RPC only. The operator supplies current trust; project code receives
+ * neither this binding nor a signing key. No receipt can enroll its own key. */
+export function executionJournal<Environment>(options: {
+  readonly keys: (environment: Environment) => ReadonlyMap<string, CryptoKey> | Promise<ReadonlyMap<string, CryptoKey>>;
+}) {
+  return class ExecutionJournal extends DurableObject<Environment> {
+    private journal() { return new ExecutionJournalState(this.ctx.storage, () => options.keys(this.env)); }
+    record(expected: ExecutionIdentity, serialized: string) { return this.journal().record(expected, serialized); }
+    get(expected: ExecutionIdentity, instanceId: string, attempt: number) { return this.journal().get(expected, instanceId, attempt); }
+    history(subject: ExecutionSubject, after?: string) { return this.journal().history(subject, after); }
     fetch() { return new Response("Not found", { status: 404 }); }
   };
 }

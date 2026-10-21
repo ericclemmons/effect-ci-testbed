@@ -7,6 +7,7 @@ import { showcaseProcessPrefix, showcaseReadyCommand } from "./showcase-process-
 
 export const showcaseRepository = "https://github.com/ericclemmons/effect-ci-testbed";
 export const showcaseRoot = "/workspace/repository/examples/demo";
+export const showcaseAuthorityName = "showcase-trusted-runner-v1";
 
 /** Host version pins the authored graph, dependency installer and image policy.
  * Exact-commit reuse is host-to-host only; this never trusts a local cache key.

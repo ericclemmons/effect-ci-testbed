@@ -7,6 +7,22 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("unknown process results have explicit step detail without fabricated output or exit codes", () => {
+  const card = new RunCard(identity)
+  assert.equal(card.update({ type: "step.command.unavailable", workflowId: "build", stepId: "test",
+    stage: "container-execution", timestamp: "now" }), true)
+  card.update({ type: "step.status", workflowId: "build", stepId: "test", status: "failed", optional: false, timestamp: "now" })
+  const detail = card.render({ onlyStep: "test" })
+  assert.ok(detail.text.includes("container-execution"))
+  assert.ok(detail.text.includes("Process exit unknown"))
+  assert.ok(detail.text.includes("No stdout or stderr was captured"))
+  assert.ok(detail.text.includes("do not rerun automatically"))
+  assert.ok(!detail.text.includes("exit 1"))
+  assert.equal(card.commandLog("test"), undefined)
+  assert.ok(!card.render({ statusOnly: true }).text.includes("Process exit unknown"))
+  assert.ok(!card.renderDetails().text.includes("Process exit unknown"))
+})
+
 test("enrolled failure output stays in its step reply, redacted and bounded, never root or provider snapshot", () => {
   const card = new RunCard(identity, { failedCommandOutput: { redactValues: ["owned-private-value"] } })
   const failure: RuntimeEvent = { type: "step.command.failed", workflowId: "cf-ci-demo", stepId: "test", timestamp: "now",

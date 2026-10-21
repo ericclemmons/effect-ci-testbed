@@ -9,8 +9,16 @@ import { showcaseBuildIdentity, showcaseRoot } from "./showcase-runner-policy.ts
 import { showcaseTestCommand, showcaseTestPolicyDigest } from "./showcase-check-policy.ts";
 import { runnerStepFingerprint, signRunnerStepReceipt, verifyRunnerStepReceipt,
   type RunnerStepIdentity, type RunnerStepClaim } from "@effect-ci-testbed/cloudflare/runner-step-result";
+import { ExecutionJournalState } from "@effect-ci-testbed/cloudflare/execution-journal";
+import { signExecutionClaim, type ExecutionClaim } from "@effect-ci-testbed/cloudflare/execution-receipt";
+import { showcaseExecutionIdentity, showcaseExecutionSubject, showcaseExecutionVersion,
+  type ShowcaseExecutionContext } from "./showcase-execution.ts";
+import { decodeRetainedShowcaseAttempt, type RetainedShowcaseAttempt } from "./showcase-attempt.ts";
+import { ShowcaseRevision, ShowcaseVersion } from "./showcase-protocol.ts";
+import * as Schema from "effect/Schema";
 
 const keyId = "demo-trusted-runner-v1";
+const executionKeyId = "showcase-execution-observation-v1";
 /** Private host capability. Neither HTTP nor project containers can submit claims.
  * Storage owns a dedicated runner key, never the GitHub App or developer key.
  */
@@ -41,6 +49,42 @@ export class TrustedDemoChecks extends DurableObject<{ VERSION_METADATA?: { id: 
        (identity.stepId === "test" && identity.command === testCommand && identity.policyDigest === await demoRunnerPolicyDigest(true)));
   }
   async publicKey() { return { keyId, publicKey: await crypto.subtle.exportKey("jwk", this.#keys.publicKey) }; }
+  private executionJournal() {
+    return new ExecutionJournalState(this.ctx.storage, () => new Map([[executionKeyId, this.#keys.publicKey]]), { partitionByCommit: true });
+  }
+  async recordExecution(context: ShowcaseExecutionContext, claim: ExecutionClaim): Promise<void> {
+    try {
+      const expected = await showcaseExecutionIdentity(context, showcaseExecutionVersion(this.env));
+      if (Object.entries(expected).some(([key, value]) => claim.identity[key as keyof typeof expected] !== value)) throw Error();
+      const receipt = await signExecutionClaim({ keyId: executionKeyId, key: this.#keys.privateKey, claim });
+      await this.executionJournal().record(expected, JSON.stringify(receipt));
+    } catch { throw Error("Showcase execution observation rejected"); }
+  }
+  async executionHistory(revision: string, after?: string) {
+    const history = await this.executionJournal().history(showcaseExecutionSubject(revision), after);
+    return { keyId: executionKeyId, publicKey: await crypto.subtle.exportKey("jwk", this.#keys.publicKey),
+      receipts: history.receipts.map(value => JSON.parse(value)), unverified: history.unverified,
+      ...(history.next ? { next: history.next } : {}) };
+  }
+  /** These provider capabilities never leave the private host RPC boundary. */
+  async retainCompute(input: RetainedShowcaseAttempt): Promise<void> {
+    const value = decodeRetainedShowcaseAttempt(input);
+    if (value.version !== showcaseExecutionVersion(this.env)) throw Error("Compute host version mismatch");
+    const key = `showcase-compute:${value.revision}:${value.version}:${value.instanceId}`;
+    const serialized = JSON.stringify(value);
+    if (serialized.length > 65_536) throw Error("Compute attempt exceeds limits");
+    await this.ctx.storage.transaction(async tx => {
+      const existing = await tx.get<string>(key);
+      if (existing !== undefined && existing !== serialized) throw Error("Immutable compute attempt conflict");
+      if (existing === undefined) await tx.put(key, serialized);
+    });
+  }
+  async computeAttempt(revision: string, instanceId: string): Promise<RetainedShowcaseAttempt | undefined> {
+    Schema.decodeUnknownSync(ShowcaseRevision)(revision);
+    Schema.decodeUnknownSync(ShowcaseVersion)(instanceId);
+    const serialized = await this.ctx.storage.get<string>(`showcase-compute:${revision}:${showcaseExecutionVersion(this.env)}:${instanceId}`);
+    return serialized === undefined ? undefined : decodeRetainedShowcaseAttempt(JSON.parse(serialized));
+  }
   async receipt(identity: HostedCheckIdentity): Promise<string | undefined> {
     if (!await this.#eligible(identity)) return;
     return this.ctx.storage.get<string>(`receipt:${identity.revision}:${await runnerCheckFingerprint(identity)}`);

@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import type { WorkerOptions } from "@effect-ci-testbed/github-cloudflare/worker";
-import { ShowcaseSelection, ShowcaseRevision } from "./showcase-protocol.ts";
+import { ShowcaseSelection, ShowcaseRevision, ShowcaseRerun } from "./showcase-protocol.ts";
 
 export const showcasePreviewRef = "refs/heads/demo/showcase-preview";
 export const showcaseReleaseRef = "refs/heads/demo/showcase";
@@ -24,13 +24,19 @@ export const showcaseProductionAllowed = (input: { trigger?: string; ref?: strin
 
 export function showcaseSelection(input: unknown) {
   const selected = Schema.decodeUnknownSync(ShowcaseSelection)(input);
+  const rerun = Schema.decodeUnknownSync(ShowcaseRerun)(input);
+  if (rerun.rerunFrom !== undefined) {
+    if (selected.target !== undefined && selected.targets !== undefined || selected.target === undefined && selected.targets === undefined)
+      throw Error("Explicit compute rerun goals required");
+    return ["build"] as const;
+  }
   if (selected.target === undefined && selected.targets === undefined) return undefined;
   if (selected.target !== undefined && selected.targets !== undefined) throw Error("Ambiguous showcase goals");
   return selected.targets ?? [selected.target!];
 }
 
 const routes = ["/showcase", "/showcase/", "/showcase/capabilities", "/showcase/runs",
-  "/showcase/runs/:id", "/showcase/runs/:id/events"].map(pathname => new URLPattern({ pathname }));
+  "/showcase/executions", "/showcase/runs/:id", "/showcase/runs/:id/events"].map(pathname => new URLPattern({ pathname }));
 export const showcaseRouteAllowed = (url: string) => routes.some(route => route.test(url));
 
 /** Only two explicit owned showcase branches, never main/tutorial auto-CD. */
