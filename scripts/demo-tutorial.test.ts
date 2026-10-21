@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
 const template = resolve("examples/demo");
+
+test("hosted tour explains immutable reruns and real human release gates", () => {
+  const readme = readFileSync(join(template, "README.md"), "utf8");
+  for (const instruction of ["--rerun-from RUN_ID", "Start", "before uploading", "primary run stays failed", "No pull request is created"])
+    assert.ok(readme.includes(instruction), `keep the hosted behavior explicit: ${instruction}`);
+  assert.ok(!readme.includes("are not yet connected end-to-end"), "describe the enrolled host adapter, not the obsolete disconnected tour");
+});
 
 test("the demo is a standalone kitchen-sink tour without implicit hosted authority", () => {
   const pkg = JSON.parse(readFileSync(join(template, "package.json"), "utf8"));
@@ -42,6 +49,7 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   // a symlinked hoist directory; no app source or install state is inherited.
   mkdirSync(join(root, ".cloudflare/ci"), { recursive: true });
   cpSync(join(root, "tutorial/workflow.ts"), join(root, ".cloudflare/ci/workflow.ts"));
+  cpSync(join(root, "tutorial/program.ts"), join(root, ".cloudflare/ci/program.ts"));
   // This is a NEW independent Git repository, not the checkout which launched
   // the test. An inherited GITHUB_SHA would correctly make its local diff
   // unknown/stale and run lint. Do not import the parent's source identity,
@@ -77,6 +85,10 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   const pointer = join(root, ".effect-ci/deployed-site/current.json");
   const hasPublish = (result: any) => result.plan.nodes.some((node: any) => node.id === "publish local site");
   assert.ok(hasPublish(parsed()));
+  const assets = readdirSync(join(root, "dist"), { recursive: true })
+    .filter(path => statSync(join(root, "dist", String(path))).isFile()).sort();
+  assert.deepEqual(assets, ["app.js", "index.html", "message.js"],
+    "the hosted publisher must serve every emitted artifact, including shared JavaScript dependencies");
   const first = readFileSync(pointer, "utf8");
   assert.ok(!hasPublish(parsed()));
   assert.equal(readFileSync(pointer, "utf8"), first);

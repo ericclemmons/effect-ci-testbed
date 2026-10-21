@@ -14,7 +14,7 @@ import { hmdCardObserver } from "./hmd-card.ts";
 // Not a project environment variable, Workflow payload field or remote CLI flag.
 export const demoReviewedReleaseEnabled: boolean = true;
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const;
-export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
+export async function finalizeDemoRelease(context: HostFinalization<unknown>, options: { destination?: "showcase" } = {}) {
   const { step, card, instanceId: owner } = context;
   const value = context.value as DemoCandidateReceipt;
   if (!value || value.revision !== context.parameters.revision)
@@ -29,11 +29,14 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
   const reviews = host.HmdApprovals.getByName(owner),
     images = host.PrivateSlackImages.getByName(owner);
   const renderer = host.HealthChartRenderer({});
+  const showcase = options.destination === "showcase";
+  const workflowId = showcase ? "demo" : "cf-ci-demo";
+  const reviewed = new Set<string>();
   const timestamp = () => new Date().toISOString();
   const status = (phase: number, state: "running" | "complete") =>
     card.update({
       type: "step.status",
-      workflowId: "cf-ci-demo",
+      workflowId,
       stepId: `Release ${phase}%`,
       status: state,
       optional: false,
@@ -55,23 +58,22 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
           `demo-review:register-${observation.phase}`,
           once,
           async () => {
-            const r = await reviews.registerDemo(
-              owner,
-              observation.phase,
-              observation.snapshot,
-              observation.expiresAt,
-            );
+            const r = showcase
+              ? await reviews.registerShowcase(owner, observation.phase, observation.snapshot, observation.expiresAt)
+              : await reviews.registerDemo(owner, observation.phase, observation.snapshot, observation.expiresAt);
             return { owner: r.owner, phase: r.phase, snapshot: r.snapshot, token: r.token };
           },
         );
         card.update({
           type: "approval.requested",
-          workflowId: "cf-ci-demo",
+          workflowId,
           stepId: `Release ${observation.phase}%`,
           requestId: observation.snapshot,
           approval: {
             title: `Progress past ${observation.phase}%?`,
-            summary: `${observation.decision.reason}. Owned test rollout; browser-delegated approvals are authorized, not independent human review. Progress accepts this snapshot's risk; timeout restores the prior allocation. No automatic acceptance.`,
+            summary: showcase
+              ? `${observation.decision.reason}. A human must choose Progress or Reject. Progress accepts this snapshot's risk; rejection or timeout restores the prior allocation. No automatic acceptance.`
+              : `${observation.decision.reason}. Owned test rollout; browser-delegated approvals are authorized, not independent human review. Progress accepts this snapshot's risk; timeout restores the prior allocation. No automatic acceptance.`,
           },
           timestamp: timestamp(),
         });
@@ -119,8 +121,10 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
         );
         if (event.payload?.snapshot !== observation.snapshot)
           throw Error("Stale demo review event");
-        return step.do(`demo-review:decision-${observation.phase}`, once, async () => {
-          const r = await reviews.readDemoDecision(owner, observation.phase, observation.snapshot);
+        const decision = await step.do(`demo-review:decision-${observation.phase}`, once, async () => {
+          const r = showcase
+            ? await reviews.readShowcaseDecision(owner, observation.phase, observation.snapshot)
+            : await reviews.readDemoDecision(owner, observation.phase, observation.snapshot);
           return {
             snapshot: r.snapshot,
             decision: r.decision,
@@ -129,12 +133,14 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>) {
             acceptedAt: r.acceptedAt,
           };
         });
+        reviewed.add(observation.snapshot);
+        return decision;
       },
       settled: async (observation) => {
         await step.do(`demo-review:close-${observation.phase}`, once, () => reviews.close(owner));
-        card.update({
+        if (!showcase || reviewed.has(observation.snapshot)) card.update({
           type: "approval.resolved",
-          workflowId: "cf-ci-demo",
+          workflowId,
           stepId: `Release ${observation.phase}%`,
           requestId: observation.snapshot,
           decision: "approved",

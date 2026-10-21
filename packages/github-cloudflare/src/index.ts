@@ -60,7 +60,29 @@ export interface HostFinalization<A> {
   readonly observe?: (key: string, presentation?: { readonly text: string; readonly blocks: ReadonlyArray<SlackBlock> }, threadKey?: string) => Promise<void>
 }
 
+/** A trusted continuation may inspect the actual failed attempt. It cannot
+ * replace primary CI's result; any independent verification has its own purpose.
+ */
+export interface HostFailure extends Omit<HostFinalization<never>, "value" | "publish"> {
+  readonly runner: Cloudflare.Runner
+  readonly attempt: CI.WorkflowAttempt
+  readonly error: unknown
+  /** A distinct reporter: independent verification never updates primary CI. */
+  readonly report: CI.RuntimeEventHandler
+}
+
 export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache"> {
+  /** Host-authored only. Journal each side effect using the supplied native step;
+   * never automatically replay a command whose result is unavailable. */
+  readonly onFailure?: (context: HostFailure) => Promise<void>
+  /** Private host hydration; projects cannot supply a previous attempt object. */
+  readonly rerun?: (environment: Environment, context: {
+    readonly runner: Cloudflare.Runner
+    readonly exports: unknown
+    readonly instanceId: string
+    readonly parameters: WorkflowParameters
+    readonly step: WorkflowStep
+  }) => Promise<CI.WorkflowRerun | undefined>
   /** Opt-in for self-hosted remote runs: resolve this host App's installation,
    * borrow a repository-only Contents-read token, revoke after checkout. */
   readonly remoteGitHubCheckout?: boolean
@@ -109,6 +131,8 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.
     readonly exports: unknown
     readonly parameters: WorkflowParameters
     readonly instanceId: string
+    /** Trusted adapter must explicitly select public fields; never return a Workspace. */
+    readonly value: A
   }) => Promise<unknown>
 }
 
@@ -237,6 +261,7 @@ export const workflowEntrypoint = <A>(
       {
         executionEnvironment: "Cloudflare",
         token: "",
+        redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string" && value.length > 0),
         repository: github.repositoryName,
         sha: event.payload.revision,
         summaryCheckId: github.summaryCheckId,
@@ -417,10 +442,10 @@ export const workflowEntrypoint = <A>(
     let evidence: unknown
     let evidenceCollected = false
     const finalizationOnce = { retries: { limit: 0, delay: "1 second" }, timeout: "1 minute" } as const
-    const collectEvidence = async () => {
+    const collectEvidence = async (value: A) => {
       if (options.executionEvidence) {
         evidence = await step.do("host-execution-evidence", () => options.executionEvidence!({
-          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId,
+          exports: this.ctx.exports, parameters: event.payload, instanceId: event.instanceId, value,
         }) as Promise<any>)
       }
       evidenceCollected = true
@@ -438,10 +463,49 @@ export const workflowEntrypoint = <A>(
         ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
       }))
     }
+    const observe: NonNullable<HostFinalization<A>["observe"]> = (key, presentation, threadKey) => {
+      if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key) ||
+          (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) ||
+          hasInteractiveContent(presentation?.blocks))
+        throw new Error("Invalid observational presentation")
+      if (!hasNotificationChannels(channels) || presentationBlocked ||
+          (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs)) return Promise.resolve()
+      return notify(`host-observe:${key}`, () => true, presentation, false, threadKey)
+    }
+    let actualAttempt: CI.WorkflowAttempt | undefined
+    let attemptRecorded = false
+    const onAttempt: CI.WorkflowAttemptHandler | undefined = options.onAttempt || options.onFailure ? async attempt => {
+      actualAttempt = attempt
+      attemptRecorded = false
+      if (options.onAttempt) await Cloudflare.makeHostAttemptHandler(step, options.onAttempt, {
+        environment: this.env, exports: this.ctx.exports,
+        instanceId: event.instanceId, parameters: event.payload,
+      })(attempt)
+      attemptRecorded = true
+    } : undefined
+    let followUpReporter: GitHub.Reporter | undefined
+    let followUpOperation = 0
+    const reportFollowUp: CI.RuntimeEventHandler = async runtimeEvent => {
+      if (!github || !token) return
+      followUpReporter ??= new GitHub.Reporter({ executionEnvironment: "Cloudflare", token: "",
+        redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string" && value.length > 0),
+        repository: github.repositoryName, sha: event.payload.revision, externalId: `${github.deliveryId}:failure-follow-up`,
+        ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
+      }, {
+        createCheck: request => step.do(`github:follow-up:create-check:${followUpOperation++}`, finalizationOnce,
+          async () => GitHub.createCheck({ ...request, token: await token() })),
+        updateCheck: request => step.do(`github:follow-up:update-check:${followUpOperation++}`, finalizationOnce,
+          async () => GitHub.updateCheck({ ...request, token: await token() })),
+      })
+      await followUpReporter.report(runtimeEvent)
+    }
     try {
       if (finalizationName !== undefined && (typeof finalizationName !== "string" || !finalizationName.trim() || finalizationName.length > 128 || /[\x00-\x1f\x7f]/.test(finalizationName)))
         throw Error("Invalid deployment finalization check name")
+      const rerun = await options.rerun?.(this.env, { runner, exports: this.ctx.exports,
+        instanceId: event.instanceId, parameters: event.payload, step })
       const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(definition, {
+        ...(rerun ? { rerun } : {}),
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
             card.setReviewUrl(url)
@@ -463,10 +527,7 @@ export const workflowEntrypoint = <A>(
         },
         executor: runner.executor,
         actionExecutor: runner.actionExecutor,
-        ...(options.onAttempt ? { onAttempt: Cloudflare.makeHostAttemptHandler(step, options.onAttempt, {
-          environment: this.env, exports: this.ctx.exports,
-          instanceId: event.instanceId, parameters: event.payload,
-        }) } : {}),
+        ...(onAttempt ? { onAttempt } : {}),
         onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
           if ((options.finalize || options.executionEvidence || options.onAttempt) && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
             deferredCompletion = runtimeEvent
@@ -476,13 +537,14 @@ export const workflowEntrypoint = <A>(
           const key = runtimeEvent.type === "step.status"
               ? `${runtimeEvent.stepId}:${runtimeEvent.status}`
               : runtimeEvent.type === "step.command.failed" ? `${runtimeEvent.stepId}:command-failed`
+              : runtimeEvent.type === "step.command.unavailable" ? `${runtimeEvent.stepId}:command-unavailable`
               : runtimeEvent.type === "approval.resolved"
                 ? `${runtimeEvent.requestId}:${runtimeEvent.decision}`
                 : runtimeEvent.type === "approval.requested"
                   ? `${runtimeEvent.requestId}:waiting`
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
-          const threadKey = runtimeEvent.type === "step.command.failed" ? runtimeEvent.stepId :
+          const threadKey = runtimeEvent.type === "step.command.failed" || runtimeEvent.type === "step.command.unavailable" ? runtimeEvent.stepId :
             // Routine status belongs in the maintained table, not another reply.
             // Keep attention-worthy detail and update existing approval/failure replies.
             runtimeEvent.type === "step.status" && (["failed", "warning"].includes(runtimeEvent.status) || threadMessages.has(runtimeEvent.stepId)) ? runtimeEvent.stepId :
@@ -513,7 +575,7 @@ export const workflowEntrypoint = <A>(
         if (finalizationName && github && token && reporter) {
           // Proof persistence is part of CI, never something a separate release
           // check may bypass. Keep the default combined behavior unchanged.
-          await collectEvidence()
+          await collectEvidence(result.value)
           await reporter.report(deferredCompletion)
           finalizationCheck = await step.do("github:finalization-check:create", finalizationOnce, async () => GitHub.createCheck({
             token: await token(), repository: github.repositoryName, sha: event.payload.revision,
@@ -526,15 +588,7 @@ export const workflowEntrypoint = <A>(
         await options.finalize({
           environment: this.env, parameters: event.payload, instanceId: event.instanceId,
           step, exports: this.ctx.exports, value: result.value, card,
-          observe: (key, presentation, threadKey) => {
-            if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key) ||
-                (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) ||
-                hasInteractiveContent(presentation?.blocks))
-              throw new Error("Invalid observational presentation")
-            if (!hasNotificationChannels(channels) || presentationBlocked ||
-                (channels.SLACK_BOT_TOKEN && channels.SLACK_CHANNEL_ID && !slackMessageTs)) return Promise.resolve()
-            return notify(`host-observe:${key}`, () => true, presentation, false, threadKey)
-          },
+          observe,
           publish: (key, presentation, threadKey) => {
             if (!/^[A-Za-z0-9:_-]{1,128}$/.test(key)) throw new Error("Invalid host finalization notification key")
             if (threadKey !== undefined && !/^[A-Za-z0-9:%_ -]{1,128}$/.test(threadKey)) throw new Error("Invalid host thread key")
@@ -549,7 +603,7 @@ export const workflowEntrypoint = <A>(
         })
         await finishFinalizationCheck("success")
       }
-      if (!evidenceCollected) await collectEvidence()
+      if (!evidenceCollected) await collectEvidence(result.value)
       if (deferredCompletion) {
         if (!reporter?.isComplete) await reporter?.report(deferredCompletion)
         const completion = deferredCompletion
@@ -557,6 +611,16 @@ export const workflowEntrypoint = <A>(
       }
       return options.executionEvidence ? { ...result.plan, evidence } : result.plan
     } catch (error) {
+      if (options.onFailure && attemptRecorded && actualAttempt?.conclusion === "failure") {
+        try {
+          await options.onFailure({ environment: this.env, parameters: event.payload, instanceId: event.instanceId,
+            step, exports: this.ctx.exports, card, observe, runner, attempt: actualAttempt, error, report: reportFollowUp })
+        } catch {
+          // A repair/proposal observer cannot hide or replace the primary error.
+          console.warn("Host failed-attempt continuation unavailable; original CI failure retained")
+        }
+        try { await followUpReporter?.abort() } catch { /* never replace primary failure or replay an uncertain write */ }
+      }
       // A failed/expired deployment never rewrites already-completed CI. The
       // separate check and native Workflow still retain their actual failure.
       try { await finishFinalizationCheck("failure") } catch { /* retain original failure, never retry an uncertain create */ }

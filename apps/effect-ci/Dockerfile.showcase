@@ -1,0 +1,18 @@
+# Root-owned tools; the host drops capabilities before project commands run.
+FROM node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends bash ca-certificates git python3 util-linux \
+  && rm -rf /var/lib/apt/lists/*
+RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
+COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476f7d8ad39fe97c57965f044e4b0a0dcc93eac06 \
+  /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
+COPY showcase-verify-build.cjs /opt/effect-ci-showcase/verify-build.cjs
+COPY showcase-inspect-check.cjs /opt/effect-ci-showcase/inspect-check.cjs
+COPY showcase-verify-process.cjs /opt/effect-ci-showcase/verify-process.cjs
+COPY showcase-modeled-repair.cjs /opt/effect-ci-showcase/modeled-repair.cjs
+COPY showcase-check-inputs.json /opt/effect-ci-showcase/showcase-check-inputs.json
+RUN mkdir -p /workspace && chown node:node /workspace
+ENV HOME=/home/node
+USER node
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

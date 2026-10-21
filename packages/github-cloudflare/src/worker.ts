@@ -1,4 +1,5 @@
 import * as GitHub from "@effect-ci-testbed/github"
+import * as Schema from "effect/Schema"
 import { slackInteraction, type SlackApprovalEnvironment } from "./slack-interactions.ts"
 
 export interface GitHubWorkflowParameters {
@@ -21,6 +22,8 @@ export interface RemoteWorkflowParameters {
   readonly revision: string
   readonly target?: string
   readonly targets?: ReadonlyArray<string>
+  /** An explicit host-enrolled compute rerun, never an implicit retry. */
+  readonly rerunFrom?: string
 }
 
 export type WorkflowParameters = GitHubWorkflowParameters | RemoteWorkflowParameters
@@ -53,8 +56,15 @@ export interface WorkerOptions {
   readonly remoteRunAllowed?: (input: RemoteRunRequest) => boolean
   /** Explicit host opt-in; selected goals must be consumed by its workflow factory. */
   readonly remoteTargets?: ReadonlyArray<string>
+  /** Discover selected goals inside the isolated project CLI, never in the host. */
+  readonly remoteTargetDiscovery?: "project"
   /** The terminal status contains public execution evidence for the CLI. */
   readonly remoteResult?: boolean
+  readonly remoteRerun?: boolean
+  /** Authenticated read-only projection. Return public observations, never
+   * private attempt outputs, provider capabilities, keys or project code. */
+  readonly executionHistory?: (input: { readonly revision: string; readonly after?: string },
+    environment: WorkerEnvironment, context: ExecutionContext | undefined) => Promise<unknown>
   /** Declaration only; the trusted host must independently enforce each method. */
   readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
   readonly github?: GitHubClient
@@ -68,12 +78,21 @@ export interface WorkerOptions {
   ) => Workflow<WorkflowParameters>
 }
 
+const HistoryRevision = Schema.String.check(Schema.isLowercased(), Schema.isLengthBetween(40, 40)).pipe(
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(20, 20))),
+)
+const HistoryCursor = Schema.String.check(Schema.isLowercased(), Schema.isLengthBetween(64, 64)).pipe(
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(32, 32))),
+)
+const HistoryQuery = Schema.Struct({ revision: HistoryRevision, after: Schema.optionalKey(HistoryCursor) })
+
 export interface RemoteRunRequest {
   readonly repository: string
   readonly revision: string
   readonly ref?: string
   readonly target?: string
   readonly targets?: ReadonlyArray<string>
+  readonly rerunFrom?: string
 }
 
 const selectedTargets = (input: { readonly target?: unknown; readonly targets?: unknown }): ReadonlyArray<string> | undefined => {
@@ -198,6 +217,7 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
   if (record.target !== undefined && typeof record.target !== "string") return undefined
   let selection: ReadonlyArray<string> | undefined
   try { selection = selectedTargets(record) } catch { return undefined }
+  if (record.rerunFrom !== undefined && !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(record.rerunFrom)) return undefined
 
   return {
     repository: record.repository,
@@ -205,6 +225,7 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
     ...(record.ref ? { ref: record.ref } : {}),
     ...(record.target ? { target: record.target } : {}),
     ...(record.targets === undefined ? {} : { targets: selection! }),
+    ...(record.rerunFrom === undefined ? {} : { rerunFrom: record.rerunFrom as string }),
   }
 }
 
@@ -212,7 +233,7 @@ const remoteRun = async (
   request: Request,
   environment: WorkerEnvironment,
   workflow: Workflow<WorkflowParameters>,
-  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets" | "remoteResult"> = {},
+  options: Pick<WorkerOptions, "routePrefix" | "remoteRunAllowed" | "remoteTargets" | "remoteTargetDiscovery" | "remoteResult" | "remoteRerun"> = {},
 ): Promise<Response> => {
   if (!isAuthorized(request, environment)) {
     return new Response("Unauthorized", { status: 401 })
@@ -221,8 +242,11 @@ const remoteRun = async (
   const input = await readRemoteRun(request)
 
   if (!input) return new Response("Invalid remote run", { status: 400 })
+  if (input.rerunFrom !== undefined && (!options.remoteRerun || !input.target && !input.targets))
+    return new Response("Compute rerun is not enrolled", { status: 403 })
   const selection = selectedTargets(input)
-  if (selection && (!options.remoteTargets || selection.some(target => !options.remoteTargets!.includes(target)))) {
+  if (selection && options.remoteTargetDiscovery !== "project" &&
+      (!options.remoteTargets || selection.some(target => !options.remoteTargets!.includes(target)))) {
     return new Response("Remote goals are not enrolled", { status: 403 })
   }
   if (options.remoteRunAllowed && !options.remoteRunAllowed(input)) {
@@ -330,6 +354,10 @@ const resolveApproval = async (
 
 export const worker = (options: WorkerOptions = {}) => {
   const prefix = options.routePrefix ?? ""
+  if ((options.remoteTargetDiscovery !== undefined && options.remoteTargetDiscovery !== "project") ||
+      (options.remoteTargetDiscovery && options.remoteTargets !== undefined)) {
+    throw new Error("Choose fixed remote targets or project discovery")
+  }
   const remoteTargets = options.remoteTargets === undefined ? Object.freeze([] as string[]) : selectedTargets({ targets: options.remoteTargets })!
   if (prefix !== "" && !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(prefix)) {
     throw new Error("Invalid workflow route prefix")
@@ -360,10 +388,27 @@ export const worker = (options: WorkerOptions = {}) => {
       if (request.method === "GET" && pathname === "/capabilities") {
         if (!isAuthorized(request, environment)) return new Response("Unauthorized", { status: 401 })
         return Response.json({ protocol: "effect-ci-remote-v1", targets: remoteTargets,
+          ...(options.remoteTargetDiscovery ? { targetDiscovery: options.remoteTargetDiscovery } : {}),
           ...(options.remoteAuthentication ? { authentication: options.remoteAuthentication } : {}),
+          ...(options.executionHistory ? { executionHistory: true } : {}),
+          ...(options.remoteRerun ? { rerun: true } : {}),
         }, {
           headers: { "cache-control": "no-store" },
         })
+      }
+      if (request.method === "GET" && pathname === "/executions" && options.executionHistory) {
+        if (!isAuthorized(request, environment)) return new Response("Unauthorized", { status: 401 })
+        let input: typeof HistoryQuery.Encoded
+        try {
+          if (url.searchParams.getAll("revision").length !== 1 || url.searchParams.getAll("after").length > 1) throw Error()
+          input = Schema.encodeSync(HistoryQuery)(Schema.decodeUnknownSync(HistoryQuery)({
+            revision: url.searchParams.get("revision"),
+            ...(url.searchParams.has("after") ? { after: url.searchParams.get("after") } : {}),
+          }))
+        } catch { return new Response("Invalid execution history request", { status: 400 }) }
+        try {
+          return Response.json(await options.executionHistory(input, environment, context), { headers: { "cache-control": "no-store" } })
+        } catch { return new Response("Execution history unavailable", { status: 503 }) }
       }
       const workflow = getWorkflow(environment, context)
 

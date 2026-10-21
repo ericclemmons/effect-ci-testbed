@@ -26,6 +26,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let resultAvailable = false
   let resultStatus = 200
   let resultReads = 0
+  let targetDiscovery: unknown
   const selections: unknown[] = []
   try {
     await writeFile(join(directory, "ci.ts"), `import * as CI from ${JSON.stringify(ci)}; export default CI.workflow("remote-fixture", function* () {});\n`)
@@ -55,7 +56,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       if (request.url === `${routePrefix}/capabilities`) {
         response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json",
           ...([302,307].includes(capabilityStatus) ? {location:"https://fixture.cloudflareaccess.com/cdn-cgi/access/login?token=never-reflect-login-token"} : {}) })
-        response.end(JSON.stringify({ protocol: capabilityProtocol, targets: ["test", "build"] }))
+        response.end(JSON.stringify({ protocol: capabilityProtocol, targets: targetDiscovery === "project" ? [] : ["test", "build"],
+          ...(targetDiscovery === undefined ? {} : { targetDiscovery }) }))
         return
       }
       if (request.url === `${routePrefix}/runs/fixture` && resultAvailable) {
@@ -228,6 +230,21 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(JSON.parse(missingResult.output).error.code, "CI_REMOTE_RESULT_UNAVAILABLE")
     assert.match(JSON.parse(missingResult.output).error.message, /do not dispatch again/)
     assert.equal(dispatches, 12, "a missing receipt never redispatches completed work")
+    resultAvailable = false
+    targetDiscovery = "project"
+    const projectGoals = await run("fixture-user-token", false, "json", true, ["notes", "package:build"])
+    assert.equal(projectGoals.code, 0, projectGoals.output)
+    assert.deepEqual(selections.at(-1), ["notes", "package:build"])
+    assert.equal(dispatches, 13)
+    const projectReady = await run("fixture-user-token", false, "json", true, [], "doctor")
+    assert.equal(JSON.parse(projectReady.output).targetDiscovery, "project")
+    for (const invalid of [true, "anything", {}, null]) {
+      targetDiscovery = invalid
+      const denied = await run("fixture-user-token", false, "json", true, ["notes"])
+      assert.equal(denied.code, 3, denied.output)
+      assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
+      assert.equal(dispatches, 13, "unknown discovery protocols never dispatch")
+    }
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

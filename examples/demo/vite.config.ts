@@ -63,7 +63,9 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       input: { app: "index.html", message: "src/message.ts" },
-      preserveEntrySignatures: "strict",
+      // Keep the shared message in its public entry rather than emitting a
+      // fourth facade dependency outside the publisher's three-asset contract.
+      preserveEntrySignatures: "allow-extension",
       output: { entryFileNames: "[name].js" },
     },
     minify: true,

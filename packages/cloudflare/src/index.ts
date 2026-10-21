@@ -237,7 +237,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   private async waitUntilReady(options: WorkspaceContainerOptions): Promise<void> {
     if (!options.readyCommand) return
 
-    const ready = await this.run(containerShell(options.readyCommand, options))
+    const ready = await this.run(containerShell(options.readyCommand, options), undefined, options)
 
     if (ready.exitCode !== 0) {
       throw new Error(ready.stderr || ready.stdout || "Container readiness check failed")
@@ -313,14 +313,19 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     _command: ReadonlyArray<string>, _cwd?: string,
   ): Promise<Record<string, string> | undefined> { return undefined }
 
+  /** Host-owned process restrictions. Project commands cannot choose this policy. */
+  protected processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
+    _options: WorkspaceContainerOptions): ReadonlyArray<string> { return command }
+
   private async run(
     command: ReadonlyArray<string>,
     cwd?: string,
+    options: WorkspaceContainerOptions = {},
   ): Promise<ContainerExecutionResult> {
     await this.configureOutbound()
     const environment = await this.processEnvironment(command, cwd)
     const process = await this.container().exec(
-      [...command],
+      [...this.processCommand(command, cwd, options)],
       cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
     )
     const output = await process.output()
@@ -509,7 +514,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(containerShell(command, options), cwd)
+    const result = await this.run(containerShell(command, options), cwd, options)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])

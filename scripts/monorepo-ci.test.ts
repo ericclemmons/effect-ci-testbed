@@ -62,7 +62,16 @@ test("failed validation prevents every platform deployment", async () => {
 test("a failed app build stops CD before that deployment and every later target", async () => {
   const { commands, run } = await capture(workflow,
     "pnpm build", { type: "push", ref: "refs/heads/main" });
-  await assert.rejects(run, /Command failed/);
+  await assert.rejects(run, error => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.errors.length, 2, "both independent build validations retain their failures");
+    for (const failure of error.errors) {
+      assert.ok(failure instanceof CI.CommandError);
+      assert.equal(failure.command, "pnpm build");
+      assert.equal(failure.exitCode, 1);
+    }
+    return true;
+  });
   assert.ok(commands.every(c => !c.command.includes("cf deploy")));
   assert.ok(!commands.some(c => c.cwd === "/repo/apps/effect-ci"));
 });

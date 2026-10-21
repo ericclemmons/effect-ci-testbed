@@ -6,6 +6,7 @@ import { parseArgs } from "node:util"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/project-service"
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
@@ -25,6 +26,7 @@ export interface Invocation {
   readonly location: ExecutionLocation
   readonly target?: string
   readonly targets?: ReadonlyArray<string>
+  readonly rerunFrom?: string
   readonly workflow: CI.Workflow<unknown>
 }
 
@@ -249,18 +251,21 @@ const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType
   } catch (error) {
     if (error instanceof CliFailure) throw error
   }
-  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown } | undefined
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown; rerun?: unknown } | undefined
   const targets = descriptor?.targets
   if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
       targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
-      new Set(targets).size !== targets.length)
+      new Set(targets).size !== targets.length ||
+      (descriptor.targetDiscovery !== undefined && descriptor.targetDiscovery !== "project"))
     throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
       "The remote host did not return compatible capabilities. No run was dispatched; check the endpoint and Access login, or update the host.")
   if (accessOnly && (!Array.isArray(descriptor.authentication) ||
     !descriptor.authentication.includes("cloudflare-access-identity")))
     throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
       "This host has not enrolled Access-only remote authentication. Configure its private API profile; no run was dispatched.")
-  return targets as string[]
+  return { targets: targets as string[],
+    ...(descriptor.rerun === true ? { rerun: true as const } : {}),
+    ...(descriptor.targetDiscovery === "project" ? { targetDiscovery: "project" as const } : {}) }
 }
 
 const builtInRemote = async (
@@ -297,7 +302,10 @@ const builtInRemote = async (
     // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
     // selected-goal invocation can never silently execute the default suite.
     const enrolled = await remoteCapabilities(connection)
-    if (targets.some(target => !enrolled.includes(target))) {
+    if (invocation.rerunFrom && !enrolled.rerun)
+      throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+        "This host has not enrolled explicit compute reruns. No run was dispatched.")
+    if (enrolled.targetDiscovery !== "project" && targets.some(target => !enrolled.targets.includes(target))) {
       throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
         "This host has not enrolled every requested goal. No run was dispatched; update/select a compatible host or run these goals locally.")
     }
@@ -306,7 +314,8 @@ const builtInRemote = async (
     method: "POST",
     redirect: "error",
     headers,
-    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}) }),
+    body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
+      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
   })
 
   if (!response.ok) {
@@ -395,6 +404,7 @@ interface ParsedInvocation {
   readonly location: ExecutionLocation
   readonly target?: string
   readonly targets: ReadonlyArray<string>
+  readonly rerunFrom?: string
 }
 
 const parseInvocation = (
@@ -413,6 +423,7 @@ const parseInvocation = (
         help: { short: "h", type: "boolean" },
         local: { type: "boolean" },
         remote: { type: "boolean" },
+        "rerun-from": { type: "string" },
       },
       strict: true,
     })
@@ -457,6 +468,11 @@ const parseInvocation = (
   )
   const targets = [...new Set(requested)]
   const target = targets.length === 1 ? targets[0] : undefined
+  const rerunFrom = parsed.values["rerun-from"]
+  if (rerunFrom !== undefined && (command !== "run" || !parsed.values.remote || targets.length === 0 ||
+    !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(rerunFrom)))
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
+      "Use cf-ci run <compute goals...> --remote --rerun-from <run UUID>")
 
   if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid"))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Use cf-ci doctor --remote [--format=text|json]; it checks access without running work")
@@ -475,6 +491,7 @@ const parseInvocation = (
     help: parsed.values.help === true,
     location: parsed.values.remote ? "remote" : "local",
     targets,
+    ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
   }
 }
@@ -484,6 +501,7 @@ const help = (workflowId: string): string => `Effect CI: ${workflowId}
 Usage:
   cf-ci                         Show this help and project targets
   cf-ci run [targets...] [--local|--remote] [--format=text|json]
+  cf-ci run <compute goals...> --remote --rerun-from <run UUID>
   cf-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
   cf-ci list [--format=text|json]
   cf-ci doctor --remote [--format=text|json]
@@ -898,10 +916,12 @@ export const main = async (
     }
 
     if (invocation.command === "doctor") {
-      const targets = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
-      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets, dispatched: false }
+      const capabilities = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", ...capabilities, dispatched: false }
       if (format === "json") printJson(result)
-      else console.log(`Remote access ready. Enrolled goals: ${targets.join(", ") || "default workflow only"}. No workflow started.`)
+      else console.log(capabilities.targetDiscovery === "project"
+        ? "Remote access ready. Selected goals are discovered inside the project workspace. No workflow started."
+        : `Remote access ready. Enrolled goals: ${capabilities.targets.join(", ") || "default workflow only"}. No workflow started.`)
       return ExitCode.success
     }
 
@@ -915,10 +935,14 @@ export const main = async (
       location: invocation.location,
       ...(invocation.target ? { target: invocation.target } : {}),
       ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
+      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
       workflow,
     }
 
     if (invocation.location === "remote") {
+      if (invocation.rerunFrom && program.remote)
+        throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+          "Explicit compute reruns require negotiated hosted support; a custom remote handler cannot ignore this option.")
       const result = program.remote
         ? await program.remote(request)
         : await builtInRemote(request, projectRoot(workflowPath))

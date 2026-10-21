@@ -3,11 +3,11 @@ import type { ReleaseManager } from "../../../test/apps/release-manager/src/rele
 
 export interface HmdCapability { readonly owner: string; readonly phase: number; readonly snapshot: string; readonly token: string }
 interface ReviewRecord extends HmdCapability { readonly context: string; readonly expiresAt: number; readonly sample?: number; readonly state: "waiting" | "refreshing" | "sending" | "submitted" | "closed";
-  readonly destination?: "demo";
+  readonly destination?: "demo" | "showcase";
   readonly decision?: "approved" | "rejected"; readonly reason?: string; readonly actor?: string; readonly acceptedAt?: number }
 interface Environment { RELEASE_MANAGER: Pick<ReleaseManager, "renew" | "promote">; SLACK_APP_ID?: string; SLACK_TEAM_ID?: string; SLACK_CHANNEL_ID?: string }
 const phases = [10, 25, 75, 100]
-const identity = (value: HmdCapability) => value && /^[A-Za-z0-9_-]{1,128}$/.test(value.owner) && phases.includes(value.phase) &&
+const identity = (value: HmdCapability) => value && /^[A-Za-z0-9_-]{1,128}$/.test(value.owner) && (value.phase === 0 || phases.includes(value.phase)) &&
   /^[a-f0-9]{64}$/.test(value.snapshot) && /^[a-f0-9]{64}$/.test(value.token)
 const matches = (record: ReviewRecord | undefined, capability: HmdCapability) => identity(capability) && record &&
   record.owner === capability.owner && record.phase === capability.phase && record.snapshot === capability.snapshot && record.token === capability.token
@@ -16,7 +16,7 @@ const matches = (record: ReviewRecord | undefined, capability: HmdCapability) =>
  * Persist consumption BEFORE sending; a lost event acknowledgement is never blindly resent.
  */
 export class HmdApprovals extends DurableObject<Environment> {
-  #context(destination?: "demo") {
+  #context(destination?: "demo" | "showcase") {
     const { SLACK_APP_ID: app, SLACK_TEAM_ID: team, SLACK_CHANNEL_ID: channel } = this.env
     if (!app || !team || !channel) throw new Error("Review destination is not configured")
     return JSON.stringify(destination ? [app, team, channel, destination] : [app, team, channel])
@@ -28,9 +28,17 @@ export class HmdApprovals extends DurableObject<Environment> {
   registerDemo(owner: string, phase: number, snapshot: string, expiresAt: number): Promise<HmdCapability> {
     return this.#register("demo", owner, phase, snapshot, expiresAt, 0)
   }
-  #register(destination: "demo" | undefined, owner: string, phase: number, snapshot: string, expiresAt: number, sample: number): Promise<HmdCapability> {
+  registerShowcase(owner: string, phase: number, snapshot: string, expiresAt: number): Promise<HmdCapability> {
+    if (!phases.includes(phase)) throw Error("Invalid showcase release phase")
+    return this.#register("showcase", owner, phase, snapshot, expiresAt, 0)
+  }
+  /** Preview-only gate: no version allocation or release lease exists yet. */
+  registerShowcaseStart(owner: string, snapshot: string, expiresAt: number): Promise<HmdCapability> {
+    return this.#register("showcase", owner, 0, snapshot, expiresAt, 0)
+  }
+  #register(destination: "demo" | "showcase" | undefined, owner: string, phase: number, snapshot: string, expiresAt: number, sample: number): Promise<HmdCapability> {
     return this.ctx.storage.transaction(async (tx) => {
-      if (!/^[A-Za-z0-9_-]{1,128}$/.test(owner) || !phases.includes(phase) || !/^[a-f0-9]{64}$/.test(snapshot) ||
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(owner) || !(phases.includes(phase) || destination === "showcase" && phase === 0) || !/^[a-f0-9]{64}$/.test(snapshot) ||
         !Number.isSafeInteger(sample) || sample < 0 || sample > 20 || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 300_000) throw new Error("Invalid HMD review")
       const previous = await tx.get<ReviewRecord>("review")
       const context = this.#context(destination)
@@ -102,14 +110,15 @@ export class HmdApprovals extends DurableObject<Environment> {
   async #deliver(capability: HmdCapability, decision: "approved" | "rejected", reason: string, actor: string): Promise<void> {
     try {
       // Rejecting needs no promotion capability; approval verifies lease and external drift.
-      if (decision === "approved") {
+      if (decision === "approved" && capability.phase !== 0) {
         await this.env.RELEASE_MANAGER.renew(capability.owner)
         await this.env.RELEASE_MANAGER.promote(capability.owner, capability.phase)
       }
       const record = await this.ctx.storage.get<ReviewRecord>("review")
       if (!matches(record, capability) || record!.context !== this.#context(record!.destination)) return
-      const host = this.ctx.exports as unknown as { HmdReviewWorkflow: Workflow; DemoCIWorkflow: Workflow }
-      const binding = record!.destination === "demo" ? host.DemoCIWorkflow : host.HmdReviewWorkflow
+      const host = this.ctx.exports as unknown as { HmdReviewWorkflow: Workflow; DemoCIWorkflow: Workflow; ShowcaseCIWorkflow: Workflow }
+      const binding = record!.destination === "showcase" ? host.ShowcaseCIWorkflow :
+        record!.destination === "demo" ? host.DemoCIWorkflow : host.HmdReviewWorkflow
       const instance = await binding.get(capability.owner)
       const status = await instance.status()
       if (status.status !== "running" && status.status !== "waiting") return
@@ -128,8 +137,14 @@ export class HmdApprovals extends DurableObject<Environment> {
   }
   /** Private host evidence: an event/actor string alone can never authorize demo progression. */
   async readDemoDecision(owner: string, phase: number, snapshot: string) {
+    return this.#readDecision("demo", owner, phase, snapshot)
+  }
+  async readShowcaseDecision(owner: string, phase: number, snapshot: string) {
+    return this.#readDecision("showcase", owner, phase, snapshot)
+  }
+  async #readDecision(destination: "demo" | "showcase", owner: string, phase: number, snapshot: string) {
     const r = await this.ctx.storage.get<ReviewRecord>("review")
-    if (!r || r.destination !== "demo" || r.context !== this.#context("demo") || r.owner !== owner || r.phase !== phase || r.snapshot !== snapshot ||
+    if (!r || r.destination !== destination || r.context !== this.#context(destination) || r.owner !== owner || r.phase !== phase || r.snapshot !== snapshot ||
         !["sending", "submitted"].includes(r.state) || !r.acceptedAt || r.acceptedAt >= r.expiresAt || Date.now() >= r.expiresAt ||
         !r.reason || !r.actor || !["approved", "rejected"].includes(r.decision ?? "")) throw new Error("No authenticated demo decision")
     return {snapshot:r.snapshot, decision:r.decision!, reason:r.reason, actor:r.actor, acceptedAt:r.acceptedAt}

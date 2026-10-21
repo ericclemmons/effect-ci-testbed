@@ -1,6 +1,12 @@
 **
 !Dockerfile
 !Dockerfile.trusted-demo
+!Dockerfile.showcase
+!showcase-verify-build.cjs
+!showcase-inspect-check.cjs
+!showcase-verify-process.cjs
+!showcase-modeled-repair.cjs
+!showcase-check-inputs.json
 !Dockerfile.standalone
 !.standalone-runtime
 !.standalone-runtime/package.json

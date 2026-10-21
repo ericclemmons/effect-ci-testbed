@@ -170,16 +170,14 @@ const commitOutput = async (value: unknown): Promise<ExecutionOutput> => {
   } catch { return { kind: "uncommitted" }; }
 };
 
-/** Call inside trusted onAttempt, using independently prepared host identities.
- * This signs observed outcomes, not a claim that it is safe to skip the work. */
-export async function signExecutionReceipt(options: {
-  readonly keyId: string;
-  readonly key: CryptoKey;
+/** Prepare inside onAttempt, before RPC serialization loses SDK value classes.
+ * Only commitments leave this boundary, never workspace/snapshot capabilities.
+ */
+export async function prepareExecutionClaim(options: {
   readonly identity: ExecutionIdentity;
   readonly instanceId: string;
   readonly attempt: CI.WorkflowAttempt;
-}): Promise<ExecutionReceipt> {
-  if (options.key.type !== "private" || options.key.algorithm.name !== "Ed25519" || !options.key.usages.includes("sign")) throw Error("Invalid execution signing key");
+}): Promise<ExecutionClaim> {
   // Capture before the first await; mutable caller objects cannot change signed fields.
   const identity = JSON.parse(canonical(options.identity)) as ExecutionIdentity;
   identityTuple(identity);
@@ -187,7 +185,7 @@ export async function signExecutionReceipt(options: {
   if (attempt.plan.mode !== "execute" || attempt.workflowId !== identity.workflowId || attempt.plan.workflowId !== identity.workflowId)
     throw Error("Execution attempt does not match identity");
   const startedAt = attempt.startedAt, completedAt = attempt.completedAt, number = attempt.number, conclusion = attempt.conclusion;
-  const instanceId = options.instanceId, keyId = options.keyId, key = options.key;
+  const instanceId = options.instanceId;
   // Project command text is hashed, never published. Functions in host step
   // options are policy, not portable output data; policyDigest binds that code.
   const plan = canonical({ workflowId: attempt.plan.workflowId, environment: attempt.plan.environment,
@@ -201,8 +199,31 @@ export async function signExecutionReceipt(options: {
     steps: await Promise.all(nodes.map(async node => ({ id: node.id, status: node.status,
       ...(node.output ? { output: await node.output } : {}) }))),
   };
+  claimBytes("prepared", claim);
+  return claim;
+}
+
+/** Private host signer. A claim is an observation, never permission to skip,
+ * approve or deploy. The host must independently enroll the expected identity.
+ */
+export async function signExecutionClaim(options: {
+  readonly keyId: string; readonly key: CryptoKey; readonly claim: ExecutionClaim;
+}): Promise<ExecutionReceipt> {
+  const { keyId, key } = options;
+  if (key.type !== "private" || key.algorithm.name !== "Ed25519" || !key.usages.includes("sign")) throw Error("Invalid execution signing key");
+  const claim = JSON.parse(canonical(options.claim)) as ExecutionClaim;
   const signature = base64url(new Uint8Array(await crypto.subtle.sign("Ed25519", key, claimBytes(keyId, claim))));
   return { purpose: "execution-observation", version: 1, keyId, claim, signature };
+}
+
+/** Existing one-process API; key material need not accompany preparation. */
+export async function signExecutionReceipt(options: {
+  readonly keyId: string; readonly key: CryptoKey; readonly identity: ExecutionIdentity;
+  readonly instanceId: string; readonly attempt: CI.WorkflowAttempt;
+}): Promise<ExecutionReceipt> {
+  if (options.key.type !== "private" || options.key.algorithm.name !== "Ed25519" || !options.key.usages.includes("sign")) throw Error("Invalid execution signing key");
+  const claim = await prepareExecutionClaim(options);
+  return signExecutionClaim({ keyId: options.keyId, key: options.key, claim });
 }
 
 /** Caller pins the expected issuer/inputs and its enrolled key. No embedded key

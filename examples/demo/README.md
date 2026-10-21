@@ -4,10 +4,11 @@ One Vite app, from existing package scripts to remote CI, reusable results,
 GitHub approval, Slack, previews, controlled releases, and repair proposals.
 Each chapter adds a capability without replacing the app's tools.
 
-The local chapters run in the copied app below. The hosted chapters describe
-the full conference tour: their services exist in the hosted integration, but
-are not yet connected end-to-end to this standalone copy. A new repository does
-not automatically inherit that integration. AI is off.
+The local chapters run in the copied app below. The hosted adapter uses the same
+authored program for the explicitly enrolled reference app, adding trusted result
+reuse, Slack, publication, and release decisions. A copied app or new repository
+does not inherit those credentials or permissions. Hosted changes still need
+live acceptance before this tour can be called complete. AI is off.
 
 ## 1. Start the app
 
@@ -86,7 +87,8 @@ Adopt the supplied workflow when you want more control:
 ```sh
 mkdir -p .cloudflare/ci
 cp tutorial/workflow.ts .cloudflare/ci/workflow.ts
-git add .cloudflare/ci/workflow.ts
+cp tutorial/program.ts .cloudflare/ci/program.ts
+git add .cloudflare/ci
 git commit -m "Add CI workflow"
 pnpm exec cf-ci run
 ```
@@ -146,16 +148,32 @@ your laptop:
 ```sh
 pnpm exec cf-ci doctor --remote
 pnpm exec cf-ci run --remote
+pnpm exec cf-ci run test build --remote
 ```
 
 The standalone host runs authored workflows inside an isolated container, not
-inside the privileged host process. Whole-workflow execution is supported;
-named-target negotiation for arbitrary authored workflows is still being connected.
+inside the privileged host process. Hosts advertising project goal discovery can
+also run selected exported actions. The project CLI validates every requested
+goal before executing any of them; older fixed-goal hosts retain their allowlist.
 
 Keep the workflow and move its execution from your laptop to the hosted runner.
 Cloudflare workflows retain action checkpoints and workspace snapshots across
 durable execution. Remote log streaming lets the CLI follow the same run; a lost
 connection must not cause it to dispatch the work again.
+
+On the enrolled showcase host, selected goals have individual native checkpoints
+and progress. To explicitly rerun affected compute actions, replace `RUN_ID` with
+the UUID returned by a completed successful compute run of the same commit:
+
+```sh
+pnpm exec cf-ci run build --remote
+pnpm exec cf-ci run test --remote --rerun-from RUN_ID
+```
+
+The second command creates a new immutable attempt. It reruns test and its
+dependents, reusing eligible unaffected work; it does not rewrite the first run.
+Expired workspaces, another commit, failed attempts, and publication actions are
+not eligible. A rejected request does not silently dispatch a fresh run.
 
 [Host setup](../../apps/effect-ci/SELF-HOST.md) · [Durable runner](../cloudflare-runner)
 
@@ -170,6 +188,11 @@ snapshot, allowing a later action to consume the same files without rebuilding.
 Missing, changed, or expired evidence runs the work normally. No signing key
 belongs in the app, and a local Vite+ cache hit is not a signed result.
 
+The enrolled host records signed success and failure observations separately
+from reusable successful checks. Public evidence exposes commitments, not private
+snapshot handles. A later push can reuse matching checks and the checked build;
+an explicit affected rerun bypasses those old caches for the requested work.
+
 [Result reuse](../verification-evidence) · [Workspace snapshots](../snapshot-fanout) ·
 [Hosted integration](../../apps/effect-ci/TRUSTED-REMOTE.md)
 
@@ -177,7 +200,9 @@ belongs in the app, and a local Vite+ cache hit is not a signed result.
 
 The conference flow is edit → commit → push → inspect the run in Slack. The
 GitHub App starts CI for the pushed commit; Slack keeps one parent progress bar
-and a compact, maintained step table. Failures link to the affected step.
+and a compact, maintained step table. Failures link to the affected step and show
+captured failure details. When the runner loses a command result, it reports an
+unknown exit instead of inventing a test failure or automatically rerunning it.
 Release reviews can add health charts and direct decisions on the same thread,
 instead of making the presenter switch between disconnected dashboards.
 
@@ -216,22 +241,30 @@ Branch publication should give you a commit-pinned preview of the same build
 that passed CI, without rebuilding it for the browser. Production stays on the
 previous release while you review the preview.
 
-The existing hosted showcase has this publication machinery; connecting it to
-the copied app is part of the remaining conference integration. The local
-directory publisher in chapter 7 is not a hosted preview service.
+The enrolled reference app's `demo/showcase-preview` branch selects hosted preview
+publication. The trusted adapter consumes the completed build snapshot, publishes
+its exact assets, and independently reads their bytes back. The local directory
+publisher in chapter 7 is not a hosted preview service; arbitrary copies do not
+gain publication authority.
 
 [Static assets](../static-assets-source) · [Deployment hooks](../deploy-hook) ·
 [Ordered deployments](../ordered-deploy)
 
 ## 13. Health checks and human release decisions
 
-Upload a candidate without moving production traffic. Then roll it out through
-10%, 25%, 75%, and 100%, observing health at each phase.
+The enrolled reference app's `demo/showcase` branch requests a release. Its first
+Slack card is **Start rollout**: a real human must choose **Progress** or **Reject**
+before uploading a candidate or changing production traffic. Rejecting or letting
+that initial decision expire leaves production unchanged.
+
+After Start, upload the checked candidate without moving production traffic.
+Then roll it out through 10%, 25%, 75%, and 100%, observing health at each phase.
 
 Healthy results can advance. Unhealthy results restore the previous allocation.
 When health is uncertain, pause for a Slack **Progress** or **Reject** decision
-rather than pretending sparse data is healthy. Rejection or timeout follows the
-configured rollback policy; reaching 100% still needs the final health check.
+rather than pretending sparse data is healthy. Only the actual human's decision
+can release a waiting gate; an agent must not approve it. Rejection or timeout
+restores the previous allocation; reaching 100% still needs the final health check.
 
 This is a hosted release chapter, not a command to deploy the copied app or
 replay an existing rollout.
@@ -244,9 +277,16 @@ replay an existing rollout.
 Close the loop: failure → proposed patch → allowed-diff check → exact-commit
 tests → pull request. The proposal does not get to merge or deploy itself.
 
-For the conference demo, this chapter stays modeled/off: walk through the flow
-without generating a public error, calling a paid model, or replaying a repair.
-Deterministic formatters and linters are the first choice when they can fix it.
+For the conference demo, AI stays modeled/off. A known failing greeting test can
+start a deterministic, narrowly allowed patch proposal from the immutable prepared
+workspace. Independent verification runs lint and the direct test task against a
+separate candidate workspace and checks that the candidate bytes did not change.
+
+The primary run stays failed. The child proposal and verification have separate
+progress and signed observations on the same Slack thread. No pull request is created;
+the PR proposal is explicitly modeled. Nothing is merged or deployed. Unknown
+command results do not start repair, and failed verification cannot produce a
+verified proposal. No paid model, public error, or old repair replay is needed.
 
 [Repair proposals](../flue-repair)
 

@@ -1,6 +1,8 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
+import { showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
+import { showcaseApi as showcase } from "./showcase-api.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
 import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/worker.ts";
@@ -10,6 +12,7 @@ import { runnerWebhook, type RunnerWebhookEnvironment } from "./runner-webhook.t
 import { smallChangeWebhook } from "./small-change-webhook.ts";
 export { SmallChangeReviews, SmallChangeReviewWorkflow } from "./small-change-review.ts";
 export { DemoCIWorkflow } from "./demo-workflow.ts";
+export { ShowcaseCIWorkflow } from "./showcase-workflow.ts";
 export { TrustedDemoChecks } from "./trusted-demo-checks.ts";
 export { StaticAssetSourceReader } from "./static-assets-source.ts";
 export { PublicIncidentRepairOperations, PublicIncidentDispatcher, PublicIncidentRepairWorkflow, PublicPipelineReadiness } from "./public-incident-repair.ts";
@@ -33,7 +36,7 @@ export {
 } from "./repair-writer.ts";
 
 const ci = GitHubCloudflare.worker({
-  githubRun: monorepoGitHubRun,
+  githubRun: (identity, environment, context) => showcaseGitHubRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context),
   remoteRunAllowed: () => false,
 });
 const demo = GitHubCloudflare.worker({
@@ -58,6 +61,10 @@ export default {
       (context.exports as unknown as { SmallChangeReviewWorkflow: Workflow<{ number: number }> }).SmallChangeReviewWorkflow);
     if (review) return review;
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/showcase" || pathname.startsWith("/showcase/")) {
+      if (!showcaseRouteAllowed(request.url)) return new Response("Not found", { status: 404 });
+      return showcase.fetch(await demoAccessRequest(request, environment.EFFECT_CI_API_TOKEN), environment, context);
+    }
     if (pathname === "/demo" || pathname.startsWith("/demo/")) {
       if (!demoRouteAllowed(pathname)) return new Response("Not found", { status: 404 });
       return demo.fetch(await demoAccessRequest(request, environment.EFFECT_CI_API_TOKEN), environment, context);

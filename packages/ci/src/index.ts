@@ -248,6 +248,13 @@ export type RuntimeEvent =
       readonly timestamp: string
     }
   | {
+      readonly type: "step.command.unavailable"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly stage: "container-execution" | "checkpoint-ack"
+      readonly timestamp: string
+    }
+  | {
       readonly type: "step.output"
       readonly workflowId: string
       readonly stepId: string
@@ -1567,7 +1574,14 @@ export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, a
       effects,
       (effect) => effect,
       { concurrency: "unbounded", discard: true },
-    )
+    ).pipe(Effect.mapError(errors => {
+      // Memoized prerequisites can fail through several dependent paths.
+      // Preserve that original failure once; do not invent independent errors.
+      const distinct = [...new Set(errors)]
+      return distinct.length === 1 ? distinct[0] : new AggregateError(
+        distinct, `${distinct.length} parallel actions failed. Inspect the failed action checkpoints.`,
+      )
+    }))
   })
 }
 
@@ -2012,6 +2026,12 @@ const makeRuntime = (
                 diagnostics: { version: 1, stepId: id, command: error.command, cwd: error.cwd,
                   exitCode: error.exitCode, output: { ...output, truncated: output.truncated || error.output.truncated } },
                 timestamp: new Date().toISOString(),
+              }).pipe(Effect.andThen(status))
+            }
+            if ((error instanceof CommandExecutionError || error instanceof CommandCheckpointError) &&
+                error.stepId === id && node.status === "failed") {
+              return emitEvent({ type: "step.command.unavailable", workflowId, stepId: id,
+                stage: error.stage, timestamp: new Date().toISOString(),
               }).pipe(Effect.andThen(status))
             }
             return status
