@@ -1,13 +1,15 @@
 import * as CI from "@effect-ci-testbed/ci";
 import type * as Effect from "effect/Effect";
 
+type DemoServices = Effect.Services<ReturnType<CI.Workspace["readFile"]>> | CI.Approval;
+
 /** The destination is supplied by the local or trusted hosted adapter, never
  * by incoming source. Project commands receive no publication credential. */
 export interface DemoDelivery<Receipt> {
   readonly install?: boolean;
   readonly publishStep: string;
-  readonly publish: (workspace: CI.Workspace) => Effect.Effect<Receipt, unknown, any>;
-  readonly release?: (receipt: Receipt) => Effect.Effect<unknown, unknown, any>;
+  readonly publish: (workspace: CI.Workspace) => Effect.Effect<Receipt, unknown, DemoServices>;
+  readonly release?: (receipt: Receipt) => Effect.Effect<unknown, unknown, DemoServices>;
 }
 
 /** One authored graph for local output comparison and the hosted showcase. */
