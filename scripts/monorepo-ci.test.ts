@@ -98,6 +98,8 @@ test("native Cloudflare runs the same root graph, without a custom deployment pr
   const native = readFileSync("apps/effect-ci/src/monorepo-workflow.ts", "utf8");
   assert.match(native, /from "\.\.\/\.\.\/\.\.\/\.cloudflare\/ci\/workflow\.ts"/);
   assert.match(native, /return workflow;/);
+  assert.ok(native.includes('container: { image: "ci", instance: "standard-2"'),
+    "the concurrent native compiler workload needs one full core without increasing its deadlines");
   assert.doesNotMatch(native, /publishPlatform|nativeMonorepoProgram|finalize:|versions\//);
 });
 
