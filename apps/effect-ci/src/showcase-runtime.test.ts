@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { generateKeyPairSync } from "node:crypto";
+import { createHmac, generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import { showcaseTestCommand } from "./showcase-check-policy.ts";
 
@@ -15,6 +15,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
     import {demoSite,demoSiteUrl} from '@effect-ci-testbed/cloudflare/demo-site';
     import manifest from '../../../examples/demo/package.json';
     import {ShowcaseCIWorkflow as ActualShowcase} from './showcase-workflow.ts';
+    import {hmdSlackInteraction} from './hmd-slack.ts';
     export {HmdApprovals} from './hmd-approval.ts';
     export {TrustedDemoChecks} from './trusted-demo-checks.ts';
     export class ShowcaseCIWorkflow extends ActualShowcase {
@@ -81,12 +82,16 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       }
       throw Error('Unexpected external request');
     };
-    export default{async fetch(request,env,ctx){const p=await request.json();
+    export default{async fetch(request,env,ctx){
+      if(new URL(request.url).pathname==='/webhooks/slack')return hmdSlackInteraction(request,env,{
+        inspect:cap=>ctx.exports.HmdApprovals.getByName(cap.owner).inspect(cap),
+        submit:(cap,decision,reason,actor)=>ctx.exports.HmdApprovals.getByName(cap.owner).submit(cap,decision,reason,actor),
+      });
+      const p=await request.json();
       if(p.op==='start'){commands.length=messages.length=publications.length=reads.length=github.length=0;thread=prepared=phase=commits=rollbacks=0;journal=undefined;mode=p.mode??'';
         await ctx.exports.ShowcaseCIWorkflow.create({id:p.id,params:{trigger:p.release?'github':'remote',repository:'https://github.com/ericclemmons/effect-ci-testbed.git',revision:'a'.repeat(40),
           ...(p.release?{repositoryName:'ericclemmons/effect-ci-testbed',installationId:165265172,deliveryId:p.id,summaryCheckId:999,ref:'refs/heads/demo/showcase'}:{}),
           ...(p.targets?{targets:p.targets}:{})}});return Response.json({started:true});}
-      if(p.op==='submit')return Response.json(await ctx.exports.HmdApprovals.getByName(p.cap.owner).submit(p.cap,p.decision,'LOCAL FAKE HUMAN','slack:T1:U1'));
       if(p.op==='status')return Response.json(await(await ctx.exports.ShowcaseCIWorkflow.get(p.id)).status());
       return Response.json({commands,messages,publications,reads,github,prepared,phase,commits,rollbacks,stopped,journal});
     }};` }, bundle: true, write: false, format: "esm", target: "esnext", platform: "neutral",
@@ -102,12 +107,31 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       RELEASE_MANAGER: { type: "worker", worker: name, exportName: "Broker" },
       GITHUB_APP_ID: { type: "text", value: "5089816" }, GITHUB_PRIVATE_KEY: { type: "text", value: privateKey },
       SLACK_BOT_TOKEN: { type: "text", value: "fake-slack-token" }, SLACK_CHANNEL_ID: { type: "text", value: "C1" },
-      SLACK_APP_ID: { type: "text", value: "A1" }, SLACK_TEAM_ID: { type: "text", value: "T1" } },
+      SLACK_APP_ID: { type: "text", value: "A1" }, SLACK_TEAM_ID: { type: "text", value: "T1" },
+      SLACK_SIGNING_SECRET: { type: "text", value: "local-test-signing-secret" }, SLACK_APPROVER_IDS: { type: "text", value: "U1" } },
   } }] });
   const call = async (body: unknown): Promise<any> => {
     const response = await runtime.dispatchFetch("https://test.invalid", { method: "POST", body: JSON.stringify(body) });
     assert.equal(response.status, 200);
     return response.json();
+  };
+  const click = async (capability: unknown, decision: string, options: { user?: string; timestamp?: string; secret?: string } = {}) => {
+    const timestamp = options.timestamp ?? String(Math.floor(Date.now() / 1000));
+    const body = new URLSearchParams({ payload: JSON.stringify({ type: "block_actions", api_app_id: "A1", team: { id: "T1" },
+      user: { id: options.user ?? "U1" }, channel: { id: "C1" }, trigger_id: "local-test-trigger",
+      actions: [{ action_id: decision === "approved" ? "hmd_approve" : "hmd_reject", value: JSON.stringify(capability) }] }) }).toString();
+    const signature = "v0=" + createHmac("sha256", options.secret ?? "local-test-signing-secret")
+      .update(`v0:${timestamp}:${body}`).digest("hex");
+    return runtime.dispatchFetch("https://test.invalid/webhooks/slack", { method: "POST", body,
+      headers: { "content-type": "application/x-www-form-urlencoded", "x-slack-request-timestamp": timestamp, "x-slack-signature": signature } });
+  };
+  const decide = async (capability: unknown, decision: string) => {
+    const response = await click(capability, decision);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).text, "Decision recorded. The release card will update when the Workflow resumes.");
+    const duplicate = await click(capability, decision);
+    assert.equal(duplicate.status, 200);
+    assert.equal((await duplicate.json()).text, "This phase is no longer awaiting review.");
   };
   try {
     for (const targets of [undefined, ["test"]]) {
@@ -147,7 +171,15 @@ test("native showcase checkpoints authored actions, consumes the checked build a
         assert.ok(state.stopped > 0, "compute is stopped before waiting on a human");
         assert.equal(state.prepared,0);assert.equal(state.phase,0);
         const cap=JSON.parse(button.value);assert.equal(cap.phase,0);
-        assert.equal(await call({op:'submit',cap,decision:'rejected'}),true);rejected=true;
+        assert.equal((await click(cap,'approved',{secret:'wrong-test-secret'})).status,401);
+        assert.equal((await click(cap,'approved',{timestamp:'1'})).status,401);
+        assert.equal((await click(cap,'approved',{user:'U2'})).status,403);
+        const stale=await click({...cap,snapshot:'f'.repeat(64)},'approved');
+        assert.equal(stale.status,200);
+        assert.equal((await stale.json()).text,'This phase is no longer awaiting review.');
+        const stillWaiting=await call({op:'state'});
+        assert.equal(stillWaiting.prepared,0);assert.equal(stillWaiting.phase,0);
+        await decide(cap,'rejected');rejected=true;
       }
       if(terminal.status==='errored')break;
       await new Promise(resolve=>setTimeout(resolve,10));
@@ -170,7 +202,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
           if(consumed.has(key)||mode==='deadline-10'&&cap.phase===10)continue;
           if(cap.phase===0){assert.equal(state.prepared,0);assert.equal(state.phase,0);}
           const decision=mode==='reject-10'&&cap.phase===10?'rejected':'approved';
-          assert.equal(await call({op:'submit',cap,decision}),true);
+          await decide(cap,decision);
           consumed.add(key);phases.push(cap.phase);
         }
         if(['complete','errored'].includes(terminal.status))break;
