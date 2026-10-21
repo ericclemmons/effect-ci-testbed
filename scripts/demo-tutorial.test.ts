@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -78,6 +78,10 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   const pointer = join(root, ".effect-ci/deployed-site/current.json");
   const hasPublish = (result: any) => result.plan.nodes.some((node: any) => node.id === "publish local site");
   assert.ok(hasPublish(parsed()));
+  const assets = readdirSync(join(root, "dist"), { recursive: true })
+    .filter(path => statSync(join(root, "dist", String(path))).isFile()).sort();
+  assert.deepEqual(assets, ["app.js", "index.html", "message.js"],
+    "the hosted publisher must serve every emitted artifact, including shared JavaScript dependencies");
   const first = readFileSync(pointer, "utf8");
   assert.ok(!hasPublish(parsed()));
   assert.equal(readFileSync(pointer, "utf8"), first);

@@ -20,6 +20,9 @@ export function showcaseProgram(options: {
     install: true,
     publishStep: "publish preview",
     publish: workspace => Effect.gen(function* () {
+      // Verify the complete output set, not just the three files we read.
+      // A fourth shared chunk must fail before any host publication request.
+      yield* workspace.exec("/usr/local/bin/node /opt/effect-ci-showcase/verify-build.cjs");
       const assets = {} as DemoAssets;
       for (const name of demoAssetNames) {
         const value = yield* workspace.readFile(`dist/${name}`);

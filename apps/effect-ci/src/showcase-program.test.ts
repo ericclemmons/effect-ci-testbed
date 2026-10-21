@@ -55,7 +55,7 @@ test("the hosted adapter publishes the checked app bytes and independently verif
   const revision = "a".repeat(40);
   const assets: DemoAssets = { "index.html": "<h1>Actual app</h1>", "app.js": "export const app=1", "message.js": "export const message='hi'" };
   const site = await demoSite(revision, assets);
-  for (const failure of [undefined, "test", "build", "publication", "served-bytes"] as const) {
+  for (const failure of [undefined, "test", "build", "extra-asset", "publication", "served-bytes"] as const) {
     const commands: string[] = [], reads: string[] = [];
     let publications = 0;
     const program = showcaseProgram({ revision,
@@ -83,7 +83,7 @@ test("the hosted adapter publishes the checked app bytes and independently verif
       },
       executor: { execute: ({ command }) => Effect.sync(() => {
         commands.push(command);
-        return { exitCode: command === `pnpm ${failure}` ? 7 : 0, stdout: "", stderr: "" };
+        return { exitCode: command === `pnpm ${failure}` || failure === "extra-asset" && command.includes("verify-build.cjs") ? 7 : 0, stdout: "", stderr: "" };
       }) },
     });
     if (failure) await assert.rejects(run);
@@ -94,7 +94,7 @@ test("the hosted adapter publishes the checked app bytes and independently verif
       assert.ok(commands.find(command => command.includes("install"))?.includes("--frozen-lockfile"));
       assert.deepEqual(reads.sort(), Object.keys(assets).map(name => demoSiteUrl(site).replace("index.html", name)).sort());
     }
-    assert.equal(publications, failure === "test" || failure === "build" ? 0 : 1);
+    assert.equal(publications, failure === "test" || failure === "build" || failure === "extra-asset" ? 0 : 1);
     if (failure === "test") assert.equal(commands.includes("pnpm build"), false);
   }
 });
