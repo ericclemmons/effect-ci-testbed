@@ -7,6 +7,13 @@ import test from "node:test";
 
 const template = resolve("examples/demo");
 
+test("hosted tour explains immutable reruns and real human release gates", () => {
+  const readme = readFileSync(join(template, "README.md"), "utf8");
+  for (const instruction of ["--rerun-from RUN_ID", "Start", "before uploading", "primary run stays failed", "No pull request is created"])
+    assert.ok(readme.includes(instruction), `keep the hosted behavior explicit: ${instruction}`);
+  assert.ok(!readme.includes("are not yet connected end-to-end"), "describe the enrolled host adapter, not the obsolete disconnected tour");
+});
+
 test("the demo is a standalone kitchen-sink tour without implicit hosted authority", () => {
   const pkg = JSON.parse(readFileSync(join(template, "package.json"), "utf8"));
   const readme = readFileSync(join(template, "README.md"), "utf8");
