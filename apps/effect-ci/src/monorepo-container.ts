@@ -1,4 +1,4 @@
-import { ContainerBoundary, WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
+import { WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
 import * as Schema from "effect/Schema";
 import { platformApps } from "../../../.cloudflare/ci/workflow.ts";
 import { WorkerEntrypoint } from "cloudflare:workers";
@@ -20,6 +20,11 @@ const nativeCommands = new Map([
   ["install", "pnpm install --frozen-lockfile"], ["check", "pnpm check"], ["build", "pnpm build"],
   ["test", "node --test --test-concurrency=2 packages/*/src/*.test.ts apps/*/src/*.test.ts test/apps/*/src/*.test.ts scripts/*.test.ts"],
 ]);
+const NativeResult = Schema.Struct({
+  operation: Schema.Literals(["install", "check", "build", "test", "deploy effect-ci", "deploy github-actions-runner"]),
+  exitCode: Schema.Number.check(Schema.isInt()),
+  recovered: Schema.Boolean,
+});
 
 /** Normal cf commands use host-authenticated outbound HTTPS. No real account
  * or registry credential enters a process environment, disk or snapshot. */
@@ -32,14 +37,9 @@ export class WorkspaceContainer extends Base {
     return options.image === "ci" && this.tracedOperation !== undefined;
   }
 
-  protected override executionObserver(): ReturnType<Base["executionObserver"]> {
+  protected override capturedExecutionResult(result: Parameters<Base["capturedExecutionResult"]>[0]): void {
     const operation = this.tracedOperation;
-    if (!operation) return undefined;
-    // Capture the fixed operation now: parent exit may arrive after output
-    // failed and the RPC wrapper has returned. Never capture its command/cause.
-    return event => console.info("[DEBUG-native-result-loss-v2]", {
-      operation, ...Schema.encodeSync(ContainerBoundary)(Schema.decodeUnknownSync(ContainerBoundary)(event)),
-    });
+    if (operation) console.info("[native-command-result]", Schema.decodeUnknownSync(NativeResult)({ operation, ...result }));
   }
 
   protected override processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
