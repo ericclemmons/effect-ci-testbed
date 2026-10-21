@@ -9,6 +9,7 @@ COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476
 COPY showcase-verify-build.cjs /opt/effect-ci-showcase/verify-build.cjs
 COPY showcase-inspect-check.cjs /opt/effect-ci-showcase/inspect-check.cjs
 COPY showcase-verify-process.cjs /opt/effect-ci-showcase/verify-process.cjs
+COPY showcase-modeled-repair.cjs /opt/effect-ci-showcase/modeled-repair.cjs
 COPY showcase-check-inputs.json /opt/effect-ci-showcase/showcase-check-inputs.json
 RUN mkdir -p /workspace && chown node:node /workspace
 ENV HOME=/home/node

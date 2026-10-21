@@ -14,6 +14,7 @@ import { cleanupShowcase } from "./showcase-cleanup.ts";
 import { showcaseCheckCache } from "./showcase-check-cache.ts";
 import type { RunnerCheckAuthority } from "@effect-ci-testbed/cloudflare/runner-check-receipt";
 import { showcaseReadyCommand } from "./showcase-process-policy.ts";
+import { followUpShowcaseFailure } from "./showcase-modeled-repair.ts";
 import { retainShowcaseAttempt, restoreShowcaseAttempt } from "./showcase-attempt.ts";
 import { ShowcaseRerun } from "./showcase-protocol.ts";
 import * as Schema from "effect/Schema";
@@ -53,6 +54,7 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
       ...(showcaseProductionAllowed(parameters) ? ["Start rollout", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])];
   },
   finalize: finalizeShowcaseRun,
+  onFailure: followUpShowcaseFailure,
   finalizationCheck: parameters => showcaseProductionAllowed(parameters) ? "Rollout / conference demo" : "Preview / conference demo",
   onAttempt: async (attempt, { environment, exports, parameters, instanceId }) => {
     const context = showcaseExecutionContext(parameters);

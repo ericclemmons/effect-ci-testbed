@@ -14,6 +14,7 @@ const Context = Schema.Struct({
   goals: Schema.optionalKey(ShowcaseGoals),
   rerunFrom: Schema.optionalKey(ShowcaseVersion),
   rerunSteps: Schema.optionalKey(ShowcaseGoals),
+  purpose: Schema.optionalKey(Schema.Literal("modeled-repair")),
 });
 export type ShowcaseExecutionContext = typeof Context.Encoded;
 const Metadata = Schema.Struct({ VERSION_METADATA: Schema.Struct({ id: ShowcaseVersion }) });
@@ -22,7 +23,7 @@ const digest = (value: unknown) => runnerReceiptDigest(new TextEncoder().encode(
 // private key, exact host policy and source identify the actual observation.
 const issuer = "https://dash.cloudflare.com";
 
-export function showcaseExecutionContext(parameters: WorkflowParameters): ShowcaseExecutionContext {
+export function showcaseExecutionContext(parameters: WorkflowParameters, purpose?: "modeled-repair"): ShowcaseExecutionContext {
   const goals = showcaseSelection(parameters);
   return Schema.encodeSync(Context)(Schema.decodeUnknownSync(Context)({
     revision: parameters.revision, trigger: parameters.trigger,
@@ -30,6 +31,7 @@ export function showcaseExecutionContext(parameters: WorkflowParameters): Showca
     ...(parameters.trigger === "remote" && parameters.rerunFrom ? {
       rerunFrom: parameters.rerunFrom, rerunSteps: parameters.targets ?? [parameters.target],
     } : {}),
+    ...(purpose ? { purpose } : {}),
   }));
 }
 
@@ -50,8 +52,9 @@ export async function showcaseExecutionIdentity(input: unknown, hostVersion: str
     const context = Schema.encodeSync(Context)(Schema.decodeUnknownSync(Context)(input));
     Schema.decodeUnknownSync(ShowcaseVersion)(hostVersion);
     const runtime = await showcaseBuildIdentity(context.revision, hostVersion);
-    return { ...showcaseExecutionSubject(context.revision), workflowId: "demo", runtimeDigest: runtime.runtimeDigest,
-      policyDigest: await digest(["showcase-execution-observation-v1", hostVersion, "no-cache-review-or-deployment-authority"]),
+    return { ...showcaseExecutionSubject(context.revision), workflowId: context.purpose ? "demo-repair" : "demo", runtimeDigest: runtime.runtimeDigest,
+      policyDigest: await digest(["showcase-execution-observation-v1", hostVersion,
+        context.purpose ? "modeled-repair/no-pr-or-deployment" : "no-cache-review-or-deployment-authority"]),
       inputsDigest: await digest(["checkout-source-identity-not-prepared-input-closure", showcaseRepository, context.revision]),
       eventDigest: await digest(context) };
   } catch { throw Error("Invalid showcase execution context"); }
