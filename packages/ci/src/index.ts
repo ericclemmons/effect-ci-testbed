@@ -248,6 +248,13 @@ export type RuntimeEvent =
       readonly timestamp: string
     }
   | {
+      readonly type: "step.command.unavailable"
+      readonly workflowId: string
+      readonly stepId: string
+      readonly stage: "container-execution" | "checkpoint-ack"
+      readonly timestamp: string
+    }
+  | {
       readonly type: "step.output"
       readonly workflowId: string
       readonly stepId: string
@@ -1567,7 +1574,9 @@ export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, a
       effects,
       (effect) => effect,
       { concurrency: "unbounded", discard: true },
-    )
+    ).pipe(Effect.mapError(errors => errors.length === 1 ? errors[0] : new AggregateError(
+      errors, `${errors.length} parallel actions failed. Inspect the failed action checkpoints.`,
+    )))
   })
 }
 
@@ -2012,6 +2021,12 @@ const makeRuntime = (
                 diagnostics: { version: 1, stepId: id, command: error.command, cwd: error.cwd,
                   exitCode: error.exitCode, output: { ...output, truncated: output.truncated || error.output.truncated } },
                 timestamp: new Date().toISOString(),
+              }).pipe(Effect.andThen(status))
+            }
+            if ((error instanceof CommandExecutionError || error instanceof CommandCheckpointError) &&
+                error.stepId === id && node.status === "failed") {
+              return emitEvent({ type: "step.command.unavailable", workflowId, stepId: id,
+                stage: error.stage, timestamp: new Date().toISOString(),
               }).pipe(Effect.andThen(status))
             }
             return status

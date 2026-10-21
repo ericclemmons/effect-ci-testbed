@@ -239,6 +239,7 @@ export const workflowEntrypoint = <A>(
       {
         executionEnvironment: "Cloudflare",
         token: "",
+        redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string" && value.length > 0),
         repository: github.repositoryName,
         sha: event.payload.revision,
         summaryCheckId: github.summaryCheckId,

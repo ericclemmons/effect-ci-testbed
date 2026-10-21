@@ -14,6 +14,8 @@ import {
 } from "./index.ts"
 
 export interface ReporterOptions {
+  /** Host-only values to mask before displaying retained command diagnostics. */
+  readonly redactValues?: ReadonlyArray<string>
   /** CI may complete before a separate deployment continuation/native run. */
   readonly completionScope?: "ci"
   readonly executionEnvironment?: "GitHub Actions" | "Cloudflare" | "Local"
@@ -354,6 +356,7 @@ const checkOutput = (
 export class Reporter {
   private readonly checks = new Map<string, StepCheck>()
   private readonly output = new Map<string, string>()
+  private readonly failures = new Map<string, string>()
   private completed = false
   private mode: WorkflowPlan["mode"] = "execute"
   private plan: WorkflowPlan | undefined
@@ -362,9 +365,12 @@ export class Reporter {
 
   private readonly client: ReporterClient
   private readonly options: ReporterOptions
+  private readonly redactValues: ReadonlyArray<string>
 
   constructor(options: ReporterOptions, client: ReporterClient = { createCheck, updateCheck }) {
-    this.options = options
+    const { redactValues, ...requestOptions } = options
+    this.options = requestOptions
+    this.redactValues = [options.token, ...(redactValues ?? [])].filter(Boolean).sort((a, b) => b.length - a.length)
     this.client = client
   }
 
@@ -377,6 +383,8 @@ export class Reporter {
   }
 
   private appendOutput(stepId: string, stream: "stdout" | "stderr", text: string) {
+    for (const value of this.redactValues)
+      text = text.replaceAll(value, "[redacted]")
     const prefix = stream === "stderr" ? "[stderr] " : ""
     const next = `${this.output.get(stepId) ?? ""}${prefix}${text}`
 
@@ -417,10 +425,13 @@ export class Reporter {
     const output = checkOutput(this.workflowId, stepId, status, optional)
     const text =
       [
+        this.failures.get(stepId) ?? (status === "failed" && !this.output.has(stepId)
+          ? "#### Failure details\n\nNo stdout or stderr was captured. Inspect the failed action checkpoint; no process exit is established by this missing output."
+          : undefined),
+        this.outputText(stepId),
         this.plan
           ? `### Execution graph\n\n\`\`\`mermaid\n${planDiagram(this.plan, stepId, states, this.options.repository)}\n\`\`\`\n\n${stepLinks(this.plan, states, this.options.repository)}`
           : undefined,
-        this.outputText(stepId),
       ]
         .filter(Boolean)
         .join("\n\n") || undefined
@@ -533,6 +544,17 @@ export class Reporter {
         return
       case "step.output":
         this.appendOutput(event.stepId, event.stream, event.text)
+        return
+      case "step.command.failed":
+        this.failures.set(event.stepId, `#### Failure details\n\nCommand exited with exit ${event.diagnostics.exitCode}.${event.diagnostics.output.truncated ? " Captured output was truncated." : ""}`)
+        // This event owns the retained failure streams; ordinary step.output
+        // events are not guaranteed when an executor fails before returning.
+        this.output.delete(event.stepId)
+        this.appendOutput(event.stepId, "stdout", event.diagnostics.output.stdout)
+        this.appendOutput(event.stepId, "stderr", event.diagnostics.output.stderr)
+        return
+      case "step.command.unavailable":
+        this.failures.set(event.stepId, `#### Failure details\n\nCommand result unavailable (${event.stage}). Process exit unknown. No stdout or stderr was captured. External effects may already exist. Do not rerun automatically; reconcile this run's action checkpoint.`)
         return
       case "workflow.plan": {
         this.workflowId = event.workflowId
