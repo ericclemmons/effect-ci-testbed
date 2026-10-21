@@ -35,6 +35,16 @@ function fixture() {
   let failSnapshot: "none" | "running" | "stopped" = "none", failRelease = false, failStorageAck = false;
   let queryResponse: string | undefined;
   let outputResponse: string | undefined;
+  let failCommandOutput = false;
+  let failReadiness = false, brokenObserver = false;
+  const boundaries: any[] = [];
+  class ObservedWorkspace extends WorkspaceContainer {
+    constructor(ctx: any, environment: any) { super(ctx, environment); }
+    executionObserver() { return (event: any) => {
+      if (brokenObserver) throw Error("private-observer-failure");
+      boundaries.push(structuredClone(event));
+    }; }
+  }
   const container = {
     running: true, images: {},
     start(options: any) { starts++; const saved = snapshots.get(options.containerSnapshot.id); if (!saved) throw Error("Ancestor snapshot unavailable"); files = [...saved]; this.running = true; },
@@ -51,6 +61,7 @@ function fixture() {
     },
     async exec(command: string[]) {
       let exitCode = 0, stdout = new Uint8Array();
+      if (failReadiness && command.at(-1) === "fixed-ready") exitCode = 1;
       if (command[0] === "/usr/bin/python3" && outputResponse !== undefined) {
         stdout = new TextEncoder().encode(outputResponse);
       }
@@ -60,7 +71,10 @@ function fixture() {
       else if (command[0] === "sh") { commands++; files.push("node_modules/.bin/vpr"); }
       else if (command[0] === "test") exitCode = command.at(-1) === "." || files.includes(command.at(-1)!) ? 0 : 1;
       else if (command[0] === "cat") stdout = new TextEncoder().encode(files.at(-1)!);
-      return { output: async () => ({ exitCode, stdout, stderr: new Uint8Array() }) };
+      return { exitCode: Promise.resolve(exitCode), output: async () => {
+        if (failCommandOutput && command[0] === "sh") throw Error("private-provider-cause-not-for-logs");
+        return { exitCode, stdout, stderr: new Uint8Array() };
+      } };
     },
   };
   const ctx = { container, blockConcurrencyWhile: (operation: () => Promise<unknown>) => operation(), storage: {
@@ -73,12 +87,18 @@ function fixture() {
       }
     },
   } };
-  let workspace = new WorkspaceContainer(ctx, {});
+  let workspace = new ObservedWorkspace(ctx, {});
   const commit = (release = false) => workspace.checkpoint("install-workspace", release,
     { cwd: "/workspace/repository", stepId: "install", revision });
   return {
     install: () => workspace.execute("npm ci", "/workspace/repository", "install", revision),
-    commit, restart: () => { workspace = new WorkspaceContainer(ctx, {}); },
+    installWithReadiness: () => workspace.execute("npm ci", "/workspace/repository", "install", revision, [], "/workspace/repository",
+      { readyCommand: "fixed-ready", loginShell: false }),
+    commit, restart: () => { workspace = new ObservedWorkspace(ctx, {}); },
+    failCommandOutput: () => { failCommandOutput = true; },
+    failReadiness: () => { failReadiness = true; },
+    breakObserver: () => { brokenObserver = true; },
+    boundaries: () => boundaries,
     fail: (mode: typeof failSnapshot) => { failSnapshot = mode; },
     releaseFailure: () => { failRelease = true; },
     storageFailure: () => { failStorageAck = true; },
@@ -100,6 +120,35 @@ function fixture() {
     running: () => container.running,
   };
 }
+
+test("command boundary evidence distinguishes a successful parent exit from unavailable output without disclosing the cause", async () => {
+  const f = fixture();
+  f.failCommandOutput();
+  await assert.rejects(f.install(), /private-provider-cause-not-for-logs/);
+  assert.ok(f.boundaries().some(e => e.scope === "command" && e.phase === "exit" && e.state === "received" && e.exitCode === 0));
+  assert.ok(f.boundaries().some(e => e.scope === "command" && e.phase === "output" && e.state === "failed"));
+  assert.equal(f.boundaries().some(e => e.scope === "command" && e.phase === "decode"), false);
+  assert.ok(!JSON.stringify(f.boundaries()).includes("private-provider"));
+  assert.ok(!JSON.stringify(f.boundaries()).includes("npm ci"));
+  assert.ok(!JSON.stringify(f.boundaries()).includes("checkout"));
+  assert.equal(f.counts().commands, 1, "observing a lost output never re-executes the command");
+});
+
+test("a failed restored-container readiness probe is not reported as a started business command", async () => {
+  const f = fixture(); f.failReadiness();
+  await assert.rejects(f.installWithReadiness(), /Container readiness check failed/);
+  assert.ok(f.boundaries().some(e => e.scope === "workspace" && e.phase === "start" && e.state === "received"));
+  assert.ok(f.boundaries().some(e => e.scope === "readiness" && e.phase === "output" && e.exitCode === 1));
+  assert.ok(f.boundaries().some(e => e.phase === "materialize" && e.state === "failed"));
+  assert.equal(f.boundaries().some(e => e.scope === "command"), false);
+  assert.equal(f.counts().commands, 0);
+});
+
+test("a broken host observer cannot fail or re-execute a business command", async () => {
+  const f = fixture(); f.breakObserver();
+  assert.equal((await f.install()).exitCode, 0);
+  assert.equal(f.counts().commands, 1);
+});
 
 test("snapshot output reads stop their inspection VM without creating a business checkpoint", async () => {
   const f = fixture();

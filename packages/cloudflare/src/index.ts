@@ -12,6 +12,8 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { containerShell } from "./container-shell.ts"
+import { containerFailure, type ContainerBoundary, type ContainerObserver } from "./container-boundary.ts"
+export { ContainerBoundary, type ContainerObserver } from "./container-boundary.ts"
 import { makeHostAttemptHandler, type HostAttemptHandler } from "./host-attempt.ts"
 export { makeHostAttemptHandler, type HostAttemptHandler, type HostAttemptContext } from "./host-attempt.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
@@ -209,12 +211,12 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     )
 
     if (activeCheckpoint) {
-      container.start({
+      this.startContainer(() => container.start({
         containerSnapshot: activeCheckpoint,
         instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
-      })
+      }))
       await this.waitUntilReady(options)
       this.workingCheckpointId = activeCheckpoint.id
       this.dirty = false
@@ -225,19 +227,19 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     const imageName = options.image ?? defaultImage
     const configuredImage = container.images[imageName]
 
-    container.start({
+    this.startContainer(() => container.start({
       image: configuredImage ?? imageName,
       instance: options.instance ?? "lite",
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
-    })
+    }))
     await this.waitUntilReady(options)
   }
 
   private async waitUntilReady(options: WorkspaceContainerOptions): Promise<void> {
     if (!options.readyCommand) return
 
-    const ready = await this.run(containerShell(options.readyCommand, options), undefined, options)
+    const ready = await this.run(containerShell(options.readyCommand, options), undefined, options, "readiness")
 
     if (ready.exitCode !== 0) {
       throw new Error(ready.stderr || ready.stdout || "Container readiness check failed")
@@ -249,7 +251,22 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     revision?: ContainerSnapshotValue,
     options: WorkspaceContainerOptions = {},
   ): Promise<void> {
+    this.boundary({ scope: "workspace", phase: "materialize", state: "started" })
+    try {
+      await this.materializeWorkspace(stepId, revision, options)
+      this.boundary({ scope: "workspace", phase: "materialize", state: "completed" })
+    } catch (error) {
+      this.boundary({ scope: "workspace", phase: "materialize", state: "failed" }, error)
+      throw error
+    }
+  }
+
+  private async materializeWorkspace(stepId: string, revision?: ContainerSnapshotValue,
+    options: WorkspaceContainerOptions = {}): Promise<void> {
     const mutation = await this.workingMutation()
+    this.boundary({ scope: "workspace", phase: "materialize", state: "received",
+      hasSnapshot: revision !== undefined, checkpointMatches: revision !== undefined && this.workingCheckpointId === revision.id,
+      activeStepMatches: this.activeStepId === stepId, dirty: this.dirty, hasMutation: mutation !== undefined })
     if (mutation) {
       if (!this.container().running) {
         throw new Error(uncheckpointedContainerLost)
@@ -284,19 +301,21 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       !this.dirty
 
     if (!canReuse) {
+      this.boundary({ scope: "workspace", phase: "restore", state: "started" })
       await this.ctx.storage.put("activeCheckpoint", revision)
 
       if (container.running) {
         await container.destroy(`Materializing workspace revision ${revision.id}`)
       }
 
-      container.start({
+      this.startContainer(() => container.start({
         containerSnapshot: revision,
         instance: options.instance ?? "lite",
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
-      })
+      }))
       await this.waitUntilReady(options)
+      this.boundary({ scope: "workspace", phase: "restore", state: "completed" })
       this.workingCheckpointId = revision.id
       this.dirty = false
     }
@@ -317,24 +336,69 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
   protected processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
     _options: WorkspaceContainerOptions): ReadonlyArray<string> { return command }
 
+  /** Host-only diagnostic enrollment; observers receive only a closed schema. */
+  protected executionObserver(): ContainerObserver | undefined { return undefined }
+
+  private boundary(event: Omit<ContainerBoundary, "running">, failure?: unknown): void {
+    try {
+      const observer = this.executionObserver()
+      if (observer) observer({ ...event, ...containerFailure(failure), running: this.container().running })
+    }
+    catch { /* observation must not change execution */ }
+  }
+
+  private startContainer(start: () => void): void {
+    this.boundary({ scope: "workspace", phase: "start", state: "started" })
+    try {
+      start()
+      this.boundary({ scope: "workspace", phase: "start", state: "received" })
+    } catch (error) {
+      this.boundary({ scope: "workspace", phase: "start", state: "failed" }, error)
+      throw error
+    }
+  }
+
   private async run(
     command: ReadonlyArray<string>,
     cwd?: string,
     options: WorkspaceContainerOptions = {},
+    scope: "readiness" | "command" | "auxiliary" = "auxiliary",
   ): Promise<ContainerExecutionResult> {
-    await this.configureOutbound()
-    const environment = await this.processEnvironment(command, cwd)
-    const process = await this.container().exec(
+    let observer: ContainerObserver | undefined
+    try { observer = this.executionObserver() } catch { /* observation is optional */ }
+    const report = (event: Omit<ContainerBoundary, "scope" | "running">, failure?: unknown) => {
+      try { if (observer) observer({ ...event, ...containerFailure(failure), scope, running: this.container().running }) }
+      catch { /* observation must not change execution */ }
+    }
+    const observed = async <A>(phase: "configuration" | "exec" | "output", operation: () => Promise<A>, code?: (value: A) => number) => {
+      report({ phase, state: "started" })
+      try {
+        const value = await operation()
+        const exitCode = code?.(value)
+        report({ phase, state: phase === "configuration" ? "completed" : "received", ...(exitCode === undefined ? {} : { exitCode }) })
+        return value
+      } catch (error) { report({ phase, state: "failed" }, error); throw error }
+    }
+    const environment = await observed("configuration", async () => {
+      await this.configureOutbound()
+      return this.processEnvironment(command, cwd)
+    })
+    const process = await observed("exec", () => this.container().exec(
       [...this.processCommand(command, cwd, options)],
       cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined,
-    )
-    const output = await process.output()
-
-    return {
-      exitCode: output.exitCode,
-      stderr: decoder.decode(output.stderr),
-      stdout: decoder.decode(output.stdout),
+    ))
+    if (observer) {
+      try { void process.exitCode.then(exitCode => report({ phase: "exit", state: "received", exitCode }),
+        error => report({ phase: "exit", state: "failed" }, error)) }
+      catch { /* missing observation support must not change execution */ }
     }
+    const output = await observed("output", () => process.output(), value => value.exitCode)
+    report({ phase: "decode", state: "started" })
+    try {
+      const result = { exitCode: output.exitCode, stderr: decoder.decode(output.stderr), stdout: decoder.decode(output.stdout) }
+      report({ phase: "decode", state: "completed" })
+      return result
+    } catch (error) { report({ phase: "decode", state: "failed" }, error); throw error }
   }
 
   async getCachedSnapshot(key: string): Promise<ContainerSnapshotValue | undefined> {
@@ -514,7 +578,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(containerShell(command, options), cwd, options)
+    const result = await this.run(containerShell(command, options), cwd, options, "command")
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])
@@ -651,12 +715,12 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       await container.destroy(`Restoring workspace checkpoint ${snapshot.id}`)
     }
 
-    container.start({
+    this.startContainer(() => container.start({
       containerSnapshot: snapshot,
       instance: options.instance ?? "lite",
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
-    })
+    }))
     await this.waitUntilReady(options)
     this.activeStepId = undefined
     this.dirty = false

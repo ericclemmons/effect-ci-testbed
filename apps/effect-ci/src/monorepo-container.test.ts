@@ -49,6 +49,8 @@ test("main deployment commands receive only dummy credentials; real credentials 
     stdin: { resolveDir: new URL(".", import.meta.url).pathname, loader: "ts", contents: `
       import {WorkspaceContainer} from './monorepo-container.ts';
       import {DurableObject} from 'cloudflare:workers';
+      const boundaries=[];
+      console.info=(label,event)=>{if(label==='[DEBUG-native-result-loss-v2]')boundaries.push(event);};
       export class Probe extends DurableObject {
         calls;
         host;
@@ -91,7 +93,7 @@ test("main deployment commands receive only dummy credentials; real credentials 
         const afterTrustFailure=await stub.inspect();
         await stub.stop();
         const stopped=await stub.execute(command,cwd,'deploy effect-ci');
-        return Response.json({denied,published,stopped,before,trustError,afterTrustFailure,after:await stub.inspect()});
+        return Response.json({denied,published,stopped,before,trustError,afterTrustFailure,after:await stub.inspect(),boundaries});
       }};
     ` },
     bundle: true, format: "esm", platform: "neutral", target: "esnext", write: false,
@@ -114,6 +116,8 @@ test("main deployment commands receive only dummy credentials; real credentials 
     assert.equal(result.stopped.exitCode, 1);
     assert.equal(result.published.exitCode, 0);
     assert.equal(result.published.stdout, "effect-ci-outbound-proxy");
+    assert.ok(result.boundaries.some((e: any) => e.operation === "check" && e.scope === "command" && e.phase === "output" && e.state === "received"),
+      "host enrollment survives awaits through the entire native command");
     assert.match(result.trustError, /Could not trust/);
     assert.equal(result.afterTrustFailure.calls.filter((call: any) => call.authorized).length, 1,
       "a missing/uninstallable runtime CA must prevent any publication command");

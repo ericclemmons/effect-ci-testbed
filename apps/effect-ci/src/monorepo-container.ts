@@ -1,4 +1,5 @@
-import { WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
+import { ContainerBoundary, WorkspaceContainer as Base } from "@effect-ci-testbed/cloudflare";
+import * as Schema from "effect/Schema";
 import { platformApps } from "../../../.cloudflare/ci/workflow.ts";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { DeploymentProxy, deploymentToken } from "./deployment-proxy.ts";
@@ -15,12 +16,27 @@ const commands = new Set([
   "./node_modules/.bin/cf workers triggers deploy --prebuilt",
   "./node_modules/.bin/cf deploy --prebuilt",
 ]);
+const nativeCommands = new Map([
+  ["install", "pnpm install --frozen-lockfile"], ["check", "pnpm check"], ["build", "pnpm build"],
+  ["test", "node --test --test-concurrency=2 packages/*/src/*.test.ts apps/*/src/*.test.ts test/apps/*/src/*.test.ts scripts/*.test.ts"],
+]);
 
 /** Normal cf commands use host-authenticated outbound HTTPS. No real account
  * or registry credential enters a process environment, disk or snapshot. */
 export class WorkspaceContainer extends Base {
   private deployment: { command: string; cwd: string; env: Record<string, string>; capability: string; proxy: DeploymentProxy } | undefined;
   private queue: Promise<unknown> = Promise.resolve();
+  private tracedOperation: string | undefined;
+
+  protected override executionObserver(): ReturnType<Base["executionObserver"]> {
+    const operation = this.tracedOperation;
+    if (!operation) return undefined;
+    // Capture the fixed operation now: parent exit may arrive after output
+    // failed and the RPC wrapper has returned. Never capture its command/cause.
+    return event => console.info("[DEBUG-native-result-loss-v2]", {
+      operation, ...Schema.encodeSync(ContainerBoundary)(Schema.decodeUnknownSync(ContainerBoundary)(event)),
+    });
+  }
 
   protected override processCommand(command: ReadonlyArray<string>, _cwd: string | undefined,
     options: Parameters<Base["processCommand"]>[2]): ReadonlyArray<string> {
@@ -77,7 +93,10 @@ export class WorkspaceContainer extends Base {
     const run = this.queue.then(async () => {
       const [command, cwd, stepId] = args;
       const app = platformApps.find(app => stepId === `deploy ${app}` && cwd === `/workspace/repository/apps/${app}`);
-      if (!app || !commands.has(command)) return super.execute(...args);
+      this.tracedOperation = cwd === "/workspace/repository" && nativeCommands.get(stepId) === command ? stepId
+        : app && (commands.has(command) || command === "pnpm build") ? `deploy ${app}` : undefined;
+      try {
+      if (!app || !commands.has(command)) return await super.execute(...args);
       if (!await this.ctx.storage.get("mainDeployment"))
         return { exitCode: 1, stdout: "", stderr: "Cloudflare deployment is restricted to an authenticated main run." };
       const env = this.env as { CLOUDFLARE_API_TOKEN?: string; CLOUDFLARE_ACCOUNT_ID?: string };
@@ -102,6 +121,7 @@ export class WorkspaceContainer extends Base {
         if ((await cleanup.output()).exitCode !== 0)
           throw Error("Could not clear the deployment registry login");
       }
+      } finally { this.tracedOperation = undefined; }
     });
     this.queue = run.catch(() => undefined);
     return run;
