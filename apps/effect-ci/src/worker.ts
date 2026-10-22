@@ -1,7 +1,7 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
-import { showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
+import { showcaseCheckSuiteRun, showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
 import { showcaseApi as showcase } from "./showcase-api.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
 import type { HmdApprovals, HmdCapability } from "./hmd-approval.ts";
@@ -36,7 +36,9 @@ export {
 } from "./repair-writer.ts";
 
 const ci = GitHubCloudflare.worker({
-  githubRun: (identity, environment, context) => showcaseGitHubRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context),
+  githubPushRun: showcaseGitHubRun,
+  githubRun: (identity, environment, context) =>
+    showcaseCheckSuiteRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context),
   remoteRunAllowed: () => false,
 });
 const demo = GitHubCloudflare.worker({

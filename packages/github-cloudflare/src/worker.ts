@@ -68,6 +68,10 @@ export interface WorkerOptions {
   /** Declaration only; the trusted host must independently enforce each method. */
   readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
   readonly github?: GitHubClient
+  /** Explicit signed-push enrollment. Unlike check suites, undefined declines
+   * the event: raw pushes never fall through to a default workflow. */
+  readonly githubPushRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
+    { readonly workflow: Workflow<WorkflowParameters>; readonly detailsUrl?: string } | false | undefined
   /** Trusted routing AFTER signature/App validation. False declines the event;
    * undefined keeps the default workflow for hosts without explicit enrollment. */
   readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
@@ -506,9 +510,6 @@ export const worker = (options: WorkerOptions = {}) => {
       )
 
       if (!valid) return new Response("Invalid signature", { status: 401 })
-      if (request.headers.get("x-github-event") !== "check_suite") {
-        return Response.json({ accepted: false, reason: "ignored event" }, { status: 202 })
-      }
 
       let value: unknown
 
@@ -518,30 +519,44 @@ export const worker = (options: WorkerOptions = {}) => {
         return new Response("Invalid JSON", { status: 400 })
       }
 
-      const payload = GitHub.parseCheckSuiteWebhook(value)
-
-      if (!payload) {
-        return Response.json({ accepted: false, reason: "ignored action" }, { status: 202 })
-      }
-
-      // Signed deliveries can describe another installed App's check suite.
-      // Signature authenticates GitHub, not ownership by this App.
-      if (String(payload.check_suite.app.id) !== environment.GITHUB_APP_ID) {
-        return Response.json({ accepted: false, reason: "foreign check suite" }, { status: 202 })
-      }
-
       const deliveryId = request.headers.get("x-github-delivery")
 
       if (!deliveryId) return new Response("Missing X-GitHub-Delivery", { status: 400 })
 
-      const identity = Object.freeze({
-        trigger: "github" as const, deliveryId, installationId: payload.installation.id,
-        repository: payload.repository.clone_url, repositoryName: payload.repository.full_name,
-        ...(payload.check_suite.head_branch ? { ref: `refs/heads/${payload.check_suite.head_branch}` } : {}),
-        revision: payload.check_suite.head_sha,
-      })
-      const selection = options.githubRun?.(identity, environment, context)
-      if (selection === false) {
+      const event = request.headers.get("x-github-event")
+      let identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">
+      let selection: ReturnType<NonNullable<WorkerOptions["githubRun"]>>
+
+      if (event === "check_suite") {
+        const payload = GitHub.parseCheckSuiteWebhook(value)
+        if (!payload) return Response.json({ accepted: false, reason: "ignored action" }, { status: 202 })
+
+        // Signed deliveries can describe another installed App's check suite.
+        // Signature authenticates GitHub, not ownership by this App.
+        if (String(payload.check_suite.app.id) !== environment.GITHUB_APP_ID) {
+          return Response.json({ accepted: false, reason: "foreign check suite" }, { status: 202 })
+        }
+        identity = Object.freeze({
+          trigger: "github" as const, deliveryId, installationId: payload.installation.id,
+          repository: payload.repository.clone_url, repositoryName: payload.repository.full_name,
+          ...(payload.check_suite.head_branch ? { ref: `refs/heads/${payload.check_suite.head_branch}` } : {}),
+          revision: payload.check_suite.head_sha,
+        })
+        selection = options.githubRun?.(identity, environment, context)
+      } else if (event === "push" && options.githubPushRun) {
+        const payload = GitHub.parsePushWebhook(value)
+        if (!payload) return Response.json({ accepted: false, reason: "ignored action" }, { status: 202 })
+        identity = Object.freeze({
+          trigger: "github" as const, deliveryId, installationId: payload.installation.id,
+          repository: payload.repository.clone_url, repositoryName: payload.repository.full_name,
+          ref: payload.ref, revision: payload.after,
+        })
+        selection = options.githubPushRun(identity, environment, context)
+      } else {
+        return Response.json({ accepted: false, reason: "ignored event" }, { status: 202 })
+      }
+
+      if (selection === false || event === "push" && selection === undefined) {
         return Response.json({ accepted: false, reason: "workflow not enrolled" }, { status: 202 })
       }
       const selectedWorkflow = selection?.workflow ?? workflow
@@ -556,12 +571,12 @@ export const worker = (options: WorkerOptions = {}) => {
 
       const token = await github.createInstallationToken(
         credentials(environment),
-        payload.installation.id,
+        identity.installationId,
       )
       const check = await github.createCheck({
         token,
-        repository: payload.repository.full_name,
-        sha: payload.check_suite.head_sha,
+        repository: identity.repositoryName,
+        sha: identity.revision,
         name: "Effect CI / Cloudflare",
         title: "Effect CI is queued on Cloudflare",
         summary: "A native Cloudflare Workflow has been requested for this commit.",
@@ -582,7 +597,7 @@ export const worker = (options: WorkerOptions = {}) => {
       } catch (error) {
         await github.updateCheck({
           token,
-          repository: payload.repository.full_name,
+          repository: identity.repositoryName,
           checkId: check.id,
           title: "Effect CI failed to start on Cloudflare",
           summary: error instanceof Error ? error.message : String(error),

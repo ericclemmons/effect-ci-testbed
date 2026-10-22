@@ -42,8 +42,10 @@ signers, deployment credentials, repair authority or reusable-check policies for
 ### 5. Run the first Workflow
 
 After [setup](./SELF-HOST.md#run-ci), commit and push to an installed repository.
-A signed `check_suite` event starts a native Workflow at the exact commit and reports
-per-action checks. Redelivery of the same delivery ID does not create another run.
+A signed `check_suite` event starts ordinary CI at the exact commit and reports
+per-action checks. Explicitly enrolled preview/release branches use the signed Push
+event so moving the same checked SHA between refs still creates the branch-owned
+attempt. Redelivery of the same delivery ID does not create another run.
 For remote CLI execution, use a clean pushed commit and your configured host:
 
 ```sh

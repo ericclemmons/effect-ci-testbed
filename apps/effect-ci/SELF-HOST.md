@@ -71,12 +71,15 @@ Create an App in GitHub's **Settings → Developer settings → GitHub Apps**:
 - Webhook: that origin plus `/webhooks/github`, with SSL verification enabled.
 - Webhook secret: a new high-entropy value, saved privately.
 - Permissions: **Checks: read/write**, **Contents: read**.
-- Subscribe to **Check suite** events; a push subscription is not required here.
+- Subscribe to **Check suite** events for ordinary CI and **Push** events when
+  the host enrolls branch-sensitive push routing such as preview → release.
 
 Record the App ID, generate its private PEM key, and install it on repositories
-you intend to run. `check_suite.requested` starts CI after a push;
-`check_suite.rerequested` supports GitHub's Re-run action. The host verifies the
-HMAC signature and deduplicates the delivery ID before starting a Workflow.
+you intend to run. `check_suite.requested` starts ordinary CI after a push and
+`check_suite.rerequested` supports GitHub's Re-run action. An explicitly enrolled
+signed Push event retains the exact branch ref even when the commit already has a
+check suite. The host rejects deleted, forced, tag and malformed push updates,
+then deduplicates the delivery ID before starting a Workflow.
 PR approvals and repair writers need separate capabilities; basic CI needs neither.
 
 ## Secrets

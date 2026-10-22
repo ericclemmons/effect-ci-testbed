@@ -201,3 +201,40 @@ export const parseCheckSuiteWebhook = (value: unknown): CheckSuiteWebhook | unde
 
   return value as CheckSuiteWebhook
 }
+
+export interface PushWebhook {
+  readonly ref: string
+  readonly after: string
+  readonly deleted: false
+  readonly forced: false
+  readonly installation: {
+    readonly id: number
+  }
+  readonly repository: {
+    readonly clone_url: string
+    readonly full_name: string
+  }
+}
+
+/** Parse only an immutable fast-forward branch update. Enrollment remains a
+ * separate host-owned decision after the webhook signature is verified. */
+export const parsePushWebhook = (value: unknown): PushWebhook | undefined => {
+  if (!value || typeof value !== "object") return undefined
+
+  const payload = value as Record<string, unknown>
+  const installation = payload.installation as Record<string, unknown> | undefined
+  const repository = payload.repository as Record<string, unknown> | undefined
+
+  if (
+    typeof payload.ref !== "string" || !payload.ref.startsWith("refs/heads/") ||
+    typeof payload.after !== "string" || !/^[a-f0-9]{40}$/.test(payload.after) ||
+    payload.deleted !== false || payload.forced !== false ||
+    !Number.isSafeInteger(installation?.id) || Number(installation?.id) <= 0 ||
+    typeof repository?.clone_url !== "string" ||
+    typeof repository?.full_name !== "string"
+  ) {
+    return undefined
+  }
+
+  return value as PushWebhook
+}

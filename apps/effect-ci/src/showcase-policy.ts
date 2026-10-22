@@ -55,3 +55,8 @@ export const showcaseGitHubRun: NonNullable<WorkerOptions["githubRun"]> = (ident
   const url = showcaseDetailsUrl(environment, identity.deliveryId);
   return { workflow, ...(url ? { detailsUrl: url } : {}) };
 };
+
+/** Showcase refs are started by their signed push delivery so moving one exact
+ * commit from preview to release creates a distinct branch-owned attempt. */
+export const showcaseCheckSuiteRun: NonNullable<WorkerOptions["githubRun"]> = (identity) =>
+  showcaseGitHubAllowed(identity) ? false : undefined;
