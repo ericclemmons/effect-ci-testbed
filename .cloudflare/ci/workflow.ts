@@ -22,7 +22,7 @@ export const check = CI.check("check", function* () {
 export const test = CI.check("test", function* () {
   const workspace = yield* install();
   return () => workspace.exec("node --test --test-concurrency=2 packages/*/src/*.test.ts apps/*/src/*.test.ts test/apps/*/src/*.test.ts scripts/*.test.ts");
-}, { timeout: "30 minutes" });
+}, { timeout: "30 minutes", checkpoint: "command" });
 
 export const build = CI.action("build", function* () {
   const workspace = yield* install();

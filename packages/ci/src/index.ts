@@ -28,6 +28,12 @@ export interface WorkflowStepConfig {
     readonly backoff?: "constant" | "linear" | "exponential"
   }
   readonly timeout?: WorkflowDuration
+  /**
+   * Put native durability around each command instead of the complete action
+   * body. Use this for a command-only action when losing a long-lived outer
+   * action acknowledgement would also hide the command's durable result.
+   */
+  readonly checkpoint?: "action" | "command"
 }
 
 export type StepOptions = WorkflowStepConfig
@@ -1896,7 +1902,7 @@ const makeRuntime = (
           ? workspacePersistence.commit({ stepId: id, workflowId, workspace: value })
           : Effect.succeed(value)
         const body = prepared.pipe(Effect.flatMap((leaf) => {
-          if (mode === "execute" && actionExecutor &&
+          if (mode === "execute" && actionExecutor && definition.options.checkpoint !== "command" &&
             (definition.options.retries !== undefined || definition.options.timeout !== undefined)) {
             node.status = "running"
             const started = emitEvent({ type: "step.status", workflowId, stepId: id,
