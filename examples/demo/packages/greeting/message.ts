@@ -1,1 +1,1 @@
-export const greeting = "Hello from the fully verified Effect CI showcase.";
+export const greeting = "Hello from the live Effect CI prototype.";
