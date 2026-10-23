@@ -125,6 +125,10 @@ The first defines the secret capability and redaction boundary. The second shows
 how a container requests an authenticated operation without receiving the credential.
 Neither recipe is permission to place host secrets into a project environment.
 
+Keep GitHub Actions execution and request temporary deployment credentials with
+[Wrangler OIDC](./oidc-wrangler) or [cf OIDC](./oidc-cf). Both use the shared Effect CI
+broker and request only explicitly authorized Worker scopes. Hosted verification is pending.
+
 ## Hosted CI, notifications, and approvals
 
 [GitHub-source Cloudflare CI](./github-cloudflare-ci) →

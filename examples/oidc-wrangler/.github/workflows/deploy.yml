@@ -1,0 +1,25 @@
+name: Deploy with wrangler and Effect CI OIDC
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/cloudflare-auth
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+          worker: effect-ci-oidc-wrangler
+          scopes: workers:edit
+      - name: Deploy using temporary credentials
+        working-directory: examples/oidc-wrangler
+        run: pnpm run deploy

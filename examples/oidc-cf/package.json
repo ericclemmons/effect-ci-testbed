@@ -1,0 +1,18 @@
+{
+  "name": "@effect-ci-testbed/oidc-cf",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "cf build",
+    "deploy": "cf deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261001.1",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "cf": "1.0.0-beta.12",
+    "vite": "^7.1.12",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9"
+  }
+}
