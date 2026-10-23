@@ -43,6 +43,11 @@ through `RepositoryCIWorkflow`, using the existing host API token and Access
 application. These runs always start at the repository root in the unprivileged
 `repository` image. `/demo` and `/showcase` retain their separate policies and
 workflows. A new repository does not require a new hostname or new credentials.
+The [retained same-host proof](./verification/repository-head/2026-10-23.json)
+records a successful `cf-ci run build --remote` for the standalone demo's exact
+pushed HEAD and a real unknown-target failure. The client used automatic
+`.env.local` settings and the existing credentials. Live Access and legacy demo
+capabilities were checked separately; this is an execution receipt, not signed evidence.
 Installing the App on all repositories grants repository access; it does not enroll
 signers, deployment credentials, repair authority or reusable-check policies for them.
 

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "observedDate": "2026-10-23",
+  "hostOrigin": "https://effect-ci-github-cloudflare.ericclemmons.workers.dev",
+  "hostSourceRevision": "ad21d5cb1b3bb9c9a739d5fdf3da720d835a39c8",
+  "workerVersion": "9d62b613-9169-4748-97f0-9cd27ab34abf",
+  "repositoryImageDigest": "sha256:e517b271d0cd09ae710574ec90155a8aa44aefc8062883c0118cc5b6f57bca3e",
+  "clientCommand": "cf-ci run build --remote --format=text",
+  "clientEnvironment": "automatic ignored .env.local; existing host API token and existing cloudflared Access session; no --env-file",
+  "positive": {
+    "instanceId": "e1530273-f69d-413c-aabb-3e83e6d7bdc5",
+    "workflowVersion": "1765d11e-37a8-4c82-9545-5a970f29bccf",
+    "params": {
+      "trigger": "remote",
+      "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+      "revision": "d28d2c7a286d7aaa6fe1d29f94249f67b826e596",
+      "ref": "refs/heads/main",
+      "targets": [
+        "build"
+      ]
+    },
+    "queued": "2026-10-23T23:36:23.018Z",
+    "start": "2026-10-23T23:36:26.764Z",
+    "end": "2026-10-23T23:37:28.631Z",
+    "status": "complete",
+    "success": true,
+    "error": null,
+    "commands": [
+      {
+        "command": "npm_config_cache=.effect-ci/cache/npm npm ci",
+        "cwd": "/workspace/repository"
+      },
+      {
+        "command": "node /opt/effect-ci/src/hosted.ts run build --local --format=json",
+        "cwd": "/workspace/repository"
+      }
+    ]
+  },
+  "negative": {
+    "instanceId": "b99a6cde-8288-482b-9f66-4c9c3bbac4b7",
+    "workflowVersion": "34e4c402-2239-40f4-a9e0-98f4cfd3417e",
+    "params": {
+      "trigger": "remote",
+      "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+      "revision": "d28d2c7a286d7aaa6fe1d29f94249f67b826e596",
+      "ref": "refs/heads/main",
+      "targets": [
+        "missing-demo-target"
+      ]
+    },
+    "queued": "2026-10-23T23:37:53.480Z",
+    "start": "2026-10-23T23:37:54.126Z",
+    "end": "2026-10-23T23:38:20.311Z",
+    "status": "errored",
+    "success": false,
+    "error": {
+      "message": "Command failed (2): node /opt/effect-ci/src/hosted.ts run missing-demo-target --local --format=json\n(node:15) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "name": "Error"
+    },
+    "clientExitCode": 1,
+    "projectExitCode": 2,
+    "projectErrorCode": "CI_UNKNOWN_TARGET"
+  },
+  "observedRouting": {
+    "anonymousRoot": 302,
+    "unsignedGitHubWebhook": 401,
+    "rootCapabilities": {
+      "status": 200,
+      "targetDiscovery": "project"
+    },
+    "demoCapabilities": {
+      "status": 200,
+      "targets": [
+        "lint",
+        "check",
+        "typecheck",
+        "test",
+        "build"
+      ]
+    }
+  },
+  "limitations": [
+    "Single observed live build and unknown-target rejection, not a performance benchmark or signed verification evidence.",
+    "The first attempted run hit the checkout-token format bug and was terminated; these runs use the corrected deployed version."
+  ]
+}
