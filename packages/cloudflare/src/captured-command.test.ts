@@ -56,6 +56,26 @@ test("completion waits for inherited descendant output and retains binary bytes"
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test("lost launch acknowledgement reads the original completion without launching again", async () => {
+  const root = await mkdtemp(join(tmpdir(), "effect-ci-launch-ack-"))
+  const bootIdentity = join(root, "boot"), effects = join(root, "effects")
+  await writeFile(bootIdentity, "same-boot")
+  let launched = false
+  try {
+    const result = await capturedCommand({ running: () => true, bootIdentity, directory: join(root, "capture"),
+      argv: ["sh", "-c", 'printf x >> "$1"; printf original; exit 7', "sh", effects],
+      exec: async argv => {
+        const output = await shell(argv)
+        if (!launched) { launched = true; throw Error("launch acknowledgement lost") }
+        return { output: async () => output }
+      },
+    })
+    assert.equal(result.exitCode, 7)
+    assert.equal(result.recovered, true)
+    assert.equal(await readFile(effects, "utf8"), "x")
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test("missing or foreign-boot completion never becomes success or replays the command", async () => {
   for (const mode of ["missing", "foreign-boot", "stopped", "mismatch", "invalid-record"] as const) {
     const root = await mkdtemp(join(tmpdir(), "effect-ci-capture-test-"))

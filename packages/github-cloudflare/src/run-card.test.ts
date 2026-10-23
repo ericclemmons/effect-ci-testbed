@@ -7,6 +7,17 @@ import { sendNotification } from "./notifications.ts"
 const identity = { instanceId: "test-run", repository: "owner/repo", revision: "abc123", slackApprovalsEnabled: true }
 const event = (stepId: string, status: "queued" | "running" | "complete" | "warning", optional = false): RuntimeEvent => ({ type: "step.status", workflowId: "build", stepId, status, optional, timestamp: "now" })
 
+test("thread step status is compact and gains duration or cached provenance in place", () => {
+  const card = new RunCard(identity)
+  card.update({ ...event("test", "running"), timestamp: "2026-10-23T01:00:00Z" })
+  assert.equal(card.render({ onlyStep: "test" }).text, "► test")
+  card.update({ ...event("test", "complete"), timestamp: "2026-10-23T01:00:07Z" })
+  assert.equal(card.render({ onlyStep: "test" }).text, "✓ test · 7s")
+  card.update({ type: "step.status", workflowId: "build", stepId: "install", status: "reused", optional: false,
+    timestamp: "2026-10-23T01:00:07Z" })
+  assert.equal(card.render({ onlyStep: "install" }).text, "✓ install · (cached)")
+})
+
 test("unknown process results have explicit step detail without fabricated output or exit codes", () => {
   const card = new RunCard(identity)
   assert.equal(card.update({ type: "step.command.unavailable", workflowId: "build", stepId: "test",
@@ -69,7 +80,7 @@ test("parent retains workflow, rotating status and latest evidence; replies cont
   assert.match(JSON.stringify(root), /FPRIVATE/)
   assert.ok(!root.blocks.some(block => block.type === "actions"))
   const detail = card.render({ onlyStep: "build" })
-  assert.match(detail.text, /^► build — running/)
+  assert.match(detail.text, /^► build\n/)
   assert.doesNotMatch(detail.text, /checkout|Run:|1\./)
   assert.doesNotMatch(JSON.stringify(detail.blocks), /owner\/repo|Details|header|divider|1\. /)
   assert.match(JSON.stringify(detail.blocks), /FPRIVATE/)

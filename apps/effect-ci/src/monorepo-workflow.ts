@@ -9,7 +9,7 @@ const Base = GitHubCloudflare.workflowEntrypoint((_environment, parameters) => {
   if (parameters.trigger !== "github" || !monorepoAllowed(parameters))
     throw Error("Monorepo CI requires its authenticated source");
   return workflow;
-}, { cache: false, slackLayout: "status-thread", slackCommandOutput: "failed",
+}, { cache: false, durableCommands: true, slackLayout: "status-thread", slackCommandOutput: "failed",
   slackProgressSteps: parameters => ["checkout", "install", "check", "test", "build", "test and build tutorial", "deploy",
     ...(parameters.trigger === "github" && parameters.ref === "refs/heads/main"
       ? platformApps.map(app => `deploy ${app}`) : [])],

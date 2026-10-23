@@ -11,6 +11,8 @@ interface Capture {
   readonly argv: readonly string[]
   readonly directory: string
   readonly bootIdentity?: string
+  /** Retain the boot-bound record until its host has durably saved the result. */
+  readonly retain?: boolean
 }
 
 // Only a trusted host opts into this envelope. Never use project-owned result
@@ -31,7 +33,9 @@ mv "$d/result.tmp" "$d/result"
 exit "$status"`
 const record = `set -eu
 d=$1; boot=$2
+test -f "$d/boot" || exit 2
 test "$(cat "$boot")" = "$(cat "$d/boot")"
+test -f "$d/result" || exit 2
 cat "$d/result"`
 const read = `set -eu
 cat "$1/stdout"
@@ -44,18 +48,32 @@ export async function capturedCommand(input: Capture): Promise<Output & { readon
   let observed: Output | undefined
   let failure: unknown
   // No retry even if launching the command has an uncertain acknowledgement.
-  const process = await input.exec(["/bin/sh", "-c", capture, "sh", input.directory, boot, ...input.argv])
-  try { observed = await process.output() } catch (error) { failure = error }
+  try {
+    const process = await input.exec(["/bin/sh", "-c", capture, "sh", input.directory, boot, ...input.argv])
+    observed = await process.output()
+  } catch (error) { failure = error }
   if (!input.running()) throw failure ?? Error("Command container stopped before result readback")
   try {
-    const metadata = await (await input.exec(["/bin/sh", "-c", record, "sh", input.directory, boot])).output()
-    if (metadata.exitCode !== 0) throw Error("Command completion record is unavailable")
-    const result = Schema.decodeUnknownSync(Schema.fromJsonString(Result))(new TextDecoder().decode(metadata.stdout))
+    const result = await readCapturedCommand(input)
+    if (!result) throw Error("Command completion record is unavailable")
     if (observed && observed.exitCode !== result.exitCode) throw Error("Command result disagrees with its process exit")
-    const output = await (await input.exec(["/bin/sh", "-c", read, "sh", input.directory])).output()
-    if (output.exitCode !== 0) throw Error("Command output readback failed")
-    const cleanup = await (await input.exec(["rm", "-r", "--", input.directory])).output()
-    if (cleanup.exitCode !== 0) throw Error("Command result cleanup failed")
-    return { exitCode: result.exitCode, stdout: output.stdout, stderr: output.stderr, recovered: observed === undefined }
+    if (!input.retain) {
+      const cleanup = await (await input.exec(["rm", "-r", "--", input.directory])).output()
+      if (cleanup.exitCode !== 0) throw Error("Command result cleanup failed")
+    }
+    return { ...result, recovered: observed === undefined }
   } catch (error) { throw failure ?? error }
+}
+
+/** Reattach only to this record in the surviving VM. Never start or restore it. */
+export async function readCapturedCommand(input: Pick<Capture, "exec" | "running" | "directory" | "bootIdentity">): Promise<Output | undefined> {
+  if (!input.running()) throw Error("Command container stopped before result readback")
+  const boot = input.bootIdentity ?? "/proc/sys/kernel/random/boot_id"
+  const metadata = await (await input.exec(["/bin/sh", "-c", record, "sh", input.directory, boot])).output()
+  if (metadata.exitCode === 2) return undefined
+  if (metadata.exitCode !== 0) throw Error("Command completion record is unavailable or belongs to another VM boot")
+  const result = Schema.decodeUnknownSync(Schema.fromJsonString(Result))(new TextDecoder().decode(metadata.stdout))
+  const output = await (await input.exec(["/bin/sh", "-c", read, "sh", input.directory])).output()
+  if (output.exitCode !== 0) throw Error("Command output readback failed")
+  return { exitCode: result.exitCode, stdout: output.stdout, stderr: output.stderr }
 }

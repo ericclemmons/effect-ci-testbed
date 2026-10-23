@@ -12,10 +12,11 @@ import {
 import * as Effect from "effect/Effect"
 import { cleanCheckoutCommand } from "./source-checkout.ts"
 import { containerShell } from "./container-shell.ts"
-import { capturedCommand } from "./captured-command.ts"
+import { capturedCommand, readCapturedCommand } from "./captured-command.ts"
 import { makeHostAttemptHandler, type HostAttemptHandler } from "./host-attempt.ts"
 export { makeHostAttemptHandler, type HostAttemptHandler, type HostAttemptContext } from "./host-attempt.ts"
 import { makeCommandStepExecutor } from "./command-step.ts"
+import { executeRecordedCommandStep } from "./recorded-command-step.ts"
 import { commandFailure } from "./command-error.ts"
 import { cacheIdentity } from "./cache-identity.ts"
 import { makeActionExecutor } from "./action-step.ts"
@@ -62,7 +63,20 @@ interface CommittedWorkspace {
   readonly revisionId?: string
 }
 
+type RecordedCommandArgs = Parameters<WorkspaceContainer["execute"]>
+interface RecordedCommand {
+  readonly digest: string
+  readonly directory: string
+  readonly started?: boolean
+  readonly failed?: boolean
+  readonly result?: ContainerExecutionResult
+}
+export type RecordedCommandResult = { readonly state: "pending" } |
+  { readonly state: "complete"; readonly result: ContainerExecutionResult }
+
 interface WorkspaceContainerStub {
+  readonly launchRecordedCommand: (id: string, args: RecordedCommandArgs) => Promise<boolean>
+  readonly recordedCommandResult: (id: string, args: RecordedCommandArgs) => Promise<RecordedCommandResult>
   readonly inspectOutput: (snapshot: ContainerSnapshotValue, cwd: string, patterns: ReadonlyArray<string>, options?: WorkspaceContainerOptions) => Promise<OutputManifest>
   readonly sourceChanges: (comparison: CI.SourceComparison, cwd: string, options?: WorkspaceContainerOptions) => Promise<CI.SourceChanges>
   readonly getImageIdentity: (options?: WorkspaceContainerOptions) => Promise<string | undefined>
@@ -137,6 +151,78 @@ export class GitCheckoutOutbound extends WorkerEntrypoint<unknown, { workspaceId
 }
 
 export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironment> {
+  private recording: { key: string; digest: string; directory: string } | undefined
+
+  /** Host enrollment only. The first prototype supports trusted command-only
+   * compute, without cache restoration, credentials or post-command effects. */
+  protected supportsRecordedCommand(_args: RecordedCommandArgs): boolean { return false }
+
+  private async commandRecordKey(id: string, args: RecordedCommandArgs) {
+    if (!id || id.length > 512 || /[\x00-\x1f]/.test(id)) throw Error("Invalid command execution identity")
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(args)))),
+      byte => byte.toString(16).padStart(2, "0")).join("")
+    return { key: `command-result:${id}`, digest }
+  }
+
+  /** Launch at most once. A committed launch marker is NEVER permission to
+   * launch again, including when launch acknowledgement or this DO is lost. */
+  async launchRecordedCommand(id: string, args: RecordedCommandArgs): Promise<boolean> {
+    if (!this.supportsRecordedCommand(args) || (args[4]?.length ?? 0) > 0) return false
+    const { key, digest } = await this.commandRecordKey(id, args)
+    let launch = false
+    const descriptor = await this.ctx.blockConcurrencyWhile(async () => {
+      const previous = await this.ctx.storage.get<RecordedCommand>(key)
+      if (previous) {
+        if (previous.digest !== digest) throw Error("Command execution identity does not match its original inputs")
+        return previous
+      }
+      if (this.recording) throw Error("Another recorded command is still active")
+      const value = { digest, directory: `/tmp/effect-ci-command-${crypto.randomUUID()}` }
+      await this.ctx.storage.put(key, value)
+      launch = true
+      return value
+    })
+    if (launch) {
+      this.recording = { key, ...descriptor }
+      const work = this.execute(...args).then(async result => {
+        await this.ctx.storage.put(key, { ...descriptor, result })
+        // The durable result survives cleanup and a replacement DO. A cleanup
+        // failure cannot authorize replay or erase the completed command.
+        try { await (await this.container().exec(["rm", "-r", "--", descriptor.directory])).output() } catch { /* VM finalization also removes it */ }
+      }).catch(async () => {
+        try {
+          const retained = await this.ctx.storage.get<RecordedCommand>(key)
+          if (retained && !retained.result) await this.ctx.storage.put(key, { ...retained, failed: true })
+        } catch { /* a replacement DO can still read the original durable marker */ }
+        console.warn("Recorded command completion unavailable; read-only reconciliation required")
+      })
+        .finally(() => { this.recording = undefined })
+      this.ctx.waitUntil(work)
+    }
+    return true
+  }
+
+  /** Fresh stubs only read this exact identity, never materialize/start/restore
+   * the workspace or run its command again. A missing record stays unknown. */
+  async recordedCommandResult(id: string, args: RecordedCommandArgs): Promise<RecordedCommandResult> {
+    const { key, digest } = await this.commandRecordKey(id, args)
+    const descriptor = await this.ctx.storage.get<RecordedCommand>(key)
+    if (!descriptor || descriptor.digest !== digest) throw Error("Command execution identity is unavailable or does not match")
+    if (descriptor.result) return { state: "complete", result: descriptor.result }
+    if (!descriptor.started) {
+      if (descriptor.failed) throw Error("Recorded command preparation failed; execution outcome unavailable")
+      return { state: "pending" }
+    }
+    const output = await readCapturedCommand({ directory: descriptor.directory,
+      running: () => this.container().running, exec: argv => this.container().exec([...argv]) })
+    if (!output) {
+      if (descriptor.failed) throw Error("Recorded command result is unavailable")
+      return { state: "pending" }
+    }
+    const result = { exitCode: output.exitCode, stdout: decoder.decode(output.stdout), stderr: decoder.decode(output.stderr) }
+    await this.ctx.storage.put(key, { ...descriptor, result })
+    return { state: "complete", result }
+  }
   private gitCheckout: { repository: string; token: string; capability: string; expiresAt: number; failure?: string } | undefined
 
   /** Called by the host outbound Worker, never exported as a public HTTP route. */
@@ -336,8 +422,12 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     const argv = [...this.processCommand(command, cwd, options)]
     const execOptions = cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined
     if (businessCommand && this.captureExecutionResult(options)) {
+      if (this.recording) await this.ctx.storage.put(this.recording.key, {
+        digest: this.recording.digest, directory: this.recording.directory, started: true,
+      } satisfies RecordedCommand)
       const output = await capturedCommand({ argv,
-        directory: `/tmp/effect-ci-command-${crypto.randomUUID()}`,
+        directory: this.recording?.directory ?? `/tmp/effect-ci-command-${crypto.randomUUID()}`,
+        ...(this.recording ? { retain: true } : {}),
         running: () => this.container().running,
         exec: args => this.container().exec([...args], execOptions),
       })
@@ -678,6 +768,9 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 }
 
 export interface RunnerOptions {
+  /** Host-enrolled command-only compute: persist identity/results outside the
+   * Workflow connection and poll using short read-only native checkpoints. */
+  readonly durableCommands?: boolean
   readonly binding: DurableObjectNamespace
   readonly cache?: {
     readonly key: string
@@ -727,6 +820,7 @@ export interface WorkflowEnvironment {
 }
 
 export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironment = WorkflowEnvironment, Parameters extends WorkflowParameters = WorkflowParameters> {
+  readonly durableCommands?: boolean
   /** Record the actual CI attempt, including successful outputs on failure.
    * Host-only persistence is authoritative; this does not authorize result reuse. */
   readonly onAttempt?: HostAttemptHandler<Environment, Parameters>
@@ -751,6 +845,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   let outputSequence = 0
   const activeBodies = new Set<string>()
   const fileSequences = new Map<string, number>()
+  const commandSequences = new Map<string, number>()
   const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
     activeBodies.has(stepId) ? operation() : options.step.do(name, operation as () => Promise<any>) as Promise<A>
   const fileOperation = <A>(stepId: string, kind: "read" | "exists", operation: () => Promise<A>): Promise<A> => {
@@ -770,7 +865,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
     ? options.binding.getByName(
         `${options.workspaceId}:step=${stepId}`,
       ) as unknown as WorkspaceContainerStub
-    : primary
+    : options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
   let cache: WorkspaceContainerStub | undefined
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
   const checkout = (cachePaths?: ReadonlyArray<string>) => {
@@ -885,6 +980,23 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           const container = containerFor(stepId, workspace)
+          if (options.durableCommands && !activeBodies.has(stepId) && (stepOptions.retries?.limit ?? 0) === 0) {
+            const sequence = commandIndex ?? (commandSequences.get(stepId) ?? 0) + 1
+            commandSequences.set(stepId, sequence)
+            const id = JSON.stringify([stepId, sequence])
+            const args: RecordedCommandArgs = [command, workspace.cwd, stepId,
+              revision?.value as ContainerSnapshotValue | undefined, options.cache?.paths, targetDirectory, options.container]
+            const recorded = await executeRecordedCommandStep(options.step,
+              { command, stepId, workspace, options: stepOptions }, `command:${id}`, {
+                launch: () => containerFor(stepId, workspace).launchRecordedCommand(id, args),
+                result: () => containerFor(stepId, workspace).recordedCommandResult(id, args),
+              })
+            if (recorded) {
+              if (recorded.stdout) onOutput("stdout", recorded.stdout)
+              if (recorded.stderr) onOutput("stderr", recorded.stderr)
+              return recorded
+            }
+          }
           const execute = async () => {
             try {
               return await container.execute(
@@ -1085,6 +1197,7 @@ export const workflowEntrypoint = <
 
     const cache = options.cache === false ? undefined : options.cache
     const runner = makeRunner({
+      ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
       ...(cache
         ? {

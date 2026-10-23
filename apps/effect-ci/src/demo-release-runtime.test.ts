@@ -165,10 +165,10 @@ test(
         assert.equal(state.commits, id !== "reject" ? 1 : 0);
         assert.equal(state.rollbacks, id !== "reject" ? 0 : 1);
         assert.equal(state.journal.status, id !== "reject" ? "complete" : "rolled-back");
-        assert.equal(state.observationFailures, id === "accept-observation-failure" ? 3 : 0,
-          "one attempt each for the known parent, existing reply and observational index, not a repost");
+        assert.equal(state.observationFailures, id === "accept-observation-failure" ? 2 : 0,
+          "one attempt each for the known parent and existing reply, not a repost");
         if (id === "accept-observation-failure") {
-          assert.equal(new Set(state.failedObservationTargets.map((t: any) => t.ts)).size, 3);
+          assert.equal(new Set(state.failedObservationTargets.map((t: any) => t.ts)).size, 2);
           assert.ok(state.failedObservationTargets.every((t: any) => t.method === "chat.update" && typeof t.ts === "string"));
         }
         assert.ok(!JSON.stringify(outcome).includes("private-presentation-token"));
@@ -187,15 +187,14 @@ test(
         const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");
         assert.ok(replyUpdates.every((m: any) => !m.body.blocks.some((b: any) => ["header", "context", "divider"].includes(b.type))), "step replies omit repeated run chrome");
         const replies = state.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(replies.length, 1 + state.images, "one details table and one evidence/control reply per reviewed phase");
+        assert.equal(replies.length, 1 + state.images, "one build reply and one evidence/control reply per reviewed phase");
         assert.ok(!replies.some((m: any) => m.body.text === "Preparing build"),
-          "a successful status-only build stays in the table instead of creating a duplicate reply");
-        assert.equal(replies[0].body.text, "Preparing steps…");
+          "the first step reply already contains its actual status");
+        assert.match(replies[0].body.text, /^[►✓] build/);
         const indexUpdates = state.messages.filter((m: any) => m.body.ts === "123.000001");
         assert.ok(indexUpdates.length > 0);
-        assert.equal(indexUpdates.at(-1).body.blocks[0].type, "table");
-        assert.match(JSON.stringify(indexUpdates.at(-1).body), /https:\/\/fixture.slack.com\/archives\/C1\/p123000002/);
-        assert.ok(!JSON.stringify(indexUpdates).includes('"text":"Field"'));
+        assert.match(indexUpdates.at(-1).body.text, /^✓ build(?: · |$)/);
+        assert.ok(!state.messages.some((m: any) => m.body.blocks.some((b: any) => b.type === "table")));
         assert.ok(replies.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
         assert.ok(state.messages.some((m: any) => m.body.ts !== "123.456" && m.body.blocks.some((b: any) => b.type === "image")));
         assert.ok(!state.messages.at(-1).body.blocks.some((b: any) => b.type === "actions"));

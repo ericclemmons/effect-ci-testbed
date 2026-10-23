@@ -29,6 +29,11 @@ const NativeResult = Schema.Struct({
 /** Normal cf commands use host-authenticated outbound HTTPS. No real account
  * or registry credential enters a process environment, disk or snapshot. */
 export class WorkspaceContainer extends Base {
+  protected override supportsRecordedCommand(args: Parameters<Base["execute"]>): boolean {
+    const [command, cwd, stepId, , cachePaths, , options] = args;
+    return options?.image === "ci" && cwd === "/workspace/repository" && nativeCommands.get(stepId) === command &&
+      (cachePaths?.length ?? 0) === 0;
+  }
   private deployment: { command: string; cwd: string; env: Record<string, string>; capability: string; proxy: DeploymentProxy } | undefined;
   private queue: Promise<unknown> = Promise.resolve();
   private tracedOperation: string | undefined;

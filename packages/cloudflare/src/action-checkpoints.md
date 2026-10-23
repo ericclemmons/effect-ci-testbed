@@ -32,6 +32,36 @@ failed attempt, then read the **same** external artifact/operation identity and
 verify its actual bytes and ownership before deciding what recovery is allowed.
 Do not create a new identity or blindly POST again after an uncertain ACK.
 
+## Enrolled command-only native compute recovery
+
+The monorepo host now opts into `durableCommands` for command-only actions.
+`WorkspaceContainer.launchRecordedCommand` commits a launch identity and an
+input digest before starting work, then retains the actual result in DO storage.
+A repeated launch identity never starts another command. A lost launch ACK
+switches only to observation, never to a fallback execution.
+
+The Workflow uses short launch/result checkpoints rather than holding a single
+long-lived command RPC. Every result observation acquires a fresh workspace stub.
+If the original DO disappears while its VM survives, the replacement reads the
+host-owned, boot-bound completion record. It never restores or starts that VM.
+After completion is committed in DO storage, the result remains available even
+without the original VM. Read-checkpoint ACK failures can be reconciled through
+another read of that same identity. Nonzero process exits retain their real
+diagnostics; missing results retain an unknown exit. Polling never extends the
+original durable deadline.
+
+Enrollment is deliberately limited to the host's exact native compute commands,
+with no cache restoration or post-command side effects. Credential-bearing
+deployment actions and untrusted project commands retain the existing path.
+A marker whose launch never became observable remains unknown; it does not
+authorize another launch. If the Workflow engine itself cannot accept further
+read checkpoints, the Workflow still fails. These tests do not claim to repair
+Cloudflare internals or change the historical failed main run.
+
+```sh
+node --test packages/cloudflare/src/recorded-command-step.test.ts packages/cloudflare/src/captured-command.test.ts apps/effect-ci/src/workspace-snapshot-recovery.test.ts
+```
+
 ## Container snapshots
 
 Workspace mutations have a durable owner/input marker, written before commands.

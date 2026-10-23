@@ -32,6 +32,90 @@ const compiled = await build({
 const { WorkspaceContainer, NativeWorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
 
+test("recorded execution can be pending during workspace startup without treating a not-yet-started VM as lost", async () => {
+  const stored = new Map<string, unknown>(), background: Promise<unknown>[] = [];
+  let finish!: (value: unknown) => void;
+  const preparation = new Promise(resolve => { finish = resolve; });
+  class Preparing extends WorkspaceContainer {
+    constructor(ctx: any) { super(ctx, {}); }
+    supportsRecordedCommand() { return true; }
+    execute() { return preparation; }
+  }
+  const ctx = { container: { running: false, exec: async () => ({ output: async () => ({ exitCode: 0 }) }) },
+    storage: { get: async (key: string) => stored.get(key), put: async (key: string, value: unknown) => { stored.set(key, value); } },
+    blockConcurrencyWhile: (f: () => Promise<unknown>) => f(), waitUntil: (p: Promise<unknown>) => { background.push(p); } };
+  try {
+    await new Preparing(ctx).launchRecordedCommand('startup', ['test', '/workspace', 'test']);
+    assert.deepEqual(await new Preparing(ctx).recordedCommandResult('startup', ['test', '/workspace', 'test']), { state: 'pending' });
+  } finally { finish({ exitCode: 0, stdout: '', stderr: '' }); await Promise.all(background); }
+});
+
+test("a replacement workspace DO retrieves the same command after losing its live exec connection", async () => {
+  const root = await mkdtemp(join(tmpdir(), "effect-ci-replaced-execution-"));
+  const boot = join(root, "boot"), effects = join(root, "effects");
+  await writeFile(boot, "same-boot");
+  const stored = new Map<string, any>(), background: Promise<unknown>[] = [];
+  let commands = 0;
+  let release!: () => void;
+  let captured!: () => void;
+  const ready = new Promise<void>(resolve => { captured = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const container = { running: true, async exec(input: string[], options: { cwd?: string } = {}) {
+    const argv = [...input], business = argv[5] === "/proc/sys/kernel/random/boot_id" && argv.length > 6;
+    if (argv[5] === "/proc/sys/kernel/random/boot_id") argv[5] = boot;
+    if (business) commands++;
+    const output = await new Promise<any>((resolve, reject) => {
+      const child = spawn(argv[0]!, argv.slice(1), { cwd: options.cwd, stdio: ["ignore", "pipe", "pipe"] });
+      const out: Buffer[] = [], err: Buffer[] = [];
+      child.stdout.on("data", bytes => out.push(bytes)); child.stderr.on("data", bytes => err.push(bytes));
+      child.on("error", reject); child.on("close", exitCode => resolve({ exitCode, stdout: Buffer.concat(out), stderr: Buffer.concat(err) }));
+    });
+    if (business) captured();
+    return { output: async () => { if (business) await held; return output; } };
+  } };
+  const ctx = { container, storage: { get: async (key: string) => stored.get(key),
+    put: async (key: string, value: unknown) => { stored.set(key, value); } },
+    blockConcurrencyWhile: (f: () => Promise<unknown>) => f(),
+    waitUntil: (p: Promise<unknown>) => { background.push(p); } };
+  class Enrolled extends WorkspaceContainer {
+    constructor(ctx: any, env: any) { super(ctx, env); }
+    captureExecutionResult() { return true; }
+    supportsRecordedCommand() { return true; }
+  }
+  const id = JSON.stringify(['test', 0]);
+  const args = ['printf x >> effects; printf original; printf actual-error >&2; exit 7', root, 'test',
+    undefined, undefined, root, { loginShell: false }];
+  try {
+    assert.equal(await new Enrolled(ctx, {}).launchRecordedCommand(id, args), true);
+    await ready;
+    const replacement = new Enrolled(ctx, {});
+    const actual = await replacement.recordedCommandResult(id, args);
+    assert.deepEqual(actual, { state: 'complete', result: { exitCode: 7, stdout: 'original', stderr: 'actual-error' } });
+    assert.equal(await replacement.launchRecordedCommand(id, args), true);
+    assert.equal(await readFile(effects, 'utf8'), 'x');
+    assert.equal(commands, 1);
+    await assert.rejects(replacement.recordedCommandResult(id, ['different', ...args.slice(1)]), /identity/);
+    let connections = 0, launchCalls = 0;
+    const runner = makeRunner({ workspaceId: 'replacement-run', repository: 'https://github.com/acme/project', revision: 'a'.repeat(40),
+      durableCommands: true, targetDirectory: root, container: { loginShell: false },
+      binding: { getByName() { connections++; const host = new Enrolled(ctx, {}); return {
+        async launchRecordedCommand(...input: any[]) { launchCalls++; await host.launchRecordedCommand(...input); throw Error('lost RPC acknowledgement'); },
+        recordedCommandResult: (...input: any[]) => host.recordedCommandResult(...input),
+      }; } },
+      step: { do: (_name: string, _policy: unknown, body: () => Promise<unknown>) => body(), sleep: async () => {} },
+    });
+    await assert.rejects(runPromise(runner.executor.execute({ command: args[0], commandIndex: 0, stepId: 'test',
+      workspace: Workspace.remote('replacement-run', root), options: {}, onOutput() {} })),
+    (error: any) => error._tag === 'CommandError' && error.exitCode === 7 && error.output.stderr === 'actual-error');
+    assert.equal(launchCalls, 1); assert.ok(connections >= 3, 'runner acquires a fresh stub for reconciliation');
+    assert.equal(commands, 1);
+    release(); await Promise.all(background);
+    container.running = false;
+    assert.deepEqual(await new Enrolled(ctx, {}).recordedCommandResult(id, args), actual,
+      'the committed result remains available independently of the original DO or VM');
+  } finally { release(); await Promise.all(background); await rm(root, { recursive: true, force: true }); }
+});
+
 test("native result capture is limited to enrolled CI commands and reports only their closed result", async () => {
   const root = await mkdtemp(join(tmpdir(), "effect-ci-native-result-")), boot = join(root, "boot");
   await writeFile(boot, "fixture-boot");

@@ -200,14 +200,13 @@ test(
         assert.ok(roots.every((m: any) => m.body.blocks.length === 2));
         assert.ok(roots.every((m: any) => !JSON.stringify(m.body.blocks).includes("Release still running")));
         const posts = result.messages.filter((m: any) => m.body.thread_ts);
-        assert.equal(posts.length, 2, "one details table and one host review reply; routine build status does not create a duplicate reply");
-        assert.ok(!posts.some((m: any) => m.body.text === "Preparing build"), "build is represented only in the table");
-        assert.equal(posts[0].body.text, "Preparing steps…");
+        assert.equal(posts.length, 2, "one build reply and one host review reply");
+        assert.match(posts[0].body.text, /^[►✓] build/);
+        assert.ok(!result.messages.some((m: any) => m.body.blocks?.some((b: any) => b.type === "table")));
         const summaries = result.messages.filter((m: any) => m.body.ts === "123.000001");
         if (name === "Threaded") {
-          assert.ok(summaries.some((m: any) => m.body.blocks?.some((b: any) => b.type === "table")));
-          assert.match(summaries.at(-1).body.text, /build: complete/);
-          assert.ok(summaries.every((m: any) => m.url.endsWith("chat.update")), "summary updates never repost");
+          assert.match(summaries.at(-1).body.text, /^✓ build(?: · |$)/);
+          assert.ok(summaries.every((m: any) => m.url.endsWith("chat.update")), "step updates never repost");
         } else assert.equal(summaries.length, name === "FailedSummary" ? 1 : 0,
           "a failed index is never reposted or retried, and cannot block release finalization");
         assert.ok(posts.every((m: any) => m.body.thread_ts === "123.456" && m.body.reply_broadcast === false));
