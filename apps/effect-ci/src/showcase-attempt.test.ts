@@ -37,6 +37,14 @@ test("an explicit compute rerun preserves the previous attempt and restores prer
   await CI.runPromise(workflow, configuration);
   const retained = retainShowcaseAttempt(attempt, { revision, version, instanceId: firstOwner });
   assert.ok(retained);
+  const computeOnly = { ...attempt, requested: ["lint", "test"],
+    plan: { ...attempt.plan, nodes: attempt.plan.nodes.filter(node => node.id !== "build") },
+    outputs: Object.fromEntries(Object.entries(attempt.outputs).filter(([id]) => id !== "build")) };
+  assert.ok(retainShowcaseAttempt(computeOnly, { revision, version, instanceId: firstOwner }),
+    "a successful lint/test baseline need not contain an unrequested build output");
+  const { install: omitted, ...missingOutput } = computeOnly.outputs;
+  assert.equal(retainShowcaseAttempt({ ...computeOnly, outputs: missingOutput }, { revision, version, instanceId: firstOwner }), undefined,
+    "every action that did enter the plan still needs its retained output");
   const original = JSON.stringify(retained);
   owner = nextOwner;
   const restored = restoreShowcaseAttempt(JSON.parse(original), { revision, version, instanceId: nextOwner });

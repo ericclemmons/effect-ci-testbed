@@ -50,7 +50,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>, op
       step,
       settling: async (phase) => {
         status(phase, "running");
-        await context.observe?.(`settling-${phase}`, card.render({ onlyStep: `Release ${phase}%` }), `Release ${phase}%`);
+        await context.observe?.(`settling-${phase}`, card.render({ statusOnly: true }));
       },
       review: async (observation, history) => {
         status(observation.phase, "running");

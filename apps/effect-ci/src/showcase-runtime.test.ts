@@ -220,6 +220,13 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       assert.equal(state.commits,mode==='progress'?1:0);
       assert.equal(state.rollbacks,mode==='progress'?0:1);
       assert.equal(state.publications.length,1);
+      const startMessage = state.messages.find((m:any)=>m.body.text?.includes('Start rollout')&&(m.body.blocks??[]).some((b:any)=>b.type==='actions'));
+      assert.ok(startMessage);
+      const latestStart = state.messages.filter((m:any)=>m.body.ts===startMessage.body.ts).at(-1);
+      assert.ok(latestStart);
+      assert.equal((latestStart.body.blocks??[]).some((b:any)=>b.type==='actions'),false,'consumed Start rollout buttons are removed from the same message');
+      assert.doesNotMatch(latestStart.body.text,/waiting|must choose/);
+      assert.equal(state.messages.some((m:any)=>/^► Release \\d+% — running$/.test(m.body.text??'')),false,'table already shows running state; no text-only phase reply');
       assert.deepEqual(state.journal.deployment.versions,[{version:mode==='progress'?'22222222-2222-4222-8222-222222222222':'11111111-1111-4111-8111-111111111111',percentage:100}]);
       assert.equal(state.messages.filter((m:any)=>m.path.endsWith('chat.postMessage')&&!m.body.thread_ts).length,1);
       assert.ok(state.github.some((g:any)=>g.name==='Rollout / conference demo'));
