@@ -80,7 +80,10 @@ by checking in these files. Use a sandbox for the first hosted proof.
    than the issued deployment token. Never grant its permissions to the job's scopes.
    Treat this Worker as an administrative service. Do not log these values.
 6. Once authorized, deploy with `pnpm exec cf deploy --secrets-file .secrets.env`.
-   Set GitHub repository variable `EFFECT_CI_OIDC_BROKER_URL` to the same HTTPS origin.
+   The authentication action defaults to the deployed prototype service at
+   `https://effect-ci-oidc-broker.ericclemmons.workers.dev`. For your own installation,
+   set the action's optional `broker-url` input to your service's HTTPS origin. The
+   live proof workflow exercises the default service without an override.
    Copy either example workflow into the repository root as documented there.
 
 Cloudflare references: [Worker granular authorization](https://developers.cloudflare.com/workers/authorization/),
@@ -121,7 +124,7 @@ Access policies stay independent. A future integration can mount this handler in
 pnpm test
 pnpm check
 pnpm build
-node --test ../../.github/actions/cloudflare-auth/client.test.mjs
+node --test ../../.github/actions/configure-cloudflare-credentials/client.test.mjs
 ```
 
 [Live GitHub Actions run 39880677228](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228)

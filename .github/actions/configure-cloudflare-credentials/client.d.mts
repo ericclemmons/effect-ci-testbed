@@ -1,6 +1,7 @@
+export const DEFAULT_BROKER_URL: string;
 export class AuthenticationError extends Error {}
 export interface ExchangeInput {
-  broker: string;
+  broker?: string;
   worker: string;
   scopes: string;
   requestUrl: string;

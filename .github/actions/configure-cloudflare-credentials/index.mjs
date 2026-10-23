@@ -4,7 +4,7 @@ import { AuthenticationError, exchange } from "./client.mjs";
 const escape = (value) => value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
 try {
   const result = await exchange({
-    broker: process.env["INPUT_BROKER-URL"], worker: process.env.INPUT_WORKER,
+    broker: process.env["INPUT_BROKER-URL"] || undefined, worker: process.env.INPUT_WORKER,
     scopes: process.env.INPUT_SCOPES ?? "workers:edit",
     requestUrl: process.env.ACTIONS_ID_TOKEN_REQUEST_URL,
     requestToken: process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,

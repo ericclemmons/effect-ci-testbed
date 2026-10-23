@@ -1,0 +1,19 @@
+name: Configure Cloudflare credentials
+description: Exchange GitHub OIDC for a temporary, scoped Cloudflare API token
+inputs:
+  broker-url:
+    description: Override the credential service origin for a self-hosted installation
+    required: false
+    default: https://effect-ci-oidc-broker.ericclemmons.workers.dev
+  worker:
+    description: Worker authorized by your Cloudflare deployment trust policy
+    required: true
+  scopes:
+    description: Space-separated permissions authorized by your deployment trust policy
+    default: workers:edit
+    required: false
+runs:
+  using: node24
+  main: index.mjs
+  post: post.mjs
+  post-if: always()

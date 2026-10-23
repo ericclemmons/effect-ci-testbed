@@ -44,7 +44,7 @@ test("actual workerd verifies OIDC, issues once, preserves Worker scope, and rev
     });
     assert.equal((await post("/token", identity, { worker: "another-worker", scopes: ["workers:edit"] })).status, 403);
     assert.equal((await post("/token", identity, { worker: "one-worker", scopes: ["r2:read"] })).status, 403);
-    const { exchange, revoke } = await import("../../../.github/actions/cloudflare-auth/client.mjs");
+    const { exchange, revoke } = await import("../../../.github/actions/configure-cloudflare-credentials/client.mjs");
     const fetcher = async (url: string | URL | Request, init?: RequestInit) => {
       if (String(url).startsWith("https://github.example/")) return Response.json({ value: identity });
       return runtime.dispatchFetch(String(url), init);

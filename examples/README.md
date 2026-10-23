@@ -126,8 +126,8 @@ how a container requests an authenticated operation without receiving the creden
 Neither recipe is permission to place host secrets into a project environment.
 
 Keep GitHub Actions execution and request temporary deployment credentials with
-[Wrangler OIDC](./oidc-wrangler) or [cf OIDC](./oidc-cf). Both use the shared Effect CI
-broker and request only explicitly authorized Worker scopes. Both ordinary deployment
+[Wrangler OIDC](./oidc-wrangler) or [cf OIDC](./oidc-cf). Both configure credentials through a shared authentication action, then run
+`wrangler deploy` or `cf deploy` with explicitly authorized Worker scopes. Both ordinary deployment
 commands, cross-Worker/R2 denials, and token cleanup passed in a real GitHub Actions run.
 
 ## Hosted CI, notifications, and approvals

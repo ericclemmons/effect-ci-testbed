@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { brokerOrigin, exchange, revoke } from "./client.mjs";
+import { DEFAULT_BROKER_URL, brokerOrigin, exchange, revoke } from "./client.mjs";
 
 const input = { broker: "https://broker.example", worker: "my-worker", scopes: "workers:edit", requestUrl: "https://github.example/token?job=1", requestToken: "github-request-token" };
 const credentials = { token: "temporary-secret", receipt: "revocation-receipt", accountId: "a".repeat(32) };
@@ -19,6 +19,18 @@ test("OIDC audience and requested Worker/scopes reach the broker, without a CF s
   assert.equal(calls[1].init.headers.authorization, "Bearer signed-identity");
   assert.deepEqual(JSON.parse(calls[1].init.body), { worker: "my-worker", scopes: ["workers:edit"] });
   assert.equal(result.token, credentials.token);
+});
+test("default service needs no broker input and uses the same OIDC audience", async () => {
+  const { broker, ...withoutBroker } = input;
+  const calls = [];
+  const result = await exchange(withoutBroker, async (url) => {
+    calls.push(String(url));
+    return Response.json(calls.length === 1 ? { value: "signed-identity" } : credentials);
+  });
+  assert.equal(new URL(calls[0]).searchParams.get("audience"), DEFAULT_BROKER_URL);
+  assert.equal(calls[1], `${DEFAULT_BROKER_URL}/token`);
+  assert.equal(result.broker, DEFAULT_BROKER_URL);
+  assert.match(readFileSync(new URL("./action.yml", import.meta.url), "utf8"), new RegExp(`default: ${DEFAULT_BROKER_URL.replaceAll(".", "\\.")}`));
 });
 test("reject HTTP, credentials, paths and query parameters in broker origins", () => {
   for (const url of ["http://broker.example", "https://user:pass@broker.example", "https://broker.example/path", "https://broker.example?token=x"]) assert.throws(() => brokerOrigin(url));
@@ -57,14 +69,15 @@ test("action exports masked credentials, saves cleanup state, and its post step 
   const stateFile = join(dir, "state");
   const mockedFetch = `globalThis.fetch = async (url) => Response.json(String(url).includes('/revoke') ? {revoked:true} : String(url).includes('/token?') ? {value:'signed-identity'} : ${JSON.stringify(credentials)});`;
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", mockedFetch + `await import(${JSON.stringify(new URL("./index.mjs", import.meta.url).href)});`], {
-    encoding: "utf8", env: { ...process.env, "INPUT_BROKER-URL": input.broker, INPUT_WORKER: input.worker, INPUT_SCOPES: input.scopes, ACTIONS_ID_TOKEN_REQUEST_URL: input.requestUrl, ACTIONS_ID_TOKEN_REQUEST_TOKEN: input.requestToken, GITHUB_ENV: envFile, GITHUB_STATE: stateFile },
+    encoding: "utf8", env: { ...process.env, "INPUT_BROKER-URL": "", INPUT_WORKER: input.worker, INPUT_SCOPES: input.scopes, ACTIONS_ID_TOKEN_REQUEST_URL: input.requestUrl, ACTIONS_ID_TOKEN_REQUEST_TOKEN: input.requestToken, GITHUB_ENV: envFile, GITHUB_STATE: stateFile },
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /::add-mask::temporary-secret/);
   assert.match(readFileSync(envFile, "utf8"), /CLOUDFLARE_API_TOKEN=temporary-secret\nCLOUDFLARE_ACCOUNT_ID=/);
   assert.match(readFileSync(stateFile, "utf8"), /receipt=revocation-receipt/);
+  assert.ok(readFileSync(stateFile, "utf8").includes(`broker=${DEFAULT_BROKER_URL}\n`));
   const post = spawnSync(process.execPath, ["--input-type=module", "-e", mockedFetch + `await import(${JSON.stringify(new URL("./post.mjs", import.meta.url).href)});`], {
-    encoding: "utf8", env: { ...process.env, STATE_broker: input.broker, STATE_receipt: credentials.receipt },
+    encoding: "utf8", env: { ...process.env, STATE_broker: DEFAULT_BROKER_URL, STATE_receipt: credentials.receipt },
   });
   assert.equal(post.status, 0, post.stderr);
   assert.match(post.stdout, /revoked/);

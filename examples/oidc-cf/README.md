@@ -1,64 +1,73 @@
-# Deploy with cf using short-lived credentials
+# Deploy with cf using OIDC
 
-> Can I keep my GitHub Actions deployment and replace its stored Cloudflare secret with a temporary token?
+> How do I deploy with `cf deploy` from GitHub Actions without storing a Cloudflare API token?
 
-Yes: add the Effect CI authentication action, then keep `cf deploy`.
-Execution stays in GitHub Actions. The shared [Effect CI OIDC broker](../../apps/oidc-broker/README.md)
-verifies GitHub identity and creates a 15-minute account-owned Cloudflare token.
-The action exports `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for later steps,
-then revokes the token in its post-job cleanup. No Cloudflare secret lives in GitHub.
-The broker retains a separate token-creation credential.
+Configure Cloudflare credentials with OIDC, then run your usual deployment command.
+The authentication step exports `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
+`cf` reads them from the environment. The credential expires after 15 minutes,
+and the action revokes it when the job finishes.
 
-## Run it
+## GitHub Actions workflow
 
-1. Follow the broker's one-time setup. Bootstrap the existing Worker named
-   `effect-ci-oidc-cf` with your operator credentials (`pnpm --dir examples/oidc-cf deploy`
-   from the repository root). The Editor role can update it but cannot create it.
-2. Configure a broker grant for that exact Worker and repository identity, allowing
-   only `workers:edit`, backed by an **Individual Workers Editor** policy copied
-   from a token scoped to this Worker. There is no R2, KV, D1, route, or account-wide
-   Workers permission in this example.
-3. Copy [the workflow](./.github/workflows/deploy.yml) to the repository's root
-   `.github/workflows/oidc-cf.yml`. GitHub does not discover workflows nested inside
-   examples. Set the repository variable `EFFECT_CI_OIDC_BROKER_URL` to the deployed
-   broker's HTTPS origin and authorize the copied workflow's exact `workflow_ref`.
-4. Dispatch that workflow on the allowed branch. The deploy step uses its ordinary
-   `pnpm run deploy` command. Cleanup revokes the credential; expiration limits its
-   lifetime if the runner is interrupted.
-
-The checked-in workflow runs in this monorepo. For another repository, copy the
-Worker files and adjust the working directory and install commands. Reference the
-shared action as `ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@COMMIT_SHA`
-using the actual reviewed commit containing it. No action version has been published.
+After checkout and dependency installation, the deployment steps are:
 
 ```yaml
 permissions:
   contents: read
   id-token: write
 
-# Inside the existing job's steps, before deploying:
-# - uses: actions/checkout@v7
-# - uses: ./.github/actions/cloudflare-auth
-#   with:
-#     broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
-#     worker: effect-ci-oidc-cf
-#     scopes: workers:edit
-# - run: pnpm run deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Install Node, pnpm, and project dependencies as in your existing workflow.
+      - name: Configure Cloudflare credentials
+        uses: ./.github/actions/configure-cloudflare-credentials
+        with:
+          worker: effect-ci-oidc-cf
+          scopes: workers:edit
+      - name: Deploy with cf
+        working-directory: examples/oidc-cf
+        run: pnpm exec cf deploy
 ```
 
-## Custom scopes
+See the [complete runnable workflow](./.github/workflows/deploy.yml) for this monorepo.
+The same credentials work with other Cloudflare CLI commands in subsequent steps.
+This follows the authentication-then-CLI pattern of
+[AWS configure credentials](https://github.com/aws-actions/configure-aws-credentials).
 
-The action requests `worker` and space-separated `scopes`, not a named profile.
-Scopes are Effect CI names mapped to exact Cloudflare API policies by the operator.
-Requests must be a subset of the identity's allowlist; unrecognized scopes and other
-Workers fail before token creation. If a job needs R2 later, add an explicit scope
-and approved policy, then request it. Omitted scopes are never added automatically.
-Cloudflare's resource granularity varies by product; naming an Effect CI scope does
-not create a resource restriction that Cloudflare itself cannot enforce.
+## Try this prototype
 
-The Worker has no storage bindings or routes. This isolates the first proof to
-updating an existing Worker. Changing routes, provisioning storage or deploying the
-full hosted Effect CI app requires separately approved permissions.
+The action in this repository implements the proposed user experience. It is an
+Effect CI prototype, not a published Cloudflare action or built-in CLI OIDC support.
+It uses the deployed prototype credential service by default. A repository must
+have a matching trust grant before it can obtain credentials; an arbitrary fork
+cannot deploy to the example Worker.
+
+1. Have the account owner authorize your repository, branch, exact workflow ref,
+   Worker, and allowed permissions in the credential service's trust policy.
+   The example updates the existing `effect-ci-oidc-cf` Worker with only
+   `workers:edit`. Create the Worker once with operator credentials if needed.
+2. Copy the workflow to the repository root as `.github/workflows/oidc-cf.yml`;
+   GitHub does not discover workflows nested inside examples. Authorize that
+   copied workflow's exact ref, then dispatch it on the allowed branch.
+3. For another repository, copy the Worker files and adjust installation and working
+   directory settings. Reference the action as
+   `ericclemmons/effect-ci-testbed/.github/actions/configure-cloudflare-credentials@COMMIT_SHA`,
+   replacing `COMMIT_SHA` with a reviewed commit containing the action. No action
+   version has been published.
+
+The service handles GitHub identity verification and temporary token issuance.
+Account owners can find provisioning, scope mapping, and self-hosting instructions
+in the [credential service operator guide](../../apps/oidc-broker/README.md).
+Self-hosted installations can override the action's optional `broker-url` input;
+it is unnecessary for the default service.
+
+`workers:edit` is this prototype's permission name and maps to an **Individual
+Workers Editor** policy for exactly this Worker. Additional products such as R2,
+KV, D1, or routes need explicit trust-policy permissions and requested scopes.
+The service retains the token-creation credential; GitHub stores no Cloudflare secret.
 
 ## Verification proof
 
@@ -86,6 +95,6 @@ Local checks from the repository root:
 
 ```sh
 pnpm --dir apps/oidc-broker test
-node --test .github/actions/cloudflare-auth/client.test.mjs
+node --test .github/actions/configure-cloudflare-credentials/client.test.mjs
 pnpm --dir examples/oidc-cf build
 ```

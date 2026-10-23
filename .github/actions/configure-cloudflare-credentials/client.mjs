@@ -1,3 +1,5 @@
+export const DEFAULT_BROKER_URL = "https://effect-ci-oidc-broker.ericclemmons.workers.dev";
+
 export class AuthenticationError extends Error {}
 
 export function brokerOrigin(value) {
@@ -8,7 +10,7 @@ export function brokerOrigin(value) {
   return url.origin;
 }
 
-export async function exchange({ broker, worker, scopes, requestUrl, requestToken }, fetcher = fetch) {
+export async function exchange({ broker = DEFAULT_BROKER_URL, worker, scopes, requestUrl, requestToken }, fetcher = fetch) {
   const origin = brokerOrigin(broker);
   if (!requestUrl || !requestToken) throw new AuthenticationError("Grant this job permissions: id-token: write");
   const oidcUrl = new URL(requestUrl);

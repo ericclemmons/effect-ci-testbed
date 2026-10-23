@@ -15,11 +15,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./.github/actions/cloudflare-auth
+      - name: Configure Cloudflare credentials
+        uses: ./.github/actions/configure-cloudflare-credentials
         with:
-          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
           worker: effect-ci-oidc-cf
           scopes: workers:edit
-      - name: Deploy using temporary credentials
+      - name: Deploy with cf
         working-directory: examples/oidc-cf
-        run: pnpm run deploy
+        run: pnpm exec cf deploy
