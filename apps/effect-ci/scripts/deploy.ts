@@ -1,4 +1,9 @@
 import { spawnSync } from "node:child_process"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import { prepareStandaloneRuntime } from "./standalone-runtime.ts"
 
 import { accessApplications } from "../access.config.ts"
 
@@ -62,12 +67,29 @@ for (const application of [applications.webhook, ...(applications.slack ? [appli
 }
 
 if (!process.argv.includes("--access-only")) {
+  if (process.env.EFFECT_CI_PROFILE === "standalone" && !process.argv.includes("--prebuilt")) prepareStandaloneRuntime()
   const args = process.argv.slice(2).filter((argument) => argument !== "--")
-  const result = spawnSync(cli, ["deploy", ...args], {
-    stdio: "inherit",
-    env: process.env,
-  })
+  // Upload only documented Worker secrets, never operator Access/API credentials.
+  const secretNames = [...readFileSync(new URL("../secrets.example.env", import.meta.url), "utf8")
+    .matchAll(/^#?\s*([A-Z][A-Z0-9_]*)=/gm)].map((match) => match[1]!)
+  const secrets = Object.fromEntries(secretNames
+    .filter((name) => process.env[name] !== undefined)
+    .map((name) => [name, process.env[name]]))
+  const temporary = mkdtempSync(join(tmpdir(), "effect-ci-secrets-"))
+  try {
+    if (!args.some((argument) => argument === "--secrets-file" || argument.startsWith("--secrets-file=")) && Object.keys(secrets).length > 0) {
+      const path = join(temporary, "secrets.json")
+      writeFileSync(path, JSON.stringify(secrets), { mode: 0o600 })
+      args.push("--secrets-file", path)
+    }
+    const result = spawnSync(cli, ["deploy", ...args], {
+      stdio: "inherit",
+      env: process.env,
+    })
 
-  if (result.error) throw result.error
-  process.exitCode = result.status ?? 1
+    if (result.error) throw result.error
+    process.exitCode = result.status ?? 1
+  } finally {
+    rmSync(temporary, { recursive: true, force: true })
+  }
 }

@@ -104,10 +104,10 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = [], command = "run") => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, command, ...targets, "--remote", `--format=${format}`, ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
+    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = [], command = "run", fromFile = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [bin, command, ...targets, "--remote", `--format=${format}`, ...(fromFile ? ["--env-file", ".env.production"] : []), ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
+        env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: fromFile ? "http://unused.invalid" : projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: fromFile ? "stale-token" : projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
       })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
@@ -245,6 +245,17 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       assert.equal(JSON.parse(denied.output).error.code, "CI_REMOTE_TARGET_UNAVAILABLE")
       assert.equal(dispatches, 13, "unknown discovery protocols never dispatch")
     }
+    await writeFile(join(directory, ".git/info/exclude"), ".env.production\n")
+    await writeFile(join(directory, ".env.production"), [
+      `EFFECT_CI_PUBLIC_URL=${origin}${routePrefix}`,
+      "EFFECT_CI_API_TOKEN=fixture-api-token",
+      "CF_ACCESS_CLIENT_ID=fixture-access-id",
+      "CF_ACCESS_CLIENT_SECRET=fixture-access-secret",
+    ].join("\n"))
+    targetDiscovery = "project"
+    const fromFile = await run("stale-user-token", false, "text", false, [], "run", true)
+    assert.equal(fromFile.code, 0, fromFile.output)
+    assert.match(fromFile.output, /Workflow completed/)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

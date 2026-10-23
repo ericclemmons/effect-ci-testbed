@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { parseArgs } from "node:util"
+import { parseArgs, parseEnv } from "node:util"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
@@ -508,6 +508,7 @@ Usage:
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
   cf-ci --workflow path/to/package [run|plan|list] [target]
+  cf-ci run --remote --env-file path/to/.env.production
 
 Commands:
   run     Execute the default workflow, or fan out to the selected exported actions
@@ -1032,6 +1033,35 @@ export const runCli = async (
   if (args.length === 0) args = ["--help"]
   let format = detectedFormat()
   try {
+    const remaining: string[] = []
+    for (let index = 0; index < args.length; index++) {
+      const argument = args[index]!
+      if (argument !== "--env-file" && !argument.startsWith("--env-file=")) {
+        remaining.push(argument)
+        continue
+      }
+      const path = argument === "--env-file" ? args[++index] : argument.slice("--env-file=".length)
+      if (!path || path.startsWith("--")) {
+        throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "--env-file requires a path")
+      }
+      let settings: ReturnType<typeof parseEnv>
+      try { settings = parseEnv(readFileSync(resolve(cwd, path), "utf8")) }
+      catch {
+        throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Cannot read environment file: ${path}`)
+      }
+      Object.assign(process.env, settings)
+      // The self-hosted service and client can share one configuration file.
+      if (settings.EFFECT_CI_REMOTE_URL ?? settings.EFFECT_CI_PUBLIC_URL) {
+        process.env.EFFECT_CI_REMOTE_URL = settings.EFFECT_CI_REMOTE_URL ?? settings.EFFECT_CI_PUBLIC_URL
+      }
+      if (settings.EFFECT_CI_REMOTE_TOKEN ?? settings.EFFECT_CI_API_TOKEN) {
+        process.env.EFFECT_CI_REMOTE_TOKEN = settings.EFFECT_CI_REMOTE_TOKEN ?? settings.EFFECT_CI_API_TOKEN
+      }
+      if (settings.CF_ACCESS_CLIENT_ID && settings.CF_ACCESS_CLIENT_SECRET && !settings.CF_ACCESS_TOKEN) {
+        process.env.CF_ACCESS_TOKEN = ""
+      }
+    }
+    args = remaining.length ? remaining : ["--help"]
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
