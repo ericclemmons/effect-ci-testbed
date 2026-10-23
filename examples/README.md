@@ -61,5 +61,6 @@ in the recipes run from that root unless they say otherwise.
 
 - [Secret requirements and redaction](./secure-secrets)
 - [Host-authenticated outbound requests](./secret-outbound)
+- [Wrangler OIDC deployment](./oidc-wrangler) and [cf OIDC deployment](./oidc-cf)
 
 Hosted credentials and service setup live in the [host guide](../apps/effect-ci/README.md).

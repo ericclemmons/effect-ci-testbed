@@ -1,0 +1,52 @@
+[
+  {
+    "repositoryId": "1388350547",
+    "repositoryOwnerId": "15182",
+    "ref": "refs/heads/codex/oidc-live-proof",
+    "workflowRef": "ericclemmons/effect-ci-testbed/.github/workflows/oidc-live-proof.yml@refs/heads/codex/oidc-live-proof",
+    "accountId": "0db135ec469e2f216fcea26426f29755",
+    "worker": "effect-ci-oidc-cf",
+    "scopes": {
+      "workers:edit": [
+        {
+          "effect": "allow",
+          "permission_groups": [
+            {
+              "id": "7e79ec33834341f28dd431ab73884400"
+            }
+          ],
+          "resources": {
+            "com.cloudflare.api.account.0db135ec469e2f216fcea26426f29755": {
+              "com.cloudflare.edge.worker.script.f651f7965b21491aa8610bac2eb2522d": "*"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "repositoryId": "1388350547",
+    "repositoryOwnerId": "15182",
+    "ref": "refs/heads/codex/oidc-live-proof",
+    "workflowRef": "ericclemmons/effect-ci-testbed/.github/workflows/oidc-live-proof.yml@refs/heads/codex/oidc-live-proof",
+    "accountId": "0db135ec469e2f216fcea26426f29755",
+    "worker": "effect-ci-oidc-wrangler",
+    "scopes": {
+      "workers:edit": [
+        {
+          "effect": "allow",
+          "permission_groups": [
+            {
+              "id": "7e79ec33834341f28dd431ab73884400"
+            }
+          ],
+          "resources": {
+            "com.cloudflare.api.account.0db135ec469e2f216fcea26426f29755": {
+              "com.cloudflare.edge.worker.script.f8e3c77f8950480582729d2f329a2bf9": "*"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

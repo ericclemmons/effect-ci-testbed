@@ -1,0 +1,288 @@
+{
+  "recordedAt": "2026-10-23T00:54:04.535Z",
+  "run": {
+    "conclusion": "success",
+    "headSha": "f64a3e4caacf56b735421cc7f9679bcf383276c9",
+    "jobs": [
+      {
+        "completedAt": "2026-10-23T00:52:43Z",
+        "conclusion": "success",
+        "databaseId": 120177037604,
+        "name": "deploy (wrangler)",
+        "startedAt": "2026-10-23T00:52:19Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-23T00:52:21Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-23T00:52:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:21Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v7",
+            "number": 2,
+            "startedAt": "2026-10-23T00:52:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:24Z",
+            "conclusion": "success",
+            "name": "Run pnpm/action-setup@v4",
+            "number": 3,
+            "startedAt": "2026-10-23T00:52:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:25Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-node@v7",
+            "number": 4,
+            "startedAt": "2026-10-23T00:52:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:31Z",
+            "conclusion": "success",
+            "name": "Run pnpm install --frozen-lockfile",
+            "number": 5,
+            "startedAt": "2026-10-23T00:52:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:32Z",
+            "conclusion": "success",
+            "name": "Run ./.github/actions/cloudflare-auth",
+            "number": 6,
+            "startedAt": "2026-10-23T00:52:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:34Z",
+            "conclusion": "success",
+            "name": "Verify token can read only the intended Worker and cannot list R2 buckets",
+            "number": 7,
+            "startedAt": "2026-10-23T00:52:32Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:37Z",
+            "conclusion": "success",
+            "name": "Deploy with ordinary CLI command",
+            "number": 8,
+            "startedAt": "2026-10-23T00:52:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:38Z",
+            "conclusion": "success",
+            "name": "Verify served response",
+            "number": 9,
+            "startedAt": "2026-10-23T00:52:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:38Z",
+            "conclusion": "success",
+            "name": "Post Run ./.github/actions/cloudflare-auth",
+            "number": 15,
+            "startedAt": "2026-10-23T00:52:38Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:41Z",
+            "conclusion": "success",
+            "name": "Post Run actions/setup-node@v7",
+            "number": 16,
+            "startedAt": "2026-10-23T00:52:38Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:42Z",
+            "conclusion": "success",
+            "name": "Post Run pnpm/action-setup@v4",
+            "number": 17,
+            "startedAt": "2026-10-23T00:52:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:42Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v7",
+            "number": 18,
+            "startedAt": "2026-10-23T00:52:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:42Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 19,
+            "startedAt": "2026-10-23T00:52:42Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228/job/120177037604"
+      },
+      {
+        "completedAt": "2026-10-23T00:52:46Z",
+        "conclusion": "success",
+        "databaseId": 120177037827,
+        "name": "deploy (cf)",
+        "startedAt": "2026-10-23T00:52:19Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-23T00:52:21Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-23T00:52:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:22Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v7",
+            "number": 2,
+            "startedAt": "2026-10-23T00:52:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:25Z",
+            "conclusion": "success",
+            "name": "Run pnpm/action-setup@v4",
+            "number": 3,
+            "startedAt": "2026-10-23T00:52:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:25Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-node@v7",
+            "number": 4,
+            "startedAt": "2026-10-23T00:52:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:31Z",
+            "conclusion": "success",
+            "name": "Run pnpm install --frozen-lockfile",
+            "number": 5,
+            "startedAt": "2026-10-23T00:52:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:32Z",
+            "conclusion": "success",
+            "name": "Run ./.github/actions/cloudflare-auth",
+            "number": 6,
+            "startedAt": "2026-10-23T00:52:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:34Z",
+            "conclusion": "success",
+            "name": "Verify token can read only the intended Worker and cannot list R2 buckets",
+            "number": 7,
+            "startedAt": "2026-10-23T00:52:32Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:40Z",
+            "conclusion": "success",
+            "name": "Deploy with ordinary CLI command",
+            "number": 8,
+            "startedAt": "2026-10-23T00:52:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:40Z",
+            "conclusion": "success",
+            "name": "Verify served response",
+            "number": 9,
+            "startedAt": "2026-10-23T00:52:40Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:41Z",
+            "conclusion": "success",
+            "name": "Post Run ./.github/actions/cloudflare-auth",
+            "number": 15,
+            "startedAt": "2026-10-23T00:52:40Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:44Z",
+            "conclusion": "success",
+            "name": "Post Run actions/setup-node@v7",
+            "number": 16,
+            "startedAt": "2026-10-23T00:52:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:44Z",
+            "conclusion": "success",
+            "name": "Post Run pnpm/action-setup@v4",
+            "number": 17,
+            "startedAt": "2026-10-23T00:52:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:44Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v7",
+            "number": 18,
+            "startedAt": "2026-10-23T00:52:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-23T00:52:44Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 19,
+            "startedAt": "2026-10-23T00:52:44Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228/job/120177037827"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228"
+  },
+  "broker": {
+    "url": "https://effect-ci-oidc-broker.ericclemmons.workers.dev",
+    "versionId": "37676665-fe30-4f34-845f-9c6ac29dd070"
+  },
+  "tokenLifetimeSeconds": 900,
+  "cleanup": {
+    "remainingTokenCount": 0,
+    "checkedUsing": "issuer-authenticated account-token metadata after successful post-job revocation"
+  },
+  "issuer": {
+    "status": "active",
+    "expiresOn": "2026-10-30T04:59:59Z"
+  },
+  "evidenceLines": [
+    "deploy (wrangler)\tRun ./.github/actions/cloudflare-auth\t2026-10-23T00:52:32.7169048Z Temporary Cloudflare credentials are available to subsequent steps.",
+    "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:33.3674803Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+    "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:33.6159528Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+    "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:34.1728121Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+    "deploy (wrangler)\tDeploy with ordinary CLI command\t2026-10-23T00:52:37.8089920Z Deployed effect-ci-oidc-wrangler triggers (0.49 sec)",
+    "deploy (wrangler)\tDeploy with ordinary CLI command\t2026-10-23T00:52:37.8092344Z Current Version ID: f1295d49-6a69-43e1-b37b-aa1454e87c25",
+    "deploy (wrangler)\tVerify served response\t2026-10-23T00:52:38.1250865Z Verified https://effect-ci-oidc-wrangler.ericclemmons.workers.dev",
+    "deploy (wrangler)\tPost Run ./.github/actions/cloudflare-auth\t2026-10-23T00:52:38.6303841Z Temporary Cloudflare token revoked.",
+    "deploy (cf)\tRun ./.github/actions/cloudflare-auth\t2026-10-23T00:52:32.7401036Z Temporary Cloudflare credentials are available to subsequent steps.",
+    "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:33.5739138Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+    "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:33.8156525Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+    "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-23T00:52:34.0466187Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+    "deploy (cf)\tDeploy with ordinary CLI command\t2026-10-23T00:52:40.3595277Z │  Deployed effect-ci-oidc-cf triggers (0.44 sec)",
+    "deploy (cf)\tDeploy with ordinary CLI command\t2026-10-23T00:52:40.3598397Z │  Current Version ID: 2f474bcc-f15d-4143-8eb3-2df358e2fb4f",
+    "deploy (cf)\tVerify served response\t2026-10-23T00:52:40.5752241Z Verified https://effect-ci-oidc-cf.ericclemmons.workers.dev",
+    "deploy (cf)\tPost Run ./.github/actions/cloudflare-auth\t2026-10-23T00:52:41.1060123Z Temporary Cloudflare token revoked."
+  ]
+}

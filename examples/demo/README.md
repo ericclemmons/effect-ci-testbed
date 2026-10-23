@@ -1,7 +1,8 @@
 # Effect CI: the kitchen-sink demo
 
-One Vite app, from existing package scripts to remote CI, reusable results,
-GitHub approval, Slack, previews, controlled releases, and repair proposals.
+One Vite app, from short-lived GitHub deployment credentials and existing package
+scripts to remote CI, reusable results, GitHub approval, Slack, previews,
+controlled releases, and repair proposals.
 Each chapter adds a capability without replacing the app's tools.
 
 The local chapters run in the copied app below. The hosted adapter uses the same
@@ -24,7 +25,43 @@ pnpm dev
 
 Open the Vite URL. Stop the server with Ctrl-C.
 
-## 2. Existing scripts become CI
+## 2. Keep GitHub Actions; replace the deployment secret
+
+Start adopting Effect CI before changing how your checks run. Keep GitHub-hosted
+execution and your normal deployment command. Add one authentication step to
+exchange GitHub's OIDC identity for a 15-minute token scoped to this Worker.
+
+The supplied [deployment workflow](./tutorial/oidc.example.yml) builds this same
+app, authenticates, and runs its existing deployment tool. After pushing the app
+to your own repository:
+
+1. Bootstrap the configured Worker once with operator credentials, then follow
+   [OIDC setup](../../apps/github-actions-runner/OIDC.md) with your repository,
+   `--worker effect-ci-tutorial --workflow .github/workflows/deploy.yml --ref main`.
+   This needs a trusted host and a one-time issuer credential; copying the demo
+   does not grant deployment authority.
+2. Copy the workflow into place and push it:
+
+   ```sh
+   cp tutorial/oidc.example.yml .github/workflows/deploy.yml
+   git add .github/workflows/deploy.yml
+   git commit -m "Deploy with short-lived credentials"
+   git push
+   gh workflow run deploy.yml
+   ```
+
+The job needs `id-token: write`; it requests only `workers:edit`. The action
+revokes the token after the job. No long-lived Cloudflare token goes into GitHub.
+Checks can keep using ordinary package scripts; the next chapter introduces
+`cf-ci` without requiring another authentication change.
+
+The [cf](../oidc-cf) and [Wrangler](../oidc-wrangler) recipes own the deployment
+actions that the repository's E2E workflow runs on trusted pushes. Both verify
+single-Worker access, denial of the other Worker and R2, deployment, and cleanup.
+Those two recipes provide the live OIDC proof; this demo supplies the same
+adoption step for its own app, with separate Worker enrollment.
+
+## 3. Existing scripts become CI
 
 Link the unpublished CLI and SDK from your Effect CI checkout. Replace the paths:
 
@@ -48,7 +85,7 @@ remain the source of truth.
 
 [Script discovery](../zero-config)
 
-## 3. The same commands for people and agents
+## 4. The same commands for people and agents
 
 An author or agent uses the same workflow, with structured results when useful:
 
@@ -58,7 +95,7 @@ pnpm exec cf-ci run test build --format=json
 
 Structured output does not require a model or a separate agent-only CI path.
 
-## 4. Cache tasks and rerun affected work
+## 5. Cache tasks and rerun affected work
 
 Run the build twice and inspect Vite+'s hit/miss output:
 
@@ -73,14 +110,14 @@ graph and cache; Effect CI keeps using the same build command.
 
 There are three different things to reuse: dependency downloads, task output,
 and verified CI results. Download caching still performs the locked install;
-task caching avoids recomputation; signed results are covered in chapter 9.
+task caching avoids recomputation; signed results are covered in chapter 10.
 Choose cache paths and input keys explicitly, or disable caching for a workload.
 
 [Vite+ caching](../vite-plus-cache) · [Turborepo caching](../turborepo-cache) ·
 [Dependency downloads](../package-manager-cache) · [Cache policy](../cache-policy) ·
 [Dependency-aware reruns](../dependency-aware-reruns)
 
-## 5. Parallel checks, shared prerequisites
+## 6. Parallel checks, shared prerequisites
 
 Adopt the supplied workflow when you want more control:
 
@@ -107,7 +144,7 @@ Request an exported action directly when you only need that goal.
 
 [Exported actions](../exported-actions) · [Isolated snapshot fan-out](../snapshot-fanout)
 
-## 6. Source-aware checks
+## 7. Source-aware checks
 
 On a branch, commit a README edit and run the workflow. The supplied lint action
 can skip it. Commit a change to `packages/greeting/message.ts` and run again:
@@ -127,7 +164,7 @@ in the plan; ordinary JavaScript branches only describe the path being planned.
 
 [Conditional execution](../conditional-deploy)
 
-## 7. Publish only changed output
+## 8. Publish only changed output
 
 Run the adopted workflow twice. It compares the built `dist/**` bytes with the
 last successful publication: identical output skips publication; changed output
@@ -140,7 +177,7 @@ implicitly authorize a release.
 [Changed-output deployment](../deploy-changed-output) ·
 [Portable artifacts](../portable-artifacts)
 
-## 8. Remote execution without a second workflow
+## 9. Remote execution without a second workflow
 
 With a configured host and an enrolled, clean pushed commit, move execution off
 your laptop:
@@ -177,7 +214,7 @@ not eligible. A rejected request does not silently dispatch a fresh run.
 
 [Host setup](../../apps/effect-ci/SELF-HOST.md) · [Durable runner](../cloudflare-runner)
 
-## 9. Signed results and reusable build workspaces
+## 10. Signed results and reusable build workspaces
 
 The trusted-runner chapter connects local development, remote checks, and SCM CI:
 verify an exact commit once, then reuse matching successful results instead of
@@ -196,7 +233,7 @@ an explicit affected rerun bypasses those old caches for the requested work.
 [Result reuse](../verification-evidence) · [Workspace snapshots](../snapshot-fanout) ·
 [Hosted integration](../../apps/effect-ci/TRUSTED-REMOTE.md)
 
-## 10. GitHub CI and Slack progress
+## 11. GitHub CI and Slack progress
 
 The conference flow is edit → commit → push → inspect the run in Slack. The
 GitHub App starts CI for the pushed commit; Slack keeps one parent progress bar
@@ -215,7 +252,7 @@ Those connections belong to the host setup.
 [GitHub CI on Cloudflare](../github-cloudflare-ci) ·
 [Slack interaction](../cloudflare-hitl-release)
 
-## 11. Safe-change approval so authors can self-merge
+## 12. Safe-change approval so authors can self-merge
 
 Adjust the GitHub approval policy dynamically. Here, arbitrarily call a change
 safe when no TypeScript, TSX, or JSON files changed:
@@ -235,7 +272,7 @@ PR code cannot grant itself approval authority.
 
 [Safe-change example](../small-change)
 
-## 12. Previews from the checked build
+## 13. Previews from the checked build
 
 Branch publication should give you a commit-pinned preview of the same build
 that passed CI, without rebuilding it for the browser. Production stays on the
@@ -244,13 +281,13 @@ previous release while you review the preview.
 The enrolled reference app's `demo/showcase-preview` branch selects hosted preview
 publication. The trusted adapter consumes the completed build snapshot, publishes
 its exact assets, and independently reads their bytes back. The local directory
-publisher in chapter 7 is not a hosted preview service; arbitrary copies do not
+publisher in chapter 8 is not a hosted preview service; arbitrary copies do not
 gain publication authority.
 
 [Static assets](../static-assets-source) · [Deployment hooks](../deploy-hook) ·
 [Ordered deployments](../ordered-deploy)
 
-## 13. Health checks and human release decisions
+## 14. Health checks and human release decisions
 
 The enrolled reference app's `demo/showcase` branch requests a release. Its first
 Slack card is **Start rollout**: a real human must choose **Progress** or **Reject**
@@ -272,7 +309,7 @@ replay an existing rollout.
 [Human review of uncertain health](../health-mediated-approval) ·
 [Slack approvals](../cloudflare-hitl-release) · [Rollback](../rollback-compensation)
 
-## 14. Auto-fix proposals, with independent checks
+## 15. Auto-fix proposals, with independent checks
 
 Close the loop: failure → proposed patch → allowed-diff check → exact-commit
 tests → pull request. The proposal does not get to merge or deploy itself.
@@ -290,7 +327,7 @@ verified proposal. No paid model, public error, or old repair replay is needed.
 
 [Repair proposals](../flue-repair)
 
-## 15. Keep the controls as the demo grows
+## 16. Keep the controls as the demo grows
 
 - [Required and optional checks](../optional-checks), [timeouts](../execution-policy),
   and [explicit retries](../retry) make failure policy visible.

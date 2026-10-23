@@ -1,0 +1,17 @@
+{
+  "recordedAt": "2026-10-23T00:29:58.125Z",
+  "accountId": "0db135ec469e2f216fcea26426f29755",
+  "authentication": "existing operator OAuth; NOT GitHub OIDC",
+  "workers": [
+    {
+      "name": "effect-ci-oidc-cf",
+      "versionId": "3fec6fef-becd-4343-8f22-6850f95fe838",
+      "url": "https://effect-ci-oidc-cf.ericclemmons.workers.dev"
+    },
+    {
+      "name": "effect-ci-oidc-wrangler",
+      "versionId": "a52f1ce1-1c78-493f-b42a-0ba3a2657081",
+      "url": "https://effect-ci-oidc-wrangler.ericclemmons.workers.dev"
+    }
+  ]
+}

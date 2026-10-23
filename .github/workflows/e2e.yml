@@ -4,12 +4,41 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [main]
+    branches: [main, codex/oidc-runner-integration]
 
 permissions:
   contents: read
 
 jobs:
+  oidc:
+    name: oidc-${{ matrix.tool }} / github / live deployment
+    # Real GitHub OIDC is unavailable in act. Never issue deployment tokens to PRs.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [wrangler, cf]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./examples/oidc-wrangler/.github/actions/deploy
+        if: matrix.tool == 'wrangler'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+      - uses: ./examples/oidc-cf/.github/actions/deploy
+        if: matrix.tool == 'cf'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+
   tutorial:
     name: tutorial / standalone copy
     runs-on: ubuntu-latest

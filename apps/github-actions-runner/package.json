@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "node --test src/*.test.ts",
-    "build": "cf build",
-    "deploy": "cf deploy"
+    "test": "node --test src/*.test.ts src/oidc/*.test.ts",
+    "build": "node --env-file-if-exists=.env.production node_modules/cf/bin/cf build",
+    "deploy": "node --env-file-if-exists=.env.production scripts/deploy.ts",
+    "test:oidc": "node --test src/oidc/*.test.ts",
+    "setup:oidc": "node scripts/setup-oidc.ts"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
@@ -16,5 +18,8 @@
     "cf": "1.0.0-beta.12",
     "typescript": "^7.0.2",
     "vite": "^7.1.12"
+  },
+  "dependencies": {
+    "jose": "6.2.12"
   }
 }

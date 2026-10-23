@@ -1,0 +1,38 @@
+name: OIDC live deployment proof
+on:
+  workflow_dispatch:
+    inputs:
+      example:
+        description: Deployment CLI to try
+        type: choice
+        options: [both, wrangler, cf]
+        default: both
+  push:
+    branches: [codex/oidc-runner-integration]
+    paths-ignore: ["**/*.md", "apps/github-actions-runner/verification/**"]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: ${{ fromJSON(inputs.example == 'cf' && '["cf"]' || inputs.example == 'wrangler' && '["wrangler"]' || '["wrangler","cf"]') }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./examples/oidc-wrangler/.github/actions/deploy
+        if: matrix.tool == 'wrangler'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+      - uses: ./examples/oidc-cf/.github/actions/deploy
+        if: matrix.tool == 'cf'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
