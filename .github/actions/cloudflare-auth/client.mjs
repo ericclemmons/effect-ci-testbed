@@ -27,7 +27,8 @@ export async function exchange({ broker, worker, scopes, requestUrl, requestToke
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const stage = ["configuration", "identity", "grant", "issuance"].includes(body.stage) ? `; stage=${body.stage}` : "";
-    throw new AuthenticationError(`Effect CI credential exchange failed (${response.status}${stage})`);
+    const reason = /^(cloudflare-http-\d{3}|identity-already-exchanged|invalid-token-response|runtime-type-error|runtime-error)$/.test(body.reason ?? "") ? `; reason=${body.reason}` : "";
+    throw new AuthenticationError(`Effect CI credential exchange failed (${response.status}${stage}${reason})`);
   }
   const result = await response.json();
   if (typeof result.token !== "string" || !result.token || /[\r\n]/.test(result.token)

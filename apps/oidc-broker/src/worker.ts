@@ -77,9 +77,15 @@ export default {
       stage = "issuance";
       const result = await lease.issue({ ...input, name: `effect-ci-${claims.run_id}-${claims.run_attempt}`.slice(0, 120) });
       return json({ ...result, receipt });
-    } catch {
+    } catch (error) {
       // Includes validation, replay and upstream failures without reflecting secret data.
-      return json({ error: "Credential exchange rejected", stage }, 403);
+      const message = error instanceof Error ? error.message : "";
+      const upstream = message.match(/Cloudflare token operation failed \((\d{3})\)/)?.[1];
+      const reason = upstream ? `cloudflare-http-${upstream}`
+        : message.includes("Identity already exchanged") ? "identity-already-exchanged"
+        : message.includes("Invalid token response") ? "invalid-token-response"
+        : error instanceof TypeError ? "runtime-type-error" : "runtime-error";
+      return json({ error: "Credential exchange rejected", stage, reason }, 403);
     }
   },
 };

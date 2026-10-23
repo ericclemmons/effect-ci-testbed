@@ -38,6 +38,19 @@ test("cleanup authenticates with receipt and reports revocation failure", async 
   });
   await assert.rejects(revoke(input.broker, credentials.receipt, async () => new Response(null, { status: 403 })), /expiration remains in effect/);
 });
+test("diagnostics expose only known failure stages, never arbitrary broker error text", async () => {
+  for (const stage of ["identity", "secret-reflected-from-server"]) {
+    let calls = 0;
+    await assert.rejects(exchange(input, async () => ++calls === 1
+      ? Response.json({ value: "signed-identity" })
+      : Response.json({ stage, error: "private-upstream-body" }, { status: 403 })), (error) => {
+        assert.equal(error.message, stage === "identity"
+          ? "Effect CI credential exchange failed (403; stage=identity)"
+          : "Effect CI credential exchange failed (403)");
+        return true;
+      });
+  }
+});
 test("action exports masked credentials, saves cleanup state, and its post step revokes", () => {
   const dir = mkdtempSync(join(tmpdir(), "effect-ci-oidc-"));
   const envFile = join(dir, "env");

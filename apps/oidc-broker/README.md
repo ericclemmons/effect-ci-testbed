@@ -20,12 +20,33 @@ by checking in these files. Use a sandbox for the first hosted proof.
    A normal Workers login without token provisioning returns 403 on account-token APIs;
    that does not require manually creating an API token. See Cloudflare's
    [OAuth token-provisioning announcement](https://developers.cloudflare.com/changelog/post/2026-10-01-account-api-token-provisioning/).
-3. In Cloudflare's **Manage Account → Account API Tokens**, create a template token
-   with **Specified Workers → exactly the example Worker → Editor**. Create a separate
-   template for the other example. Do not use legacy account-wide Workers Scripts Edit.
-   The template is only used to read Cloudflare's exact granular policy representation;
-   its token value is never sent to GitHub or used by this prototype.
-4. With an operator API token that can read account token metadata, run from this app:
+
+   In the live account, this fixed the token API's 403 response, but OAuth still reported
+   **Individual Workers Editor** and **Account API Tokens Write** as `is_selectable: false`.
+   A dashboard-created issuer with only Account API Tokens Write could select Individual
+   Workers Editor. OAuth provisioning access alone therefore did not bootstrap the issuer.
+3. In Cloudflare's **Manage Account → Account API Tokens**, prepare a draft with
+   **Specified Workers → exactly the example Worker → Editor**. Open **Review token →
+   JSON Payload** and copy its `policies`. You do not need to click Create token.
+   Repeat for the other Worker. Do not use legacy account-wide Workers Scripts Edit.
+   The selector uses the Worker's immutable script tag, not its display name:
+
+   ```json
+   {
+     "effect": "allow",
+     "permission_groups": [{ "id": "7e79ec33834341f28dd431ab73884400" }],
+     "resources": {
+       "com.cloudflare.api.account.ACCOUNT_ID": {
+         "com.cloudflare.edge.worker.script.WORKER_SCRIPT_TAG": "*"
+       }
+     }
+   }
+   ```
+
+   [The live proof's grants](./verification/grants.json) show complete identity/policy
+   entries. The operator's Workers script metadata API also returns each script's `tag`.
+4. If you already have a single-Worker template token, you can instead export its
+   policy with an operator API token that can read account token metadata:
 
    ```sh
    node scripts/create-grant.ts ACCOUNT_ID TEMPLATE_TOKEN_ID effect-ci-oidc-wrangler REPOSITORY_ID OWNER_ID \
@@ -36,7 +57,7 @@ by checking in these files. Use a sandbox for the first hosted proof.
    the two array entries. Obtain immutable repository/owner IDs from GitHub repository
    metadata. Change the owner/repository in `workflow_ref` for a fork. Inspect the
    copied resource policy to confirm it selects only the intended Worker, then revoke
-   the template tokens. This script makes a read-only API request and prints policies,
+   any disposable template tokens. This script makes a read-only API request and prints policies,
    not credential values. It deliberately does not invent the granular resource keys
    or permission IDs. The operator chooses the account, Worker and scope mapping.
    Alternatively, the authorized `cf` session can read token details with
