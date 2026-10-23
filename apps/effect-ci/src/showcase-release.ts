@@ -68,9 +68,15 @@ export async function finalizeShowcaseRun(context: HostFinalization<unknown>) {
     if (decision.snapshot !== published.digest) throw Error("Showcase human decision identity mismatch");
     card.update({ type: "approval.resolved", workflowId: "demo", stepId: "Start rollout", requestId: published.digest,
       decision: decision.decision, actor: decision.actor, timestamp: timestamp() });
+    // Replace the capability-bearing reply itself, not only the parent/table.
+    await context.observe?.("showcase:start-resolved", card.render({ onlyStep: "Start rollout" }), "Start rollout");
     if (decision.decision !== "approved") throw Error("Showcase rollout rejected; production is unchanged");
   } catch (error) {
     primaryFailed = true;
+    card.update({ type: "workflow.completed", workflowId: "demo", conclusion: "failure", timestamp: timestamp() });
+    card.setFailure("Start rollout", "Rollout did not start. This review is closed.");
+    try { await context.observe?.("showcase:start-closed", card.render({ onlyStep: "Start rollout" }), "Start rollout"); }
+    catch { /* preserve the recorded release failure */ }
     throw error;
   } finally {
     try { await step.do("showcase:start-close", once, () => reviews.close(owner)); }

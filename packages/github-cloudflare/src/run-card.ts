@@ -65,6 +65,8 @@ export class RunCard {
   private workflowId = "Effect CI"
   private phase: "running" | "waiting" | "success" | "failure" = "running"
   private readonly checks = new Map<string, { status: keyof typeof symbols; optional: boolean; dependencies: Set<string> }>()
+  private readonly timings = new Map<string, { start: number; end?: number }>()
+  private latestTimestamp = 0
   private review: { stepId: string; request: ApprovalRequest; url?: string } | undefined
   private health: Readonly<RunHealth & { fileId?: string }> | undefined
   private lastHealthChart: Readonly<{ phase: RunHealth["phase"]; fileId: string }> | undefined
@@ -84,9 +86,9 @@ export class RunCard {
   }
   private lastCompletedStep: string | undefined
   private readonly progressSteps: ReadonlyArray<string> | undefined
-  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } }
+  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; cachedDependencies?: Readonly<Record<string, ReadonlyArray<string>>> }
 
-  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; progressSteps?: ReadonlyArray<string> } = {}) {
+  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; progressSteps?: ReadonlyArray<string>; cachedDependencies?: Readonly<Record<string, ReadonlyArray<string>>> } = {}) {
     this.identity = identity
     this.options = options
     if (options.progressSteps && (options.progressSteps.length > 100 || new Set(options.progressSteps).size !== options.progressSteps.length ||
@@ -106,10 +108,28 @@ export class RunCard {
 
   update(event: RuntimeEvent): boolean {
     this.workflowId = event.workflowId
+    const timestamp = Date.parse(event.timestamp)
+    if (Number.isFinite(timestamp)) this.latestTimestamp = Math.max(this.latestTimestamp, timestamp)
     switch (event.type) {
       case "workflow.started": return true
       case "step.status":
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
+        if (Number.isFinite(timestamp)) {
+          if (event.status === "running" && (!this.timings.has(event.stepId) || this.timings.get(event.stepId)!.end !== undefined))
+            this.timings.set(event.stepId, { start: timestamp })
+          else if (finished.has(event.status)) {
+            const timing = this.timings.get(event.stepId)
+            if (timing) timing.end = timestamp
+          }
+        }
+        if (event.status === "reused") {
+          // A trusted host can declare prerequisites covered by this signed result.
+          // These are display states, never execution or approval authority.
+          for (const id of this.options.cachedDependencies?.[event.stepId] ?? []) {
+            if (!this.checks.has(id) || ["planned", "queued"].includes(this.checks.get(id)!.status))
+              this.check(id).status = "reused"
+          }
+        }
         if (["complete", "reused", "verified", "warning"].includes(event.status)) this.lastCompletedStep = event.stepId
         if (event.status !== "failed") this.failures.delete(event.stepId)
         if (["queued", "running"].includes(event.status)) {
@@ -145,12 +165,17 @@ export class RunCard {
         this.phase = "waiting"
         this.check(event.stepId).status = "waiting"
         this.review = { stepId: event.stepId, request: event.approval }
+        if (Number.isFinite(timestamp) && !this.timings.has(event.stepId)) this.timings.set(event.stepId, { start: timestamp })
 
         return true
       case "approval.resolved":
         this.phase = event.decision === "approved" ? "running" : "failure"
         this.check(event.stepId).status = event.decision
         this.review = undefined
+        if (Number.isFinite(timestamp)) {
+          const timing = this.timings.get(event.stepId)
+          if (timing) timing.end = timestamp
+        }
 
         return true
       case "workflow.completed":
@@ -223,10 +248,17 @@ export class RunCard {
     // One table per message, at most 100 rows including its header. Preserve
     // full textual status for screen readers; glyphs are visual shorthand only.
     const rows = ids.slice(0, 99).map(id => ({ id, status: this.checks.get(id)?.status ?? "planned" }))
+    const time = (id: string, status: keyof typeof plainSymbols) => {
+      if (status === "reused" || status === "verified") return "(cached)"
+      const timing = this.timings.get(id)
+      if (!timing) return "—"
+      const seconds = Math.max(0, Math.round(((timing.end ?? this.latestTimestamp) - timing.start) / 1000))
+      return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+    }
     return { text: rows.map(({ id, status }) => `${id}: ${status}`).join("\n"), blocks: [
-      { type: "table", column_settings: [{ is_wrapped: false }, { is_wrapped: true }],
-        rows: [[cell("Status"), cell("Step")], ...rows.map(({ id, status }) => [
-          cell(plainSymbols[status]), cell(id, safeUrl(stepLinks.get(id))),
+      { type: "table", column_settings: [{ is_wrapped: true }, { is_wrapped: false }, { is_wrapped: false }],
+        rows: [[cell("Step"), cell("Status"), cell("Time")], ...rows.map(({ id, status }) => [
+          cell(id, safeUrl(stepLinks.get(id))), cell(plainSymbols[status]), cell(time(id, status)),
         ])] },
       ...(ids.length > 99 ? [{ type: "context", elements: [{ type: "plain_text", text: `${ids.length - 99} more steps; see Dashboard.` }] }] : []),
     ] }

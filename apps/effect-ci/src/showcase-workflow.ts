@@ -41,6 +41,7 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   container: { image: "showcase", instance: "standard-1", loginShell: false,
     readyCommand: showcaseReadyCommand },
   slackLayout: "status-thread",
+  slackCachedDependencies: { build: ["checkout", "install", "lint", "test"] },
   slackCommandOutput: "failed",
   slackCommandLog: ({ exports, instanceId, stepId, threadTs, text }) => {
     const host = exports as { PrivateSlackImages: { getByName(name: string): {

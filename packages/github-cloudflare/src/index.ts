@@ -115,6 +115,8 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.
   }) => Promise<{ ok: true; fileId: string } | { ok: false }>
   /** Trusted display-only total. Unknown runtime steps disable the progress bar. */
   readonly slackProgressSteps?: (parameters: WorkflowParameters) => ReadonlyArray<string>
+  /** Display-only prerequisites covered by a reused signed step result. */
+  readonly slackCachedDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
   readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
@@ -305,7 +307,8 @@ export const workflowEntrypoint = <A>(
       ...(workflowDetailsUrl ? { detailsUrl: workflowDetailsUrl } : {}),
     }, { ...(options.slackCommandOutput === "failed" ? { failedCommandOutput: {
       redactValues: Object.values(this.env).filter((value): value is string => typeof value === "string"),
-    } } : {}), ...(options.slackProgressSteps ? { progressSteps: options.slackProgressSteps(event.payload) } : {}) })
+    } } : {}), ...(options.slackProgressSteps ? { progressSteps: options.slackProgressSteps(event.payload) } : {}),
+      ...(options.slackCachedDependencies ? { cachedDependencies: options.slackCachedDependencies } : {}) })
     const notificationProviders = options.notificationProviders?.(this.env, event.payload) ?? []
     const notifications = notificationLayer(notificationProviders, (provider, key, deliver) =>
       step.do(`notification-provider:${provider}:${key}`, {
