@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, execFileSync } from "node:child_process"
-import { mkdtemp, writeFile, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises"
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -67,10 +67,21 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
-        cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
+    await writeFile(join(directory, ".git/info/exclude"), ".env.production\n.env\n.env.local\n")
+    await writeFile(join(directory, ".env.production"), [
+      `EFFECT_CI_PUBLIC_URL=${origin}`,
+      "EFFECT_CI_API_TOKEN=fixture-api-token",
+      "CF_ACCESS_CLIENT_ID=fixture-access-id",
+      "CF_ACCESS_CLIENT_SECRET=fixture-access-secret",
+    ].join("\n"))
+    const run = (userToken = "", explicit = true, fromFile = false, automatic = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const environment: NodeJS.ProcessEnv = { ...process.env, EFFECT_CI_REMOTE_URL: fromFile ? "http://unused.invalid" : origin, EFFECT_CI_REMOTE_TOKEN: fromFile ? "stale-token" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken }
+      if (automatic) {
+        for (const key of ["EFFECT_CI_REMOTE_URL", "EFFECT_CI_REMOTE_TOKEN", "CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET", "CF_ACCESS_TOKEN"]) delete environment[key]
+      }
+      const child = spawn(process.execPath, [bin, "run", "--remote", "--format=text", ...(fromFile ? ["--env-file", ".env.production"] : []), ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
+        cwd: automatic ? join(directory, "nested") : directory,
+        env: environment,
       })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
@@ -82,9 +93,29 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     assert.equal(success.code, 0, success.output)
     assert.match(success.output, /lint passed/)
     assert.match(success.output, /Workflow completed/)
+    const fromFile = await run("stale-user-token", true, true)
+    assert.equal(fromFile.code, 0, fromFile.output)
+    assert.match(fromFile.output, /Workflow completed/)
     const userSuccess = await run("fixture-user-token")
     assert.equal(userSuccess.code, 0, userSuccess.output)
     assert.match(userSuccess.output, /Workflow completed/)
+    await mkdir(join(directory, "nested"))
+    await writeFile(join(directory, ".env"), "EFFECT_CI_PUBLIC_URL=http://unused.invalid\nEFFECT_CI_API_TOKEN=wrong-token\n")
+    await writeFile(join(directory, ".env.local"), [
+      `EFFECT_CI_PUBLIC_URL=${origin}`,
+      "EFFECT_CI_API_TOKEN=fixture-api-token",
+      "CF_ACCESS_CLIENT_ID=fixture-access-id",
+      "CF_ACCESS_CLIENT_SECRET=fixture-access-secret",
+    ].join("\n"))
+    const automatic = await run("", true, false, true)
+    assert.equal(automatic.code, 0, automatic.output)
+    assert.match(automatic.output, /Workflow completed/)
+    // Shell values and explicit files must beat automatic .env.local settings.
+    await writeFile(join(directory, ".env.local"), "EFFECT_CI_REMOTE_URL=http://unused.invalid\nEFFECT_CI_REMOTE_TOKEN=wrong-token\n")
+    const shellOverride = await run()
+    assert.equal(shellOverride.code, 0, shellOverride.output)
+    const fileOverride = await run("stale-user-token", true, true)
+    assert.equal(fileOverride.code, 0, fileOverride.output)
     disconnectOnce = true
     const reconnected = await run("fixture-user-token")
     assert.equal(reconnected.code, 0, reconnected.output)
@@ -105,7 +136,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const dirty = await run("fixture-user-token", false)
     assert.equal(dirty.code, 2, dirty.output)
     assert.match(dirty.output, /not local edits/)
-    assert.equal(dispatches, 5)
+    assert.equal(dispatches, 9)
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

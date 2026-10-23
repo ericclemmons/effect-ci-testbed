@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { parseArgs } from "node:util"
+import { parseArgs, parseEnv } from "node:util"
 import { detectAgenticEnvironment } from "am-i-vibing"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
@@ -397,6 +397,7 @@ Usage:
   cf-ci run path/to/workflow.ts [target]
   cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
   cf-ci --workflow path/to/package [run|plan|list] [target]
+  cf-ci run --remote --env-file path/to/.env.production
 
 Commands:
   run     Execute the default workflow, or one exported action when a target is given
@@ -413,6 +414,8 @@ Examples:
 Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
 a project; an explicit local run can initialize supported package scripts.
+Loads .env then .env.local from the repository root through the current directory.
+Shell values take precedence; --env-file explicitly overrides both.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 Detection uses am-i-vibing environment signals (not process scanning).
 --agent explicitly selects JSON for demos; an explicit --format always wins.`
@@ -876,6 +879,54 @@ export const runCli = async (
   // Explicit `run` remains the entrypoint for executing the default workflow.
   if (args.length === 0) args = ["--help"]
   try {
+    // Load repository defaults first, then directory-specific overrides. Shell
+    // values win over automatic files; explicit --env-file keeps overriding both.
+    const directories: string[] = []
+    for (let directory = resolve(cwd); ; directory = dirname(directory)) {
+      directories.unshift(directory)
+      if (existsSync(join(directory, ".git")) || dirname(directory) === directory) break
+    }
+    const defaults: Record<string, string> = {}
+    for (const directory of directories) {
+      for (const name of [".env", ".env.local"]) {
+        const path = join(directory, name)
+        if (existsSync(path)) Object.assign(defaults, parseEnv(readFileSync(path, "utf8")))
+      }
+    }
+    if (defaults.EFFECT_CI_PUBLIC_URL) defaults.EFFECT_CI_REMOTE_URL ??= defaults.EFFECT_CI_PUBLIC_URL
+    if (defaults.EFFECT_CI_API_TOKEN) defaults.EFFECT_CI_REMOTE_TOKEN ??= defaults.EFFECT_CI_API_TOKEN
+    for (const [key, value] of Object.entries(defaults)) {
+      if (value !== undefined && process.env[key] === undefined) process.env[key] = value
+    }
+    const remaining: string[] = []
+    for (let index = 0; index < args.length; index++) {
+      const argument = args[index]!
+      if (argument !== "--env-file" && !argument.startsWith("--env-file=")) {
+        remaining.push(argument)
+        continue
+      }
+      const path = argument === "--env-file" ? args[++index] : argument.slice("--env-file=".length)
+      if (!path || path.startsWith("--")) {
+        throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "--env-file requires a path")
+      }
+      let settings: ReturnType<typeof parseEnv>
+      try { settings = parseEnv(readFileSync(resolve(cwd, path), "utf8")) }
+      catch {
+        throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Cannot read environment file: ${path}`)
+      }
+      Object.assign(process.env, settings)
+      // The self-hosted service and client can share one configuration file.
+      if (settings.EFFECT_CI_REMOTE_URL ?? settings.EFFECT_CI_PUBLIC_URL) {
+        process.env.EFFECT_CI_REMOTE_URL = settings.EFFECT_CI_REMOTE_URL ?? settings.EFFECT_CI_PUBLIC_URL
+      }
+      if (settings.EFFECT_CI_REMOTE_TOKEN ?? settings.EFFECT_CI_API_TOKEN) {
+        process.env.EFFECT_CI_REMOTE_TOKEN = settings.EFFECT_CI_REMOTE_TOKEN ?? settings.EFFECT_CI_API_TOKEN
+      }
+      if (settings.CF_ACCESS_CLIENT_ID && settings.CF_ACCESS_CLIENT_SECRET && !settings.CF_ACCESS_TOKEN) {
+        process.env.CF_ACCESS_TOKEN = ""
+      }
+    }
+    args = remaining.length ? remaining : ["--help"]
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))

@@ -687,7 +687,7 @@ decision event; button retries are not an exactly-once delivery guarantee.
 
 For inline approvals, set `SLACK_SIGNING_SECRET`, `SLACK_APP_ID`, `SLACK_TEAM_ID`, and
 `SLACK_APPROVER_IDS` (comma-separated Slack member IDs) alongside the bot credentials.
-Missing approval configuration fails closed. In `.deploy.env`, explicitly enable
+Missing approval configuration fails closed. In `.env.production`, explicitly enable
 `EFFECT_CI_SLACK_CALLBACKS=true` to provision an Access exception **only** for
 `/webhooks/slack`. Configure Slack **Interactivity & Shortcuts → Request URL** as
 `https://YOUR_HOST/webhooks/slack`. This HTTP handler does not use Socket Mode: disable
@@ -781,16 +781,17 @@ pnpm install
 cd apps/effect-ci
 pnpm exec cf auth login
 pnpm exec cf auth whoami
-cp deploy.example.env .deploy.env
-$EDITOR .deploy.env
+pnpm run setup
 pnpm run deploy
 ```
 
-`cf` prints the deployed Worker URL. Save its origin, for example:
+Setup reads the account and email from `cf`, prompts for the account’s
+`workers.dev` subdomain, and writes `.env.production`. Re-running setup preserves
+existing credentials. Pass `--account <id> --subdomain <name>` for non-interactive
+setup. The generated configuration disables bindings to the optional repair and
+release services (`EFFECT_CI_STANDALONE=true`).
 
-```sh
-export EFFECT_CI_PUBLIC_URL=https://effect-ci-github-cloudflare.<subdomain>.workers.dev
-```
+`EFFECT_CI_PUBLIC_URL` in `.env.production` contains the deployed service origin.
 
 Open the origin in a browser. Access should require a login before showing
 `{"service":"Effect CI","status":"ready"}`. A public health response means Access
@@ -829,25 +830,19 @@ is required for this flow.
 
 ### 3. Configure Worker secrets
 
-Generate a second secret for the direct `/runs` API. Do not reuse the GitHub webhook
-secret:
+Setup already generated the direct `/runs` API token in `.env.production`.
+
+Add the GitHub values from `secrets.example.env` to `.env.production`. Quoted
+dotenv values can span lines; paste the private key as the original PEM:
 
 ```sh
-export EFFECT_CI_API_TOKEN="$(openssl rand -hex 32)"
+$EDITOR .env.production
+pnpm run deploy
 ```
 
-Copy the ignored secret-file template and fill in its values. Quoted dotenv values
-can span lines, so paste the private key as the original PEM rather than flattening it:
-
-```sh
-cp secrets.example.env .secrets.env
-$EDITOR .secrets.env
-pnpm run deploy -- --secrets-file .secrets.env
-```
-
-`.secrets.env` is ignored by Git. Do not rename it to the checked-in example filename or
-put the PEM, webhook secret, or API token directly in shell history. This second deploy
-creates a new Worker version with all secrets atomically; no Wrangler command is needed.
+`.env.production` is ignored by Git. Deployment uploads only the Worker secrets
+listed in `secrets.example.env`; operator credentials stay local. Secrets are
+uploaded atomically with the Worker version.
 
 ### 4. Protect operator routes with Access
 
@@ -872,9 +867,9 @@ apply Access. This app's `pnpm run deploy` first reconciles `access.config.ts` t
 the `cf` Access API commands, then calls `cf deploy`. It fails before deployment
 if the account, hostname, reviewer list, or Access provisioning is missing.
 
-The ignored `.deploy.env` supplies the account, public URL, reviewer emails, and
-optional existing Access service-token ID. The secret values stay in `.secrets.env`.
-Use `pnpm run deploy -- --secrets-file .secrets.env` to upload those with deployment.
+The ignored `.env.production` holds deployment settings and secrets.
+`pnpm run deploy` reads it and uploads only Worker secrets. Existing `.deploy.env`
+and explicit `--secrets-file` arguments remain supported.
 `pnpm run deploy:access` applies only the Access configuration to an existing service.
 `pnpm run deploy -- --dry-run` prints the Access plan and builds the Worker without
 changing either deployment or Access policies.
@@ -896,23 +891,17 @@ Verify that an unauthenticated visit to `/` redirects to Access, an unauthentica
 request to `/runs` cannot start a run, and GitHub's webhook reaches the Worker without
 an Access login. An unsigned webhook must still return `401`.
 
-Save the service token when it is created; Cloudflare shows its secret only once:
-
-For a developer's existing Access identity, no service token is necessary:
-
-```sh
-cloudflared access login "$EFFECT_CI_PUBLIC_URL"
-export CF_ACCESS_TOKEN="$(cloudflared access token --app "$EFFECT_CI_PUBLIC_URL")"
-```
-
-The token expires with your Access session. `cf-ci` sends it as `CF-Access-Token`
-and still requires the Worker API token. For unattended execution, use the scoped
-service-token pair instead (unset `CF_ACCESS_TOKEN` first):
-
-```sh
-export CF_ACCESS_CLIENT_ID='<access-client-id>'
-export CF_ACCESS_CLIENT_SECRET='<access-client-secret>'
-```
+Setup saves the service token's one-time credentials in `.env.production`.
+The CLI reads them through `--env-file`; no shell exports are required. For a
+client checkout, copy `EFFECT_CI_PUBLIC_URL`, `EFFECT_CI_API_TOKEN`,
+`CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET` into the repository root's
+ignored `.env.local`. Then `cf-ci run --remote` needs no environment flag. The
+CLI accepts these deployment names as aliases for `EFFECT_CI_REMOTE_URL` and
+`EFFECT_CI_REMOTE_TOKEN`. Automatic loading reads `.env` then `.env.local` from
+the repository root through the current directory; closer directories override
+parents, shell values win over automatic files, and `--env-file` overrides both.
+An explicitly configured `CF_ACCESS_TOKEN` in that file can select an existing
+human Access session instead.
 
 The Worker still checks `EFFECT_CI_API_TOKEN` after Access succeeds. That defense in
 depth prevents an accidentally unprotected route from becoming a public execution API.
@@ -923,10 +912,7 @@ First exercise the same deployed service directly from the checkout:
 
 ```sh
 cd ../..
-export EFFECT_CI_REMOTE_URL="$EFFECT_CI_PUBLIC_URL"
-export EFFECT_CI_REMOTE_TOKEN="$EFFECT_CI_API_TOKEN"
-
-pnpm exec cf-ci run --remote
+pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production
 ```
 
 The CLI should create a native Workflow instance, stream action events, and exit with

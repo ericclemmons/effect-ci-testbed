@@ -40,7 +40,7 @@ results and intentional failures.
 
 Want to move from GitHub to Cloudflare Artifacts **without rewriting CI**? Choose
 a different Source adapter while preserving the actions. Want hosted execution?
-Use the [Cloudflare app setup](./apps/effect-ci/README.md); `--remote` dispatches the
+Use [Self-hosting](#self-hosting); `--remote` dispatches the
 configured hosted workflow, not arbitrary local code. Trusted exact-commit reuse
 is a separate capability—not a promise that remote runs, pushes, builds or
 deployments become no-ops.
@@ -51,6 +51,55 @@ produce them. The [proof-page contract](./examples/PROOF-PAGES.md) defines what
 future agents must record. Existing coverage evidence stays valid; missing video
 does not erase it. Observability-driven repair and full GitLab runner parity are
 roadmap work, not completed features.
+
+## Self-hosting
+
+Requires Node 24.11+ or 26+, pnpm, Docker, and a Cloudflare account with Workers
+Paid, Containers, Workflows, a `workers.dev` subdomain, and Zero Trust configured.
+
+1. **Install and authenticate.** From a clone of this repository:
+
+   ```sh
+   pnpm install
+   cd apps/effect-ci
+   pnpm exec cf auth login
+   ```
+
+2. **Generate configuration and deploy.**
+
+   ```sh
+   pnpm run setup
+   pnpm run deploy
+   ```
+
+   Setup discovers the account and reviewer email, creates Access credentials,
+   and generates the ignored `.env.production`. Select an account if prompted
+   and enter its `workers.dev` subdomain; the pinned `cf` cannot read that value.
+   Deployment provisions Access, the Worker, Workflow, and Container. The public
+   URL should require Access login.
+
+3. **Verify hosted execution.** From the repository root:
+
+   ```sh
+   pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production
+   ```
+
+   This starts a CI run on the deployed service and streams its result. It uses a
+   pushed, publicly accessible commit and runs the service's configured sample
+   build, not local files or inferred tasks.
+
+   For subsequent runs or another laptop, put `EFFECT_CI_REMOTE_URL`,
+   `EFFECT_CI_REMOTE_TOKEN`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET`
+   in the repository root's ignored `.env.local`, then use `cf-ci run --remote`.
+   Copy the URL from the deployment's `EFFECT_CI_PUBLIC_URL` and the remote token
+   from `EFFECT_CI_API_TOKEN`; the Access credentials keep their names.
+   The CLI automatically loads `.env` then `.env.local` from the repository root
+   through the current directory. Closer directories override parent files;
+   shell values override automatic files, and explicit `--env-file` overrides both.
+
+Operator credentials stay local; deployment uploads only Worker secrets.
+For GitHub checks, private repositories, and Slack approvals, follow the
+[integration guide](./apps/effect-ci/README.md#first-hosted-run).
 
 ## Execution model
 

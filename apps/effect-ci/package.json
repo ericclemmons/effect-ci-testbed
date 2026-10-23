@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "deploy": "node --env-file-if-exists=.deploy.env scripts/deploy.ts",
-    "deploy:access": "node --env-file-if-exists=.deploy.env scripts/deploy.ts --access-only",
+    "setup": "node scripts/setup.ts",
+    "cf": "node --env-file=.env.production node_modules/cf/bin/cf",
+    "deploy": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/deploy.ts",
+    "deploy:access": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/deploy.ts --access-only",
     "dev": "cf dev"
   },
   "dependencies": {

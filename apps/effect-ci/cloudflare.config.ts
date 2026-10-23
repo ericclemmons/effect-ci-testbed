@@ -44,12 +44,14 @@ export default defineConfig({
       }),
     },
     env: {
-      INCIDENT_EVIDENCE: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "IncidentProposalEvidence" }),
-      REPAIR_EVIDENCE: bindings.worker({
-        worker: "effect-ci-repair-agent",
-        exportName: "RecordedProposalEvidence",
+      ...(process.env.EFFECT_CI_STANDALONE === "true" ? {} : {
+        INCIDENT_EVIDENCE: bindings.worker({ worker: "effect-ci-repair-agent", exportName: "IncidentProposalEvidence" }),
+        REPAIR_EVIDENCE: bindings.worker({
+          worker: "effect-ci-repair-agent",
+          exportName: "RecordedProposalEvidence",
+        }),
+        RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }),
       }),
-      RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }),
       ANALYTICS_SQL: bindings.analyticsSQL(),
     },
   },
