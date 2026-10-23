@@ -2,6 +2,14 @@
 
 Your Cloudflare account. Your GitHub App. Your notification destinations.
 
+If you already use `effect-ci-github-cloudflare.ericclemmons.workers.dev`, its root
+API supports repository runs with the same existing API token and Access login.
+Use `EFFECT_CI_REMOTE_URL=https://effect-ci-github-cloudflare.ericclemmons.workers.dev`
+without `/demo`, then run `cf-ci run build --remote` from a clean, pushed repository.
+The host checks out origin/HEAD and discovers CI at the repository root inside an
+isolated container. The `/demo` endpoint continues to serve its fixed demonstration.
+The setup below is for a new host, not a requirement for each new repository.
+
 Use `standalone`, not the owned demo profile:
 
 ```sh

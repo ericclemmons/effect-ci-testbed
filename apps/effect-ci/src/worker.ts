@@ -1,4 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
+import repository from "./repository-worker.ts";
+export { RepositoryCIWorkflow } from "./repository-worker.ts";
 
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
 import { showcaseCheckSuiteRun, showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
@@ -63,6 +65,9 @@ export default {
       (context.exports as unknown as { SmallChangeReviewWorkflow: Workflow<{ number: number }> }).SmallChangeReviewWorkflow);
     if (review) return review;
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/capabilities" || pathname === "/runs" || pathname.startsWith("/runs/")) {
+      return repository.fetch(request, environment, context);
+    }
     if (pathname === "/showcase" || pathname.startsWith("/showcase/")) {
       if (!showcaseRouteAllowed(request.url)) return new Response("Not found", { status: 404 });
       return showcase.fetch(await demoAccessRequest(request, environment.EFFECT_CI_API_TOKEN), environment, context);

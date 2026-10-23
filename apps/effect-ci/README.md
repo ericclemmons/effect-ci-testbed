@@ -38,6 +38,11 @@ scripts there. `cf-ci run build --remote` selects the repository's build action;
 no target runs its whole workflow. The host never imports repository workflow code.
 
 The existing `demo` profile retains this account's integrations for compatibility.
+Its root `/capabilities` and `/runs` API also runs arbitrary caller repositories
+through `RepositoryCIWorkflow`, using the existing host API token and Access
+application. These runs always start at the repository root in the unprivileged
+`repository` image. `/demo` and `/showcase` retain their separate policies and
+workflows. A new repository does not require a new hostname or new credentials.
 Installing the App on all repositories grants repository access; it does not enroll
 signers, deployment credentials, repair authority or reusable-check policies for them.
 

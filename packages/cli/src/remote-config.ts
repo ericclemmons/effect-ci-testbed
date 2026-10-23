@@ -3,9 +3,7 @@ import { join } from "node:path"
 import { parseEnv } from "node:util"
 import { remoteOrigin } from "./remote-protocol.ts"
 
-/** Public endpoint defaults belong in project files; credentials stay user-owned.
- * Vite reads .env.local too, so it must never become a CLI credential store.
- */
+/** Endpoint discovery only; startup loads ignored local credentials separately. */
 export const readProjectRemote = (root: string): { url?: string } => {
   const read = (name: string) => {
     const path = join(root, name)
@@ -14,8 +12,6 @@ export const readProjectRemote = (root: string): { url?: string } => {
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65_536)
       throw new Error("Invalid remote configuration file")
     const values = parseEnv(readFileSync(path, "utf8"))
-    if (values.EFFECT_CI_REMOTE_TOKEN)
-      throw new Error("Keep remote API tokens out of project env files; use your private Effect CI remote profile")
     return values
   }
   const shared = read(".env"), local = read(".env.local")
