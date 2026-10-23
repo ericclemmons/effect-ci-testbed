@@ -23,4 +23,4 @@ jobs:
           broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
           worker: effect-ci-tutorial
           scopes: workers:edit
-      - run: pnpm run deploy
+      - run: pnpm exec wrangler deploy
