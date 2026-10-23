@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs, parseEnv } from "node:util"
+import { projectEnvironment } from "./project-env.ts"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
@@ -1033,6 +1034,9 @@ export const runCli = async (
   if (args.length === 0) args = ["--help"]
   let format = detectedFormat()
   try {
+    for (const [key, value] of Object.entries(projectEnvironment(cwd))) {
+      if (process.env[key] === undefined) process.env[key] = value
+    }
     const remaining: string[] = []
     for (let index = 0; index < args.length; index++) {
       const argument = args[index]!
@@ -1077,13 +1081,16 @@ export const runCli = async (
     } else if (args[0] === "doctor") {
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "doctor checks the current project's remote configuration; do not pass a workflow path")
     }
-    if (!explicit && !findWorkflow(cwd)) {
+    if (!explicit) {
       const invocation = parseInvocation(args, value => { format = value })
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
         return
       }
+    }
+    if (!explicit && !findWorkflow(cwd)) {
+      const invocation = parseInvocation(args, value => { format = value })
       if (invocation.location === "local" && (invocation.help || invocation.command !== "run")) {
         let program: Program
         try { program = inferJavaScriptProgram(resolve(cwd)) }

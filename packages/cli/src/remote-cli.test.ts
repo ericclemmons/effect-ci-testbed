@@ -70,7 +70,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         dispatches++
         let body = ""
         for await (const chunk of request) body += chunk
-        assert.match(JSON.parse(body).revision, /^[a-f0-9]{40}$/)
+        const input = JSON.parse(body)
+        assert.equal(input.revision, execFileSync("git", ["rev-parse", "HEAD"], { cwd: directory, encoding: "utf8" }).trim())
+        assert.equal(input.repository, "https://github.com/example/project.git")
+        assert.equal(input.root, undefined)
+        assert.equal(input.projectRoot, undefined)
         selections.push(JSON.parse(body).targets)
         response.writeHead(202, { "content-type": "application/json" })
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture`,
@@ -256,6 +260,14 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     const fromFile = await run("stale-user-token", false, "text", false, [], "run", true)
     assert.equal(fromFile.code, 0, fromFile.output)
     assert.match(fromFile.output, /Workflow completed/)
+    // A local workflow must not be imported or select the remote repository's goals.
+    await mkdir(join(directory, ".cloudflare/ci"), { recursive: true })
+    await writeFile(join(directory, ".cloudflare/ci/workflow.ts"), 'throw new Error("local workflow must not run before dispatch")\n')
+    execFileSync("git", ["add", ".cloudflare/ci/workflow.ts"], { cwd: directory })
+    execFileSync("git", ["commit", "-qm", "local workflow fixture"], { cwd: directory })
+    const discovered = await run("fixture-user-token", false, "text", false, ["build"])
+    assert.equal(discovered.code, 0, discovered.output)
+    assert.deepEqual(selections.at(-1), ["build"])
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

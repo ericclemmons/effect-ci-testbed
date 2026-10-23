@@ -31,9 +31,11 @@ A failed or uncertain publication is inspected, not blindly replayed.
 ## Host configuration
 
 [SELF-HOST.md](./SELF-HOST.md) covers the App, secrets, Access and CLI setup.
-The `standalone` profile runs a host-authored package-script policy at the configured
-project root. It does **not** yet discover and execute arbitrary repositories'
-`.cloudflare/ci/workflow.ts` files.
+The `standalone` profile checks out the caller's Git origin at the requested HEAD,
+installs dependencies, and runs the same CLI inside the container at the repository
+root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional package
+scripts there. `cf-ci run build --remote` selects the repository's build action;
+no target runs its whole workflow. The host never imports repository workflow code.
 
 The existing `demo` profile retains this account's integrations for compatibility.
 Installing the App on all repositories grants repository access; it does not enroll
