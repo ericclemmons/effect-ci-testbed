@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parseEnv } from "node:util";
+import test from "node:test";
+
+test("OIDC setup reuses native self-hosting account and subdomain without copying its credentials", () => {
+  const dir = mkdtempSync(join(tmpdir(), "oidc-setup-"));
+  const host = join(dir, "host.env");
+  const cf = join(dir, "cf"); const gh = join(dir, "gh");
+  writeFileSync(host, `CLOUDFLARE_ACCOUNT_ID=${"a".repeat(32)}\nEFFECT_CI_PUBLIC_URL=https://native.sandbox.workers.dev\nEFFECT_CI_API_TOKEN=native-api-secret\nCF_ACCESS_CLIENT_SECRET=native-access-secret\n`);
+  writeFileSync(cf, `#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv[2]==='workers'?[{id:'my-worker',tag:'${"b".repeat(32)}'}]:[{name:'Individual Workers Editor',id:'editor-role'}]));`, { mode: 0o700 });
+  writeFileSync(gh, '#!/usr/bin/env node\nconsole.log(JSON.stringify({id:123,owner:{id:456},default_branch:"main"}));', { mode: 0o700 });
+  const run = (extra: string[] = []) => spawnSync(process.execPath, [new URL("../../scripts/setup-oidc.ts", import.meta.url).pathname,
+    "--host-env", host, "--repository", "owner/repo", "--worker", "my-worker", ...extra], {
+    cwd: dir, encoding: "utf8", env: { PATH: process.env.PATH, CF_BIN: cf, GH_BIN: gh },
+  });
+  try {
+    const first = run(); assert.equal(first.status, 0, first.stderr);
+    const settings = parseEnv(readFileSync(join(dir, ".env.production"), "utf8"));
+    assert.equal(settings.CLOUDFLARE_ACCOUNT_ID, "a".repeat(32));
+    assert.equal(settings.BROKER_AUDIENCE, "https://effect-ci-github-actions-runner.sandbox.workers.dev");
+    assert.equal(settings.EFFECT_CI_OIDC_ONLY, "true");
+    assert.equal(settings.EFFECT_CI_API_TOKEN, undefined);
+    assert.equal(settings.CF_ACCESS_CLIENT_SECRET, undefined);
+    const grants = JSON.parse(settings.BROKER_GRANTS!);
+    assert.equal(grants[0].workflowRef, "owner/repo/.github/workflows/oidc-live-proof.yml@refs/heads/main");
+    assert.deepEqual(Object.keys(grants[0].scopes), ["workers:edit"]);
+    assert.deepEqual(grants[0].scopes["workers:edit"][0].resources, { [`com.cloudflare.api.account.${"a".repeat(32)}`]: { [`com.cloudflare.edge.worker.script.${"b".repeat(32)}`]: "*" } });
+    assert.equal(statSync(join(dir, ".env.production")).mode & 0o777, 0o600);
+    assert.equal(run().status, 0);
+    assert.equal(parseEnv(readFileSync(join(dir, ".env.production"), "utf8")).RECEIPT_SIGNING_KEY, settings.RECEIPT_SIGNING_KEY);
+    const wrong = run(["--account", "c".repeat(32)]); assert.notEqual(wrong.status, 0); assert.match(wrong.stderr, /another account/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

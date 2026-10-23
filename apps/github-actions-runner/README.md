@@ -1,5 +1,14 @@
 # GitHub Actions on Cloudflare
 
+This app provides two incremental steps:
+
+- [OIDC authentication](./OIDC.md): keep GitHub-hosted execution and get short-lived, single-Worker Cloudflare tokens.
+- Optional Actions execution on Cloudflare: change `runs-on` when ready.
+
+There is no separate broker app. OIDC can deploy without a Container using
+`EFFECT_CI_OIDC_ONLY=true`; full runner deployments can serve both capabilities.
+OIDC requires no runner App Administration permission or runner enrollment.
+
 Optional, independently deployable Actions runner. Change where GitHub executes
 your existing job; do not rewrite its steps or Effect CI's execution model.
 

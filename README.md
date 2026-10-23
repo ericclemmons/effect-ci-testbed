@@ -83,7 +83,7 @@ enrolled platform deployment path. Discovery alone never grants CD authority.
 ## Repository layout
 
 - `apps/effect-ci`: the native CI host.
-- `apps/github-actions-runner`: the optional GitHub Actions execution app.
+- `apps/github-actions-runner`: optional GitHub OIDC credentials and Actions execution.
 - `examples/demo`: the standalone, copy-out human tutorial; tested, not deployed.
 - `test/apps`: deployable test hosts (repair, HMD, preview, notification and
   hosted-example fixtures). They are not required product installations or CD targets.
@@ -281,6 +281,8 @@ Keep credentials outside workspace containers, including authenticated outbound 
 | --- | :---: | :---: | :---: | :---: |
 | [Use secrets without exposing them to containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | ✅ |
 | [Call authenticated APIs without exposing credentials](./examples/secret-outbound) | — | 🔜 | — | ✅ |
+| [Deploy with Wrangler using short-lived credentials](./examples/oidc-wrangler) | ✅ | — | — | — |
+| [Deploy with cf using short-lived credentials](./examples/oidc-cf) | ✅ | — | — | — |
 
 ### Hosted CI, notifications, and approvals
 

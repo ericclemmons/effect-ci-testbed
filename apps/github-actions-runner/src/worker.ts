@@ -1,3 +1,5 @@
+import oidc, { type OidcEnvironment } from "./oidc/worker.ts";
+export { TokenLease } from "./oidc/worker.ts";
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { verifyWebhookSignature } from "../../../packages/github/src/app.ts";
 import { enrollment } from "./enrollment.ts";
@@ -9,7 +11,7 @@ type LocalExports = {
   RunnerPool: DurableObjectNamespace<RunnerPool>;
   ActionsRunner: DurableObjectNamespace<ActionsRunner>;
 };
-type Environment = {
+type Environment = Partial<OidcEnvironment> & {
   RUNNER_APP_PRIVATE_KEY?: string;
   RUNNER_WEBHOOK_SECRET?: string;
 };
@@ -113,6 +115,11 @@ export default class extends WorkerEntrypoint<Environment> {
   async fetch(request: Request): Promise<Response> {
     const env = this.env;
     const url = new URL(request.url);
+    if (["/token", "/revoke"].includes(url.pathname)) {
+      if (![env.BROKER_AUDIENCE, env.BROKER_GRANTS, env.CLOUDFLARE_TOKEN_ISSUER, env.RECEIPT_SIGNING_KEY].every(value => typeof value === "string" && value.length > 0))
+        return new Response("OIDC not configured", { status: 503, headers: { "cache-control": "no-store" } });
+      return oidc.fetch(request, env as OidcEnvironment, this.ctx);
+    }
     if (url.pathname === "/health" && request.method === "GET")
       return Response.json({ enabled: validEnrollment(enrollment), backend: "containers" });
     if (url.pathname !== "/github/webhook" || request.method !== "POST") return new Response("Not found", { status: 404 });
