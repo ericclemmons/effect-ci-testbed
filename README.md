@@ -30,6 +30,46 @@ The [legacy hosted fixture](./test/fixtures/demo/README.md) records Slack, previ
 test attestation and the real error-to-unmerged-PR proof.
 [Browse recipes](./examples/README.md) for one focused capability at a time.
 
+## Self-hosting
+
+Requires Node 24.11+ or 26+, pnpm, Docker, and a Cloudflare account with Workers
+Paid, Containers, Workflows, a `workers.dev` subdomain, and Zero Trust configured.
+
+1. **Install and authenticate.** From a clone of this repository:
+
+   ```sh
+   pnpm install
+   cd apps/effect-ci
+   pnpm exec cf auth login
+   ```
+
+2. **Generate configuration and deploy.**
+
+   ```sh
+   pnpm run setup
+   pnpm run deploy
+   ```
+
+   Setup discovers the account and reviewer email, creates Access credentials,
+   and generates the ignored `.env.production`. Select an account if prompted
+   and enter its `workers.dev` subdomain; the pinned `cf` cannot read that value.
+   Deployment provisions Access, the Worker, Workflow, and Container. The public
+   URL should require Access login.
+
+3. **Verify hosted execution.** From the repository root:
+
+   ```sh
+   pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production
+   ```
+
+   This starts a CI run on the deployed service and streams its result. It uses a
+   pushed, publicly accessible commit and runs the repository workflow on the
+   hosted runner. Local edits are not uploaded.
+
+Operator credentials stay local; deployment uploads only Worker secrets.
+For GitHub checks, private repositories, and Slack approvals, follow the
+[integration guide](./apps/effect-ci/SELF-HOST.md).
+
 ## What works
 
 - Run the same actions locally, on GitHub Actions or on the hosted Cloudflare runner.

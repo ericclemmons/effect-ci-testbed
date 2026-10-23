@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "build": "node --env-file-if-exists=.deploy.env scripts/local.ts build",
-    "deploy": "node --env-file-if-exists=.deploy.env scripts/deploy.ts",
-    "deploy:access": "node --env-file-if-exists=.deploy.env scripts/deploy.ts --access-only",
-    "dev": "node --env-file-if-exists=.deploy.env scripts/local.ts dev"
+    "build": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/local.ts build",
+    "deploy": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/deploy.ts",
+    "deploy:access": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/deploy.ts --access-only",
+    "dev": "node --env-file-if-exists=.deploy.env --env-file-if-exists=.env.production scripts/local.ts dev",
+    "setup": "node scripts/setup.ts",
+    "cf": "node --env-file=.env.production node_modules/cf/bin/cf"
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
