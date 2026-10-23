@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
@@ -8,13 +8,21 @@ import test from "node:test";
 
 test("OIDC setup reuses native self-hosting account and subdomain without copying its credentials", () => {
   const dir = mkdtempSync(join(tmpdir(), "oidc-setup-"));
-  const host = join(dir, "host.env");
+  const native = join(dir, "native"); mkdirSync(native);
+  const host = join(native, ".env.production");
   const cf = join(dir, "cf"); const gh = join(dir, "gh");
-  writeFileSync(host, `CLOUDFLARE_ACCOUNT_ID=${"a".repeat(32)}\nEFFECT_CI_PUBLIC_URL=https://native.sandbox.workers.dev\nEFFECT_CI_API_TOKEN=native-api-secret\nCF_ACCESS_CLIENT_SECRET=native-access-secret\n`);
-  writeFileSync(cf, `#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv[2]==='workers'?[{id:'my-worker',tag:'${"b".repeat(32)}'}]:[{name:'Individual Workers Editor',id:'editor-role'}]));`, { mode: 0o700 });
+  writeFileSync(cf, `#!/usr/bin/env node
+const cmd=process.argv[2];
+console.log(JSON.stringify(cmd==='auth'?{authenticated:true,email:'owner@example.com',accounts:[{id:'${"a".repeat(32)}',name:'Sandbox'}]}:
+cmd==='zero-trust'?{id:'service-id',client_id:'native-access-id',client_secret:'native-access-secret'}:
+cmd==='workers'?[{id:'my-worker',tag:'${"b".repeat(32)}'}]:[{name:'Individual Workers Editor',id:'editor-role'}]));`, { mode: 0o700 });
+  const generated = spawnSync(process.execPath, [new URL("../../../effect-ci/scripts/setup.ts", import.meta.url).pathname, "--subdomain", "sandbox"], {
+    cwd: native, encoding: "utf8", env: { PATH: process.env.PATH, CF_BIN: cf },
+  });
+  assert.equal(generated.status, 0, generated.stderr);
   writeFileSync(gh, '#!/usr/bin/env node\nconsole.log(JSON.stringify({id:123,owner:{id:456},default_branch:"main"}));', { mode: 0o700 });
   const run = (extra: string[] = []) => spawnSync(process.execPath, [new URL("../../scripts/setup-oidc.ts", import.meta.url).pathname,
-    "--host-env", host, "--repository", "owner/repo", "--worker", "my-worker", ...extra], {
+    "--", "--host-env", host, "--repository", "owner/repo", "--worker", "my-worker", ...extra], {
     cwd: dir, encoding: "utf8", env: { PATH: process.env.PATH, CF_BIN: cf, GH_BIN: gh },
   });
   try {

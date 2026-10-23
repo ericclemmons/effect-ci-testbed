@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { parseArgs, parseEnv } from "node:util";
 
-const { values } = parseArgs({ options: {
+const { values } = parseArgs({ args: process.argv.slice(2).filter(arg => arg !== "--"), options: {
   "host-env": { type: "string", default: "../effect-ci/.env.production" },
   account: { type: "string" }, subdomain: { type: "string" }, name: { type: "string" },
   repository: { type: "string" }, ref: { type: "string" }, workflow: { type: "string", default: ".github/workflows/oidc-live-proof.yml" },
