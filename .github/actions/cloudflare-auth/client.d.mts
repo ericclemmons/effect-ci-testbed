@@ -1,3 +1,4 @@
+export class AuthenticationError extends Error {}
 export interface ExchangeInput {
   broker: string;
   worker: string;

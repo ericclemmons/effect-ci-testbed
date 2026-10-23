@@ -1,5 +1,5 @@
 import { appendFileSync } from "node:fs";
-import { exchange } from "./client.mjs";
+import { AuthenticationError, exchange } from "./client.mjs";
 
 const escape = (value) => value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
 try {
@@ -14,7 +14,7 @@ try {
   appendFileSync(process.env.GITHUB_STATE, `broker=${result.broker}\nreceipt=${result.receipt}\n`);
   appendFileSync(process.env.GITHUB_ENV, `CLOUDFLARE_API_TOKEN=${result.token}\nCLOUDFLARE_ACCOUNT_ID=${result.accountId}\n`);
   console.log("Temporary Cloudflare credentials are available to subsequent steps.");
-} catch {
-  console.error("Cloudflare authentication failed. Check the job's OIDC permission, broker grant, Worker and scopes.");
+} catch (error) {
+  console.error(error instanceof AuthenticationError ? error.message : "Cloudflare authentication failed. Check the job's OIDC permission, broker grant, Worker and scopes.");
   process.exitCode = 1;
 }

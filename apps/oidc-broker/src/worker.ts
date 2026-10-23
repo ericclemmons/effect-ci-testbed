@@ -53,6 +53,7 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const path = new URL(request.url).pathname;
     if (request.method !== "POST" || !["/token", "/revoke"].includes(path)) return json({ error: "Not found" }, 404);
+    let stage = "configuration";
     try {
       const key = receiptKey(env);
       const leases = (ctx.exports as unknown as { TokenLease: DurableObjectNamespace<TokenLease> }).TokenLease;
@@ -64,18 +65,21 @@ export default {
         await lease.revoke();
         return json({ revoked: true });
       }
+      stage = "identity";
       const claims = await verifyIdentity(bearer, env.BROKER_AUDIENCE);
       const text = await request.text();
       if (text.length > 4096) return json({ error: "Request too large" }, 413);
+      stage = "grant";
       const input = authorize(claims, JSON.parse(text), JSON.parse(env.BROKER_GRANTS) as Grant[]);
       const receipt = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setIssuer("effect-ci")
         .setAudience(env.BROKER_AUDIENCE).setJti(claims.jti!).setIssuedAt().setExpirationTime("1h").sign(key);
       const lease = leases.getByName(claims.jti!);
+      stage = "issuance";
       const result = await lease.issue({ ...input, name: `effect-ci-${claims.run_id}-${claims.run_attempt}`.slice(0, 120) });
       return json({ ...result, receipt });
     } catch {
       // Includes validation, replay and upstream failures without reflecting secret data.
-      return json({ error: "Credential exchange rejected" }, 403);
+      return json({ error: "Credential exchange rejected", stage }, 403);
     }
   },
 };
