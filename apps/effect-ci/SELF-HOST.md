@@ -7,20 +7,19 @@ Use `standalone`, not the owned demo profile:
 ```sh
 pnpm install
 cd apps/effect-ci
-cp deploy.example.env .deploy.env
-cp secrets.example.env .secrets.env
-$EDITOR .deploy.env .secrets.env
 pnpm exec cf auth login
+pnpm run setup
 pnpm run deploy -- --dry-run
-pnpm run deploy -- --secrets-file .secrets.env
+pnpm run deploy
 ```
 
-Fill in your account, hostname and Access reviewers. [Create your App](#github-app)
-and [configure its secrets](#secrets) before the final
-deploy. Keep both local files ignored; never put credentials in project code.
+Setup discovers the account and reviewer email, asks for the account's
+`workers.dev` subdomain, and writes the ignored `.env.production` with generated
+API and Access credentials. Use `--account <id> --subdomain <name>` for
+non-interactive setup; repeat runs preserve credentials. Add the [GitHub App](#github-app)
+secrets to this file before deploying webhook integration.
 The deploy wrapper configures Access before deploying the Worker.
-`pnpm build` and `pnpm dev` read the same profile from `.deploy.env`; neither
-reconciles Access nor deploys the host.
+Build/dev/deploy read `.env.production`; build/dev do not reconcile Access or deploy.
 
 ## Choose the host
 
@@ -84,12 +83,13 @@ PR approvals and repair writers need separate capabilities; basic CI needs neith
 
 ## Secrets
 
-Fill the ignored `.secrets.env` from `secrets.example.env`: `GITHUB_APP_ID`,
+Add values from `secrets.example.env` to the ignored `.env.production`: `GITHUB_APP_ID`,
 `GITHUB_PRIVATE_KEY` (original multiline PEM), `GITHUB_WEBHOOK_SECRET`,
 `EFFECT_CI_API_TOKEN` and `EFFECT_CI_PUBLIC_URL`.
 Use an independently generated API token, not the webhook secret. Keep values out
-of shell history and checked-in example files. The final setup deploy above uploads
-the file atomically; build/dev do not upload secrets.
+of shell history and checked-in example files. Deployment uploads only documented
+Worker secrets atomically; Access and operator credentials stay local. Build/dev
+do not upload secrets.
 
 ## Access
 
@@ -110,7 +110,16 @@ The Worker API token remains a second boundary after Access succeeds.
 
 ## CLI authentication
 
-Use the existing human Access session, then retry the original CLI command:
+For the generated host configuration, run from the repository root:
+
+```sh
+pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production
+```
+
+This starts a hosted CI run and streams its result. The explicit file option
+reads the host URL, API token, and Access service credentials without shell exports.
+
+Alternatively, use the existing human Access session, then retry the original CLI command:
 
 ```sh
 cloudflared access login "$EFFECT_CI_PUBLIC_URL"
