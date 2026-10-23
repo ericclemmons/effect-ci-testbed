@@ -313,8 +313,12 @@ export class RunCard {
     }
     const lines = ordered.filter(id => (!options.onlyStep || id === options.onlyStep) && (!options.hideSkipped || this.checks.get(id)!.status !== "skipped")).map((id, index) => {
       const check = this.checks.get(id)!
-
-      return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : (options.onlyStep ? plainSymbols : symbols)[check.status]} ${id}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
+      const timing = this.timings.get(id)
+      const seconds = timing?.end === undefined ? undefined : Math.max(0, Math.round((timing.end - timing.start) / 1000))
+      const duration = check.status === "reused" || check.status === "verified" ? "(cached)" :
+        seconds === undefined ? undefined : seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+      const suffix = options.onlyStep ? duration ? ` · ${duration}` : "" : check.status === "complete" ? "" : ` — ${check.status}`
+      return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : (options.onlyStep ? plainSymbols : symbols)[check.status]} ${id}${suffix}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
     })
     const blocks: Array<SlackBlock> = options.onlyStep ? [] : [
       { type: "header", text: { type: "plain_text", text: `${headline} · ${this.workflowId}`.slice(0, 150) } },

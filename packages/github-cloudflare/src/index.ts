@@ -2,7 +2,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as GitHub from "@effect-ci-testbed/github"
 import * as Effect from "effect/Effect"
-import { hasNotificationChannels, sendNotification, slackPermalink, type NotificationChannels, type NotificationResult } from "./notifications.ts"
+import { hasNotificationChannels, sendNotification, type NotificationChannels, type NotificationResult } from "./notifications.ts"
 import { RunCard, type SlackBlock } from "./run-card.ts"
 import { Notifications, notificationLayer, type NotificationProvider } from "./notification-service.ts"
 import { NotificationDeliveryUnavailable } from "./notification-delivery.ts"
@@ -230,6 +230,7 @@ export const workflowEntrypoint = <A>(
       ? () => GitHub.createInstallationToken(credentials(this.env), github.installationId)
       : undefined
     const runner = Cloudflare.makeRunner({
+      ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
       ...(options.cache === false ? {} : { cache: options.cache ?? {
         key: github?.repositoryName ?? event.payload.repository,
@@ -291,9 +292,6 @@ export const workflowEntrypoint = <A>(
     // Additional providers still receive subsequent semantic snapshots.
     let presentationBlocked = false
     const threadMessages = new Map<string, string>()
-    const stepPermalinks = new Map<string, string>()
-    let detailsMessageTs: string | undefined
-    let detailsBlocked = false
     const blockedThreads = new Set<string>()
     let latestThread: string | undefined
     const channels = options.notificationChannels?.(this.env, event.payload) ?? this.env
@@ -369,17 +367,6 @@ export const workflowEntrypoint = <A>(
               (channels.DISCORD_WEBHOOK_URL && !discordMessageId)) presentationBlocked = true
           console.warn("CI notification delivery failed; execution continues")
         }
-        if (threaded && key === "workflow.started" && slackMessageTs && !result.failed) {
-          const details = card.renderDetails()
-          // A separate checkpointed first reply. Lost ACKs are preserved, never
-          // repaired by reposting the table or repeating any business action.
-          const posted = await deliveryStep("notification:workflow.started:details-post", () => sendNotification(
-            { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channels.SLACK_CHANNEL_ID! },
-            details.text, fetch, undefined, details.blocks, undefined, { slackThreadTs: slackMessageTs! }), true)
-          if (posted && !posted.failed && posted.slackMessageTs && posted.slackMessageTs !== slackMessageTs)
-            detailsMessageTs = posted.slackMessageTs
-          else detailsBlocked = true
-        }
         if (threaded && threadKey && slackMessageTs) {
           latestThread = threadKey
           const failed = () => { blockedThreads.add(threadKey); if (required) throw new NotificationDeliveryUnavailable() }
@@ -389,19 +376,16 @@ export const workflowEntrypoint = <A>(
           if (!ts) {
             // Establish a known reply before uploading an image frame or exposing a capability.
             // A lost post ACK blocks this step permanently; never repost it on a later update.
+            const initial = required ? { text: `Preparing ${threadKey}`, blocks: [{ type: "section", text: { type: "plain_text", text: `Preparing ${threadKey}`.slice(0, 3000) } }] } :
+              override ?? card.render({ onlyStep: threadKey })
             const posted = await deliveryStep(`notification:${key}:thread-post`, () => sendNotification(slack,
-              `Preparing ${threadKey}`, fetch, undefined, [{ type: "section", text: { type: "plain_text", text: `Preparing ${threadKey}`.slice(0, 3000) } }],
+              initial.text, fetch, undefined, initial.blocks,
               undefined, { slackThreadTs: slackMessageTs! }))
             if (posted?.slackMessageTs === slackMessageTs && required)
               throw new Error("Host finalization thread identity mismatch")
             if (!posted || posted.failed || !posted.slackMessageTs || posted.slackMessageTs === slackMessageTs) { failed(); return }
             ts = posted.slackMessageTs
             threadMessages.set(threadKey, ts)
-            try {
-              const permalink = await step.do(`notification:${key}:thread-permalink`, policy,
-                () => slackPermalink(channels.SLACK_BOT_TOKEN!, channels.SLACK_CHANNEL_ID!, ts!))
-              if (permalink) stepPermalinks.set(threadKey, permalink)
-            } catch { /* navigation cannot block evidence or approval delivery */ }
           }
           const log = !override && card.commandLog(threadKey)
           if (log && options.slackCommandLog) {
@@ -418,14 +402,6 @@ export const workflowEntrypoint = <A>(
           if (updated && !updated.failed && updated.slackMessageTs !== ts && required)
             throw new Error("Host finalization thread identity mismatch")
           if (!updated || updated.failed || updated.slackMessageTs !== ts) failed()
-        }
-        if (threaded && detailsMessageTs && !detailsBlocked) {
-          const channel = channels.SLACK_CHANNEL_ID!
-          const details = card.renderDetails(stepPermalinks)
-          const updated = await deliveryStep(`notification:${key}:details-update`, () => sendNotification(
-            { SLACK_BOT_TOKEN: channels.SLACK_BOT_TOKEN!, SLACK_CHANNEL_ID: channel },
-            details.text, fetch, detailsMessageTs, details.blocks), true)
-          if (!updated || updated.failed || updated.slackMessageTs !== detailsMessageTs) detailsBlocked = true
         }
       })
 
@@ -548,9 +524,9 @@ export const workflowEntrypoint = <A>(
                 : runtimeEvent.type
           // Rebuild checklist state on replay and serialize concurrent edits.
           const threadKey = runtimeEvent.type === "step.command.failed" || runtimeEvent.type === "step.command.unavailable" ? runtimeEvent.stepId :
-            // Routine status belongs in the maintained table, not another reply.
-            // Keep attention-worthy detail and update existing approval/failure replies.
-            runtimeEvent.type === "step.status" && (["failed", "warning"].includes(runtimeEvent.status) || threadMessages.has(runtimeEvent.stepId)) ? runtimeEvent.stepId :
+            // Publish actual work, not the forecast. Subsequent status changes
+            // edit the same checkpointed reply rather than appending messages.
+            runtimeEvent.type === "step.status" && (!["planned", "queued", "skipped"].includes(runtimeEvent.status) || threadMessages.has(runtimeEvent.stepId)) ? runtimeEvent.stepId :
             runtimeEvent.type === "approval.requested" || runtimeEvent.type === "approval.resolved" ? runtimeEvent.stepId : undefined
           await notify(key, () => card.update(runtimeEvent), undefined, false,
             threadKey ?? (runtimeEvent.type === "workflow.completed" ? latestThread : undefined))
