@@ -71,6 +71,12 @@ The service retains the token-creation credential; GitHub stores no Cloudflare s
 
 ## Verification proof
 
+[Updated workflow proof, run 40025873110](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40025873110/attempts/2)
+passed with the default service endpoint and explicit CLI deployment commands for both
+examples, including scoped-access checks, served-response verification, and token
+revocation. The [run receipt](../../apps/oidc-broker/verification/idiomatic-deploy.json)
+records the source revision and service configuration recovery before the successful retry.
+
 **Video:** Pending — the live run is verified in GitHub Actions logs; no video has been recorded.
 
 **Measured results:** [Live run receipt](../../apps/oidc-broker/verification/live.json)
