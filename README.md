@@ -247,8 +247,8 @@ Keep credentials outside workspace containers, including authenticated outbound 
 | --- | :---: | :---: | :---: | :---: |
 | [Use secrets without exposing them to containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | ✅ |
 | [Call authenticated APIs without exposing credentials](./examples/secret-outbound) | — | 🔜 | — | ✅ |
-| [Deploy with Wrangler using short-lived credentials](./examples/oidc-wrangler) | 🔜 | — | — | 🔜 |
-| [Deploy with cf using short-lived credentials](./examples/oidc-cf) | 🔜 | — | — | 🔜 |
+| [Deploy with Wrangler using short-lived credentials](./examples/oidc-wrangler) | ✅ | — | — | — |
+| [Deploy with cf using short-lived credentials](./examples/oidc-cf) | ✅ | — | — | — |
 
 ### Hosted CI, notifications, and approvals
 

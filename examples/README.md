@@ -127,7 +127,8 @@ Neither recipe is permission to place host secrets into a project environment.
 
 Keep GitHub Actions execution and request temporary deployment credentials with
 [Wrangler OIDC](./oidc-wrangler) or [cf OIDC](./oidc-cf). Both use the shared Effect CI
-broker and request only explicitly authorized Worker scopes. Hosted verification is pending.
+broker and request only explicitly authorized Worker scopes. Both ordinary deployment
+commands, cross-Worker/R2 denials, and token cleanup passed in a real GitHub Actions run.
 
 ## Hosted CI, notifications, and approvals
 

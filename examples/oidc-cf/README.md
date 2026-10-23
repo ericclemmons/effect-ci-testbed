@@ -62,11 +62,25 @@ full hosted Effect CI app requires separately approved permissions.
 
 ## Verification proof
 
-**Video:** Pending — no hosted GitHub OIDC exchange or deployment has been recorded.
+**Video:** Pending — the live run is verified in GitHub Actions logs; no video has been recorded.
 
-**Measured results:** Pending — local tests and builds do not establish hosted token
-issuance, Cloudflare enforcement, successful deployment, or post-job revocation.
+**Measured results:** [Live run receipt](../../apps/oidc-broker/verification/live.json)
+— 27 seconds for this GitHub job, including setup and cleanup (one run, not a benchmark).
 Follow the [proof-page contract](../PROOF-PAGES.md).
+
+[GitHub Actions run 39880677228](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228)
+verified a real GitHub OIDC exchange, a 15-minute **Individual Workers Editor** token,
+this Worker's source read (200), the other example's source read (403), and R2 bucket
+listing (403). Ordinary `cf deploy` published version `2f474bcc-f15d-4143-8eb3-2df358e2fb4f`;
+the served response matched and the action revoked its token. An independent issuer
+metadata read found no remaining tokens for that run. The broker ran version
+`37676665-fe30-4f34-845f-9c6ac29dd070`.
+
+This proof used the dedicated `codex/oidc-live-proof` branch and root proof workflow,
+with exact identity grants recorded beside the receipt. The nested example workflow
+is the copyable starting point and needs its own authorized ref. Execution stayed in
+GitHub; Cloudflare hosted only the credential broker and deployment targets. No R2
+content operations, destructive cross-Worker requests or automatic token renewal were tested.
 
 Local checks from the repository root:
 

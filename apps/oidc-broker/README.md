@@ -124,10 +124,22 @@ pnpm build
 node --test ../../.github/actions/cloudflare-auth/client.test.mjs
 ```
 
-No hosted issuance/deploy/revocation has been verified. The first live proof must confirm
-Cloudflare accepts the copied granular policy, both CLIs deploy with only that policy,
-another Worker's mutation and R2 access are denied, and cleanup revokes the token.
-Do not silently broaden scopes if a CLI asks for additional permissions. Account token
+[Live GitHub Actions run 39880677228](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228)
+passed for both CLIs. [The receipt](./verification/live.json) records the exact source
+revision, broker version, job timings, deployment versions, own-Worker source read (200),
+other-Worker source read (403), R2 bucket listing (403), successful post-job revocation,
+and an independent issuer metadata check finding no remaining run tokens. Each issued
+token contained only the requested Individual Workers Editor policy. No broadening was needed.
+The proof ran on the dedicated branch authorized in [the recorded grants](./verification/grants.json).
+The copyable example workflows need separately configured exact identity grants.
+
+Live testing found two runtime contracts that the initial mocks missed: token expiration
+must omit fractional seconds, and Workers fetch supports manual redirects rather than
+`redirect: "error"`. The integration test now intercepts outbound traffic below the
+Workers runtime, preserving its real fetch behavior. Both regressions are covered.
+
+Destructive cross-Worker operations and R2 content access were not probed. Do not silently
+broaden scopes if another deployment asks for additional permissions. Account token
 limits, durable audit history and per-identity rate limiting remain follow-up work.
 Expiry is the fallback for runner loss or an ambiguous API response. This prototype
 does not refresh tokens during deployments longer than 15 minutes.
