@@ -15,7 +15,7 @@ test("OIDC setup reuses native self-hosting account and subdomain without copyin
 const cmd=process.argv[2];
 console.log(JSON.stringify(cmd==='auth'?{authenticated:true,email:'owner@example.com',accounts:[{id:'${"a".repeat(32)}',name:'Sandbox'}]}:
 cmd==='zero-trust'?{id:'service-id',client_id:'native-access-id',client_secret:'native-access-secret'}:
-cmd==='workers'?[{id:'my-worker',tag:'${"b".repeat(32)}'}]:[{name:'Individual Workers Editor',id:'editor-role'}]));`, { mode: 0o700 });
+cmd==='workers'?[{name:'my-worker',id:'${"b".repeat(32)}'}]:[{name:'Individual Workers Editor',id:'editor-role'}]));`, { mode: 0o700 });
   const generated = spawnSync(process.execPath, [new URL("../../../effect-ci/scripts/setup.ts", import.meta.url).pathname, "--subdomain", "sandbox"], {
     cwd: native, encoding: "utf8", env: { PATH: process.env.PATH, CF_BIN: cf },
   });

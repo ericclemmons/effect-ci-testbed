@@ -35,19 +35,19 @@ if (!branch || /[\s~^:?*\[\\]/.test(branch) || branch.includes("..")) throw Erro
 const ref = branch.startsWith("refs/heads/") ? branch : `refs/heads/${branch}`;
 const workflow = values.workflow;
 if (!/^\.github\/workflows\/[\w.-]+\.ya?ml$/.test(workflow)) throw Error("Invalid workflow path");
-const workers = command(process.env.CF_BIN ?? "cf", ["workers", "scripts", "list"]);
+const workers = command(process.env.CF_BIN ?? "cf", ["workers", "list"]);
 const groups = command(process.env.CF_BIN ?? "cf", ["accounts", "tokens", "permission-groups", "list", "--name", "Individual Workers Editor"]);
 const group = groups.find((item: any) => item.name === "Individual Workers Editor");
 if (!group?.id) throw Error("Cloudflare did not return Individual Workers Editor; authorize cf with account_api_tokens:create");
 const targets = values.worker ?? ["effect-ci-oidc-wrangler", "effect-ci-oidc-cf"];
 const grants = targets.map((target) => {
-  const worker = workers.find((item: any) => item.id === target);
-  if (!worker || !/^[a-f0-9]{32}$/.test(worker.tag)) throw Error(`Bootstrap Worker ${target} in the selected account first`);
+  const worker = workers.find((item: any) => item.name === target);
+  if (!worker || !/^[a-f0-9]{32}$/.test(worker.id)) throw Error(`Bootstrap Worker ${target} in the selected account first`);
   return {
     repositoryId: String(repo.id), repositoryOwnerId: String(repo.owner.id), ref,
     workflowRef: `${repository}/${workflow}@${ref}`, accountId: account, worker: target,
     scopes: { "workers:edit": [{ effect: "allow", permission_groups: [{ id: group.id }],
-      resources: { [`com.cloudflare.api.account.${account}`]: { [`com.cloudflare.edge.worker.script.${worker.tag}`]: "*" } },
+      resources: { [`com.cloudflare.api.account.${account}`]: { [`com.cloudflare.edge.worker.script.${worker.id}`]: "*" } },
     }] },
   };
 });
