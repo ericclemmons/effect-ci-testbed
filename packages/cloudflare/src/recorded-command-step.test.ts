@@ -74,7 +74,7 @@ test("reconnection never extends the original deadline or fabricates a timeout e
   let now = 1000, launches = 0, reads = 0
   context.mock.method(Date, "now", () => now)
   const step = { do: async (_name: string, config: any, body: () => Promise<any>) => {
-    if (config.timeout !== undefined) assert.ok(config.timeout <= 11_000 - now)
+    if (config.timeout !== undefined) assert.ok(config.timeout <= Math.max(1, 11_000 - now))
     return body()
   }, sleep: async (_name: string, delay: number) => { now += delay } }
   await assert.rejects(executeRecordedCommandStep(step as any, { ...request, options: { timeout: "10 seconds" } }, "command:test", {
@@ -82,4 +82,23 @@ test("reconnection never extends the original deadline or fabricates a timeout e
     result: async () => { reads++; return { state: "pending" } },
   }), error => error instanceof CI.CommandExecutionError && error.processExitCode === null && !("exitCode" in error))
   assert.equal(now, 11_000); assert.equal(launches, 1); assert.equal(reads, 2)
+})
+
+test("replay after the deadline returns an already journaled completion without launching or reading again", async context => {
+  let now = 1000, launches = 0, reads = 0
+  context.mock.method(Date, "now", () => now)
+  const saved = new Map<string, any>()
+  const slept = new Set<string>()
+  const step = { do: async (name: string, _config: unknown, body: () => Promise<any>) => {
+    if (saved.has(name)) return saved.get(name)
+    const value = await body(); saved.set(name, value); return value
+  }, sleep: async (name: string, delay: number) => { if (!slept.has(name)) { slept.add(name); now += delay } } }
+  const backend = { launch: async () => { launches++; return true }, result: async () => {
+    reads++; return reads === 1 ? { state: "pending" as const } : { state: "complete" as const, result }
+  } }
+  const timed = { ...request, options: { timeout: "10 seconds" as const } }
+  assert.deepEqual(await executeRecordedCommandStep(step as any, timed, "command:test", backend), result)
+  now = 99_000
+  assert.deepEqual(await executeRecordedCommandStep(step as any, timed, "command:test", backend), result)
+  assert.equal(launches, 1); assert.equal(reads, 2)
 })

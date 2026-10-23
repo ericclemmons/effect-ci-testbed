@@ -26,31 +26,35 @@ export async function executeRecordedCommandStep(step: Pick<WorkflowStep, "do" |
   name: string, backend: RecordedCommandBackend): Promise<CI.CommandExecutionResult | undefined> {
   const policy = { retries: { limit: 0, delay: "1 second" as const } }
   const deadline = await step.do(`${name}:deadline`, policy, async () => Date.now() + timeoutMillis(request.options.timeout))
-  if (Date.now() >= deadline) throw new CI.CommandExecutionError(request.stepId, request.command, request.workspace.cwd)
   try {
-    const supported = await step.do(`${name}:launch`, { ...policy, timeout: Math.max(1, deadline - Date.now()) }, () => backend.launch())
+    const supported = await step.do(`${name}:launch`, { ...policy, timeout: Math.max(1, deadline - Date.now()) }, () => {
+      if (Date.now() >= deadline) throw new CI.CommandExecutionError(request.stepId, request.command, request.workspace.cwd)
+      return backend.launch()
+    })
     if (!supported) return undefined
-  } catch {
+  } catch (error) {
+    if (error instanceof CI.CommandExecutionError) throw error
     // Lost launch ACK is not proof of no launch. Only read/reconcile below;
     // a missing launch identity fails closed and never falls back to execute.
   }
   let observation = 0
-  while (Date.now() < deadline) {
-    let value: RecordedCommandResult | undefined
+  while (true) {
+    let value: { actual: RecordedCommandResult; observedAt: number } | undefined
     for (let connection = 0; connection < 3; connection++) {
-      const remaining = deadline - Date.now()
-      if (remaining <= 0) throw new CI.CommandExecutionError(request.stepId, request.command, request.workspace.cwd)
       try {
-        value = await step.do(`${name}:result:${observation}:${connection}`, { ...policy, timeout: remaining }, async () => {
+        value = await step.do(`${name}:result:${observation}:${connection}`, { ...policy, timeout: Math.max(1, deadline - Date.now()) }, async () => {
+          if (Date.now() >= deadline) throw new CI.CommandExecutionError(request.stepId, request.command, request.workspace.cwd)
           const actual = await backend.result()
+          const observedAt = Date.now()
+          if (observedAt >= deadline) throw new CI.CommandExecutionError(request.stepId, request.command, request.workspace.cwd)
           if (actual.state === "complete" && actual.result.exitCode !== 0)
             throw nativeCommandError(commandFailure(request, actual.result))
-          return actual
+          return { actual, observedAt }
         })
         break
       } catch (cause) {
         const error = restoreCommandError(cause, { stepId: request.stepId, command: request.command, cwd: request.workspace.cwd })
-        if (error instanceof CI.CommandError) throw error
+        if (error instanceof CI.CommandError || error instanceof CI.CommandExecutionError) throw error
         if (connection === 2) {
           const checkpoint = commandCheckpointError(error, { ...request, checkpoint: name })
           throw checkpoint instanceof CI.CommandCheckpointError ? checkpoint :
@@ -60,8 +64,10 @@ export async function executeRecordedCommandStep(step: Pick<WorkflowStep, "do" |
         // Workflow read checkpoint lost its ACK. Never call launch here.
       }
     }
-    if (value?.state === "complete") return value.result
-    const remaining = deadline - Date.now()
+    if (value?.actual.state === "complete") return value.actual.result
+    // Branch on the journaled observation clock, not replay wall time. A
+    // completed read later in history remains reachable after the deadline.
+    const remaining = deadline - value!.observedAt
     if (remaining <= 0) break
     try { await step.sleep(`${name}:wait:${observation++}`, Math.min(5000, remaining)) }
     catch { throw new CI.CommandCheckpointError(request.stepId, request.command, request.workspace.cwd, name) }
