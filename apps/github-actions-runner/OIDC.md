@@ -78,6 +78,12 @@ only allowlisted runner/OIDC secrets, excluding operator API and Access credenti
 
 ## Evidence and checks
 
+[Consolidated app run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39884915360)
+· [integration receipt](./verification/oidc/integration.json). Both examples passed,
+including scope probes, normal CLI deployment, served response and token revocation;
+account token metadata independently confirmed zero remaining credentials. This branch
+includes the merged self-hosting PR #393.
+
 [Original successful run](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/39880677228)
 · [receipt](./verification/oidc/live.json) · [grants](./verification/oidc/grants.json).
 That proof used the original standalone deployment; its source now lives in this app.
