@@ -1,11 +1,11 @@
 /** Host-owned assertions over untrusted Worker-compatible ESM. Never import these modules in the host. */
 import * as Effect from "effect/Effect"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 
 export interface ProjectChecksService {
   readonly run: (request: ProjectRequest) => Effect.Effect<Awaited<ReturnType<typeof runProjectChecks>>, unknown>
 }
-export class ProjectChecks extends ServiceMap.Service<ProjectChecks, ProjectChecksService>()(
+export class ProjectChecks extends Context.Service<ProjectChecks, ProjectChecksService>()(
   "@effect-ci-testbed/ProjectChecks",
 ) {}
 export const makeProjectChecks = (loader: WorkerLoader): ProjectChecksService => ({

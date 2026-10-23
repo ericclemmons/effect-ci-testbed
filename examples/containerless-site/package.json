@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
-    "effect": "4.0.0-beta.19"
+    "effect": "4.0.6"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",

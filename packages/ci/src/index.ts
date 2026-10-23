@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 
 export type WorkflowDuration =
   | number
@@ -363,22 +363,22 @@ const publishAttempt = (
   catch: (error) => error,
 }).pipe(Effect.orDie)
 
-class Runtime extends ServiceMap.Service<Runtime, RuntimeShape>()(
+class Runtime extends Context.Service<Runtime, RuntimeShape>()(
   "@effect-ci-testbed/Runtime",
 ) {}
 
-class CurrentStep extends ServiceMap.Service<CurrentStep, string>()(
+class CurrentStep extends Context.Service<CurrentStep, string>()(
   "@effect-ci-testbed/CurrentStep",
 ) {}
 
 /** One-based attempt supplied by the local or durable policy interpreter. */
-export class Attempt extends ServiceMap.Service<Attempt, number>()("@effect-ci-testbed/Attempt") {}
+export class Attempt extends Context.Service<Attempt, number>()("@effect-ci-testbed/Attempt") {}
 
 /** Capability-backed actions must be able to declare dependencies without executing during planning. */
 export const executionMode = Effect.gen(function* () {
   return (yield* Runtime).mode
 })
-class PolicyBody extends ServiceMap.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
+class PolicyBody extends Context.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
 
 export interface ActionExecutionResult {
   readonly value: unknown
@@ -478,7 +478,7 @@ export interface SecretResolver {
   ) => Effect.Effect<Redacted.Redacted<string>, SecretError>
 }
 
-class SecretStore extends ServiceMap.Service<SecretStore, SecretResolver>()(
+class SecretStore extends Context.Service<SecretStore, SecretResolver>()(
   "@effect-ci-testbed/SecretStore",
 ) {}
 
@@ -532,7 +532,7 @@ export interface ApprovalService {
   ) => Effect.Effect<ApprovalResult, ApprovalError, Runtime | CurrentStep>
 }
 
-export class Approval extends ServiceMap.Service<Approval, ApprovalService>()(
+export class Approval extends Context.Service<Approval, ApprovalService>()(
   "@effect-ci-testbed/Approval",
 ) {}
 
@@ -1077,7 +1077,7 @@ export interface SourceService {
   readonly reference?: SourceReference
 }
 
-export class Source extends ServiceMap.Service<Source, SourceService>()(
+export class Source extends Context.Service<Source, SourceService>()(
   "@effect-ci-testbed/Source",
 ) {}
 
@@ -1235,7 +1235,7 @@ export interface WorkflowEventShape {
   readonly revision?: string
 }
 
-export class WorkflowEvent extends ServiceMap.Service<WorkflowEvent, WorkflowEventShape>()(
+export class WorkflowEvent extends Context.Service<WorkflowEvent, WorkflowEventShape>()(
   "@effect-ci-testbed/WorkflowEvent",
 ) {}
 
@@ -1594,7 +1594,7 @@ const withStepPolicy = <A, E, R>(
     : retries.backoff === "linear"
     ? Schedule.addDelay(
         Schedule.forever,
-        (attempt) => Effect.succeed(Duration.times(
+        ({ output: attempt }) => Effect.succeed(Duration.times(
           Duration.fromInputUnsafe(retries.delay),
           attempt + 1,
         )),

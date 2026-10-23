@@ -6,7 +6,7 @@
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
     "@effect-ci-testbed/github": "workspace:*",
-    "effect": "4.0.0-beta.19"
+    "effect": "4.0.6"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

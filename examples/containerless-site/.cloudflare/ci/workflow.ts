@@ -1,6 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
-import * as Context from "effect/ServiceMap";
+import * as Context from "effect/Context";
 import type { Files, Site } from "../../src/site.ts";
 export class SiteHost extends Context.Service<
   SiteHost,
