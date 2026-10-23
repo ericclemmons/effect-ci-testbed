@@ -34,12 +34,22 @@ cmd==='workers'?[{name:'my-worker',id:'${"b".repeat(32)}'}]:[{name:'Individual W
     assert.equal(settings.EFFECT_CI_API_TOKEN, undefined);
     assert.equal(settings.CF_ACCESS_CLIENT_SECRET, undefined);
     const grants = JSON.parse(settings.BROKER_GRANTS!);
-    assert.equal(grants[0].workflowRef, "owner/repo/.github/workflows/oidc-live-proof.yml@refs/heads/main");
+    assert.deepEqual(grants.map((grant: { workflowRef: string }) => grant.workflowRef), [
+      "owner/repo/.github/workflows/e2e.yml@refs/heads/main",
+      "owner/repo/.github/workflows/oidc-live-proof.yml@refs/heads/main",
+    ]);
     assert.deepEqual(Object.keys(grants[0].scopes), ["workers:edit"]);
     assert.deepEqual(grants[0].scopes["workers:edit"][0].resources, { [`com.cloudflare.api.account.${"a".repeat(32)}`]: { [`com.cloudflare.edge.worker.script.${"b".repeat(32)}`]: "*" } });
     assert.equal(statSync(join(dir, ".env.production")).mode & 0o777, 0o600);
     assert.equal(run().status, 0);
     assert.equal(parseEnv(readFileSync(join(dir, ".env.production"), "utf8")).RECEIPT_SIGNING_KEY, settings.RECEIPT_SIGNING_KEY);
+    const selected = run(["--ref", "main", "--ref", "integration", "--workflow", ".github/workflows/custom.yml"]);
+    assert.equal(selected.status, 0, selected.stderr);
+    const selectedGrants = JSON.parse(parseEnv(readFileSync(join(dir, ".env.production"), "utf8")).BROKER_GRANTS!);
+    assert.deepEqual(selectedGrants.map((grant: { workflowRef: string }) => grant.workflowRef), [
+      "owner/repo/.github/workflows/custom.yml@refs/heads/main",
+      "owner/repo/.github/workflows/custom.yml@refs/heads/integration",
+    ], "explicit workflows replace defaults without wildcard refs");
     const wrong = run(["--account", "c".repeat(32)]); assert.notEqual(wrong.status, 0); assert.match(wrong.stderr, /another account/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

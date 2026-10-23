@@ -15,11 +15,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./.github/actions/cloudflare-auth
+      - uses: ./examples/oidc-wrangler/.github/actions/deploy
         with:
           broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
-          worker: effect-ci-oidc-wrangler
-          scopes: workers:edit
-      - name: Deploy using temporary credentials
-        working-directory: examples/oidc-wrangler
-        run: pnpm run deploy

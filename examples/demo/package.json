@@ -11,7 +11,8 @@
     "typecheck": "vpr typecheck:source",
     "test": "vpr test:source",
     "prebuild": "pnpm typecheck",
-    "build": "vpr build:source"
+    "build": "vpr build:source",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@cloudflare/kumo": "2.14.0",

@@ -1,0 +1,26 @@
+name: Deploy the app with short-lived credentials
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.8.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@4fa1a6531db43a33e8195a5b35ecc135ebb2fd15
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+          worker: effect-ci-tutorial
+          scopes: workers:edit
+      - run: pnpm run deploy

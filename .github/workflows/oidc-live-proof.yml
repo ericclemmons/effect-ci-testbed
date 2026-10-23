@@ -28,29 +28,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./.github/actions/cloudflare-auth
+      - uses: ./examples/oidc-wrangler/.github/actions/deploy
+        if: matrix.tool == 'wrangler'
         with:
           broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
-          worker: effect-ci-oidc-${{ matrix.tool }}
-          scopes: workers:edit
-      - name: Verify token can read only the intended Worker and cannot list R2 buckets
-        env:
-          OIDC_WORKER: effect-ci-oidc-${{ matrix.tool }}
-          OIDC_OTHER_WORKER: effect-ci-oidc-${{ matrix.tool == 'cf' && 'wrangler' || 'cf' }}
-        run: node apps/github-actions-runner/scripts/verify-scopes.mjs
-      - name: Deploy with ordinary CLI command
-        working-directory: examples/oidc-${{ matrix.tool }}
-        run: pnpm run deploy
-      - name: Verify served response
-        env:
-          OIDC_TOOL: ${{ matrix.tool }}
-        run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          const tool = process.env.OIDC_TOOL;
-          const url = `https://effect-ci-oidc-${tool}.ericclemmons.workers.dev`;
-          const response = await fetch(url, {redirect: 'error', signal: AbortSignal.timeout(15000)});
-          assert.equal(response.status, 200);
-          assert.equal(await response.text(), `Deployed with ${tool} and temporary Effect CI credentials.\n`);
-          console.log(`Verified ${url}`);
-          JS
+      - uses: ./examples/oidc-cf/.github/actions/deploy
+        if: matrix.tool == 'cf'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}

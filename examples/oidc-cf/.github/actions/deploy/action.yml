@@ -1,0 +1,29 @@
+name: Deploy the cf OIDC example
+description: Authenticate, verify Worker scope, deploy with cf, and verify the served response
+inputs:
+  broker-url:
+    description: Origin of the configured OIDC broker
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/cloudflare-auth
+      with:
+        broker-url: ${{ inputs.broker-url }}
+        worker: effect-ci-oidc-cf
+        scopes: workers:edit
+    - name: Verify single-Worker scope and R2 denial
+      shell: bash
+      env:
+        OIDC_WORKER: effect-ci-oidc-cf
+        OIDC_OTHER_WORKER: effect-ci-oidc-wrangler
+      run: node apps/github-actions-runner/scripts/verify-scopes.mjs
+    - name: Deploy with cf
+      shell: bash
+      working-directory: examples/oidc-cf
+      run: pnpm run deploy
+    - name: Verify the deployed cf example
+      shell: bash
+      env:
+        OIDC_BROKER_URL: ${{ inputs.broker-url }}
+      run: node examples/oidc-cf/verify.mjs

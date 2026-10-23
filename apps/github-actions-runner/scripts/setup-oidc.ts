@@ -6,7 +6,7 @@ import { parseArgs, parseEnv } from "node:util";
 const { values } = parseArgs({ args: process.argv.slice(2).filter(arg => arg !== "--"), options: {
   "host-env": { type: "string", default: "../effect-ci/.env.production" },
   account: { type: "string" }, subdomain: { type: "string" }, name: { type: "string" },
-  repository: { type: "string" }, ref: { type: "string" }, workflow: { type: "string", default: ".github/workflows/oidc-live-proof.yml" },
+  repository: { type: "string" }, ref: { type: "string", multiple: true }, workflow: { type: "string", multiple: true },
   worker: { type: "string", multiple: true },
 } });
 const read = (path: string) => existsSync(path) ? parseEnv(readFileSync(path, "utf8")) : {};
@@ -30,26 +30,29 @@ const command = (binary: string, args: string[]) => {
 };
 const repo = command(process.env.GH_BIN ?? "gh", ["api", `repos/${repository}`]);
 if (!Number.isSafeInteger(repo.id) || !Number.isSafeInteger(repo.owner?.id)) throw Error("GitHub repository identity missing");
-const branch = values.ref ?? repo.default_branch;
-if (!branch || /[\s~^:?*\[\\]/.test(branch) || branch.includes("..")) throw Error("Invalid branch ref");
-const ref = branch.startsWith("refs/heads/") ? branch : `refs/heads/${branch}`;
-const workflow = values.workflow;
-if (!/^\.github\/workflows\/[\w.-]+\.ya?ml$/.test(workflow)) throw Error("Invalid workflow path");
+const refs = (values.ref ?? [repo.default_branch]).map(branch => {
+  if (!branch || /[\s~^:?*\[\\]/.test(branch) || branch.includes("..")) throw Error("Invalid branch ref");
+  return branch.startsWith("refs/heads/") ? branch : `refs/heads/${branch}`;
+});
+const workflows = values.workflow ?? [".github/workflows/e2e.yml", ".github/workflows/oidc-live-proof.yml"];
+for (const workflow of workflows) {
+  if (!/^\.github\/workflows\/[\w.-]+\.ya?ml$/.test(workflow)) throw Error("Invalid workflow path");
+}
 const workers = command(process.env.CF_BIN ?? "cf", ["workers", "list"]);
 const groups = command(process.env.CF_BIN ?? "cf", ["accounts", "tokens", "permission-groups", "list", "--name", "Individual Workers Editor"]);
 const group = groups.find((item: any) => item.name === "Individual Workers Editor");
 if (!group?.id) throw Error("Cloudflare did not return Individual Workers Editor; authorize cf with account_api_tokens:create");
 const targets = values.worker ?? ["effect-ci-oidc-wrangler", "effect-ci-oidc-cf"];
-const grants = targets.map((target) => {
+const grants = targets.flatMap((target) => {
   const worker = workers.find((item: any) => item.name === target);
   if (!worker || !/^[a-f0-9]{32}$/.test(worker.id)) throw Error(`Bootstrap Worker ${target} in the selected account first`);
-  return {
+  return refs.flatMap(ref => workflows.map(workflow => ({
     repositoryId: String(repo.id), repositoryOwnerId: String(repo.owner.id), ref,
     workflowRef: `${repository}/${workflow}@${ref}`, accountId: account, worker: target,
     scopes: { "workers:edit": [{ effect: "allow", permission_groups: [{ id: group.id }],
       resources: { [`com.cloudflare.api.account.${account}`]: { [`com.cloudflare.edge.worker.script.${worker.id}`]: "*" } },
     }] },
-  };
+  })));
 });
 const output = {
   ...previous, CLOUDFLARE_ACCOUNT_ID: account, EFFECT_CI_GITHUB_RUNNER_NAME: name,

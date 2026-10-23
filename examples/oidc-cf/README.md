@@ -13,9 +13,11 @@ gh workflow run oidc-live-proof.yml --ref codex/oidc-runner-integration -f examp
 gh run list --workflow oidc-live-proof.yml --branch codex/oidc-runner-integration
 ```
 
-The workflow checks own-Worker access, other-Worker and R2 denials, deployment,
-the served response, and revocation. This repository's configured grant permits
-that exact workflow and branch. A fork needs its own setup.
+The example owns a [deployment action](./.github/actions/deploy/action.yml) used
+by both the manual workflow and the normal [E2E runs](../../.github/workflows/e2e.yml).
+On trusted pushes it checks own-Worker access, other-Worker and R2 denials,
+deployment, the served response, and revocation. PRs use credential-free checks.
+Broker grants permit exact workflows and branches; a fork needs its own setup.
 
 ## Use your account
 

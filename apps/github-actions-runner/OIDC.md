@@ -14,11 +14,17 @@ gh workflow run oidc-live-proof.yml --ref codex/oidc-runner-integration -f examp
 gh run list --workflow oidc-live-proof.yml --branch codex/oidc-runner-integration
 ```
 
-Use `example=wrangler` or `example=cf` to select one. Each job exchanges GitHub OIDC,
+Use `example=wrangler` or `example=cf` to select one. The same example-owned
+[Wrangler](../../examples/oidc-wrangler/.github/actions/deploy/action.yml) and
+[cf](../../examples/oidc-cf/.github/actions/deploy/action.yml) actions run automatically
+in the normal [recipe E2E workflow](../../.github/workflows/e2e.yml) on pushes to
+`main` (and this integration branch). PRs run credential-free checks; they cannot
+issue deployment tokens. These jobs use real GitHub OIDC rather than `act`.
+Each job exchanges GitHub OIDC,
 checks its own Worker (200), the other Worker (403) and R2 listing (403), deploys with
 its ordinary CLI, verifies the response, and revokes its token. No long-lived
 Cloudflare credential is stored in GitHub. Grants authorize this repository and
-this exact workflow/ref; a fork needs its own setup.
+the exact configured workflow/ref pairs; a fork needs its own setup.
 
 ## Use your self-hosting account
 
@@ -39,7 +45,10 @@ without deploying the native host. `gh` and `cf` must already be authenticated.
 The default targets are `effect-ci-oidc-wrangler` and `effect-ci-oidc-cf`. Bootstrap
 them once with operator credentials in the selected account before setup; Editor can
 update an existing Worker but cannot create one. Use repeated `--worker NAME` flags
-for different targets, and `--workflow .github/workflows/deploy.yml` for another workflow.
+for different targets. By default, setup authorizes `.github/workflows/e2e.yml`
+and `.github/workflows/oidc-live-proof.yml` on the selected branch. Use repeated
+`--workflow PATH` and `--ref BRANCH` flags for explicit alternatives; they replace
+the defaults and authorize only those exact pairs.
 Missing Workers or an account change fail rather than broadening permissions.
 
 The broker needs a separate account-owned issuer with **Account API Tokens Write**.
