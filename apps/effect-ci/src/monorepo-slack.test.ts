@@ -26,6 +26,24 @@ const bundle = await build({
 });
 const { progressSteps } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`);
 
+test("native install uses the recovery-aware single-command boundary with its original deadline and zero retries", async () => {
+  const outerActions: string[] = [];
+  const result = await CI.runPromise(workflow, {
+    output: "silent", event: { type: "pull_request" },
+    source: { checkout: () => Effect.succeed(CI.Workspace.local("/repo")) },
+    executor: { handlesStepOptions: true, execute: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }) },
+    actionExecutor: { execute: request => {
+      outerActions.push(request.stepId);
+      return request.run(1);
+    } },
+  });
+  const install = result.plan.nodes.find(node => node.id === "install")!;
+  assert.deepEqual(install.options, { timeout: "10 minutes", retries: { limit: 0, delay: "1 second" }, checkpoint: "command" });
+  assert.deepEqual(install.commands.map(command => command.command), ["pnpm install --frozen-lockfile"],
+    "the unchanged deadline covers the same one command, not a newly enlarged multi-command body");
+  assert.ok(!outerActions.includes("install"), "a long outer action must not hide its recorded command result");
+});
+
 test("monorepo parent keeps its segmented bar for validation and actual main deployment steps", async () => {
   for (const [trigger, ref, total] of [
     ["github", "refs/heads/feature/demo", 7],

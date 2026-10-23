@@ -10,6 +10,8 @@ export interface RecordedCommandBackend {
   launch(): Promise<boolean>
   /** Must acquire a fresh stub; reads only the original execution identity. */
   result(): Promise<RecordedCommandResult>
+  /** Keep subsequent workspace publication inside this same action deadline. */
+  deadline?(value: number): void
 }
 
 function timeoutMillis(timeout: CI.WorkflowDuration = "10 minutes"): number {
@@ -37,6 +39,7 @@ export async function executeRecordedCommandStep(step: Pick<WorkflowStep, "do" |
     // Lost launch ACK is not proof of no launch. Only read/reconcile below;
     // a missing launch identity fails closed and never falls back to execute.
   }
+  backend.deadline?.(deadline)
   let observation = 0
   while (true) {
     let value: { actual: RecordedCommandResult; observedAt: number } | undefined
