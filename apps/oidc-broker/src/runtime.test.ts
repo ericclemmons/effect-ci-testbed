@@ -16,24 +16,9 @@ test("actual workerd verifies OIDC, issues once, preserves Worker scope, and rev
   const accountId = "a".repeat(32);
   const policy = { effect: "allow", permission_groups: [{ id: "individual-workers-editor-fixture" }], resources: { account: { "one-worker-fixture": "*" } } };
   const grant = { repositoryId: "123", repositoryOwnerId: "456", ref: "refs/heads/main", workflowRef: "owner/repo/.github/workflows/deploy.yml@refs/heads/main", accountId, worker: "one-worker", scopes: { "workers:edit": [policy] } };
-  // This test-only wrapper intercepts all outbound traffic. No real credentials or network.
+  const calls: Array<{ url: string; method: string; body: any }> = [];
   const compiled = await build({
-    stdin: { resolveDir: fileURLToPath(new URL("./", import.meta.url)), contents: `
-      import worker, {TokenLease} from './worker.ts';
-      export {TokenLease};
-      const calls=[];
-      globalThis.fetch=async(url,init)=>{
-        if(String(url)==='${issuer}/.well-known/jwks') return Response.json({keys:[${JSON.stringify(publicKey)}]});
-        if(!String(url).startsWith('https://api.cloudflare.com/client/v4/accounts/${accountId}/tokens')) throw Error('Unexpected outbound request');
-        if(init.headers.authorization!=='Bearer test-issuer') throw Error('Issuer credential missing');
-        calls.push({url:String(url),method:init.method,body:init.body?JSON.parse(init.body):null});
-        return Response.json({success:true,result:{id:'${"b".repeat(32)}',value:'temporary-secret'}});
-      };
-      export default {async fetch(request,env,ctx){
-        if(new URL(request.url).pathname==='/__test_calls') return Response.json(calls);
-        return worker.fetch(request,env,ctx);
-      }};
-    ` },
+    entryPoints: [fileURLToPath(new URL("./worker.ts", import.meta.url))],
     bundle: true, write: false, format: "esm", platform: "neutral", external: ["cloudflare:workers"],
   });
   const runtime = new Miniflare({ workers: [{ config: {
@@ -41,7 +26,13 @@ test("actual workerd verifies OIDC, issues once, preserves Worker scope, and rev
     env: Object.fromEntries(Object.entries({ BROKER_AUDIENCE: "https://broker.example", BROKER_GRANTS: JSON.stringify([grant]), CLOUDFLARE_TOKEN_ISSUER: "test-issuer", RECEIPT_SIGNING_KEY: "r".repeat(64) }).map(([key, value]) => [key, { type: "text", value }])),
     exports: { TokenLease: { type: "durable-object", storage: "sqlite" } },
     manifest: { mainModule: "index.js", modules: { "index.js": { type: "esm", contents: compiled.outputFiles[0].text } } },
-  } }] });
+  }, dev: { outboundService: { type: "fetcher", handler: async (request: Request) => {
+    if (request.url === `${issuer}/.well-known/jwks`) return Response.json({ keys: [publicKey] });
+    assert.ok(request.url.startsWith(`https://api.cloudflare.com/client/v4/accounts/${accountId}/tokens`));
+    assert.equal(request.headers.get("authorization"), "Bearer test-issuer");
+    calls.push({ url: request.url, method: request.method, body: request.method === "POST" ? await request.json() : null });
+    return Response.json({ success: true, result: { id: "b".repeat(32), value: "temporary-secret" } });
+  } } } }] });
   try {
     const now = Math.floor(Date.now() / 1000);
     const identity = await new SignJWT({ repository_id: "123", repository_owner_id: "456", ref: grant.ref, workflow_ref: grant.workflowRef, run_id: "1", run_attempt: "1", event_name: "workflow_dispatch" })
@@ -68,7 +59,6 @@ test("actual workerd verifies OIDC, issues once, preserves Worker scope, and rev
     assert.equal((await post("/revoke", credential.receipt + "forged")).status, 403);
     await revoke("https://broker.example", credential.receipt, fetcher);
     await revoke("https://broker.example", credential.receipt, fetcher); // idempotent cleanup
-    const calls = await (await runtime.dispatchFetch("https://broker.example/__test_calls")).json();
     assert.equal(calls.length, 2);
     assert.equal(calls[0].method, "POST");
     assert.deepEqual(calls[0].body.policies, [policy]);

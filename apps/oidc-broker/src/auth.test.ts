@@ -51,7 +51,7 @@ test("Cloudflare issuance forwards exact policy and expiration; errors never ref
   const fetcher: typeof fetch = async (url, init) => {
     assert.equal(String(url), `https://api.cloudflare.com/client/v4/accounts/${accountId}/tokens`);
     assert.equal(new Headers(init?.headers).get("authorization"), "Bearer issuer-secret");
-    assert.equal(init?.redirect, "error");
+    assert.equal(init?.redirect, "manual");
     assert.deepEqual(JSON.parse(String(init?.body)), body);
     return Response.json({ success: true, result: { id: "b".repeat(32), value: "temporary-secret" } });
   };

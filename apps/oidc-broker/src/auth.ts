@@ -46,7 +46,8 @@ export function authorize(claims: JWTPayload, request: ScopeRequest, grants: Gra
 export async function cloudflareTokenRequest(accountId: string, issuerToken: string, method: "POST" | "DELETE", bodyOrId: unknown, fetcher = fetch) {
   const suffix = method === "DELETE" ? `/${encodeURIComponent(String(bodyOrId))}` : "";
   const response = await fetcher(`https://api.cloudflare.com/client/v4/accounts/${accountId}/tokens${suffix}`, {
-    method, redirect: "error", signal: AbortSignal.timeout(15_000),
+    // Workers supports manual redirects, not redirect: "error". Non-2xx replies fail below.
+    method, redirect: "manual", signal: AbortSignal.timeout(15_000),
     headers: { authorization: `Bearer ${issuerToken}`, "content-type": "application/json" },
     ...(method === "POST" ? { body: JSON.stringify(bodyOrId) } : {}),
   });
