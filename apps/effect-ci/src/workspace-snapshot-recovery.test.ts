@@ -32,6 +32,44 @@ const compiled = await build({
 const { WorkspaceContainer, NativeWorkspaceContainer, makeRunner, runPromise, gen, Workspace, Source, workflow, action, runWorkflow } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const revision = { id: "checkout", name: "checkout-workspace", size: 1 };
 
+test("recorded command deadline also bounds workspace commit without invalidating a journaled commit on replay", async context => {
+  let now = 1000;
+  context.mock.method(Date, 'now', () => now);
+  const setup = () => {
+    let commits = 0, launches = 0, reads = 0;
+    const saved = new Map<string, unknown>();
+    const options = { durableCommands: true, workspaceId: 'deadline-run', repository: 'https://github.com/acme/project', revision: 'a'.repeat(40),
+      binding: { getByName: () => ({
+        launchRecordedCommand: async () => { launches++; return true; },
+        recordedCommandResult: async () => { reads++; return { state: 'complete', result: { exitCode: 0, stdout: '', stderr: '' } }; },
+        checkpoint: async () => { commits++; return { id: 'original-snapshot', size: 1 }; },
+      }) },
+      step: { do: async (name: string, policy: unknown, body?: () => Promise<unknown>) => {
+        if (saved.has(name)) return saved.get(name);
+        const value = await (body ?? policy as () => Promise<unknown>)(); saved.set(name, value); return value;
+      }, sleep: async () => {} },
+    };
+    const workspace = Workspace.remote('deadline-run', '/workspace');
+    const execute = (runner: any) => runPromise(runner.executor.execute({ command: 'test', stepId: 'test', commandIndex: 0,
+      workspace, options: { timeout: '1 second' }, onOutput() {} }));
+    return { options, workspace, execute, counts: () => ({ commits, launches, reads }) };
+  };
+  const expired = setup(), runner = makeRunner(expired.options);
+  await expired.execute(runner); now = 3000;
+  await assert.rejects(runPromise(runner.persistence.commit({ workflowId: 'fixture', stepId: 'test', workspace: expired.workspace })), /deadline/);
+  assert.equal(expired.counts().commits, 0, 'an expired action cannot start a fresh snapshot');
+  now = 1000;
+  const replayed = setup(), first = makeRunner(replayed.options);
+  await replayed.execute(first);
+  const committed = await runPromise(first.persistence.commit({ workflowId: 'fixture', stepId: 'test', workspace: replayed.workspace }));
+  now = 3000;
+  const replacement = makeRunner(replayed.options);
+  await replayed.execute(replacement);
+  const restored = await runPromise(replacement.persistence.commit({ workflowId: 'fixture', stepId: 'test', workspace: replayed.workspace }));
+  assert.deepEqual(restored.revision, committed.revision);
+  assert.deepEqual(replayed.counts(), { commits: 1, launches: 1, reads: 1 });
+});
+
 test("recorded execution can be pending during workspace startup without treating a not-yet-started VM as lost", async () => {
   const stored = new Map<string, unknown>(), background: Promise<unknown>[] = [];
   let finish!: (value: unknown) => void;

@@ -50,6 +50,13 @@ another read of that same identity. Nonzero process exits retain their real
 diagnostics; missing results retain an unknown exit. Polling never extends the
 original durable deadline.
 
+The root install action has one command and explicitly uses command-level
+checkpointing, with its existing ten-minute timeout and zero retries. Its final
+workspace publication is bounded by that same durable deadline; splitting the
+long outer action must not silently grant snapshotting another timeout window.
+An already journaled workspace commit still replays successfully after the
+deadline, without starting another snapshot or command.
+
 Enrollment is deliberately limited to the host's exact native compute commands,
 with no cache restoration or post-command side effects. Credential-bearing
 deployment actions and untrusted project commands retain the existing path.

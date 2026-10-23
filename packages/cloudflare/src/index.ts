@@ -846,6 +846,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
   const activeBodies = new Set<string>()
   const fileSequences = new Map<string, number>()
   const commandSequences = new Map<string, number>()
+  const commandDeadlines = new Map<string, number>()
   const bodyOperation = <A>(stepId: string, name: string, operation: () => Promise<A>): Promise<A> =>
     activeBodies.has(stepId) ? operation() : options.step.do(name, operation as () => Promise<any>) as Promise<A>
   const fileOperation = <A>(stepId: string, kind: "read" | "exists", operation: () => Promise<A>): Promise<A> => {
@@ -990,6 +991,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               { command, stepId, workspace, options: stepOptions }, `command:${id}`, {
                 launch: () => containerFor(stepId, workspace).launchRecordedCommand(id, args),
                 result: () => containerFor(stepId, workspace).recordedCommandResult(id, args),
+                deadline: value => { commandDeadlines.set(stepId, value) },
               })
             if (recorded) {
               if (recorded.stdout) onOutput("stdout", recorded.stdout)
@@ -1088,11 +1090,13 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           if (workspace.revision && workspace.revision.provider !== "cloudflare-container") {
             throw new Error(`Cannot materialize ${workspace.revision.provider} with Cloudflare`)
           }
-          const snapshot = await bodyOperation(stepId, `${stepId}:commit`, async () => {
+          const deadline = commandDeadlines.get(stepId)
+          const commit = async () => {
+            if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline")
             // Returning a dependency workspace is enough: even a pass-through
             // action with no commands must commit that revision, not an empty container.
             // The same-step materializer preserves any writes this action already made.
-            return container.checkpoint(
+            const snapshot = await container.checkpoint(
               `${stepId}-workspace`,
               options.reuseWorkspace === false,
               {
@@ -1101,7 +1105,14 @@ export const makeRunner = (options: RunnerOptions): Runner => {
                 ...(options.container ? { options: options.container } : {}),
               },
             )
-          })
+            if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline; its snapshot may already exist")
+            return snapshot
+          }
+          // Guards belong inside the checkpoint body: replay of an already
+          // committed snapshot must return its journaled value after deadline.
+          const snapshot = deadline === undefined ? await bodyOperation(stepId, `${stepId}:commit`, commit) :
+            await options.step.do(`${stepId}:commit`, { retries: { limit: 0, delay: "1 second" },
+              timeout: Math.max(1, deadline - Date.now()) }, commit)
 
           if (cache) {
             await bodyOperation(stepId, `${stepId}:cache`, () =>

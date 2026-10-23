@@ -12,7 +12,7 @@ const checkout = CI.action("checkout", function* () {
 const install = CI.action("install", function* () {
   const workspace = yield* checkout();
   return () => workspace.exec("pnpm install --frozen-lockfile");
-}, { timeout: "10 minutes", retries: { limit: 0, delay: "1 second" } });
+}, { timeout: "10 minutes", retries: { limit: 0, delay: "1 second" }, checkpoint: "command" });
 
 export const check = CI.check("check", function* () {
   const workspace = yield* install();
