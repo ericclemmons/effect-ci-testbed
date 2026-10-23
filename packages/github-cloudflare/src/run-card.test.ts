@@ -139,17 +139,18 @@ test("the first reply is a live linked step table, not repeated metadata", () =>
   assert.match(JSON.stringify(large.renderDetails()), /6 more steps/)
 })
 
-test("the step table distinguishes cached prerequisites and measured elapsed time", () => {
-  const card = new RunCard(identity, { progressSteps: ["checkout", "install", "lint", "test", "build", "publish preview"],
-    cachedDependencies: { build: ["checkout", "install", "lint", "test"] } })
+test("the step table shows only selected actions with cached or measured time", () => {
+  const card = new RunCard(identity, { progressSteps: ["build", "publish preview"] })
   card.update({ type: "step.status", workflowId: "build", stepId: "build", status: "reused", optional: false, timestamp: "2026-10-23T00:00:00Z" })
   card.update({ ...event("publish preview", "running"), timestamp: "2026-10-23T00:00:01Z" })
   card.update({ ...event("publish preview", "complete"), timestamp: "2026-10-23T00:00:04Z" })
   const table = card.renderDetails().blocks[0]!.rows as Array<Array<{ text: string }>>
   assert.deepEqual(table[0]!.map(c => c.text), ["Step", "Status", "Time"])
-  for (const row of table.slice(1, 6)) assert.deepEqual(row.slice(1).map(c => c.text), ["✓", "(cached)"])
-  assert.deepEqual(table[6]!.map(c => c.text), ["publish preview", "✓", "3s"])
-  assert.match(card.render({ statusOnly: true }).text, /6\/6$/)
+  assert.deepEqual(table[1]!.map(c => c.text), ["build", "✓", "(cached)"])
+  assert.deepEqual(table[2]!.map(c => c.text), ["publish preview", "✓", "3s"])
+  assert.equal(table.length, 3)
+  assert.doesNotMatch(card.renderDetails().text, /checkout|install|lint|test/)
+  assert.match(card.render({ statusOnly: true }).text, /2\/2$/)
 })
 
 test("waiting and failure retain explicit state; successful parallel work retains the last completed step", () => {

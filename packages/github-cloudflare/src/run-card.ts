@@ -86,9 +86,9 @@ export class RunCard {
   }
   private lastCompletedStep: string | undefined
   private readonly progressSteps: ReadonlyArray<string> | undefined
-  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; cachedDependencies?: Readonly<Record<string, ReadonlyArray<string>>> }
+  private readonly options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> } }
 
-  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; progressSteps?: ReadonlyArray<string>; cachedDependencies?: Readonly<Record<string, ReadonlyArray<string>>> } = {}) {
+  constructor(identity: RunIdentity, options: { failedCommandOutput?: { redactValues: ReadonlyArray<string> }; progressSteps?: ReadonlyArray<string> } = {}) {
     this.identity = identity
     this.options = options
     if (options.progressSteps && (options.progressSteps.length > 100 || new Set(options.progressSteps).size !== options.progressSteps.length ||
@@ -120,14 +120,6 @@ export class RunCard {
           else if (finished.has(event.status)) {
             const timing = this.timings.get(event.stepId)
             if (timing) timing.end = timestamp
-          }
-        }
-        if (event.status === "reused") {
-          // A trusted host can declare prerequisites covered by this signed result.
-          // These are display states, never execution or approval authority.
-          for (const id of this.options.cachedDependencies?.[event.stepId] ?? []) {
-            if (!this.checks.has(id) || ["planned", "queued"].includes(this.checks.get(id)!.status))
-              this.check(id).status = "reused"
           }
         }
         if (["complete", "reused", "verified", "warning"].includes(event.status)) this.lastCompletedStep = event.stepId

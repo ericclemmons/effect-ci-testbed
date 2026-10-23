@@ -41,7 +41,6 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   container: { image: "showcase", instance: "standard-1", loginShell: false,
     readyCommand: showcaseReadyCommand },
   slackLayout: "status-thread",
-  slackCachedDependencies: { build: ["checkout", "install", "lint", "test"] },
   slackCommandOutput: "failed",
   slackCommandLog: ({ exports, instanceId, stepId, threadTs, text }) => {
     const host = exports as { PrivateSlackImages: { getByName(name: string): {
@@ -51,8 +50,9 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   },
   slackProgressSteps: parameters => {
     const selected = showcaseSelection(parameters);
-    if (selected) return ["checkout", "install", ...(selected.includes("build") ? ["lint", "test", "build"] : selected)];
-    return ["checkout", "install", "lint", "test", "build", "publish preview",
+    if (selected) return selected;
+    // Execution discovers prerequisites only when they actually enter the plan.
+    return ["build", "publish preview",
       ...(showcaseProductionAllowed(parameters) ? ["Start rollout", "Release 10%", "Release 25%", "Release 75%", "Release 100%"] : [])];
   },
   finalize: finalizeShowcaseRun,
