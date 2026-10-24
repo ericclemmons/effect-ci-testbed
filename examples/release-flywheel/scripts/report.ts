@@ -25,8 +25,15 @@ const summarize = (id: string, reused: boolean, release: boolean) => {
   const executed = (step: string) => raw.steps.some((s: any) => s.name === `command:["${step}",1]-1` && s.success === true)
   assert.equal(executed("worker-tests"), !reused, "Native command history must corroborate check execution or reuse")
   assert.equal(executed("build"), true, "Build must execute even when the check is reused")
-  assert.ok(raw.steps.every((s: any) => s.success === true), "No failed or pending native step can count as a completed proof")
+  const completed = (s: any) => s.type === "step" ? s.success === true : s.finished === true && !s.error && Boolean(s.end)
+  assert.ok(raw.steps.every(completed), "No failed or pending native step can count as a completed proof")
   if (release) {
+    const authorization = read("approval")
+    assert.equal(authorization.instance, id)
+    assert.equal(authorization.payload.approved, true)
+    assert.equal(authorization.payload.actor, "agent-on-user-delegation")
+    assert.equal(authorization.payload.revision, local.revision)
+    assert.equal(authorization.payload.candidate, build.version)
     assert.deepEqual(raw.output.build, build)
     assert.ok(raw.output.approvedAt >= raw.output.verifiedAt)
     assert.ok(raw.output.release.startedAt >= raw.output.approvedAt)
@@ -40,7 +47,9 @@ const summarize = (id: string, reused: boolean, release: boolean) => {
     assert.deepEqual(raw.output.release.restored.versions, [{ version: "156c4427-b574-49e8-a6c9-cf2d034131b3", percentage: 100 }])
     const approval = raw.steps.find((s: any) => s.name === "proof:human-approval-1")
     assert.equal(approval.type, "waitForEvent")
-    assert.equal(approval.success, true)
+    assert.equal(approval.finished, true)
+    assert.equal(approval.error, null)
+    assert.deepEqual(JSON.parse(approval.output), authorization.payload)
     assert.ok(raw.steps.find((s: any) => s.name === "release:lab-cleanup-1")?.success)
   }
   return { id, workflowVersion: raw.versionId, sourceRevision: raw.params.revision,
@@ -50,10 +59,14 @@ const summarize = (id: string, reused: boolean, release: boolean) => {
       evidenceLookup: raw.output.lookups.reduce((sum: number, l: any) => sum + l.elapsedMs, 0),
       testCommandIncludingDispatch: raw.output.executions.find((e: any) => e.step === "worker-tests")?.elapsedMs ?? null,
       buildCommandIncludingDispatch: raw.output.executions.find((e: any) => e.step === "build")?.elapsedMs ?? null,
-      approvalWait: raw.output.approvalWaitMs ?? null,
-      rolloutIncludingHealthWaits: release ? raw.output.release.finishedAt - raw.output.release.startedAt : null },
+      approvalWait: release ? elapsed(raw.steps.find((s: any) => s.name === "proof:human-approval-1").start,
+        raw.steps.find((s: any) => s.name === "proof:human-approval-1").end) : null,
+      rolloutIncludingHealthWaits: release ? elapsed(raw.steps.find((s: any) => s.name === "release:claim-1").start,
+        raw.steps.find((s: any) => s.name === "release:lab-cleanup-1").end) : null,
+      healthWaits: release ? raw.steps.filter((s: any) => s.name.startsWith("health:wait-")).reduce(
+        (sum: number, s: any) => sum + elapsed(s.start, s.end), 0) : null },
     nativeSteps: raw.steps.map((s: any) => ({ name: s.name, type: s.type, start: s.start, end: s.end,
-      success: s.success, attempts: s.attempts?.length ?? null, outputDigest: s.output ? hash(s.output) : null })),
+      success: completed(s), attempts: s.attempts?.length ?? null, outputDigest: s.output ? hash(s.output) : null })),
   }
 }
 const manifest = { schema: "effect-ci-release-flywheel-proof-v1", recordedAt: new Date().toISOString(),
@@ -66,9 +79,10 @@ const manifest = { schema: "effect-ci-release-flywheel-proof-v1", recordedAt: ne
   evidence: { notesRef: "refs/notes/effect-ci-hosted-checks-v1", envelope: note },
   cold: summarize(coldId, false, false), warm: summarize(warmId, true, false),
   ...(releaseId ? { release: summarize(releaseId, true, true) } : {}),
+  ...(releaseId ? { approval: read("approval") } : {}),
   limitations: { video: null, transcript: null, cpu: null, billedCost: null,
     hardwareAttestation: false, crossPlatformEquivalence: "reviewed fixture only",
-    approval: "Human decision relayed by the agent through the authenticated Workflow API",
+    approval: "User explicitly delegated the approval decision to the agent; the authenticated native event records agent-on-user-delegation",
     coldWarm: "Evidence absent/present; fresh workspace per run. Engine/image caches not controlled.",
     health: "Dedicated demo HTTP cohorts; independent-sample assumption; no ambient traffic or native WOBS proof" },
   retrievalMissesAfterNotePublication: (process.env.FLYWHEEL_MISSES ?? "").split(",").filter(Boolean).map(id => {

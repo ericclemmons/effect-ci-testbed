@@ -1,6 +1,6 @@
 # From a local check to an approved, observed release
 
-> Can an agent check a commit locally, reuse only that check on Cloudflare, and release the exact tested module after human approval?
+> Can an agent check a commit locally, reuse only that check on Cloudflare, and release the exact tested module after explicit approval?
 
 This bounded proof uses a dependency-free Worker and the dedicated `effect-ci-hmd-demo`
 target. It connects actual CI orchestration, signed Git-note evidence, an inactive
@@ -30,8 +30,9 @@ the existing macOS `cf` OAuth configuration and never sends that credential to t
 4. Run `node examples/release-flywheel/scripts/prove.ts upload`: upload the exact
    tested module as an **inactive** Worker version and sign its source/version mapping.
 5. Run `node examples/release-flywheel/scripts/prove.ts release`. Inspect the native
-   `proof:approval-request` checkpoint. A human approves or rejects that exact commit
-   and candidate through the authenticated Workflow event API (`flywheel-approval`).
+   `proof:approval-request` checkpoint. The operator, or an agent explicitly delegated
+   that decision, approves or rejects the exact commit and candidate through the
+   authenticated Workflow event API (`flywheel-approval`). Record who decided.
 6. On approval, observe 10/25/75/100% promotion, a health gate after each phase and
    exact restoration of the previous allocation. Missing/uncertain evidence cannot
    count as health. Review lasts at most 24 hours and occurs before claiming a release.
@@ -62,13 +63,17 @@ and measured inputs. The signer key and API credentials never enter the containe
 
 ## Verification proof
 
-**Status:** Local execution, native hosted execution, signed check reuse and signed
-candidate binding passed on October 24, 2026 UTC. The release Workflow is paused at
-its real human-approval gate. No rollout has started and the complete journey is
-not yet claimed.
+**Status:** The complete bounded journey passed on October 24, 2026 UTC: local
+execution, native hosted verification, signed check reuse, signed candidate binding,
+explicitly delegated approval, four progressive health gates and exact restoration.
+The operator delegated the approval decision to the agent; the authenticated event
+records `actor: agent-on-user-delegation` and binds the checked commit and candidate.
 
-- [Immutable local/hosted comparison](./proof/cf_19bd874f6ba6f6d0ee4ebae5fc08c1d4cdebf7fa6ac703da37fefb0dffd46613.json)
-- [Native approval checkpoint and candidate identity](./proof/approval-pending.json)
+- [Complete asserted journey and native step history](./proof/cf_79311e782345e200e1cda85a4b2eb3719ec810403666f9101c2db82a005f5bfc.json)
+- [Independent post-cleanup allocation and health assertion](./proof/restoration.json)
+- [Delegated approval receipt](./proof/approval-delegation.json)
+- [Earlier local/hosted comparison](./proof/cf_19bd874f6ba6f6d0ee4ebae5fc08c1d4cdebf7fa6ac703da37fefb0dffd46613.json)
+- [Historical pre-approval checkpoint](./proof/approval-pending.json)
 - Checked source: `724c4f73a48f98faa246e92a3b15c160c65eb3c0`.
 - Candidate: `041850ee-aaa0-4a8a-8f39-dd24f4054011`.
 
@@ -99,9 +104,29 @@ was added to work around the read failure.
 
 **Video:** Pending. No recording has been published.
 
-**Approval and rollout timings:** Pending the actual human decision. CPU consumption
-and billed cost were not measured. One observed journey is not a benchmark distribution
-or a cost comparison with Dagger.
+| Release measurement | Observed result |
+| --- | ---: |
+| Hosted verification before approval | 11.567 s |
+| Native approval wait | 248.273 s |
+| Rollout and exact restoration | 469.857 s |
+| Observation sleeps within rollout | 240.000 s |
+| Complete release Workflow, including queue and approval | 731.891 s |
+
+| Traffic phase | Candidate observations at passing gate | Failures |
+| --- | ---: | ---: |
+| 10% | 5,167 | 0 |
+| 25% | 5,224 | 0 |
+| 75% | 5,743 | 0 |
+| 100% | 6,000 | 0 |
+
+Every phase first recorded insufficient evidence, waited one minute, collected more
+samples and then passed its health gate. Native timestamps supply approval, sleep
+and rollout durations. Cleanup deployment `cf23b4e7-3859-441f-8ff5-fcc48e841f06`
+restored version `156c4427-b574-49e8-a6c9-cf2d034131b3` at 100%; a separate
+deployment read and HTTP request confirmed that allocation and healthy response.
+
+CPU consumption and billed cost were not measured. One observed journey is not a
+benchmark distribution or a cost comparison with Dagger.
 
 Health uses closed, version-attributed client HTTP cohorts with conservative confidence
 bounds. It does not prove native WOBS ingestion, ambient traffic causality or arbitrary
