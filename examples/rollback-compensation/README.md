@@ -2,12 +2,7 @@
 
 Restore external state when deployment fails, or when a later check fails.
 
-```ts
-export const deploy = CI.action("deploy with retries", deployBody, {
-  retries: { limit: 2, delay: 0 },
-  rollback,
-})
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=deploy "source")
 
 The runner exhausts retries, then runs rollback once. Later failures unwind
 completed reversible actions in reverse completion order. Recovery does not

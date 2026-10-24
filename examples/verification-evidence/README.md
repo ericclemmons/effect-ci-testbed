@@ -2,12 +2,7 @@
 
 Avoid repeating a check that already passed for the exact committed inputs.
 
-```ts
-CI.check("lint", () => function* () {
-  const workspace = yield* checkout()
-  yield* workspace.exec("node --check app/index.js")
-}, { reuse: { scope: "commit" } })
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=lint "source")
 
 ## Try it
 

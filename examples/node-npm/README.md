@@ -3,11 +3,7 @@
 Write checkout, install, lint, test, and build once, then run the same workflow
 locally or in CI. The lockfile selects npm automatically.
 
-```ts
-const workspace = yield* checkout()
-const npm = yield* CI.PackageManager.JavaScript(workspace)
-return yield* npm.install()
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=install "source")
 
 ## Run it
 

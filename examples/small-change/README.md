@@ -6,12 +6,9 @@ your team considers safe, so authors and agents can self-merge once all checks p
 Here we arbitrarily define “safe” as **no code changes**: no `.ts`, `.tsx`, or
 `.json` files changed. Choose a different rule if that better fits your project.
 
-```ts
-const source = yield* CI.Source
-if (!(yield* source.changed("**/*.(ts|tsx|json)"))) {
-  yield* approve()
-}
-```
+`source.changed` supplies the change predicate.
+
+[Source](./workflow.ts#symbol=approveSmallChanges "source")
 
 The trusted workflow chooses the policy—not the PR being reviewed. Other GitHub
 merge requirements still apply. This grants approval; it does not merge the PR.

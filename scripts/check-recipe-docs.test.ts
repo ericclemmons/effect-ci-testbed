@@ -61,7 +61,7 @@ test("the check-reuse recipe explains the useful API and the host trust boundary
   const readme = readFileSync("examples/verification-evidence/README.md", "utf8");
   assert.ok(readme.includes("../../apps/effect-ci/TRUSTED-REMOTE.md"));
   assert.match(readme, /host-issued\s+receipts/);
-  assert.match(readme, /reuse: \{ scope: "commit" \}/);
+  assert.match(readFileSync("examples/verification-evidence/.cloudflare/ci/actions.ts", "utf8"), /reuse: \{ scope: "commit" \}/);
   assert.match(readme, /host chooses trusted signers/i);
   assert.doesNotMatch(readme, /It does \*\*not\*\* yet reuse lint or the test suite/);
   assert.doesNotMatch(readme, /Full test-suite reuse, the remaining/);

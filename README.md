@@ -4,6 +4,10 @@
 
 > Experimental prototype. The examples are the product specification.
 
+Read the [public documentation](https://effect-ci-docs.ericclemmons.workers.dev)
+or preview the collocated READMEs locally with `pnpm docs:dev`.
+See [documentation authoring](./apps/docs/README.md) for source-backed snippets.
+
 **CI isn't a pipeline. It's a flywheel.** Check a change, reuse trustworthy
 evidence, release it, observe it, and turn failures into verified repair proposals.
 

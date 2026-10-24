@@ -1,0 +1,15 @@
+---
+import Head from "@astrojs/starlight/components/Head.astro"
+---
+<Head />
+<script>
+  async function diagrams() {
+    const nodes = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])")
+    if (!nodes.length) return
+    const { default: mermaid } = await import("mermaid")
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: document.documentElement.dataset.theme === "dark" ? "dark" : "default" })
+    await mermaid.run({ nodes: Array.from(nodes) })
+  }
+  diagrams()
+  document.addEventListener("astro:page-load", diagrams)
+</script>

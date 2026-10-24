@@ -23,3 +23,10 @@ what the evidence proves—and what it does not. Do not call a prototype product
 This is permission to act within the task, not to expose secrets, bypass explicit
 approval boundaries, silently spend an unapproved budget, or perform destructive
 actions. If one path is blocked, keep working on the useful reversible work.
+
+## Documentation
+
+Keep READMEs beside their code; `apps/docs` reads them directly into Starlight.
+Use standalone Markdown links with the title `"source"` for code examples instead
+of copied code fences. Select declarations with `#symbol=name` or JSON properties
+with `#json=key`. See `apps/docs/README.md` for the authoring convention.

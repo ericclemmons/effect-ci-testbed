@@ -13,7 +13,11 @@
     "ci:node-npm": "cf-ci run --workflow examples/node-npm/.cloudflare/ci/workflow.ts --format=text",
     "ci:node-npm:dry-run": "cf-ci --workflow examples/node-npm/.cloudflare/ci/workflow.ts plan --format=text",
     "ci:node-pnpm": "cf-ci run --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts --format=text",
-    "ci:node-pnpm:dry-run": "cf-ci --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts plan --format=text"
+    "ci:node-pnpm:dry-run": "cf-ci --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts plan --format=text",
+    "docs:dev": "pnpm --filter @effect-ci-testbed/docs dev",
+    "docs:build": "pnpm --filter @effect-ci-testbed/docs build",
+    "docs:preview": "pnpm --filter @effect-ci-testbed/docs preview",
+    "docs:deploy": "pnpm --filter @effect-ci-testbed/docs run deploy"
   },
   "devDependencies": {
     "@effect-ci-testbed/ci": "workspace:*",

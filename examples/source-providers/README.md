@@ -2,10 +2,7 @@
 
 Change where source comes from without changing the workflow.
 
-```ts
-const source = yield* CI.Source
-const workspace = yield* source.checkout()
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=checkout "source")
 
 [providers.ts](./.cloudflare/ci/providers.ts) supplies a local directory or a
 Git clone at an immutable revision.

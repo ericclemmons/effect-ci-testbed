@@ -2,9 +2,7 @@
 
 Install once, then give parallel checks independent copies of the prepared files.
 
-```ts
-const workspace = yield* prepare()
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=isolatedCheck "source")
 
 Both branch actions yield the same `prepare()` dependency. The workflow runs
 them with `CI.parallel`. Each writes `branch.txt` without changing the other's

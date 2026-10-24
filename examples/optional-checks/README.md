@@ -2,12 +2,7 @@
 
 Run lint and formatting together, without letting advisory formatting block CI.
 
-```ts
-yield* CI.parallel([
-  actions.lint(),
-  CI.optional(actions.format()),
-])
-```
+[Source](./.cloudflare/ci/workflow.ts "source")
 
 ## Run it
 
