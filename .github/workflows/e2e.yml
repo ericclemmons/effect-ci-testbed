@@ -105,6 +105,9 @@ jobs:
           - zero-config
           - demo
           - exported-actions
+          - matrix
+          - test-splitting
+          - timing-aware-splitting
           - node-pnpm
           - optional-checks
           - local-container
@@ -187,6 +190,9 @@ jobs:
           - zero-config
           - demo
           - exported-actions
+          - matrix
+          - test-splitting
+          - timing-aware-splitting
           - node-pnpm
           - optional-checks
           - runner-selection
@@ -328,6 +334,9 @@ jobs:
       matrix:
         example:
           - execution-policy
+          - matrix
+          - test-splitting
+          - timing-aware-splitting
           - retry
           - conditional-deploy
           - rollback-compensation
@@ -425,6 +434,15 @@ jobs:
             workflow: examples/deploy-hook/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
             event: deploy_hook
+          - example: matrix
+            workflow: examples/matrix/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: test-splitting
+            workflow: examples/test-splitting/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: timing-aware-splitting
+            workflow: examples/timing-aware-splitting/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
           - example: exported-actions
             workflow: examples/exported-actions/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'

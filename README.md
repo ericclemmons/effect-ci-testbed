@@ -294,6 +294,9 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
+| [Run every combination in a matrix](./examples/matrix) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Split tests across parallel jobs](./examples/test-splitting) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Balance test shards using recorded timings](./examples/timing-aware-splitting) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |

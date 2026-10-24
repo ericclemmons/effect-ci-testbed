@@ -1,0 +1,30 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: node scripts/run-shard.mjs ${{ matrix.shard }} 2
+        working-directory: app
+      - uses: actions/upload-artifact@v7
+        if: ${{ !env.ACT && always() }}
+        with:
+          name: shard-${{ matrix.shard }}
+          path: app/reports/shard-${{ matrix.shard }}.json
