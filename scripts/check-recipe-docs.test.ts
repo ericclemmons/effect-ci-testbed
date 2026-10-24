@@ -180,7 +180,7 @@ test("recipe documentation links resolve locally", () => {
   ];
   for (const file of files) {
     const markdown = readFileSync(file, "utf8");
-    for (const match of markdown.matchAll(/\]\((\.{1,2}\/[^)]+)\)/g)) {
+    for (const match of markdown.matchAll(/\]\((\.{1,2}\/[^\s)]+)(?:\s+"[^"]*")?\)/g)) {
       const path = match[1].split("#")[0];
       assert.ok(existsSync(resolve(dirname(file), path)), `${file}: ${match[1]}`);
     }

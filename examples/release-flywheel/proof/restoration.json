@@ -1,0 +1,26 @@
+{
+  "assertedAt": "2026-10-24T04:38:04.802Z",
+  "deployment": {
+    "id": "cf23b4e7-3859-441f-8ff5-fcc48e841f06",
+    "source": "api",
+    "strategy": "percentage",
+    "annotations": {
+      "workers/message": "effect-ci-release:cf_79311e782345e200e1cda85a4b2eb3719ec810403666f9101c2db82a005f5bfc:5",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "156c4427-b574-49e8-a6c9-cf2d034131b3",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-24T04:37:37.858625Z"
+  },
+  "health": {
+    "version": "156c4427-b574-49e8-a6c9-cf2d034131b3",
+    "healthy": true,
+    "revision": "87091b8543a88187604603fc110be9235270171d",
+    "digest": "2f1f835f44c7be6a062b4db2293c7cbb7ac5cd7c9570cadcba370dd4daf7e8f4"
+  },
+  "assertionResult": "passed"
+}

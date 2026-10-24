@@ -335,6 +335,7 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 | --- | :---: | :---: | :---: | :---: |
 | [Run GitHub CI on Cloudflare](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
 | [Run CI remotely from the CLI](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
+| [Release from verified local checks](./examples/release-flywheel) | — | ✅ | — | ✅ |
 | [Approve a deployment in GitHub](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Approve a release in Slack](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Request release approval in Discord](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
