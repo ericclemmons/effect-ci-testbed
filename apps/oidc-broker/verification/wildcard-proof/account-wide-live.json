@@ -1,0 +1,59 @@
+{
+  "serviceVersion": "f30e4efb-adaa-494a-803b-295b74659eba",
+  "ownerId": "15182",
+  "repositoryId": "*",
+  "ref": "*",
+  "workflowRef": "*",
+  "proofBranch": "codex/oidc-account-proof",
+  "proofWorkflow": "account-auth.yml",
+  "runs": [
+    {
+      "test": "any branch and workflow under allowed owner",
+      "runId": 40062877276,
+      "conclusion": "success",
+      "sourceRevision": "a7a72ec4dfa0b8237067eaa950716e7ca4fe1281",
+      "jobs": [
+        {
+          "name": "authenticate (cf)",
+          "conclusion": "success"
+        },
+        {
+          "name": "authenticate (wrangler)",
+          "conclusion": "success"
+        }
+      ],
+      "verificationLogLines": [
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:44.4353575Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:44.5312167Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:44.6079499Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "authenticate (cf)\tPost Authenticate allowed owner\t2026-10-24T04:34:45.0780038Z Temporary Cloudflare token revoked.",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:40.4640453Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:40.6301766Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:34:40.7497387Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "authenticate (wrangler)\tPost Authenticate allowed owner\t2026-10-24T04:34:41.2342020Z Temporary Cloudflare token revoked."
+      ],
+      "url": "https://github.com/ericclemmons/effect-ci-demo/actions/runs/40062877276"
+    },
+    {
+      "test": "outside owner denied",
+      "runId": 40062516037,
+      "conclusion": "success",
+      "sourceRevision": "654e075d1b6a35fcecc4d1a677d7fa1972dedc85",
+      "jobs": [
+        {
+          "name": "authenticate (cf)",
+          "conclusion": "success"
+        },
+        {
+          "name": "authenticate (wrangler)",
+          "conclusion": "success"
+        }
+      ],
+      "verificationLogLines": [
+        "authenticate (cf)\tVerify outside owner is rejected at the grant check\t2026-10-24T04:29:15.5098789Z Verified GitHub-signed outside-owner identity was denied at the grant check (403).",
+        "authenticate (wrangler)\tVerify outside owner is rejected at the grant check\t2026-10-24T04:29:15.6135733Z Verified GitHub-signed outside-owner identity was denied at the grant check (403)."
+      ]
+    }
+  ],
+  "runnerRetry": "The ubuntu-latest acceptance run remained unassigned; Ubuntu 24.04 completed successfully."
+}

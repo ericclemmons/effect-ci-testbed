@@ -140,7 +140,20 @@ The broker must accept OIDC-authenticated requests directly; do not add an Acces
 requirement that would reintroduce a GitHub secret. The existing Effect CI service's human
 Access policies stay independent. A future integration can mount this handler in that host.
 
-## Live owner-wildcard proof
+## Live owner-wide proof
+
+The current account-wide verification uses a second owned repository, branch
+`codex/oidc-account-proof`, and workflow `account-auth.yml`, demonstrating that
+neither the original proof branch nor its workflow name is required.
+[The live run](https://github.com/ericclemmons/effect-ci-demo/actions/runs/40062877276)
+passed for both Worker grants, including permission probes and token revocation.
+A real outside-owner GitHub identity was rejected for both grants.
+See the [account-wide receipt](./verification/wildcard-proof/account-wide-live.json).
+
+[Account-wide verification workflow](./verification/wildcard-proof/account-auth.yml "source")
+
+The earlier repository-wildcard proof follows for historical context.
+
 
 The first wildcard proof allowed GitHub owner `15182` (`ericclemmons`) with a
 fixed proof workflow and branch. The current owner-wide configuration removes

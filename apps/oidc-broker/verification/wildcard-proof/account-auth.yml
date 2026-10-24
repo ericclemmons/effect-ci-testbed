@@ -1,0 +1,54 @@
+name: Owner wildcard OIDC proof
+on:
+  push:
+    branches: [codex/oidc-account-proof]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  authenticate:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [cf, wrangler]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ericclemmons/effect-ci-testbed
+          ref: 23258725ae02c76988a446f6feb115c7b14b4596
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Authenticate allowed owner
+        if: github.repository_owner_id == '15182'
+        uses: ./.github/actions/configure-cloudflare-credentials
+        with:
+          worker: effect-ci-oidc-${{ matrix.tool }}
+          scopes: workers:edit
+      - name: Verify Worker and R2 permission boundaries
+        if: github.repository_owner_id == '15182'
+        env:
+          OIDC_WORKER: effect-ci-oidc-${{ matrix.tool }}
+          OIDC_OTHER_WORKER: effect-ci-oidc-${{ matrix.tool == 'cf' && 'wrangler' || 'cf' }}
+        run: node apps/oidc-broker/scripts/verify-scopes.mjs
+      - name: Verify outside owner is rejected at the grant check
+        if: github.repository_owner_id != '15182'
+        env:
+          OIDC_WORKER: effect-ci-oidc-${{ matrix.tool }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { exchange, revoke } from './.github/actions/configure-cloudflare-credentials/client.mjs';
+          let rejected = false;
+          try {
+            const credential = await exchange({ worker: process.env.OIDC_WORKER, scopes: 'workers:edit', requestUrl: process.env.ACTIONS_ID_TOKEN_REQUEST_URL, requestToken: process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN });
+            await revoke(credential.broker, credential.receipt);
+          } catch (error) {
+            assert.match(error.message, /^Effect CI credential exchange failed \(403; stage=grant; reason=runtime-error\)$/);
+            rejected = true;
+          }
+          assert.ok(rejected, 'Outside owner unexpectedly obtained credentials');
+          console.log('Verified GitHub-signed outside-owner identity was denied at the grant check (403).');
+          JS
