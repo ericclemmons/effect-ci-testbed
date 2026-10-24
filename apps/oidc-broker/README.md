@@ -90,6 +90,35 @@ Cloudflare references: [Worker granular authorization](https://developers.cloudf
 [account token creation](https://developers.cloudflare.com/api/resources/accounts/subresources/tokens/methods/create/),
 and [GitHub OIDC claims](https://docs.github.com/en/actions/reference/security/oidc).
 
+## Allow all repositories owned by one GitHub account
+
+Set `repositoryId` to `"*"` in a `BROKER_GRANTS` entry and replace only the
+repository segment of `workflowRef` with `*`. Keep the immutable GitHub owner ID
+explicit. This works for an organization or a personal GitHub account.
+
+For example, edit a grant generated during setup to use these identity fields,
+keeping its existing `accountId`, `worker`, and `scopes` policy objects:
+
+```json
+{
+  "repositoryId": "*",
+  "repositoryOwnerId": "YOUR_NUMERIC_GITHUB_OWNER_ID",
+  "ref": "refs/heads/main",
+  "workflowRef": "YOUR_GITHUB_OWNER/*/.github/workflows/deploy.yml@refs/heads/main"
+}
+```
+
+Put the complete entry in the Worker's `BROKER_GRANTS` environment value and
+redeploy the credential service. Any repository owned by that GitHub account can
+then use the named workflow on `main` to request the entry's Worker permissions.
+An outside fork has a different owner ID and is rejected. Repository transfers
+out of the allowed owner lose access. The action needs no changes.
+
+Only `repositoryId: "*"` and the matching repository segment of `workflowRef` have
+wildcard semantics. Owner ID, branch, workflow path/ref, target Worker, and allowed
+scopes remain explicit. A global owner wildcard and arbitrary glob patterns are
+unsupported. Existing exact-repository grants continue to match exactly.
+
 ## Request and scope model
 
 `POST /token`, authenticated with a GitHub OIDC JWT whose audience is the broker origin:
@@ -98,8 +127,8 @@ and [GitHub OIDC claims](https://docs.github.com/en/actions/reference/security/o
 { "worker": "effect-ci-oidc-wrangler", "scopes": ["workers:edit"] }
 ```
 
-No named profile is required. A grant binds immutable repository/owner IDs, exact branch,
-exact workflow ref and Worker to an allowed scope map. The broker unions only the policies
+No named profile is required. A grant binds an immutable owner ID, an exact repository
+ID or owner-scoped repository wildcard, branch, workflow ref and Worker to an allowed scope map. The broker unions only the policies
 for the scopes actually requested. Unknown scopes, other Workers and PR events are rejected.
 Scope names are operator-defined: add `r2:read` only if it maps to an explicitly approved
 Cloudflare policy, and request it only when necessary. The action cannot supply arbitrary

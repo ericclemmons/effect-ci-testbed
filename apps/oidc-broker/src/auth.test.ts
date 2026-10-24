@@ -24,6 +24,38 @@ test("unknown scopes, empty scopes, other Workers, fork identity and PR events f
   }
 });
 
+test("repository wildcard accepts different repositories only within the configured owner", () => {
+  const wildcard: Grant = { ...grant, repositoryId: "*", workflowRef: "owner/*/.github/workflows/deploy.yml@refs/heads/main" };
+  for (const [repository_id, repository] of [["123", "repo"], ["789", "another-repo"]]) {
+    assert.deepEqual(authorize({ ...claims, repository_id, workflow_ref: `owner/${repository}/.github/workflows/deploy.yml@refs/heads/main` },
+      { worker: "my-worker", scopes: ["workers:edit"] }, [wildcard]), { accountId, policies: [edit] });
+  }
+});
+
+test("repository wildcard preserves owner, branch, workflow, Worker, scope and event restrictions", () => {
+  const wildcard: Grant = { ...grant, repositoryId: "*", workflowRef: "owner/*/.github/workflows/deploy.yml@refs/heads/main" };
+  const request = { worker: "my-worker", scopes: ["workers:edit"] };
+  for (const changed of [
+    { repository_owner_id: "999" }, { repository_id: undefined }, { repository_id: "*" },
+    { ref: "refs/heads/feature" },
+    { workflow_ref: "other/repo/.github/workflows/deploy.yml@refs/heads/main" },
+    { workflow_ref: "owner/repo/.github/workflows/other.yml@refs/heads/main" },
+    { workflow_ref: "owner/repo/.github/workflows/deploy.yml@refs/heads/feature" },
+    { workflow_ref: "owner//.github/workflows/deploy.yml@refs/heads/main" },
+    { event_name: "pull_request" }, { event_name: "pull_request_target" },
+  ]) assert.throws(() => authorize({ ...claims, ...changed }, request, [wildcard]));
+  for (const changed of [{ worker: "another-worker" }, { scopes: ["admin"] }]) {
+    assert.throws(() => authorize(claims, { ...request, ...changed }, [wildcard]));
+  }
+  for (const changed of [
+    { repositoryOwnerId: "*" }, { repositoryOwnerId: "" },
+    { workflowRef: "*" }, { workflowRef: "*/*/.github/workflows/deploy.yml@refs/heads/main" },
+    { workflowRef: "owner/*/.github/workflows/*@refs/heads/main" },
+    { workflowRef: "owner/*/.github/workflows/deploy.yml@*" },
+    { ref: "*" },
+  ]) assert.throws(() => authorize(claims, request, [{ ...wildcard, ...changed }]));
+});
+
 const pair = await generateKeyPair("RS256");
 const jwk = await exportJWK(pair.publicKey);
 const keys = createLocalJWKSet({ keys: [{ ...jwk, kid: "github-test", alg: "RS256" }] });

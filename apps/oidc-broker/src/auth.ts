@@ -18,6 +18,22 @@ export interface Grant {
 }
 export interface ScopeRequest { worker: string; scopes: string[] }
 
+function matchesRepository(claims: JWTPayload, grant: Grant) {
+  if (grant.repositoryOwnerId !== claims.repository_owner_id) return false;
+  if (grant.repositoryId !== "*") {
+    return grant.repositoryId === claims.repository_id && grant.workflowRef === claims.workflow_ref;
+  }
+  // Only the repository segment may vary; the immutable owner ID stays explicit.
+  if (!/^\d+$/.test(grant.repositoryOwnerId) || typeof claims.repository_id !== "string"
+    || !/^\d+$/.test(claims.repository_id) || typeof claims.workflow_ref !== "string") return false;
+  const [owner, repository, ...workflow] = grant.workflowRef.split("/");
+  const [actualOwner, actualRepository, ...actualWorkflow] = claims.workflow_ref.split("/");
+  return repository === "*" && !!owner && !owner.includes("*")
+    && !!actualRepository && actualRepository !== "*" && actualOwner === owner
+    && workflow.length > 0 && !workflow.join("/").includes("*")
+    && workflow.join("/") === actualWorkflow.join("/");
+}
+
 export async function verifyIdentity(token: string, audience: string, keys: JWTVerifyGetKey = githubKeys) {
   const { payload } = await jwtVerify(token, keys, {
     issuer, audience, algorithms: ["RS256"], maxTokenAge: "10m",
@@ -33,8 +49,7 @@ export function authorize(claims: JWTPayload, request: ScopeRequest, grants: Gra
   // Deliberately no PR or pull_request_target authority in this first prototype.
   if (!["push", "workflow_dispatch"].includes(String(claims.event_name))) throw new Error("Event rejected");
   const grant = grants.find((entry) => entry.worker === request.worker
-    && entry.repositoryId === claims.repository_id && entry.repositoryOwnerId === claims.repository_owner_id
-    && entry.ref === claims.ref && entry.workflowRef === claims.workflow_ref);
+    && matchesRepository(claims, entry) && entry.ref === claims.ref);
   if (!grant || !/^[a-f0-9]{32}$/.test(grant.accountId)) throw new Error("Identity rejected");
   const policies = [...new Set(request.scopes)].flatMap((scope) => {
     if (!Object.hasOwn(grant.scopes, scope) || !grant.scopes[scope]?.length) throw new Error("Scope rejected");
