@@ -692,6 +692,21 @@ importers:
 
   examples/local-container: {}
 
+  examples/matrix:
+    devDependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   examples/mise-toolchain: {}
 
   examples/node-npm: {}
@@ -898,6 +913,36 @@ importers:
         version: 7.3.6(@types/node@26.6.3)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/system-package: {}
+
+  examples/test-splitting:
+    devDependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  examples/timing-aware-splitting:
+    devDependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
   examples/turborepo-cache:
     dependencies:

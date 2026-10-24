@@ -1,0 +1,63 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Isolate the Node tool cache under act
+        if: ${{ env.ACT }}
+        run: echo "RUNNER_TOOL_CACHE=$RUNNER_TEMP/node-${{ matrix.shard }}" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/cache/restore@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: app/timings.json
+          key: test-timings-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: test-timings-
+      - run: node scripts/run-shard.mjs ${{ matrix.shard }} 2
+        working-directory: app
+      - uses: actions/upload-artifact@v7
+        if: ${{ !env.ACT && always() }}
+        with:
+          name: shard-${{ matrix.shard }}
+          path: app/reports/shard-${{ matrix.shard }}.json
+
+  record:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        if: ${{ !env.ACT }}
+        with:
+          pattern: shard-*
+          merge-multiple: true
+          path: app/reports
+      - run: node scripts/update-history.mjs reports/shard-0.json reports/shard-1.json
+        if: ${{ !env.ACT }}
+        working-directory: app
+      - uses: actions/cache/save@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: app/timings.json
+          key: test-timings-${{ github.run_id }}-${{ github.run_attempt }}

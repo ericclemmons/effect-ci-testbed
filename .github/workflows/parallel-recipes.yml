@@ -1,0 +1,121 @@
+name: Parallel recipes
+
+on:
+  pull_request:
+    paths:
+      - examples/matrix/**
+      - examples/test-splitting/**
+      - examples/timing-aware-splitting/**
+      - scripts/assert-parallel-recipe-reports.mjs
+      - .github/workflows/parallel-recipes.yml
+  push:
+    branches: [main]
+    paths:
+      - examples/matrix/**
+      - examples/test-splitting/**
+      - examples/timing-aware-splitting/**
+      - scripts/assert-parallel-recipe-reports.mjs
+      - .github/workflows/parallel-recipes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    name: matrix / ${{ matrix.locale }} / ${{ matrix.currency }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [en-US, de-DE]
+        currency: [USD, EUR]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: node verify.mjs ${{ matrix.locale }} ${{ matrix.currency }}
+        working-directory: examples/matrix/app
+
+  shards:
+    name: ${{ matrix.example }} / native shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [test-splitting, timing-aware-splitting]
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: node scripts/run-shard.mjs ${{ matrix.shard }} 2
+        working-directory: examples/${{ matrix.example }}/app
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ matrix.example }}-shard-${{ matrix.shard }}
+          path: examples/${{ matrix.example }}/app/reports/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  reports:
+    name: ${{ matrix.example }} / verify native reports
+    needs: shards
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [test-splitting, timing-aware-splitting]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ matrix.example }}-shard-*
+          merge-multiple: true
+          path: examples/${{ matrix.example }}/app/reports
+      - run: node scripts/assert-parallel-recipe-reports.mjs ${{ matrix.example }}
+      - name: Record actual timings
+        if: matrix.example == 'timing-aware-splitting'
+        run: node scripts/update-history.mjs reports/shard-0.json reports/shard-1.json
+        working-directory: examples/timing-aware-splitting/app
+      - uses: actions/upload-artifact@v7
+        if: matrix.example == 'timing-aware-splitting'
+        with:
+          name: timing-history
+          path: examples/timing-aware-splitting/app/timings.json
+          if-no-files-found: error
+
+  warm:
+    name: timing-aware-splitting / consume native timing history
+    needs: reports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: timing-history
+          path: examples/timing-aware-splitting/app
+      - run: cp examples/timing-aware-splitting/app/timings.json examples/timing-aware-splitting/app/previous-timings.json
+      - run: pnpm cf-ci run --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts --format=text
+      - run: node scripts/assert-parallel-recipe-reports.mjs timing-aware-splitting previous-timings.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: warm-timing-reports
+          path: |
+            examples/timing-aware-splitting/app/reports/*.json
+            examples/timing-aware-splitting/app/*timings.json
+          if-no-files-found: error

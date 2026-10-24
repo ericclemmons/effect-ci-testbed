@@ -1,0 +1,16 @@
+{
+  "name": "effect-ci-timing-aware-splitting-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test .cloudflare/ci/tests/timing-aware-splitting.test.ts"
+  },
+  "devDependencies": {
+    "@effect-ci-testbed/ci": "workspace:*",
+    "@effect-ci-testbed/cli": "workspace:*",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}
