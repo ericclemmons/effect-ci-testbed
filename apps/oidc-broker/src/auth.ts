@@ -19,13 +19,14 @@ export interface Grant {
 export interface ScopeRequest { worker: string; scopes: string[] }
 
 function matchesRepository(claims: JWTPayload, grant: Grant) {
-  if (grant.repositoryOwnerId !== claims.repository_owner_id) return false;
+  if (!/^\d+$/.test(grant.repositoryOwnerId) || grant.repositoryOwnerId !== claims.repository_owner_id) return false;
   if (grant.repositoryId !== "*") {
     return grant.repositoryId === claims.repository_id && grant.workflowRef === claims.workflow_ref;
   }
   // Only the repository segment may vary; the immutable owner ID stays explicit.
   if (!/^\d+$/.test(grant.repositoryOwnerId) || typeof claims.repository_id !== "string"
     || !/^\d+$/.test(claims.repository_id) || typeof claims.workflow_ref !== "string") return false;
+  if (grant.workflowRef === "*") return claims.workflow_ref.length > 0;
   const [owner, repository, ...workflow] = grant.workflowRef.split("/");
   const [actualOwner, actualRepository, ...actualWorkflow] = claims.workflow_ref.split("/");
   return repository === "*" && !!owner && !owner.includes("*")
@@ -46,10 +47,12 @@ export function authorize(claims: JWTPayload, request: ScopeRequest, grants: Gra
   if (!request || typeof request.worker !== "string" || !Array.isArray(request.scopes)
     || request.scopes.length === 0 || request.scopes.length > 8
     || request.scopes.some((scope) => typeof scope !== "string")) throw new Error("Scope request rejected");
-  // Deliberately no PR or pull_request_target authority in this first prototype.
-  if (!["push", "workflow_dispatch"].includes(String(claims.event_name))) throw new Error("Event rejected");
+  // Pull request runs remain excluded, including workflows triggered by outside forks.
+  if (typeof claims.event_name !== "string" || !claims.event_name
+    || ["pull_request", "pull_request_target"].includes(claims.event_name)) throw new Error("Event rejected");
   const grant = grants.find((entry) => entry.worker === request.worker
-    && matchesRepository(claims, entry) && entry.ref === claims.ref);
+    && matchesRepository(claims, entry)
+    && (entry.ref === claims.ref || (entry.ref === "*" && typeof claims.ref === "string" && !!claims.ref)));
   if (!grant || !/^[a-f0-9]{32}$/.test(grant.accountId)) throw new Error("Identity rejected");
   const policies = [...new Set(request.scopes)].flatMap((scope) => {
     if (!Object.hasOwn(grant.scopes, scope) || !grant.scopes[scope]?.length) throw new Error("Scope rejected");

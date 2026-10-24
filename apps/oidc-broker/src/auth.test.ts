@@ -49,11 +49,24 @@ test("repository wildcard preserves owner, branch, workflow, Worker, scope and e
   }
   for (const changed of [
     { repositoryOwnerId: "*" }, { repositoryOwnerId: "" },
-    { workflowRef: "*" }, { workflowRef: "*/*/.github/workflows/deploy.yml@refs/heads/main" },
+    { workflowRef: "*/*/.github/workflows/deploy.yml@refs/heads/main" },
     { workflowRef: "owner/*/.github/workflows/*@refs/heads/main" },
     { workflowRef: "owner/*/.github/workflows/deploy.yml@*" },
-    { ref: "*" },
   ]) assert.throws(() => authorize(claims, request, [{ ...wildcard, ...changed }]));
+});
+
+test("owner-wide grants accept repositories, branches, tags, workflow names and automation events", () => {
+  const ownerGrant: Grant = { ...grant, repositoryId: "*", ref: "*", workflowRef: "*" };
+  const request = { worker: "my-worker", scopes: ["workers:edit"] };
+  for (const [ref, event_name] of [["refs/heads/main", "push"], ["refs/heads/feature/new", "workflow_dispatch"], ["refs/tags/v1", "release"], ["refs/heads/main", "schedule"], ["refs/heads/main", "workflow_run"]]) {
+    assert.deepEqual(authorize({ ...claims, repository_id: "789", ref, event_name,
+      workflow_ref: `owner/new-repository/.github/workflows/renamed.yml@${ref}` }, request, [ownerGrant]), { accountId, policies: [edit] });
+  }
+  for (const changed of [{ repository_owner_id: "999" }, { repository_owner_id: "*" }, { repository_id: undefined }, { ref: undefined }, { workflow_ref: "" }, { event_name: "pull_request" }, { event_name: "pull_request_target" }]) {
+    assert.throws(() => authorize({ ...claims, ...changed }, request, [ownerGrant]));
+  }
+  assert.throws(() => authorize(claims, { ...request, worker: "other-worker" }, [ownerGrant]));
+  assert.throws(() => authorize(claims, { ...request, scopes: ["admin"] }, [ownerGrant]));
 });
 
 const pair = await generateKeyPair("RS256");

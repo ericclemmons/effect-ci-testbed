@@ -90,34 +90,27 @@ Cloudflare references: [Worker granular authorization](https://developers.cloudf
 [account token creation](https://developers.cloudflare.com/api/resources/accounts/subresources/tokens/methods/create/),
 and [GitHub OIDC claims](https://docs.github.com/en/actions/reference/security/oidc).
 
-## Allow all repositories owned by one GitHub account
+## Allow your whole GitHub account
 
-Set `repositoryId` to `"*"` in a `BROKER_GRANTS` entry and replace only the
-repository segment of `workflowRef` with `*`. Keep the immutable GitHub owner ID
-explicit. This works for an organization or a personal GitHub account.
+Set `repositoryId`, `ref`, and `workflowRef` to `"*"` and keep
+`repositoryOwnerId` set to your numeric GitHub owner ID. This permits any repository,
+branch, tag, and workflow under that owner without registering each project.
+Pushes, manual runs, schedules, releases, and other automation events are accepted.
+Pull request and `pull_request_target` runs remain excluded, including outside-fork
+PRs. Target Workers and Cloudflare permissions still come from each grant's
+explicit `worker` and `scopes` policies.
 
-For example, edit a grant generated during setup to use these identity fields,
-keeping its existing `accountId`, `worker`, and `scopes` policy objects:
+[Owner-wide deployed grants](./verification/wildcard-grants.json "source")
 
-```json
-{
-  "repositoryId": "*",
-  "repositoryOwnerId": "YOUR_NUMERIC_GITHUB_OWNER_ID",
-  "ref": "refs/heads/main",
-  "workflowRef": "YOUR_GITHUB_OWNER/*/.github/workflows/deploy.yml@refs/heads/main"
-}
-```
+The service currently uses this owner-wide configuration for `ericclemmons`
+(owner ID `15182`). Set `BROKER_GRANTS` to the complete array and deploy to apply
+it to another installation. The action needs no changes.
 
-Put the complete entry in the Worker's `BROKER_GRANTS` environment value and
-redeploy the credential service. Any repository owned by that GitHub account can
-then use the named workflow on `main` to request the entry's Worker permissions.
-An outside fork has a different owner ID and is rejected. Repository transfers
-out of the allowed owner lose access. The action needs no changes.
-
-Only `repositoryId: "*"` and the matching repository segment of `workflowRef` have
-wildcard semantics. Owner ID, branch, workflow path/ref, target Worker, and allowed
-scopes remain explicit. A global owner wildcard and arbitrary glob patterns are
-unsupported. Existing exact-repository grants continue to match exactly.
+For a narrower grant, use an exact `ref` and a `workflowRef` such as
+`YOUR_OWNER/*/.github/workflows/deploy.yml@refs/heads/main` to restrict workflow
+name and branch while allowing all repositories owned by that account. Exact
+repository grants continue to match exactly. Only whole-field wildcards and the
+repository segment wildcard are supported; a global owner wildcard is rejected.
 
 ## Request and scope model
 
@@ -149,9 +142,9 @@ Access policies stay independent. A future integration can mount this handler in
 
 ## Live owner-wildcard proof
 
-The deployed service now allows repositories owned by GitHub owner `15182`
-(`ericclemmons`) using `.github/workflows/oidc-live-proof.yml` on
-`codex/oidc-live-proof`. The [deployed grants](./verification/wildcard-grants.json)
+The first wildcard proof allowed GitHub owner `15182` (`ericclemmons`) with a
+fixed proof workflow and branch. The current owner-wide configuration removes
+those workflow and branch restrictions. The [deployed grants](./verification/wildcard-grants.json)
 retain the two existing Worker policies.
 
 [The original deployment workflow](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40062175207)
@@ -179,8 +172,8 @@ revision, broker version, job timings, deployment versions, own-Worker source re
 other-Worker source read (403), R2 bucket listing (403), successful post-job revocation,
 and an independent issuer metadata check finding no remaining run tokens. Each issued
 token contained only the requested Individual Workers Editor policy. No broadening was needed.
-The proof ran on the dedicated branch authorized in [the recorded grants](./verification/grants.json).
-The copyable example workflows need separately configured exact identity grants.
+The original proof ran on the dedicated branch authorized in [the historical grants](./verification/grants.json).
+The current owner-wide grants no longer require per-workflow registration.
 
 Live testing found two runtime contracts that the initial mocks missed: token expiration
 must omit fractional seconds, and Workers fetch supports manual redirects rather than

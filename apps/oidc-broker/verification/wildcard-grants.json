@@ -2,8 +2,8 @@
   {
     "repositoryId": "*",
     "repositoryOwnerId": "15182",
-    "ref": "refs/heads/codex/oidc-live-proof",
-    "workflowRef": "ericclemmons/*/.github/workflows/oidc-live-proof.yml@refs/heads/codex/oidc-live-proof",
+    "ref": "*",
+    "workflowRef": "*",
     "accountId": "0db135ec469e2f216fcea26426f29755",
     "worker": "effect-ci-oidc-cf",
     "scopes": {
@@ -27,8 +27,8 @@
   {
     "repositoryId": "*",
     "repositoryOwnerId": "15182",
-    "ref": "refs/heads/codex/oidc-live-proof",
-    "workflowRef": "ericclemmons/*/.github/workflows/oidc-live-proof.yml@refs/heads/codex/oidc-live-proof",
+    "ref": "*",
+    "workflowRef": "*",
     "accountId": "0db135ec469e2f216fcea26426f29755",
     "worker": "effect-ci-oidc-wrangler",
     "scopes": {

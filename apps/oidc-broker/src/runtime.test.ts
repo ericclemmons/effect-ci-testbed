@@ -6,7 +6,7 @@ import test from "node:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { issuer } from "./auth.ts";
 
-for (const wildcard of [false, true]) test(`actual workerd verifies ${wildcard ? "owner wildcard" : "exact repository"} OIDC, issues once, preserves Worker scope, and revokes through the action client`, { timeout: 60_000 }, async () => {
+for (const wildcard of [false, true, "owner"] as const) test(`actual workerd verifies ${wildcard === "owner" ? "any workflow/branch under owner" : wildcard ? "repository wildcard" : "exact repository"} OIDC, issues once, preserves Worker scope, and revokes through the action client`, { timeout: 60_000 }, async () => {
   const require = createRequire(import.meta.url);
   const plugin = await realpath(new URL("../node_modules/@cloudflare/vite-plugin", import.meta.url));
   const { Miniflare } = require(require.resolve("miniflare", { paths: [plugin] }));
@@ -15,7 +15,7 @@ for (const wildcard of [false, true]) test(`actual workerd verifies ${wildcard ?
   const publicKey = { ...await exportJWK(pair.publicKey), kid: "test-key", alg: "RS256" };
   const accountId = "a".repeat(32);
   const policy = { effect: "allow", permission_groups: [{ id: "individual-workers-editor-fixture" }], resources: { account: { "one-worker-fixture": "*" } } };
-  const grant = { repositoryId: wildcard ? "*" : "123", repositoryOwnerId: "456", ref: "refs/heads/main", workflowRef: `owner/${wildcard ? "*" : "repo"}/.github/workflows/deploy.yml@refs/heads/main`, accountId, worker: "one-worker", scopes: { "workers:edit": [policy] } };
+  const grant = { repositoryId: wildcard ? "*" : "123", repositoryOwnerId: "456", ref: wildcard === "owner" ? "*" : "refs/heads/main", workflowRef: wildcard === "owner" ? "*" : `owner/${wildcard ? "*" : "repo"}/.github/workflows/deploy.yml@refs/heads/main`, accountId, worker: "one-worker", scopes: { "workers:edit": [policy] } };
   const calls: Array<{ url: string; method: string; body: any }> = [];
   const compiled = await build({
     entryPoints: [fileURLToPath(new URL("./worker.ts", import.meta.url))],
@@ -35,7 +35,7 @@ for (const wildcard of [false, true]) test(`actual workerd verifies ${wildcard ?
   } } } }] });
   try {
     const now = Math.floor(Date.now() / 1000);
-    const identity = await new SignJWT({ repository_id: "123", repository_owner_id: "456", ref: grant.ref, workflow_ref: "owner/repo/.github/workflows/deploy.yml@refs/heads/main", run_id: "1", run_attempt: "1", event_name: "workflow_dispatch" })
+    const identity = await new SignJWT({ repository_id: "123", repository_owner_id: "456", ref: wildcard === "owner" ? "refs/heads/feature" : grant.ref, workflow_ref: wildcard === "owner" ? "owner/repo/.github/workflows/other.yml@refs/heads/feature" : "owner/repo/.github/workflows/deploy.yml@refs/heads/main", run_id: "1", run_attempt: "1", event_name: "workflow_dispatch" })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" }).setIssuer(issuer).setAudience("https://broker.example")
       .setSubject("repo:owner/repo:ref:refs/heads/main").setJti("test-issuance").setIssuedAt(now).setNotBefore(now).setExpirationTime(now + 300).sign(pair.privateKey);
     const post = (path: string, token: string, body?: unknown) => runtime.dispatchFetch(`https://broker.example${path}`, {
