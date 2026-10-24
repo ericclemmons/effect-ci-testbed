@@ -1,0 +1,20 @@
+{
+  "instance": "cf_79311e782345e200e1cda85a4b2eb3719ec810403666f9101c2db82a005f5bfc",
+  "sentAt": "2026-10-24T04:29:47.979Z",
+  "payload": {
+    "approved": true,
+    "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+    "candidate": "041850ee-aaa0-4a8a-8f39-dd24f4054011",
+    "actor": "agent-on-user-delegation",
+    "basis": "Explicit user instruction to approve the prepared demo release"
+  },
+  "result": {
+    "success": true,
+    "errors": [],
+    "messages": [],
+    "result": {
+      "instanceId": "cf_79311e782345e200e1cda85a4b2eb3719ec810403666f9101c2db82a005f5bfc",
+      "timestamp": "2026-10-24T04:29:48.535Z"
+    }
+  }
+}

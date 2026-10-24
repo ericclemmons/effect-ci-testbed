@@ -55,6 +55,7 @@ in the recipes run from that root unless they say otherwise.
 - [Deployment hooks](./deploy-hook), [ordered deployments](./ordered-deploy),
   and [D1 migrations](./d1-migration)
 - [GitHub approval](./hitl-deploy) or [Slack approval](./cloudflare-hitl-release)
+- [Release from verified local checks](./release-flywheel)
 - [Health-gated rollout](./health-mediated-release) or
   [human review of uncertain health](./health-mediated-approval)
 - [Model-assisted repair proposals](./flue-repair)
