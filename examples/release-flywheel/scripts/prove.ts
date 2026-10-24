@@ -17,7 +17,8 @@ const fixture = resolve(root, fixtureRoot)
 const output = resolve(root, ".effect-ci/cache/release-flywheel")
 mkdirSync(output, { recursive: true })
 const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
-const revision = git("rev-parse", "HEAD")
+const revision = process.env.FLYWHEEL_REVISION ?? git("rev-parse", "HEAD")
+assert.match(revision, /^[a-f0-9]{40}$/)
 const key = () => createPrivateKey(readFileSync(resolve(root, ".effect-ci/cache/flywheel-private.pem")))
 const serializeSignature = (bytes: Uint8Array) => sign(null, bytes, key()).toString("base64url")
 const event: CI.WorkflowEventShape = { type: "workflow_dispatch", revision, source: { kind: "git", repository, revision } }
@@ -105,7 +106,9 @@ switch (process.argv[2]) {
     const id = process.argv[3]
     assert.ok(id)
     const run = cf("workflows", "instances", "get", id, "--workflow-name", "effect-ci-release-flywheel")
-    save(`run-${id}`, run); console.log(JSON.stringify(run, null, 2)); break
+    save(`run-${id}`, run)
+    console.log(JSON.stringify({ id, status: run.status, output: run.output,
+      lastSteps: run.steps?.slice(-5).map((s: any) => ({ name: s.name, success: s.success, error: s.error })) }, null, 2)); break
   }
   default: throw new Error("Use local, upload, verify, release, or read INSTANCE. Approval is a separate human decision.")
 }

@@ -31,22 +31,28 @@ export class FlywheelWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Brok
     const publicKey = await crypto.subtle.importKey("jwk", trust.publicKey, "Ed25519", false, ["verify"])
     const executions: Array<{ step: string; command: string; elapsedMs: number }> = []
     const lookups: Array<{ hit: boolean; elapsedMs: number }> = []
+    let measuredIdentity: Awaited<ReturnType<typeof identifyFlywheel>>
     const checkCache = hostedCheckCache({
       reader: { repository: "ericclemmons/effect-ci-testbed", request: (url, init) => fetch(url, {
         ...init, headers: { ...init.headers, "user-agent": "effect-ci-release-flywheel" }, redirect: "manual",
       }) },
       enrollments: [{ keyId: trust.keyId, publicKey, repository,
         checks: [{ workflowId: "release-flywheel", stepId: "worker-tests", command, policyDigest: await policyDigest() }] }],
-      identify: request => identifyFlywheel(request,
-        path => Effect.runPromise(runner.fileSystem.readFile(request.workspace, path, "proof-identity")),
-        async () => (await Effect.runPromise(runner.executor.execute({ command: runtimeCommand,
-          workspace: request.workspace, stepId: "proof-runtime", workflowId: request.workflowId,
-          options: {}, onOutput() {} }))).stdout, trust.sourceDigest),
+      identify: async request => {
+        measuredIdentity = await identifyFlywheel(request,
+          path => Effect.runPromise(runner.fileSystem.readFile(request.workspace, path, "proof-identity")),
+          async () => (await Effect.runPromise(runner.executor.execute({ command: runtimeCommand,
+            workspace: request.workspace, stepId: "proof-runtime", workflowId: request.workflowId,
+            options: {}, onOutput() {} }))).stdout, trust.sourceDigest)
+        return measuredIdentity
+      },
     })
     const result = await CI.runPromise(workflow, {
       event: { type: "workflow_dispatch", revision, source: { kind: "git", repository, revision } },
       source: runner.source, workspaceFileSystem: runner.fileSystem, workspacePersistence: runner.persistence,
-      actionExecutor: runner.actionExecutor, output: "silent",
+      // Keep source preparation and host identity measurements as native steps;
+      // none of these actions has a retry policy requiring a native action body.
+      output: "silent",
       executor: { handlesStepOptions: true, execute: request => Effect.gen(function* () {
         const start = Date.now()
         const result = yield* runner.executor.execute(request)
@@ -61,7 +67,7 @@ export class FlywheelWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Brok
       }) },
     })
     const verification = await step.do("proof:verification", once, async () => ({
-      revision, mode, startedAt, verifiedAt: Date.now(), executions, lookups,
+      revision, mode, startedAt, verifiedAt: Date.now(), executions, lookups, identity: measuredIdentity ?? null,
       nodes: result.plan.nodes.map(node => ({ id: node.id, status: node.status })),
       checkReused: result.plan.nodes.find(node => node.id === "worker-tests")?.status === "verified",
     }))
