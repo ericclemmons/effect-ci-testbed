@@ -110,5 +110,12 @@ switch (process.argv[2]) {
     console.log(JSON.stringify({ id, status: run.status, output: run.output,
       lastSteps: run.steps?.slice(-5).map((s: any) => ({ name: s.name, success: s.success, error: s.error })) }, null, 2)); break
   }
-  default: throw new Error("Use local, upload, verify, release, or read INSTANCE. Approval is a separate human decision.")
+  case "checkpoint": {
+    const [id, name] = process.argv.slice(3)
+    assert.ok(id && name)
+    assert.match(name, /^[\w:.-]+$/)
+    const value = cf("workflows", "instances", "step", "get", id, "--workflow-name", "effect-ci-release-flywheel", "--name", name, "--type", "step")
+    save(`checkpoint-${id}-${name}`, value); console.log(JSON.stringify(value, null, 2)); break
+  }
+  default: throw new Error("Use local, upload, verify, release, read INSTANCE, or checkpoint INSTANCE NAME. Approval is a separate human decision.")
 }
