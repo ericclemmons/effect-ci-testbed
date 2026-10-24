@@ -167,4 +167,6 @@ Editor policy cannot create a Worker. The issuer credential stays host-only.
 
 [CLI workload identity](../../packages/cli/src/workload-auth.ts "source")
 
-[Live new-Worker permission proof](./verification/oidc-worker-creation.json "source")
+[Live shared-app enrollment, remote execution, new-Worker deployment and cleanup proof](./verification/oidc-shared-app.json "source")
+
+[Account permission creation probe](./verification/oidc-worker-creation.json "source")
