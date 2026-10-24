@@ -7,8 +7,12 @@ flowchart LR
   step_checkout["checkout"]
   step_test_shard_0_2["test shard 0/2"]
   step_test_shard_1_2["test shard 1/2"]
+  step_verify_shard_reports["verify shard reports"]
   step_checkout --> step_test_shard_0_2
   step_checkout --> step_test_shard_1_2
+  step_checkout --> step_verify_shard_reports
+  step_test_shard_0_2 --> step_verify_shard_reports
+  step_test_shard_1_2 --> step_verify_shard_reports
 ```
 
 ---
@@ -49,4 +53,18 @@ Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
 matrix jobs, shard report aggregation, and reuse of measured timing history.
 
 See the [recorded execution evidence](../parallel-recipes-verification.md) for the
-local, native GitHub, and Effect-on-GitHub runs. Cloudflare remains unverified.
+local, native GitHub, and Effect-on-GitHub runs. The standalone Cloudflare wrapper is exercised separately from the local runner.
+
+## Run on Cloudflare
+
+This recipe owns its [Worker](./src/worker.ts) and [deployment configuration](./wrangler.jsonc).
+From this recipe's directory, with Docker running and Wrangler authenticated:
+
+```sh
+pnpm exec wrangler deploy
+pnpm exec wrangler workflows trigger effect-ci-test-splitting '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"COMMIT_SHA"}' --id test-splitting-1
+pnpm exec wrangler workflows instances describe effect-ci-test-splitting test-splitting-1 --json
+```
+
+Use a pushed, full commit SHA. The hosted runner checks out that immutable source;
+it does not execute uncommitted local files. Each parallel action gets its own Container.

@@ -48,9 +48,10 @@ The [GitHub comparison](./.github/workflows/github.yml) restores prior timings,
 runs the two shard jobs, downloads their reports, then saves the merged history
 in a new cache entry. Native runner execution is verified; cross-run cache
 persistence in that standalone comparison remains unverified.
-The local Effect runner shares a filesystem; an isolated snapshot runner would need
-artifact publication and aggregation before recording timings. Cloudflare support
-is unverified. This is a disposable proof, not a general test analytics service.
+Each shard returns its report as a durable action result. The join materializes
+those reports in its own filesystem before recording history. The Cloudflare wrapper
+checkpoints that workspace and restores only `app/timings.json` through its runner cache
+on the next instance. This is a disposable proof, not a general test analytics service.
 
 Expected result: six tests run exactly once, two shard reports, and six positive
 recorded durations. Reports and timing history are ignored by Git. Delete
@@ -71,4 +72,20 @@ Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
 matrix jobs, shard report aggregation, and reuse of measured timing history.
 
 See the [recorded execution evidence](../parallel-recipes-verification.md) for the
-local, native GitHub, and Effect-on-GitHub runs. Cloudflare remains unverified.
+local, native GitHub, and Effect-on-GitHub runs. The standalone Cloudflare wrapper is exercised separately from the local runner.
+
+## Run on Cloudflare
+
+This recipe owns its [Worker](./src/worker.ts) and [deployment configuration](./wrangler.jsonc).
+From this recipe's directory, with Docker running and Wrangler authenticated:
+
+```sh
+pnpm exec wrangler deploy
+pnpm exec wrangler workflows trigger effect-ci-timing-aware-splitting '{"repository":"https://github.com/ericclemmons/effect-ci-testbed.git","revision":"COMMIT_SHA"}' --id timing-aware-splitting-1
+pnpm exec wrangler workflows instances describe effect-ci-timing-aware-splitting timing-aware-splitting-1 --json
+```
+
+Use a pushed, full commit SHA. The hosted runner checks out that immutable source;
+it does not execute uncommitted local files. Each parallel action gets its own Container.
+
+Run a second instance with a different ID and the same revision to exercise restored history.

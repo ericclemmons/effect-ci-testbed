@@ -1,5 +1,15 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": { "types": ["node"], "allowJs": true },
-  "include": [".cloudflare/**/*.ts", "app/scripts/*.mjs"]
+  "compilerOptions": {
+    "types": [
+      "@cloudflare/workers-types",
+      "node"
+    ],
+    "allowJs": true
+  },
+  "include": [
+    ".cloudflare/**/*.ts",
+    "app/scripts/*.mjs",
+    "src/**/*.ts"
+  ]
 }

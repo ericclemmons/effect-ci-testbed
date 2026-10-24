@@ -620,6 +620,15 @@ jobs:
           - example: snapshot-fanout
             package: effect-ci-snapshot-fanout-fixture
             workflow: effect-ci-snapshot-fanout
+          - example: matrix
+            package: effect-ci-matrix-fixture
+            workflow: effect-ci-matrix
+          - example: test-splitting
+            package: effect-ci-test-splitting-fixture
+            workflow: effect-ci-test-splitting
+          - example: timing-aware-splitting
+            package: effect-ci-timing-aware-splitting-fixture
+            workflow: effect-ci-timing-aware-splitting
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4

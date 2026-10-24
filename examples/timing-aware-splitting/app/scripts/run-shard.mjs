@@ -25,6 +25,6 @@ for (const file of selected) {
 }
 // Empty shards run nothing, rather than accidentally running the whole suite.
 mkdirSync("reports", { recursive: true })
-writeFileSync(`reports/shard-${index}.json`, JSON.stringify({ index, total, results }, null, 2) + "\n")
+writeFileSync(`reports/shard-${index}.json`, JSON.stringify({ index, total, history: timings, results }, null, 2) + "\n")
 console.log(`SHARD ${index}/${total}: ${selected.join(", ") || "(empty)"}`)
 process.exitCode = results.every((result) => result.passed) ? 0 : 1
