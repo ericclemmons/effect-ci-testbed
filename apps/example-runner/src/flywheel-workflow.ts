@@ -4,6 +4,7 @@ import * as CI from "@effect-ci-testbed/ci"
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as Effect from "effect/Effect"
 import { hostedCheckCache } from "../../../packages/cloudflare/src/check-cache.ts"
+import { verifyEnrolledCheckEvidence } from "../../../packages/cloudflare/src/check-evidence.ts"
 import { evaluateHealth } from "../../../packages/cloudflare/src/health-gate.ts"
 import type { ReleaseManager } from "../../release-manager/src/release-manager.ts"
 import workflow from "../../../examples/release-flywheel/.cloudflare/ci/workflow.ts"
@@ -31,13 +32,20 @@ export class FlywheelWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Brok
     const publicKey = await crypto.subtle.importKey("jwk", trust.publicKey, "Ed25519", false, ["verify"])
     const executions: Array<{ step: string; command: string; elapsedMs: number }> = []
     const lookups: Array<{ hit: boolean; elapsedMs: number }> = []
+    const noteReads: Array<{ httpCode: number; endpoint: string }> = []
+    const transports: Array<{ transport: string; notesCommit?: string }> = []
     let measuredIdentity: Awaited<ReturnType<typeof identifyFlywheel>>
+    const enrollments = [{ keyId: trust.keyId, publicKey, repository,
+      checks: [{ workflowId: "release-flywheel", stepId: "worker-tests", command, policyDigest: await policyDigest() }] }]
     const checkCache = hostedCheckCache({
-      reader: { repository: "ericclemmons/effect-ci-testbed", request: (url, init) => fetch(url, {
-        ...init, headers: { ...init.headers, "user-agent": "effect-ci-release-flywheel" }, redirect: "manual",
-      }) },
-      enrollments: [{ keyId: trust.keyId, publicKey, repository,
-        checks: [{ workflowId: "release-flywheel", stepId: "worker-tests", command, policyDigest: await policyDigest() }] }],
+      reader: { repository: "ericclemmons/effect-ci-testbed", request: async (url, init) => {
+        const response = await fetch(url, {
+          ...init, headers: { ...init.headers, "user-agent": "effect-ci-release-flywheel" }, redirect: "manual",
+        })
+        noteReads.push({ httpCode: response.status, endpoint: new URL(url).pathname.split("/").at(-2)! })
+        return response
+      } },
+      enrollments,
       identify: async request => {
         measuredIdentity = await identifyFlywheel(request,
           path => Effect.runPromise(runner.fileSystem.readFile(request.workspace, path, "proof-identity")),
@@ -61,13 +69,31 @@ export class FlywheelWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Brok
       }) },
       checkCache: { ...checkCache, lookup: request => Effect.gen(function* () {
         const start = Date.now()
-        const hit = yield* checkCache.lookup(request)
+        let hit = yield* checkCache.lookup(request)
+        if (hit) transports.push({ transport: "github-api" })
+        // Public Git transport avoids shared unauthenticated API quotas. This is
+        // untrusted data until the HOST verifies the exact-input signature.
+        // The fixed public origin needs no token or credential in the container.
+        if (!hit && measuredIdentity) {
+          const fetched = yield* runner.executor.execute({
+            command: `git fetch --no-tags origin refs/notes/effect-ci-hosted-checks-v1:refs/notes/effect-ci-hosted-checks-v1 >&2 && git rev-parse refs/notes/effect-ci-hosted-checks-v1 && git notes --ref=refs/notes/effect-ci-hosted-checks-v1 show ${revision} | head -c 24577`,
+            workspace: request.workspace, workflowId: request.workflowId, stepId: "proof-note",
+            options: { retries: { limit: 0, delay: "1 second" }, timeout: "30 seconds" }, onOutput() {},
+          }).pipe(Effect.catch(() => Effect.succeed(undefined)))
+          if (fetched) {
+            const [notesCommit, ...lines] = fetched.stdout.split("\n")
+            if (/^[a-f0-9]{40}$/.test(notesCommit!)) {
+              hit = yield* Effect.promise(() => verifyEnrolledCheckEvidence(lines.join("\n"), measuredIdentity!, enrollments))
+              transports.push({ transport: hit ? "public-git" : "miss", notesCommit: notesCommit! })
+            }
+          }
+        }
         lookups.push({ hit, elapsedMs: Date.now() - start })
         return hit
       }) },
     })
     const verification = await step.do("proof:verification", once, async () => ({
-      revision, mode, startedAt, verifiedAt: Date.now(), executions, lookups, identity: measuredIdentity ?? null,
+      revision, mode, startedAt, verifiedAt: Date.now(), executions, lookups, noteReads, transports, identity: measuredIdentity ?? null,
       nodes: result.plan.nodes.map(node => ({ id: node.id, status: node.status })),
       checkReused: result.plan.nodes.find(node => node.id === "worker-tests")?.status === "verified",
     }))
