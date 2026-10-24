@@ -1,0 +1,65 @@
+{
+  "sourceCommit": "781352d83fdd1a8f78f46e993ea4e35678dbe7a7",
+  "run": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40061626649",
+  "runner": "ubuntu-latest",
+  "historyBefore": {
+    "tests/a.test.mjs": 198.266333,
+    "tests/c.test.mjs": 154.58927799999998,
+    "tests/e.test.mjs": 81.631843,
+    "tests/b.test.mjs": 203.11538199999998,
+    "tests/d.test.mjs": 114.85724499999998,
+    "tests/f.test.mjs": 109.13538900000003
+  },
+  "warmShards": [
+    {
+      "index": 0,
+      "total": 2,
+      "results": [
+        {
+          "file": "tests/b.test.mjs",
+          "durationMs": 212.68043899999998,
+          "passed": true
+        },
+        {
+          "file": "tests/d.test.mjs",
+          "durationMs": 127.19137900000001,
+          "passed": true
+        },
+        {
+          "file": "tests/f.test.mjs",
+          "durationMs": 106.013756,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "total": 2,
+      "results": [
+        {
+          "file": "tests/a.test.mjs",
+          "durationMs": 241.724203,
+          "passed": true
+        },
+        {
+          "file": "tests/c.test.mjs",
+          "durationMs": 182.020577,
+          "passed": true
+        },
+        {
+          "file": "tests/e.test.mjs",
+          "durationMs": 104.99086299999999,
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "historyAfter": {
+    "tests/b.test.mjs": 212.68043899999998,
+    "tests/d.test.mjs": 127.19137900000001,
+    "tests/f.test.mjs": 106.013756,
+    "tests/a.test.mjs": 241.724203,
+    "tests/c.test.mjs": 182.020577,
+    "tests/e.test.mjs": 104.99086299999999
+  }
+}

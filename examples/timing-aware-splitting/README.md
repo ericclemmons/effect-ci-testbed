@@ -46,7 +46,8 @@ history intact. Prefix the run command with `FAIL_TEST=a` to demonstrate this.
 
 The [GitHub comparison](./.github/workflows/github.yml) restores prior timings,
 runs the two shard jobs, downloads their reports, then saves the merged history
-in a new cache entry. Hosted runner execution and cache persistence are unverified.
+in a new cache entry. Native runner execution is verified; cross-run cache
+persistence in that standalone comparison remains unverified.
 The local Effect runner shares a filesystem; an isolated snapshot runner would need
 artifact publication and aggregation before recording timings. Cloudflare support
 is unverified. This is a disposable proof, not a general test analytics service.
@@ -68,3 +69,6 @@ Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
 [Effect-on-GitHub caller](./.github/workflows/effect-on-github.yml). The repository’s
 [parallel recipe checks](../../.github/workflows/parallel-recipes.yml) exercise native
 matrix jobs, shard report aggregation, and reuse of measured timing history.
+
+See the [recorded execution evidence](../parallel-recipes-verification.md) for the
+local, native GitHub, and Effect-on-GitHub runs. Cloudflare remains unverified.

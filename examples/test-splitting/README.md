@@ -47,3 +47,6 @@ Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
 [Effect-on-GitHub caller](./.github/workflows/effect-on-github.yml). The repository’s
 [parallel recipe checks](../../.github/workflows/parallel-recipes.yml) exercise native
 matrix jobs, shard report aggregation, and reuse of measured timing history.
+
+See the [recorded execution evidence](../parallel-recipes-verification.md) for the
+local, native GitHub, and Effect-on-GitHub runs. Cloudflare remains unverified.
