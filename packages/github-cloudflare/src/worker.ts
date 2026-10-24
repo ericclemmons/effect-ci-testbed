@@ -66,7 +66,7 @@ export interface WorkerOptions {
   readonly executionHistory?: (input: { readonly revision: string; readonly after?: string },
     environment: WorkerEnvironment, context: ExecutionContext | undefined) => Promise<unknown>
   /** Declaration only; the trusted host must independently enforce each method. */
-  readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity">
+  readonly remoteAuthentication?: ReadonlyArray<"api-token" | "cloudflare-access-identity" | "github-oidc" | "hosted-workload">
   readonly github?: GitHubClient
   /** Explicit signed-push enrollment. Unlike check suites, undefined declines
    * the event: raw pushes never fall through to a default workflow. */

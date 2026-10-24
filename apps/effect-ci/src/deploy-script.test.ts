@@ -53,6 +53,7 @@ if (args[0] === "deploy") process.exit(Number(process.env.FIXTURE_DEPLOY_EXIT ??
       assert.equal(JSON.parse(service.args.at(-1)).policies[1].include[0].service_token.token_id, "fixture-service-id")
       const deployment = recorded.at(-1)
       assert.deepEqual(deployment.secrets, {
+        CLOUDFLARE_ACCOUNT_ID: "fixture-account",
         GITHUB_PRIVATE_KEY: "line one\nline two",
         EFFECT_CI_API_TOKEN: "worker-api-token",
         EFFECT_CI_PUBLIC_URL: "https://ci.example.com",

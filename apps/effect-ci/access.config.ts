@@ -33,6 +33,12 @@ export const accessApplications = (options: {
         }] : []),
       ],
     },
+    oidc: ["token", "revoke", "api"].map((path) => ({
+      name: `Effect CI OIDC ${path}`,
+      type: "self_hosted",
+      domain: `${options.hostname}/${path}`,
+      policies: [{ name: "Signed workload identity", decision: "bypass", include: [{ everyone: {} }] }],
+    })),
     webhook: {
       name: "Effect CI GitHub webhook",
       type: "self_hosted",

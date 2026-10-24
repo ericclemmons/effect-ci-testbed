@@ -49,7 +49,7 @@ if (!Array.isArray(existing)) {
 }
 
 // Install the narrow webhook exception before protecting the entire hostname.
-for (const application of [applications.webhook, ...(applications.slack ? [applications.slack] : []), applications.service]) {
+for (const application of [...applications.oidc, applications.webhook, ...(applications.slack ? [applications.slack] : []), applications.service]) {
   const match = existing.find((entry) => entry.domain === application.domain)
 
   if (match && match.name !== application.name) {
@@ -59,9 +59,10 @@ for (const application of [applications.webhook, ...(applications.slack ? [appli
   if (dryRun) {
     console.log(`Access plan: ${JSON.stringify(application)}`)
   } else {
-    accessCommand(match
+    const configured = accessCommand(match
       ? ["update", match.id, "--body", JSON.stringify(application)]
-      : ["create", "--body", JSON.stringify(application)])
+      : ["create", "--body", JSON.stringify(application)]) as { aud?: string }
+    if (application.domain === applications.service.domain && configured.aud) process.env.EFFECT_CI_ACCESS_AUD = configured.aud
     console.log(`Access configured: ${application.name}`)
   }
 }

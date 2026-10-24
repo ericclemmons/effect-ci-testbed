@@ -1,3 +1,10 @@
+import { accessIdentityVerifier } from "@effect-ci-testbed/github-cloudflare/access-identity";
+import { demoAccessIdentity } from "./demo-access-policy.ts";
+const verifyOperatorIdentity = accessIdentityVerifier(demoAccessIdentity);
+import { operatorRemote, workloadRemote, enrollWorkload } from "./remote-identity.ts";
+import { oidc, repositoryRegistry } from "./oidc.ts";
+import type { OidcEnvironment } from "./oidc-repositories.ts";
+export { TokenLease, OidcRepositories } from "./oidc.ts";
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import repository from "./repository-worker.ts";
 export { RepositoryCIWorkflow } from "./repository-worker.ts";
@@ -58,15 +65,19 @@ const demo = GitHubCloudflare.worker({
   },
 });
 export default {
-  async fetch(request: Request, environment: WorkerEnvironment & RunnerWebhookEnvironment, context: ExecutionContext) {
+  async fetch(request: Request, environment: WorkerEnvironment & RunnerWebhookEnvironment & OidcEnvironment, context: ExecutionContext) {
     const runner = await runnerWebhook(request, environment);
     if (runner) return runner;
     const review = await smallChangeWebhook(request, environment.GITHUB_WEBHOOK_SECRET,
       (context.exports as unknown as { SmallChangeReviewWorkflow: Workflow<{ number: number }> }).SmallChangeReviewWorkflow);
     if (review) return review;
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/api/oidc/repositories" && request.method === "POST") return enrollWorkload(request, environment, repositoryRegistry(context));
+    if (pathname.startsWith("/api/")) return workloadRemote(request, environment, repositoryRegistry(context), (verified, auth) => repository.fetch(verified, { ...environment, ...auth }, context));
+    if (pathname === "/oidc/repositories") return operatorRemote(request, environment, (verified, auth) => oidc(verified, { ...environment, ...auth }, context), verifyOperatorIdentity);
+    if (["/token", "/revoke"].includes(pathname)) return oidc(request, environment, context);
     if (pathname === "/capabilities" || pathname === "/runs" || pathname.startsWith("/runs/")) {
-      return repository.fetch(request, environment, context);
+      return operatorRemote(request, environment, (verified, auth) => repository.fetch(verified, { ...environment, ...auth }, context), verifyOperatorIdentity);
     }
     if (pathname === "/showcase" || pathname.startsWith("/showcase/")) {
       if (!showcaseRouteAllowed(request.url)) return new Response("Not found", { status: 404 });
