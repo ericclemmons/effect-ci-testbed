@@ -1,0 +1,87 @@
+{
+  "serviceVersion": "fb2ebecc-030b-46c3-b205-11c61fb94008",
+  "allowedOwnerId": "15182",
+  "repositoryId": "*",
+  "branch": "codex/oidc-live-proof",
+  "workflowPath": ".github/workflows/oidc-live-proof.yml",
+  "grants": "../wildcard-grants.json",
+  "runs": [
+    {
+      "test": "original deployments",
+      "runId": 40062175207,
+      "sourceRevision": "f95d7938d7df7cbeab9d36b6614eb0ab2d988479",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "deploy (wrangler)",
+          "conclusion": "success"
+        },
+        {
+          "name": "deploy (cf)",
+          "conclusion": "success"
+        }
+      ],
+      "verificationLogLines": [
+        "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:16.1855841Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:16.3100435Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "deploy (wrangler)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:16.3824181Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "deploy (wrangler)\tVerify served response\t2026-10-24T04:24:19.4234282Z Verified https://effect-ci-oidc-wrangler.ericclemmons.workers.dev",
+        "deploy (wrangler)\tPost Run ./.github/actions/configure-cloudflare-credentials\t2026-10-24T04:24:20.0190448Z Temporary Cloudflare token revoked.",
+        "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:21.1010143Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:21.1960048Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "deploy (cf)\tVerify token can read only the intended Worker and cannot list R2 buckets\t2026-10-24T04:24:21.2650060Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "deploy (cf)\tVerify served response\t2026-10-24T04:24:27.2700033Z Verified https://effect-ci-oidc-cf.ericclemmons.workers.dev",
+        "deploy (cf)\tPost Run ./.github/actions/configure-cloudflare-credentials\t2026-10-24T04:24:27.7377172Z Temporary Cloudflare token revoked."
+      ],
+      "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40062175207"
+    },
+    {
+      "test": "second allowed repository",
+      "runId": 40062216913,
+      "sourceRevision": "8ba9c51dff000c1e1edf0111cac957c12e9718e4",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "authenticate (cf)",
+          "conclusion": "success"
+        },
+        {
+          "name": "authenticate (wrangler)",
+          "conclusion": "success"
+        }
+      ],
+      "verificationLogLines": [
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:45.9358965Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:46.0692488Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "authenticate (cf)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:46.1788450Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "authenticate (cf)\tPost Authenticate allowed owner\t2026-10-24T04:24:46.6676511Z Temporary Cloudflare token revoked.",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:59.0159785Z {\"probe\":\"own-worker-source\",\"status\":200,\"expected\":200}",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:59.1526885Z {\"probe\":\"other-worker-source\",\"status\":403,\"expected\":403}",
+        "authenticate (wrangler)\tVerify Worker and R2 permission boundaries\t2026-10-24T04:24:59.2343528Z {\"probe\":\"r2-bucket-list\",\"status\":403,\"expected\":403}",
+        "authenticate (wrangler)\tPost Authenticate allowed owner\t2026-10-24T04:24:59.6662723Z Temporary Cloudflare token revoked."
+      ],
+      "url": "https://github.com/ericclemmons/effect-ci-demo/actions/runs/40062216913"
+    },
+    {
+      "test": "outside-owner rejection",
+      "runId": 40062217575,
+      "sourceRevision": "c9caf50bcb44a8e7fc9f5e2a2af9c3ffbc7208c0",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "authenticate (wrangler)",
+          "conclusion": "success"
+        },
+        {
+          "name": "authenticate (cf)",
+          "conclusion": "success"
+        }
+      ],
+      "verificationLogLines": [
+        "authenticate (wrangler)\tVerify outside owner is rejected at the grant check\t2026-10-24T04:24:40.8631375Z Verified GitHub-signed outside-owner identity was denied at the grant check (403).",
+        "authenticate (cf)\tVerify outside owner is rejected at the grant check\t2026-10-24T04:24:39.6205690Z Verified GitHub-signed outside-owner identity was denied at the grant check (403)."
+      ],
+      "ownerId": "314135"
+    }
+  ]
+}

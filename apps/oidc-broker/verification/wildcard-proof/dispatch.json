@@ -1,0 +1,15 @@
+[
+  {
+    "repository": "ericclemmons/effect-ci-demo",
+    "branch": "codex/oidc-live-proof",
+    "createdBranch": true,
+    "commit": "8ba9c51dff000c1e1edf0111cac957c12e9718e4",
+    "workflowUrl": "https://github.com/ericclemmons/effect-ci-demo/blob/codex/oidc-live-proof/.github/workflows/oidc-live-proof.yml"
+  },
+  {
+    "repository": "outside-owner test repository",
+    "branch": "codex/oidc-live-proof",
+    "createdBranch": true,
+    "commit": "c9caf50bcb44a8e7fc9f5e2a2af9c3ffbc7208c0"
+  }
+]

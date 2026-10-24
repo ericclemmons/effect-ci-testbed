@@ -147,6 +147,23 @@ The broker must accept OIDC-authenticated requests directly; do not add an Acces
 requirement that would reintroduce a GitHub secret. The existing Effect CI service's human
 Access policies stay independent. A future integration can mount this handler in that host.
 
+## Live owner-wildcard proof
+
+The deployed service now allows repositories owned by GitHub owner `15182`
+(`ericclemmons`) using `.github/workflows/oidc-live-proof.yml` on
+`codex/oidc-live-proof`. The [deployed grants](./verification/wildcard-grants.json)
+retain the two existing Worker policies.
+
+[The original deployment workflow](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40062175207)
+passed with both CLIs. [A second owned repository](https://github.com/ericclemmons/effect-ci-demo/actions/runs/40062216913)
+obtained credentials for both Workers, passed own-Worker (200), other-Worker (403),
+and R2 listing (403) probes, then revoked both tokens. A separate repository owned
+by another GitHub account presented real GitHub-signed identities and was denied
+at the grant stage (403) for both Workers. No target deployment was attempted by
+either cross-repository test. The temporary proof branches were removed afterward.
+See the [receipt](./verification/wildcard-proof/live.json) and
+[pinned proof workflow](./verification/wildcard-proof/oidc-live-proof.yml).
+
 ## Local validation and remaining proof
 
 ```sh
