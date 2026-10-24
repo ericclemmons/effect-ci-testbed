@@ -1,8 +1,10 @@
-import { readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 
 const paths = process.argv.slice(2)
 if (paths.length === 0) throw new Error("Supply the reports from one complete run")
-const reports = paths.map((path) => JSON.parse(readFileSync(path, "utf8")))
+const reports = paths[0] === "--reports-json"
+  ? JSON.parse(paths[1])
+  : paths.map((path) => JSON.parse(readFileSync(path, "utf8")))
 const total = reports[0].total
 if (reports.length !== total || reports.some((report) => report.total !== total) ||
     new Set(reports.map((report) => report.index)).size !== total ||
@@ -19,5 +21,10 @@ for (const report of reports) {
     timings[result.file] = result.durationMs
   }
 }
+const candidates = readdirSync("tests").filter((file) => file.endsWith(".test.mjs")).map((file) => `tests/${file}`).sort()
+if (JSON.stringify(Object.keys(timings).sort()) !== JSON.stringify(candidates)) throw new Error("Incomplete test coverage")
+// Local tools and hosted joins retain the same reports for inspection.
+mkdirSync("reports", { recursive: true })
+for (const report of reports) writeFileSync(`reports/shard-${report.index}.json`, JSON.stringify(report, null, 2) + "\n")
 writeFileSync("timings.json", JSON.stringify(timings, null, 2) + "\n")
 console.log(`Recorded timings for ${Object.keys(timings).length} files`)

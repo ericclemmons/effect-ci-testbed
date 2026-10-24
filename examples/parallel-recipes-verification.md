@@ -26,6 +26,32 @@ under `act`; native GitHub runners already provide separate filesystems.
 Local verification on macOS with Node 24.22.1 included all ten recipe assertions,
 all three real CLI entrypoints, intentional CLI failures, cold/warm timing assignment
 checks, preservation of history after failure, and the repository-wide `pnpm check`.
-Cloudflare execution and per-file JUnit ingestion are outside this proof. The GitHub
+Per-file JUnit ingestion is outside this proof. The GitHub
 warm run transfers history through a workflow artifact; cross-run cache restoration
 in the standalone comparison is a separate path.
+
+## Hosted Cloudflare
+
+All three standalone wrappers were deployed and executed in a real Cloudflare account
+against source `98a3452d3ff55dc0980b3331df13b55dacd2655a`. The
+[manifest](./parallel-recipes-proof/cloudflare/manifest.json) records deployment
+versions, instance IDs, the Container image digest, and assertion results. The raw
+Workflow receipts are stored beside it.
+
+| Instance | Observed outcome |
+| --- | --- |
+| `matrix-20261024-2` | All four locale/currency actions complete in isolated Containers. |
+| `splitting-20261024-1` | Both shards pass, and the isolated join verifies all six candidates exactly once. |
+| `timing-cold-20261024-1` | Empty prior history, six passing files, merged history checkpointed and cached. |
+| `timing-warm-20261024-1` | A separate instance materializes the cache; both reports contain exactly the cold run's measured durations, and assignments match the timing splitter. |
+
+Replay the recorded assertions from the repository root:
+
+```sh
+node scripts/assert-cloudflare-parallel.mjs
+```
+
+These are hosted Workflows/Container runs, not local Miniflare runs. The fixtures
+have deliberate delays and do not establish a speedup benchmark. A preliminary
+matrix instance used an abbreviated Git SHA, which source fetching rejected; it was
+terminated and replaced by the successful full-SHA instance above.

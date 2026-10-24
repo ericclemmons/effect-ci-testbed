@@ -1,0 +1,287 @@
+{
+  "id": "splitting-20261024-1",
+  "params": {
+    "repository": "https://github.com/ericclemmons/effect-ci-testbed.git",
+    "revision": "98a3452d3ff55dc0980b3331df13b55dacd2655a"
+  },
+  "trigger": {
+    "source": "api"
+  },
+  "versionId": "1f849463-449c-43d1-95f9-c450de49ee1f",
+  "queued": "2026-10-24T17:28:07.975Z",
+  "start": "2026-10-24T17:28:13.697Z",
+  "end": "2026-10-24T17:28:32.025Z",
+  "success": true,
+  "error": null,
+  "output": {
+    "workflowId": "test-splitting",
+    "environment": "cloudflare",
+    "mode": "execute",
+    "nodes": [
+      {
+        "id": "checkout",
+        "after": [],
+        "dependencies": [],
+        "commands": [],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test shard 0/2",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/run-shard.mjs 0 2",
+            "cwd": "/workspace/repository/examples/test-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test shard 1/2",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/run-shard.mjs 1 2",
+            "cwd": "/workspace/repository/examples/test-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "verify shard reports",
+        "after": [],
+        "dependencies": [
+          "checkout",
+          "test shard 0/2",
+          "test shard 1/2"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/verify-reports.mjs '[{\"index\":0,\"total\":2,\"results\":[{\"file\":\"tests/a.test.mjs\",\"durationMs\":428.11622800000004,\"passed\":true},{\"file\":\"tests/c.test.mjs\",\"durationMs\":311.40055599999994,\"passed\":true},{\"file\":\"tests/e.test.mjs\",\"durationMs\":213.36165399999993,\"passed\":true}]},{\"index\":1,\"total\":2,\"results\":[{\"file\":\"tests/b.test.mjs\",\"durationMs\":496.119103,\"passed\":true},{\"file\":\"tests/d.test.mjs\",\"durationMs\":293.9848200000001,\"passed\":true},{\"file\":\"tests/f.test.mjs\",\"durationMs\":285.88949300000013,\"passed\":true}]}]'",
+            "cwd": "/workspace/repository/examples/test-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      }
+    ]
+  },
+  "rollback": null,
+  "status": "complete",
+  "step_count": 8,
+  "steps": [
+    {
+      "name": "checkout-1",
+      "start": "2026-10-24T17:28:13.980Z",
+      "end": "2026-10-24T17:28:22.452Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:13.980Z",
+          "end": "2026-10-24T17:28:22.452Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "checkout:commit-1",
+      "start": "2026-10-24T17:28:22.469Z",
+      "end": "2026-10-24T17:28:25.431Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:22.469Z",
+          "end": "2026-10-24T17:28:25.431Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"ab51a7d4-abbf-4791-899c-f9afe686aa85\",\"name\":\"checkout-workspace\",\"size\":9486347}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test shard 1/2\",1]-1",
+      "start": "2026-10-24T17:28:25.521Z",
+      "end": "2026-10-24T17:28:27.827Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:25.521Z",
+          "end": "2026-10-24T17:28:27.827Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"TAP version 13\\n# Subtest: case b\\nok 1 - case b\\n  ---\\n  duration_ms: 102.973198\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 359.446053\\nTAP version 13\\n# Subtest: case d\\nok 1 - case d\\n  ---\\n  duration_ms: 23.740333\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 202.170543\\nTAP version 13\\n# Subtest: case f\\nok 1 - case f\\n  ---\\n  duration_ms: 14.380784\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 195.555096\\nSHARD 1/2: tests/b.test.mjs, tests/d.test.mjs, tests/f.test.mjs\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test shard 0/2\",1]-1",
+      "start": "2026-10-24T17:28:25.521Z",
+      "end": "2026-10-24T17:28:27.369Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:25.521Z",
+          "end": "2026-10-24T17:28:27.369Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"TAP version 13\\n# Subtest: case a\\nok 1 - case a\\n  ---\\n  duration_ms: 122.985477\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 308.627675\\nTAP version 13\\n# Subtest: case c\\nok 1 - case c\\n  ---\\n  duration_ms: 81.846678\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 219.47843\\nTAP version 13\\n# Subtest: case e\\nok 1 - case e\\n  ---\\n  duration_ms: 12.374921\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 141.142765\\nSHARD 0/2: tests/a.test.mjs, tests/c.test.mjs, tests/e.test.mjs\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "file:[\"test shard 0/2\",1,\"read\"]-1",
+      "start": "2026-10-24T17:28:27.388Z",
+      "end": "2026-10-24T17:28:27.455Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:27.388Z",
+          "end": "2026-10-24T17:28:27.455Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\n  \"index\": 0,\n  \"total\": 2,\n  \"results\": [\n    {\n      \"file\": \"tests/a.test.mjs\",\n      \"durationMs\": 428.11622800000004,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/c.test.mjs\",\n      \"durationMs\": 311.40055599999994,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/e.test.mjs\",\n      \"durationMs\": 213.36165399999993,\n      \"passed\": true\n    }\n  ]\n}\n",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "file:[\"test shard 1/2\",1,\"read\"]-1",
+      "start": "2026-10-24T17:28:27.845Z",
+      "end": "2026-10-24T17:28:27.893Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:27.845Z",
+          "end": "2026-10-24T17:28:27.893Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\n  \"index\": 1,\n  \"total\": 2,\n  \"results\": [\n    {\n      \"file\": \"tests/b.test.mjs\",\n      \"durationMs\": 496.119103,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/d.test.mjs\",\n      \"durationMs\": 293.9848200000001,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/f.test.mjs\",\n      \"durationMs\": 285.88949300000013,\n      \"passed\": true\n    }\n  ]\n}\n",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"verify shard reports\",1]-1",
+      "start": "2026-10-24T17:28:27.910Z",
+      "end": "2026-10-24T17:28:28.819Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:27.910Z",
+          "end": "2026-10-24T17:28:28.819Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"Verified 6 tests exactly once across two isolated shards\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "verify shard reports:commit-1",
+      "start": "2026-10-24T17:28:28.837Z",
+      "end": "2026-10-24T17:28:32.007Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:28.837Z",
+          "end": "2026-10-24T17:28:32.007Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"52351689-df37-4593-9f6f-5850008a4b37\",\"name\":\"verify shard reports-workspace\",\"size\":5453}",
+      "success": true,
+      "type": "step"
+    }
+  ]
+}

@@ -1,0 +1,255 @@
+{
+  "id": "matrix-20261024-2",
+  "params": {
+    "repository": "https://github.com/ericclemmons/effect-ci-testbed.git",
+    "revision": "98a3452d3ff55dc0980b3331df13b55dacd2655a"
+  },
+  "trigger": {
+    "source": "api"
+  },
+  "versionId": "5ef14168-ae53-489a-b591-4402d27e4d5e",
+  "queued": "2026-10-24T17:28:09.176Z",
+  "start": "2026-10-24T17:28:11.512Z",
+  "end": "2026-10-24T17:28:18.231Z",
+  "success": true,
+  "error": null,
+  "output": {
+    "workflowId": "matrix",
+    "environment": "cloudflare",
+    "mode": "execute",
+    "nodes": [
+      {
+        "id": "checkout",
+        "after": [],
+        "dependencies": [],
+        "commands": [],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test de-DE EUR",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node verify.mjs de-DE EUR",
+            "cwd": "/workspace/repository/examples/matrix/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test de-DE USD",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node verify.mjs de-DE USD",
+            "cwd": "/workspace/repository/examples/matrix/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test en-US EUR",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node verify.mjs en-US EUR",
+            "cwd": "/workspace/repository/examples/matrix/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test en-US USD",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node verify.mjs en-US USD",
+            "cwd": "/workspace/repository/examples/matrix/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      }
+    ]
+  },
+  "rollback": null,
+  "status": "complete",
+  "step_count": 6,
+  "steps": [
+    {
+      "name": "checkout-1",
+      "start": "2026-10-24T17:28:11.752Z",
+      "end": "2026-10-24T17:28:13.996Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:11.752Z",
+          "end": "2026-10-24T17:28:13.996Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "checkout:commit-1",
+      "start": "2026-10-24T17:28:14.016Z",
+      "end": "2026-10-24T17:28:17.183Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:14.016Z",
+          "end": "2026-10-24T17:28:17.183Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"717457ac-06af-456e-b162-2827cd7dc4f1\",\"name\":\"checkout-workspace\",\"size\":9487087}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test en-US EUR\",1]-1",
+      "start": "2026-10-24T17:28:17.203Z",
+      "end": "2026-10-24T17:28:18.212Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:17.203Z",
+          "end": "2026-10-24T17:28:18.212Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"PASS en-US EUR\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test de-DE USD\",1]-1",
+      "start": "2026-10-24T17:28:17.203Z",
+      "end": "2026-10-24T17:28:18.201Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:17.203Z",
+          "end": "2026-10-24T17:28:18.201Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"PASS de-DE USD\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test de-DE EUR\",1]-1",
+      "start": "2026-10-24T17:28:17.203Z",
+      "end": "2026-10-24T17:28:17.829Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:17.203Z",
+          "end": "2026-10-24T17:28:17.829Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"PASS de-DE EUR\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test en-US USD\",1]-1",
+      "start": "2026-10-24T17:28:17.203Z",
+      "end": "2026-10-24T17:28:18.210Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:28:17.203Z",
+          "end": "2026-10-24T17:28:18.210Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"PASS en-US USD\\n\"}",
+      "success": true,
+      "type": "step"
+    }
+  ]
+}
