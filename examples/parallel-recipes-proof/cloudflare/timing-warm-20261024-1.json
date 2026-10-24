@@ -1,0 +1,431 @@
+{
+  "id": "timing-warm-20261024-1",
+  "params": {
+    "repository": "https://github.com/ericclemmons/effect-ci-testbed.git",
+    "revision": "98a3452d3ff55dc0980b3331df13b55dacd2655a"
+  },
+  "trigger": {
+    "source": "api"
+  },
+  "versionId": "2ebc68ba-08d7-4259-ad06-1caa501f5183",
+  "queued": "2026-10-24T17:29:36.857Z",
+  "start": "2026-10-24T17:29:40.854Z",
+  "end": "2026-10-24T17:29:57.077Z",
+  "success": true,
+  "error": null,
+  "output": {
+    "workflowId": "timing-aware-splitting",
+    "environment": "cloudflare",
+    "mode": "execute",
+    "nodes": [
+      {
+        "id": "checkout",
+        "after": [],
+        "dependencies": [],
+        "commands": [],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test shard 0/2",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/run-shard.mjs 0 2",
+            "cwd": "/workspace/repository/examples/timing-aware-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "test shard 1/2",
+        "after": [],
+        "dependencies": [
+          "checkout"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/run-shard.mjs 1 2",
+            "cwd": "/workspace/repository/examples/timing-aware-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      },
+      {
+        "id": "record timings",
+        "after": [],
+        "dependencies": [
+          "checkout",
+          "test shard 0/2",
+          "test shard 1/2"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/update-history.mjs --reports-json '[{\"index\":0,\"total\":2,\"history\":{\"tests/a.test.mjs\":422.15920100000005,\"tests/c.test.mjs\":327.841507,\"tests/e.test.mjs\":275.8948509999999,\"tests/b.test.mjs\":343.370254,\"tests/d.test.mjs\":194.46603300000004,\"tests/f.test.mjs\":196.84416399999998},\"results\":[{\"file\":\"tests/a.test.mjs\",\"durationMs\":376.91726000000006,\"passed\":true},{\"file\":\"tests/e.test.mjs\",\"durationMs\":220.62026500000002,\"passed\":true},{\"file\":\"tests/d.test.mjs\",\"durationMs\":220.61655499999995,\"passed\":true}]},{\"index\":1,\"total\":2,\"history\":{\"tests/a.test.mjs\":422.15920100000005,\"tests/c.test.mjs\":327.841507,\"tests/e.test.mjs\":275.8948509999999,\"tests/b.test.mjs\":343.370254,\"tests/d.test.mjs\":194.46603300000004,\"tests/f.test.mjs\":196.84416399999998},\"results\":[{\"file\":\"tests/b.test.mjs\",\"durationMs\":345.95612499999993,\"passed\":true},{\"file\":\"tests/c.test.mjs\",\"durationMs\":260.444615,\"passed\":true},{\"file\":\"tests/f.test.mjs\",\"durationMs\":195.449293,\"passed\":true}]}]'",
+            "cwd": "/workspace/repository/examples/timing-aware-splitting/app"
+          }
+        ],
+        "artifacts": [],
+        "optional": false,
+        "options": {},
+        "secrets": [],
+        "status": "complete"
+      }
+    ]
+  },
+  "rollback": null,
+  "status": "complete",
+  "step_count": 14,
+  "steps": [
+    {
+      "name": "workspace-cache:source-1",
+      "start": "2026-10-24T17:29:41.095Z",
+      "end": "2026-10-24T17:29:43.969Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:41.095Z",
+          "end": "2026-10-24T17:29:43.969Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "workspace-cache:identity-1",
+      "start": "2026-10-24T17:29:43.988Z",
+      "end": "2026-10-24T17:29:44.036Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:43.988Z",
+          "end": "2026-10-24T17:29:44.036Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "cache:v3:8e51aa3ee8cf438b948ae1968747d331505c65b193153a805204d6e5ddb5e7ea",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "workspace-cache:restore-1",
+      "start": "2026-10-24T17:29:44.056Z",
+      "end": "2026-10-24T17:29:44.084Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:44.056Z",
+          "end": "2026-10-24T17:29:44.084Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"e0e814d8-2111-416b-86b1-7282144eb93f\",\"name\":\"record timings-workspace\",\"size\":6311}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "workspace-cache:materialize-1",
+      "start": "2026-10-24T17:29:44.104Z",
+      "end": "2026-10-24T17:29:44.227Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:44.104Z",
+          "end": "2026-10-24T17:29:44.227Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "checkout-1",
+      "start": "2026-10-24T17:29:44.248Z",
+      "end": "2026-10-24T17:29:46.737Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:44.248Z",
+          "end": "2026-10-24T17:29:46.737Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "checkout:commit-1",
+      "start": "2026-10-24T17:29:46.756Z",
+      "end": "2026-10-24T17:29:50.850Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:46.756Z",
+          "end": "2026-10-24T17:29:50.850Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"1729e418-0836-4d6f-bcac-410724616952\",\"name\":\"checkout-workspace\",\"size\":4124241}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "checkout:cache-1",
+      "start": "2026-10-24T17:29:50.869Z",
+      "end": "2026-10-24T17:29:50.949Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:50.869Z",
+          "end": "2026-10-24T17:29:50.949Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test shard 1/2\",1]-1",
+      "start": "2026-10-24T17:29:50.969Z",
+      "end": "2026-10-24T17:29:52.619Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:50.969Z",
+          "end": "2026-10-24T17:29:52.619Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"TAP version 13\\n# Subtest: case b\\nok 1 - case b\\n  ---\\n  duration_ms: 101.651258\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 255.483492\\nTAP version 13\\n# Subtest: case c\\nok 1 - case c\\n  ---\\n  duration_ms: 82.083229\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 200.040715\\nTAP version 13\\n# Subtest: case f\\nok 1 - case f\\n  ---\\n  duration_ms: 12.910296\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 131.770403\\nSHARD 1/2: tests/b.test.mjs, tests/c.test.mjs, tests/f.test.mjs\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"test shard 0/2\",1]-1",
+      "start": "2026-10-24T17:29:50.969Z",
+      "end": "2026-10-24T17:29:52.872Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:50.969Z",
+          "end": "2026-10-24T17:29:52.872Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"TAP version 13\\n# Subtest: case a\\nok 1 - case a\\n  ---\\n  duration_ms: 122.216669\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 281.838385\\nTAP version 13\\n# Subtest: case e\\nok 1 - case e\\n  ---\\n  duration_ms: 12.445636\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 150.246011\\nTAP version 13\\n# Subtest: case d\\nok 1 - case d\\n  ---\\n  duration_ms: 22.384681\\n  type: 'test'\\n  ...\\n1..1\\n# tests 1\\n# suites 0\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 152.830123\\nSHARD 0/2: tests/a.test.mjs, tests/e.test.mjs, tests/d.test.mjs\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "file:[\"test shard 1/2\",1,\"read\"]-1",
+      "start": "2026-10-24T17:29:52.640Z",
+      "end": "2026-10-24T17:29:52.685Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:52.640Z",
+          "end": "2026-10-24T17:29:52.685Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\n  \"index\": 1,\n  \"total\": 2,\n  \"history\": {\n    \"tests/a.test.mjs\": 422.15920100000005,\n    \"tests/c.test.mjs\": 327.841507,\n    \"tests/e.test.mjs\": 275.8948509999999,\n    \"tests/b.test.mjs\": 343.370254,\n    \"tests/d.test.mjs\": 194.46603300000004,\n    \"tests/f.test.mjs\": 196.84416399999998\n  },\n  \"results\": [\n    {\n      \"file\": \"tests/b.test.mjs\",\n      \"durationMs\": 345.95612499999993,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/c.test.mjs\",\n      \"durationMs\": 260.444615,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/f.test.mjs\",\n      \"durationMs\": 195.449293,\n      \"passed\": true\n    }\n  ]\n}\n",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "file:[\"test shard 0/2\",1,\"read\"]-1",
+      "start": "2026-10-24T17:29:52.893Z",
+      "end": "2026-10-24T17:29:52.936Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:52.893Z",
+          "end": "2026-10-24T17:29:52.936Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\n  \"index\": 0,\n  \"total\": 2,\n  \"history\": {\n    \"tests/a.test.mjs\": 422.15920100000005,\n    \"tests/c.test.mjs\": 327.841507,\n    \"tests/e.test.mjs\": 275.8948509999999,\n    \"tests/b.test.mjs\": 343.370254,\n    \"tests/d.test.mjs\": 194.46603300000004,\n    \"tests/f.test.mjs\": 196.84416399999998\n  },\n  \"results\": [\n    {\n      \"file\": \"tests/a.test.mjs\",\n      \"durationMs\": 376.91726000000006,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/e.test.mjs\",\n      \"durationMs\": 220.62026500000002,\n      \"passed\": true\n    },\n    {\n      \"file\": \"tests/d.test.mjs\",\n      \"durationMs\": 220.61655499999995,\n      \"passed\": true\n    }\n  ]\n}\n",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "command:[\"record timings\",1]-1",
+      "start": "2026-10-24T17:29:52.957Z",
+      "end": "2026-10-24T17:29:53.965Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:52.957Z",
+          "end": "2026-10-24T17:29:53.965Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 0,
+          "delay": 0,
+          "backoff": "constant"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"exitCode\":0,\"stderr\":\"\",\"stdout\":\"Recorded timings for 6 files\\n\"}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "record timings:commit-1",
+      "start": "2026-10-24T17:29:53.983Z",
+      "end": "2026-10-24T17:29:56.992Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:53.983Z",
+          "end": "2026-10-24T17:29:56.992Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"id\":\"a755590b-b66a-4eee-b4f2-b727655490fd\",\"name\":\"record timings-workspace\",\"size\":7148}",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "record timings:cache-1",
+      "start": "2026-10-24T17:29:57.014Z",
+      "end": "2026-10-24T17:29:57.057Z",
+      "attempts": [
+        {
+          "start": "2026-10-24T17:29:57.014Z",
+          "end": "2026-10-24T17:29:57.057Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": null,
+      "success": true,
+      "type": "step"
+    }
+  ]
+}

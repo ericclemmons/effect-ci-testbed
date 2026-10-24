@@ -53,7 +53,7 @@ Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
 matrix jobs, shard report aggregation, and reuse of measured timing history.
 
 See the [recorded execution evidence](../parallel-recipes-verification.md) for the
-local, native GitHub, and Effect-on-GitHub runs. The standalone Cloudflare wrapper is exercised separately from the local runner.
+local, native GitHub, and Effect-on-GitHub runs. Hosted Cloudflare runs are included in that evidence.
 
 ## Run on Cloudflare
 
