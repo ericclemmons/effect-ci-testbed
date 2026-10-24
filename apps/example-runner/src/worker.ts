@@ -1,5 +1,6 @@
 import * as Cloudflare from "@effect-ci-testbed/cloudflare"
 import * as CI from "@effect-ci-testbed/ci"
+export { FlywheelWorkflow } from "./flywheel-workflow.ts"
 import { readSourceManifest } from "./source-manifest.ts"
 import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts"
 import retry from "../../../examples/retry/.cloudflare/ci/workflow.ts"
