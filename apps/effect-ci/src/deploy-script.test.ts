@@ -60,6 +60,15 @@ if (args[0] === "deploy") process.exit(Number(process.env.FIXTURE_DEPLOY_EXIT ??
       })
       assert.equal(existsSync(deployment.args[deployment.args.indexOf("--secrets-file") + 1]), false)
     }
+    writeFileSync(calls, "")
+    const invalid = spawnSync(process.execPath, [`--env-file=${production}`,
+      new URL("../scripts/deploy.ts", import.meta.url).pathname, "--prebuilt"], {
+      cwd: directory, encoding: "utf8",
+      env: { PATH: process.env.PATH, CF_BIN: cli, EFFECT_CI_OIDC_SCOPES: "invalid-json" },
+    })
+    assert.equal(invalid.status, 1)
+    assert.match(invalid.stderr, /EFFECT_CI_OIDC_SCOPES must contain valid JSON/)
+    assert.equal(readFileSync(calls, "utf8"), "", "invalid OIDC configuration must fail before changing Access or deploying")
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

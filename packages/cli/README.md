@@ -28,7 +28,7 @@ in the shared app. Project enrollment cannot grant itself arbitrary permissions.
 
 [OIDC command](./src/oidc.ts#symbol=runOidc "source")
 
-[Hosted service configuration](../../apps/effect-ci/README.md#enable-repository-deployment-with-oidc)
+[Hosted service configuration](../../apps/effect-ci/README.md#unified-cli-and-workload-identity)
 
 
 ## Identity for remote execution

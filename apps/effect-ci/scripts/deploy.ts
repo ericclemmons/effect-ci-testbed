@@ -17,6 +17,11 @@ if (!origin || !process.env.CLOUDFLARE_ACCOUNT_ID) {
   throw new Error("Set EFFECT_CI_PUBLIC_URL and CLOUDFLARE_ACCOUNT_ID before deployment")
 }
 
+if (process.env.EFFECT_CI_OIDC_SCOPES) {
+  try { JSON.parse(process.env.EFFECT_CI_OIDC_SCOPES) }
+  catch { throw new Error("EFFECT_CI_OIDC_SCOPES must contain valid JSON; use single quotes around JSON in env files") }
+}
+
 const applications = accessApplications({
   hostname: new URL(origin).hostname,
   reviewers,
