@@ -1,0 +1,11 @@
+{
+  "provider": "Cloudflare Workers Builds",
+  "worker": "effect-ci-docs",
+  "url": "https://effect-ci-docs.ericclemmons.workers.dev",
+  "triggerId": "ab986d60-7ebd-46d5-83d0-cccb6b76d81d",
+  "branch": "main",
+  "rootDirectory": "/",
+  "buildCommand": "pnpm docs:build",
+  "deployCommand": "pnpm --filter @effect-ci-testbed/docs exec cf deploy --prebuilt",
+  "environment": { "NODE_VERSION": "24", "PNPM_VERSION": "12.8.1" }
+}

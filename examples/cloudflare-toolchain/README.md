@@ -6,10 +6,7 @@ The [prepare action](./.cloudflare/ci/actions.ts) installs Python and pip throug
 `CI.PackageManager.Apt`, then installs pinned Python build tools. The build
 consumes the prepared workspace:
 
-```ts
-const workspace = yield* preparePython()
-return yield* workspace.exec("python3 -m build --no-isolation")
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
 
 ## Run it on Cloudflare
 

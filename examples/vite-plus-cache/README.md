@@ -2,9 +2,7 @@
 
 Reuse build output without maintaining input and output globs.
 
-```ts
-return yield* workspace.exec("cd app && npx vp run --cache build")
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
 
 Vite+ observes the task's file reads and writes. A matching run restores output
 and skips the command. Effect CI only preserves the task cache between runs.

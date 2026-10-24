@@ -2,16 +2,7 @@
 
 Keep cache storage policy out of the actions that do the work.
 
-```ts
-Cloudflare.workflowEntrypoint(workflow, {
-  cache: {
-    key: "custom-build-cache",
-    keyFiles: ["examples/cache-policy/app/src/input.txt"],
-    paths: ["examples/cache-policy/app/.cache/build"],
-  },
-  root: "examples/cache-policy",
-})
-```
+[Source](./src/worker.ts#symbol=EffectCIWorkflow "source")
 
 Pass `cache: false` to disable it. The GitHub adapter maps the equivalent policy
 to `actions/cache`; Cloudflare preserves the selected paths through snapshots.

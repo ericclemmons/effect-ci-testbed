@@ -4,12 +4,7 @@ Run checkout, install, and build as durable actions without handling snapshot ID
 
 An action returns its updated workspace:
 
-```ts
-export const build = CI.action("build", () => function* () {
-  const workspace = yield* install()
-  return yield* workspace.exec("npm run build")
-})
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
 
 The Cloudflare runner checkpoints that workspace and restores it after suspension
 or container eviction. This example disables live reuse so every consumer restores

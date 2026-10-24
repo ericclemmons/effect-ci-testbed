@@ -2,9 +2,7 @@
 
 Give a transient failure another chance, with a bounded delay.
 
-```ts
-{ retries: { limit: 1, delay: "1 second" } }
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=flaky "source")
 
 ## Run it
 

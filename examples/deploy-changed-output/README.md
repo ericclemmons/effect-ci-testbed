@@ -3,10 +3,7 @@
 A shared package changed, but the app did not. Should it deploy?
 Compare the rebuilt output, not just the app's source files.
 
-```ts
-const workspace = yield* build()
-if (yield* workspace.changed("dist/**")) yield* deploy()
-```
+[Source](./.cloudflare/ci/workflow.ts#symbol=default "source")
 
 ## Try it
 

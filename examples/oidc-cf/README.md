@@ -32,15 +32,7 @@ Broker grants permit exact workflows and branches; a fork needs its own setup.
 4. Dispatch the copied workflow. For a different repository, adjust its working
    directory and use the authentication action at a reviewed commit SHA.
 
-```yaml
-# The job also needs permissions: id-token: write and contents: read.
-- uses: ./.github/actions/cloudflare-auth
-  with:
-    broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
-    worker: effect-ci-oidc-cf
-    scopes: workers:edit
-- run: pnpm --dir examples/oidc-cf run deploy
-```
+[Source](./.github/actions/deploy/action.yml "source")
 
 Custom scopes must first be authorized in the broker's allowlist. Requested scopes
 are a subset, never an instruction to grant more authority. R2 is not included.

@@ -3,9 +3,7 @@
 Declare the credential an action needs without putting its value into plans,
 logs, or command environments.
 
-```ts
-const token = yield* CI.Secret("GITHUB_TOKEN")
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=authenticate "source")
 
 The runner resolves a redacted value. Consume it through a trusted host-side
 capability—not by interpolating it into a shell command.

@@ -2,11 +2,7 @@
 
 Start a new attempt without erasing the failed run or repeating unrelated work.
 
-```ts
-const next = await CI.runPromise(workflow, {
-  rerun: { previous: failedAttempt, steps: ["test"] },
-})
-```
+[Source](./.cloudflare/ci/tests/immutable-attempts.test.ts#symbol=second "source")
 
 Rerunning test also reruns build, which consumes it. Checkout, install, lint,
 and format reuse their previous outputs. The original attempt stays unchanged.

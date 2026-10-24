@@ -2,10 +2,7 @@
 
 Use the Node and Python versions already declared in [mise.toml](./mise.toml).
 
-```ts
-const mise = yield* CI.Toolchain.Mise(workspace)
-return yield* mise.install()
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=installToolchain "source")
 
 Later commands use `mise.exec(...)`, so no shell activation is needed.
 Tool downloads live under `.effect-ci/cache/mise`.

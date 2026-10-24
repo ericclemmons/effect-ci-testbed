@@ -63,6 +63,8 @@ adoption step for its own app, with separate Worker enrollment.
 
 ## 3. Existing scripts become CI
 
+[Package scripts](./package.json#json=scripts "source")
+
 Link the unpublished CLI and SDK from your Effect CI checkout. Replace the paths:
 
 ```sh
@@ -132,11 +134,7 @@ pnpm exec cf-ci run
 
 The [workflow](./tutorial/workflow.ts) uses ordinary TypeScript:
 
-```ts
-yield * CI.parallel([lint(), test()]);
-const workspace = yield * build();
-if (yield * workspace.changed("dist/**")) yield * deploy();
-```
+[Source](./tutorial/program.ts#symbol=createDemoProgram.build "source")
 
 Actions declare their prerequisites; shared actions run once. Parallel work is
 explicit, rather than an automatic reordering of arbitrary JavaScript.
@@ -150,11 +148,7 @@ On a branch, commit a README edit and run the workflow. The supplied lint action
 can skip it. Commit a change to `packages/greeting/message.ts` and run again:
 lint runs, and the app consumes the changed shared package.
 
-```ts
-if (yield * source.changed(["**/*.ts", "package.json", "pnpm-lock.yaml"])) {
-  yield * workspace.exec("pnpm lint");
-}
-```
+[Source](./tutorial/program.ts#symbol=createDemoProgram.lint "source")
 
 Missing comparison information runs the check conservatively. The change rule
 belongs to your workflow, not a separately maintained path-filter configuration.
@@ -257,11 +251,7 @@ Those connections belong to the host setup.
 Adjust the GitHub approval policy dynamically. Here, arbitrarily call a change
 safe when no TypeScript, TSX, or JSON files changed:
 
-```ts
-if (!(yield * source.changed("**/*.(ts|tsx|json)"))) {
-  yield * approve();
-}
-```
+[Source](../small-change/workflow.ts#symbol=approveSmallChanges "source")
 
 That's the entire workflow decision. No `review()` fallback: normal GitHub review
 is already the default. A safe change gets approval so its author or agent can
