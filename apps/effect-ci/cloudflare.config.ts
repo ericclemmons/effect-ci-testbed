@@ -14,6 +14,7 @@ const workspace = defineContainer({
     ci: { dockerfile: "./Dockerfile.ci" },
     "trusted-demo": { dockerfile: "./Dockerfile.trusted-demo" },
     showcase: { dockerfile: "./Dockerfile.showcase" },
+    repository: { dockerfile: "./Dockerfile.standalone" },
   },
 });
 
@@ -28,6 +29,7 @@ const demo = defineConfig({
       StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       ShowcaseCIWorkflow: exports.workflow({ name: "effect-ci-showcase" }),
+      RepositoryCIWorkflow: exports.workflow({ name: "effect-ci-repository" }),
       TrustedDemoChecks: exports.durableObject({ storage: "sqlite" }),
       SmallChangeReviews: exports.durableObject({ storage: "sqlite" }),
       SmallChangeReviewWorkflow: exports.workflow({ name: "effect-ci-small-change-review" }),

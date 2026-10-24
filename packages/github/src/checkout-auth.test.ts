@@ -11,6 +11,22 @@ const { privateKey } = generateKeyPairSync("rsa", {
 const credentials = { appId: "1234", privateKey };
 const repository = "https://github.com/acme/private.git";
 
+test("checkout accepts opaque installation tokens without assuming a short fixed format", async () => {
+  const token = "fixture." + "a".repeat(512) + "_-~+/=";
+  let revoked = false;
+  await withRepositoryCheckoutToken(credentials, repository, async (received) => {
+    assert.equal(received, token);
+  }, async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    if (path.endsWith("/installation")) return Response.json({ id: 101, app_id: 1234 });
+    if (path.endsWith("/access_tokens")) return Response.json({ token, permissions: { contents: "read" } }, { status: 201 });
+    assert.equal(new Headers(init?.headers).get("authorization"), `Bearer ${token}`);
+    revoked = true;
+    return new Response(null, { status: 204 });
+  });
+  assert.equal(revoked, true);
+});
+
 test("remote checkout resolves the host App installation, restricts one repo and revokes before returning", async () => {
   const events: string[] = [];
   const request: typeof fetch = async (url, init) => {

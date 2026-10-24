@@ -67,7 +67,7 @@ for (const application of [applications.webhook, ...(applications.slack ? [appli
 }
 
 if (!process.argv.includes("--access-only")) {
-  if (process.env.EFFECT_CI_PROFILE === "standalone" && !process.argv.includes("--prebuilt")) prepareStandaloneRuntime()
+  if (!process.argv.includes("--prebuilt")) prepareStandaloneRuntime()
   const args = process.argv.slice(2).filter((argument) => argument !== "--")
   // Upload only documented Worker secrets, never operator Access/API credentials.
   const secretNames = [...readFileSync(new URL("../secrets.example.env", import.meta.url), "utf8")

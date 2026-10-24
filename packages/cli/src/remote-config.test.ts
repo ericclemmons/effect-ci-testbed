@@ -15,10 +15,8 @@ test("fresh project loads its endpoint but never credentials or arbitrary enviro
     const project = readProjectRemote(root)
     assert.deepEqual(resolveRemote({}, undefined, project), { url: "https://local.example/demo", token: undefined })
     assert.deepEqual(resolveRemote({ EFFECT_CI_REMOTE_URL: "https://other.example" }, undefined, project), { url: "https://other.example", token: undefined })
-    writeFileSync(join(root, ".env.local"), "EFFECT_CI_REMOTE_TOKEN=must-not-enter-vite\n")
-    assert.throws(() => readProjectRemote(root), /out of project/)
-    writeFileSync(join(root, ".env"), "EFFECT_CI_REMOTE_TOKEN=must-not-be-shared\n")
-    assert.throws(() => readProjectRemote(root), /out of project/)
+    writeFileSync(join(root, ".env.local"), "EFFECT_CI_REMOTE_TOKEN=local-credential\n")
+    assert.deepEqual(readProjectRemote(root), { url: "https://ci.example/demo" })
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 

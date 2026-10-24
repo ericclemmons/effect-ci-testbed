@@ -730,7 +730,8 @@ jobs:
           pnpm cf-ci --workflow examples/containerless-site/.cloudflare/ci/workflow.ts plan
       - name: Verify production Worker bundle
         run: |
-          pnpm --filter @effect-ci-testbed/app exec cf deploy --dry-run
+          pnpm --filter @effect-ci-testbed/app build
+          pnpm --filter @effect-ci-testbed/app exec cf deploy --prebuilt --dry-run
           pnpm --filter @effect-ci-testbed/example-runner exec cf deploy --dry-run
           pnpm --filter effect-ci-cloudflare-hitl-release-fixture exec cf deploy --dry-run
           pnpm --filter effect-ci-artifacts-source-fixture exec cf deploy --dry-run

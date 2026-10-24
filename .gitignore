@@ -13,3 +13,4 @@ dist/
 .standalone-runtime/
 .standalone-runtime-build-*/
 .secrets.env
+.env.local

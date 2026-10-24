@@ -95,7 +95,10 @@ export async function withRepositoryCheckoutToken<A>(
     throw failure("token", response.status);
   }
   const result = await body(response);
-  if (typeof result.token !== "string" || !/^[A-Za-z0-9_]{1,255}$/.test(result.token))
+  // GitHub owns token format. Treat it as an opaque, bounded HTTP credential
+  // instead of assuming the historical short alphanumeric representation.
+  if (typeof result.token !== "string" || result.token.length === 0 || result.token.length > 8192 ||
+      /[^\x21-\x7e]/.test(result.token))
     throw failure("token response");
   const token = result.token;
   try {

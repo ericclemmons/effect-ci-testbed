@@ -2,6 +2,14 @@
 
 Your Cloudflare account. Your GitHub App. Your notification destinations.
 
+If you already use `effect-ci-github-cloudflare.ericclemmons.workers.dev`, its root
+API supports repository runs with the same existing API token and Access login.
+Use `EFFECT_CI_REMOTE_URL=https://effect-ci-github-cloudflare.ericclemmons.workers.dev`
+without `/demo`, then run `cf-ci run build --remote` from a clean, pushed repository.
+The host checks out origin/HEAD and discovers CI at the repository root inside an
+isolated container. The `/demo` endpoint continues to serve its fixed demonstration.
+The setup below is for a new host, not a requirement for each new repository.
+
 Use `standalone`, not the owned demo profile:
 
 ```sh
@@ -111,6 +119,24 @@ The Worker API token remains a second boundary after Access succeeds.
 ## CLI authentication
 
 For the generated host configuration, run from the repository root:
+
+The CLI automatically loads `.env` then `.env.local` from the Git root through
+the current directory. Shell values override automatic files; `--env-file`
+overrides both. For a laptop demo, put these client settings in the root's ignored
+`.env.local`, then run `cf-ci run build --remote` without an environment flag:
+
+```dotenv
+EFFECT_CI_REMOTE_URL=https://YOUR-WORKER.workers.dev
+EFFECT_CI_REMOTE_TOKEN=YOUR-EXISTING-WORKER-API-TOKEN
+CF_ACCESS_CLIENT_ID=YOUR-ACCESS-CLIENT-ID
+CF_ACCESS_CLIENT_SECRET=YOUR-ACCESS-CLIENT-SECRET
+```
+
+The deployment names `EFFECT_CI_PUBLIC_URL` and `EFFECT_CI_API_TOKEN` are also
+accepted as aliases. Keep this file uncommitted. The
+[standalone demo repository](https://github.com/ericclemmons/effect-ci-demo) puts
+the tutorial at its own Git root; the testbed fixture path is never sent remotely.
+An explicit deployment file remains supported:
 
 ```sh
 pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production

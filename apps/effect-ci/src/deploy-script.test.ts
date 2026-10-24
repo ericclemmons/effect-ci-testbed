@@ -40,6 +40,7 @@ if (args[0] === "deploy") process.exit(Number(process.env.FIXTURE_DEPLOY_EXIT ??
       const result = spawnSync(process.execPath, [
         `--env-file=${production}`,
         new URL("../scripts/deploy.ts", import.meta.url).pathname,
+        "--prebuilt",
       ], {
         cwd: directory,
         encoding: "utf8",

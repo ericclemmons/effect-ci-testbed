@@ -31,11 +31,23 @@ A failed or uncertain publication is inspected, not blindly replayed.
 ## Host configuration
 
 [SELF-HOST.md](./SELF-HOST.md) covers the App, secrets, Access and CLI setup.
-The `standalone` profile runs a host-authored package-script policy at the configured
-project root. It does **not** yet discover and execute arbitrary repositories'
-`.cloudflare/ci/workflow.ts` files.
+The `standalone` profile checks out the caller's Git origin at the requested HEAD,
+installs dependencies, and runs the same CLI inside the container at the repository
+root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional package
+scripts there. `cf-ci run build --remote` selects the repository's build action;
+no target runs its whole workflow. The host never imports repository workflow code.
 
 The existing `demo` profile retains this account's integrations for compatibility.
+Its root `/capabilities` and `/runs` API also runs arbitrary caller repositories
+through `RepositoryCIWorkflow`, using the existing host API token and Access
+application. These runs always start at the repository root in the unprivileged
+`repository` image. `/demo` and `/showcase` retain their separate policies and
+workflows. A new repository does not require a new hostname or new credentials.
+The [retained same-host proof](./verification/repository-head/2026-10-23.json)
+records a successful `cf-ci run build --remote` for the standalone demo's exact
+pushed HEAD and a real unknown-target failure. The client used automatic
+`.env.local` settings and the existing credentials. Live Access and legacy demo
+capabilities were checked separately; this is an execution receipt, not signed evidence.
 Installing the App on all repositories grants repository access; it does not enroll
 signers, deployment credentials, repair authority or reusable-check policies for them.
 

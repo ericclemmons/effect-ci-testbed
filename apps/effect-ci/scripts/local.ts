@@ -5,7 +5,7 @@ import { prepareStandaloneRuntime } from "./standalone-runtime.ts";
 // Local commands deliberately do not reconcile Access or perform a deployment.
 const [command, ...args] = process.argv.slice(2);
 if (command !== "build" && command !== "dev") throw Error("Choose build or dev");
-if (process.env.EFFECT_CI_PROFILE === "standalone") prepareStandaloneRuntime();
+prepareStandaloneRuntime();
 const result = spawnSync(process.env.CF_BIN ?? "cf", [command, ...args], {
   stdio: "inherit",
   env: process.env,
