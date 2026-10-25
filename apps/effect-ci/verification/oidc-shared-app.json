@@ -103,6 +103,41 @@
   },
   "localAccess": {
     "runtimeSignatureAndRouteTestsPassed": true,
-    "liveHumanSession": "Not completed: browser login timed out"
+    "liveHumanSession": "Verified",
+    "verifiedAt": "2026-10-25T00:40:20.736Z",
+    "repository": "ericclemmons/effect-ci-demo",
+    "revision": "a229977cba76468ae9bc7159fae7b84f4a60244b",
+    "temporaryBranch": "codex/local-access-proof-1792888710695",
+    "enrollment": {
+      "command": "cf-ci oidc",
+      "success": true,
+      "savedFields": [
+        "issuer",
+        "repository"
+      ]
+    },
+    "doctor": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "doctor",
+      "location": "remote",
+      "targets": [],
+      "targetDiscovery": "project",
+      "dispatched": false
+    },
+    "remote": {
+      "command": "cf-ci run --remote",
+      "instanceId": "c973babc-d5ce-48b3-be41-be7da565d29d",
+      "status": "complete",
+      "exitCode": 0,
+      "dispatchAndLogs": true,
+      "finalStatusRead": 200
+    },
+    "authentication": {
+      "source": "cloudflared cached Access session",
+      "privateAPIProfile": false,
+      "staticCIToken": false,
+      "workloadToken": false
+    }
   }
 }
