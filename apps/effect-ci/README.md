@@ -118,3 +118,55 @@ distinguishes an uncertain acknowledgement from an unapplied operation.
 The [legacy fixture](../../test/fixtures/demo/README.md) and
 [original host notebook](https://github.com/ericclemmons/effect-ci-testbed/blob/1fbbfaeaef45a265105a42eeb3078865fe620944/apps/effect-ci/README.md)
 retain earlier instance IDs, failures and proofs. They are not installation steps.
+
+
+## Unified CLI and workload identity
+
+This shared app handles repository OIDC enrollment, remote dispatch, status/log
+reads, and short-lived Cloudflare deployment credentials. It retains the existing
+monorepo, demo, showcase, repair, and repository workflow exports.
+
+Locally, authenticate with `cloudflared access login --quiet <service-origin>`, then
+run `cf-ci oidc --service <service-origin>` from the project. Commit the generated
+`.cloudflare/ci/oidc.json`; it contains only the service origin and repository name.
+`cf-ci doctor --remote` and `cf-ci run --remote` then reuse the Access identity;
+a separate Effect CI API token is no longer required for these operator routes.
+Existing private API profiles remain compatible.
+
+In GitHub Actions, grant the job `id-token: write` and set the public
+`EFFECT_CI_REMOTE_URL`. `cf-ci oidc` enrolls only the repository identified by the
+signed job token, after verifying its GitHub App installation and allowed numeric
+owner. CI enrollment does not modify the checkout. `cf-ci run --remote` automatically
+requests fresh identity tokens for dispatch, status, and log requests. It sends no
+Access credentials or stored Effect CI API token. Other repositories, mismatched
+commits, and cross-repository run reads are rejected. Workloads cannot approve
+releases or use operator routes.
+
+Human routes remain behind Access. The `/api` machine routes, `/token`, and
+`/revoke` bypass interactive login but authenticate verified workload identities
+or revocation receipts in the Worker. GitHub and Slack webhooks retain their own
+signature protocols. These are distinct audiences and permissions, not one
+unrestricted token accepted everywhere.
+
+Hosted repository runs receive an internal five-minute identity through the
+host-owned process environment. It is not put into command text, snapshots, or
+durable Workflow checkpoint values. `cf-ci oidc -- pnpm exec cf deploy` (or Wrangler)
+exchanges it for a 15-minute Cloudflare credential and revokes that credential
+when the child exits, including on failure. This internal JWT is not a public
+third-party OIDC provider.
+
+Remote-CI identity needs the GitHub App credentials, the allowed owner IDs, and a
+signing key. Cloudflare deployment authority is optional: configure an account
+and approved scope map only when projects need Cloudflare deployment. New Worker
+creation requires account-scoped Workers Scripts Write; the old single-Worker
+Editor policy cannot create a Worker. The issuer credential stays host-only.
+
+[Repository and run authorization](./src/remote-identity.ts "source")
+
+[OIDC operator configuration](./secrets.example.env "source")
+
+[CLI workload identity](../../packages/cli/src/workload-auth.ts "source")
+
+[Live shared-app enrollment, remote execution, new-Worker deployment and cleanup proof](./verification/oidc-shared-app.json "source")
+
+[Account permission creation probe](./verification/oidc-worker-creation.json "source")

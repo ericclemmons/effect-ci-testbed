@@ -223,6 +223,12 @@ importers:
       '@effect-ci-testbed/github-cloudflare':
         specifier: workspace:*
         version: link:../../packages/github-cloudflare
+      '@effect-ci-testbed/cloudflare-oidc':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare-oidc
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
       '@resvg/resvg-wasm':
         specifier: 2.6.2
         version: 2.6.2
@@ -1140,6 +1146,22 @@ importers:
       miniflare:
         specifier: 5.20260930.0-alpha
         version: 5.20260930.0-alpha(@types/node@26.6.3)
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/cloudflare-oidc:
+    dependencies:
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1

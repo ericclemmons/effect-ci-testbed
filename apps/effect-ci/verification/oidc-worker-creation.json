@@ -1,0 +1,21 @@
+{
+  "worker": "effect-ci-oidc-create-proof-1792818277243",
+  "permission": "Workers Scripts Write",
+  "policy": {
+    "effect": "allow",
+    "permission_groups": [
+      {
+        "id": "e086da7e2179491d91ee5f35b3ca210a"
+      }
+    ],
+    "resources": {
+      "com.cloudflare.api.account.0db135ec469e2f216fcea26426f29755": "*"
+    }
+  },
+  "expiresOn": "2026-10-24T05:19:36Z",
+  "authentication": "15-minute account-owned API token; issuer remains local",
+  "deployment": true,
+  "workerDeleted": true,
+  "tokenRevoked": true,
+  "version": "032cb06a-b7d1-4931-a6d8-722168dded1c"
+}

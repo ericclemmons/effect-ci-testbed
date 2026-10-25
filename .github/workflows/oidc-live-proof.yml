@@ -28,11 +28,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./examples/oidc-wrangler/.github/actions/deploy
-        if: matrix.tool == 'wrangler'
-        with:
-          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
-      - uses: ./examples/oidc-cf/.github/actions/deploy
-        if: matrix.tool == 'cf'
-        with:
-          broker-url: ${{ vars.EFFECT_CI_OIDC_BROKER_URL }}
+      - run: pnpm exec cf-ci oidc
+        env:
+          EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
+      - run: pnpm exec cf-ci oidc -- pnpm --dir examples/oidc-${{ matrix.tool }} run deploy
+      - run: node examples/oidc-${{ matrix.tool }}/verify.mjs
+        env:
+          EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}

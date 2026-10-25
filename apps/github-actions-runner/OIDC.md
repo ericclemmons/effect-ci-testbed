@@ -1,30 +1,14 @@
-# Short-lived Cloudflare credentials for GitHub Actions
+# Legacy runner credential exchange
 
-Keep your existing deployment steps. Add the [authentication action](../../.github/actions/cloudflare-auth/action.yml)
-to request a 15-minute token scoped to exactly one Worker. OIDC is part of this
-GitHub runner app; it works with `runs-on: ubuntu-latest` and needs no runner Container.
-The native host's `cf-ci run --remote` remains a separate execution path.
+New projects use the [shared CI app](../effect-ci/README.md#unified-cli-and-workload-identity)
+and `cf-ci oidc`, including `cf-ci run --remote`. See the canonical
+[Wrangler](../../examples/oidc-wrangler/README.md) and
+[cf](../../examples/oidc-cf/README.md) examples. They support new Worker creation
+and repository self-enrollment without a deployment action or a separate broker URL.
 
-## Try the examples in this repository
-
-On the integrated proof branch:
-
-```sh
-gh workflow run oidc-live-proof.yml --ref codex/oidc-runner-integration -f example=both
-gh run list --workflow oidc-live-proof.yml --branch codex/oidc-runner-integration
-```
-
-Use `example=wrangler` or `example=cf` to select one. The same example-owned
-[Wrangler](../../examples/oidc-wrangler/.github/actions/deploy/action.yml) and
-[cf](../../examples/oidc-cf/.github/actions/deploy/action.yml) actions run automatically
-in the normal [recipe E2E workflow](../../.github/workflows/e2e.yml) on pushes to
-`main` (and this integration branch). PRs run credential-free checks; they cannot
-issue deployment tokens. These jobs use real GitHub OIDC rather than `act`.
-Each job exchanges GitHub OIDC,
-checks its own Worker (200), the other Worker (403) and R2 listing (403), deploys with
-its ordinary CLI, verifies the response, and revokes its token. No long-lived
-Cloudflare credential is stored in GitHub. Grants authorize this repository and
-the exact configured workflow/ref pairs; a fork needs its own setup.
+The remainder records the older single-Worker runner implementation and its
+historical evidence. Its bootstrap requirement and exact workflow/ref grants do
+not describe the shared app's account-wide owner enrollment.
 
 ## Use your self-hosting account
 

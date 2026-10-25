@@ -73,6 +73,8 @@ test("the actual standalone deployment config has no cross-Worker demo dependenc
   assert.deepEqual(Object.keys(config.worker.exports).sort(), [
     "EffectCIWorkflow",
     "GitCheckoutOutbound",
+    "OidcRepositories",
+    "TokenLease",
     "WorkspaceContainer",
   ]);
   assert.deepEqual(config.worker.env, {

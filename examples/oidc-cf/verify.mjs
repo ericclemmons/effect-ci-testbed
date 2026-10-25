@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-const url = new URL(process.env.OIDC_BROKER_URL);
+const url = new URL(process.env.EFFECT_CI_REMOTE_URL);
 assert.match(url.hostname, /^[^.]+\.[^.]+\.workers\.dev$/);
 url.hostname = url.hostname.replace(/^[^.]+/, "effect-ci-oidc-cf");
 const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(15000) });

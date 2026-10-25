@@ -53,12 +53,22 @@ if (args[0] === "deploy") process.exit(Number(process.env.FIXTURE_DEPLOY_EXIT ??
       assert.equal(JSON.parse(service.args.at(-1)).policies[1].include[0].service_token.token_id, "fixture-service-id")
       const deployment = recorded.at(-1)
       assert.deepEqual(deployment.secrets, {
+        CLOUDFLARE_ACCOUNT_ID: "fixture-account",
         GITHUB_PRIVATE_KEY: "line one\nline two",
         EFFECT_CI_API_TOKEN: "worker-api-token",
         EFFECT_CI_PUBLIC_URL: "https://ci.example.com",
       })
       assert.equal(existsSync(deployment.args[deployment.args.indexOf("--secrets-file") + 1]), false)
     }
+    writeFileSync(calls, "")
+    const invalid = spawnSync(process.execPath, [`--env-file=${production}`,
+      new URL("../scripts/deploy.ts", import.meta.url).pathname, "--prebuilt"], {
+      cwd: directory, encoding: "utf8",
+      env: { PATH: process.env.PATH, CF_BIN: cli, EFFECT_CI_OIDC_SCOPES: "invalid-json" },
+    })
+    assert.equal(invalid.status, 1)
+    assert.match(invalid.stderr, /EFFECT_CI_OIDC_SCOPES must contain valid JSON/)
+    assert.equal(readFileSync(calls, "utf8"), "", "invalid OIDC configuration must fail before changing Access or deploying")
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

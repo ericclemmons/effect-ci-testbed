@@ -1,0 +1,22 @@
+{
+  "name": "@effect-ci-testbed/cloudflare-oidc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/worker.ts",
+    "./auth": "./src/auth.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test src/*.test.ts"
+  },
+  "dependencies": {
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261001.1",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

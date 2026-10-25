@@ -1,3 +1,4 @@
+import { commandEnvironment } from "./oidc.ts";
 import * as Hosted from "@effect-ci-testbed/github-cloudflare";
 import { standaloneContainerOptions, standaloneProgram } from "./standalone-program.ts";
 
@@ -5,7 +6,7 @@ import { standaloneContainerOptions, standaloneProgram } from "./standalone-prog
 export default Hosted.worker({
   remoteTargetDiscovery: "project",
   remoteResult: true,
-  remoteAuthentication: ["api-token"],
+  remoteAuthentication: ["api-token", "cloudflare-access-identity", "github-oidc", "hosted-workload"],
   workflow: (_environment, context) => {
     const binding = (context?.exports as unknown as {
       RepositoryCIWorkflow?: Workflow<Hosted.WorkflowParameters>;
@@ -22,6 +23,7 @@ export const RepositoryCIWorkflow = Hosted.workflowEntrypoint(
   },
   {
     remoteGitHubCheckout: true,
+    commandEnvironment,
     notificationChannels: () => ({}),
     container: { ...standaloneContainerOptions, image: "repository" },
   },

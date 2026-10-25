@@ -108,6 +108,7 @@ interface WorkspaceContainerStub {
     cachePaths?: ReadonlyArray<string>,
     cacheRoot?: string,
     options?: WorkspaceContainerOptions,
+    processEnvironment?: Record<string, string>,
   ) => Promise<ContainerExecutionResult>
   readonly exists: (
     path: string,
@@ -416,9 +417,13 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     cwd?: string,
     options: WorkspaceContainerOptions = {},
     businessCommand = false,
+    providedEnvironment?: Record<string, string>,
   ): Promise<ContainerExecutionResult> {
     await this.configureOutbound()
-    const environment = await this.processEnvironment(command, cwd)
+    const hostEnvironment = await this.processEnvironment(command, cwd)
+    const environment = providedEnvironment && Object.keys(providedEnvironment).length ? { ...hostEnvironment, ...providedEnvironment } : hostEnvironment
+    const redact = (text: string) => Object.entries(providedEnvironment ?? {}).reduce((result, [name, value]) =>
+      /TOKEN|SECRET|PASSWORD/.test(name) && value ? result.replaceAll(value, "[REDACTED]") : result, text)
     const argv = [...this.processCommand(command, cwd, options)]
     const execOptions = cwd || environment ? { ...(cwd ? { cwd } : {}), ...(environment ? { env: environment } : {}) } : undefined
     if (businessCommand && this.captureExecutionResult(options)) {
@@ -433,11 +438,11 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       })
       try { this.capturedExecutionResult({ exitCode: output.exitCode, recovered: output.recovered }) }
       catch { /* reporting cannot change or replay the completed command */ }
-      return { exitCode: output.exitCode, stdout: decoder.decode(output.stdout), stderr: decoder.decode(output.stderr) }
+      return { exitCode: output.exitCode, stdout: redact(decoder.decode(output.stdout)), stderr: redact(decoder.decode(output.stderr)) }
     }
     const process = await this.container().exec(argv, execOptions)
     const output = await process.output()
-    return { exitCode: output.exitCode, stderr: decoder.decode(output.stderr), stdout: decoder.decode(output.stdout) }
+    return { exitCode: output.exitCode, stderr: redact(decoder.decode(output.stderr)), stdout: redact(decoder.decode(output.stdout)) }
   }
 
   async getCachedSnapshot(key: string): Promise<ContainerSnapshotValue | undefined> {
@@ -594,6 +599,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     cachePaths: ReadonlyArray<string> = [],
     cacheRoot = cwd,
     options: WorkspaceContainerOptions = {},
+    processEnvironment?: Record<string, string>,
   ): Promise<ContainerExecutionResult> {
     await this.materialize(stepId, revision, options)
     await this.markMutation(stepId, revision?.id)
@@ -617,7 +623,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       }
     }
 
-    const result = await this.run(containerShell(command, options), cwd, options, true)
+    const result = await this.run(containerShell(command, options), cwd, options, true, processEnvironment)
 
     for (const [index, path] of paths.entries()) {
       const exists = await this.run(["test", "-e", path])
@@ -768,6 +774,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 }
 
 export interface RunnerOptions {
+  readonly commandEnvironment?: (stepId: string) => Promise<Record<string, string>>
   /** Host-enrolled command-only compute: persist identity/results outside the
    * Workflow connection and poll using short read-only native checkpoints. */
   readonly durableCommands?: boolean
@@ -841,6 +848,7 @@ export interface WorkflowEntrypointOptions<Environment extends WorkflowEnvironme
 }
 
 export const makeRunner = (options: RunnerOptions): Runner => {
+  if (options.commandEnvironment && options.durableCommands) throw new Error("Ephemeral workload credentials cannot be recorded in durable commands")
   let sourceSequence = 0
   let outputSequence = 0
   const activeBodies = new Set<string>()
@@ -999,12 +1007,13 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               return recorded
             }
           }
+          const environment = await options.commandEnvironment?.(stepId)
           const execute = async () => {
             try {
               return await container.execute(
                 command, workspace.cwd, stepId,
                 revision?.value as ContainerSnapshotValue | undefined,
-                options.cache?.paths, targetDirectory, options.container,
+                options.cache?.paths, targetDirectory, options.container, environment,
               )
             } catch {
               // Redact the host cause before crossing any native checkpoint.

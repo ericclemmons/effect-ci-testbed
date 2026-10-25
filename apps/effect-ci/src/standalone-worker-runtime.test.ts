@@ -62,7 +62,7 @@ test(
       assert.equal(capabilities.protocol, "effect-ci-remote-v1");
       assert.deepEqual(capabilities.targets, []);
       assert.equal(capabilities.targetDiscovery, "project");
-      assert.deepEqual(capabilities.authentication, ["api-token"]);
+      assert.deepEqual(capabilities.authentication, ["api-token", "cloudflare-access-identity", "github-oidc", "hosted-workload"]);
       assert.equal((await request("/demo/capabilities", authenticated)).status, 404);
       assert.equal((await request("/webhooks/github", { method: "POST", body: "{}" })).status, 401);
     } finally {

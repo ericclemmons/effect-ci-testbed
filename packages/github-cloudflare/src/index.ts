@@ -115,6 +115,7 @@ export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.
   }) => Promise<{ ok: true; fileId: string } | { ok: false }>
   /** Trusted display-only total. Unknown runtime steps disable the progress bar. */
   readonly slackProgressSteps?: (parameters: WorkflowParameters) => ReadonlyArray<string>
+  readonly commandEnvironment?: (environment: Environment, parameters: WorkflowParameters) => Promise<Record<string, string>>
   /** Host policy chooses outbound channels per run, without removing approval credentials. */
   readonly notificationChannels?: (environment: Environment, parameters: WorkflowParameters) => NotificationChannels
   /** Additional host-only destinations; credentials stay in provider closures. */
@@ -232,6 +233,7 @@ export const workflowEntrypoint = <A>(
     const runner = Cloudflare.makeRunner({
       ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
+      ...(options.commandEnvironment ? { commandEnvironment: () => options.commandEnvironment!(this.env, event.payload) } : {}),
       ...(options.cache === false ? {} : { cache: options.cache ?? {
         key: github?.repositoryName ?? event.payload.repository,
         // Vite+ fingerprints task inputs itself; this is only its transport cache.

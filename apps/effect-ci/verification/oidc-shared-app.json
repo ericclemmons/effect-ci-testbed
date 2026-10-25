@@ -1,0 +1,143 @@
+{
+  "recordedAt": "2026-10-24T18:20:36.362Z",
+  "service": "https://effect-ci-github-cloudflare.ericclemmons.workers.dev",
+  "deployedVersion": "6c6e93d8-0b38-4f7b-9199-18c36b1ab6c8",
+  "sourceRevision": "d3cb72899d54ab6674386ec509a006071b8bb4bd",
+  "githubApp": {
+    "owner": "ericclemmons",
+    "ownerId": "15182",
+    "repositorySelection": "all"
+  },
+  "proof": {
+    "repository": "ericclemmons/effect-ci-demo",
+    "headSha": "20a9ce809b3b3849fe09bc47ff7c9ea233126ac7",
+    "url": "https://github.com/ericclemmons/effect-ci-demo/actions/runs/40119997832",
+    "workflow": "https://github.com/ericclemmons/effect-ci-demo/blob/20a9ce809b3b3849fe09bc47ff7c9ea233126ac7/.github/workflows/shared-oidc-proof.yml",
+    "conclusion": "success",
+    "jobPermissions": {
+      "contents": "read",
+      "id-token": "write"
+    },
+    "storedCloudflareOrAccessCredentials": false,
+    "steps": [
+      {
+        "name": "Enroll using GitHub OIDC with no stored credentials",
+        "conclusion": "success"
+      },
+      {
+        "name": "Check remote authentication without dispatch",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run project and credential exchange on the shared host",
+        "conclusion": "success"
+      },
+      {
+        "name": "Deploy a new Worker with Wrangler and GitHub OIDC",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify deployed response",
+        "conclusion": "success"
+      },
+      {
+        "name": "Delete only the disposable proof Worker",
+        "conclusion": "success"
+      }
+    ],
+    "hostedInstanceId": "d44e91fd-a801-4836-a8ad-3e9c5f71df26",
+    "hostedStatus": "complete",
+    "hostedCreatedAndDeletedNewWorker": true,
+    "wranglerVersionId": "f545db62-310b-4333-bab8-fe23d17eab1e",
+    "remainingActiveTemporaryCITokens": 0
+  },
+  "authorizationDenials": {
+    "identity": "Host-signed internal workload identities; negative owner/source/run cases",
+    "cases": [
+      {
+        "name": "outside-owner enrollment",
+        "status": 403
+      },
+      {
+        "name": "outside-owner credential exchange",
+        "status": 403
+      },
+      {
+        "name": "mismatched source revision",
+        "status": 403
+      },
+      {
+        "name": "unowned run read",
+        "status": 403
+      }
+    ]
+  },
+  "anonymousRequests": [
+    {
+      "path": "/capabilities",
+      "status": 302
+    },
+    {
+      "path": "/oidc/repositories",
+      "status": 302
+    },
+    {
+      "path": "/api/capabilities",
+      "status": 401
+    },
+    {
+      "path": "/token",
+      "status": 401
+    }
+  ],
+  "preserved": {
+    "previousExports": 30,
+    "previousBindings": 23
+  },
+  "validation": {
+    "affectedTestsPassed": 74,
+    "deploymentPreflightTestPassed": true,
+    "appTypecheck": true,
+    "cliTypecheck": true,
+    "sharedBuild": true
+  },
+  "localAccess": {
+    "runtimeSignatureAndRouteTestsPassed": true,
+    "liveHumanSession": "Verified",
+    "verifiedAt": "2026-10-25T00:40:20.736Z",
+    "repository": "ericclemmons/effect-ci-demo",
+    "revision": "a229977cba76468ae9bc7159fae7b84f4a60244b",
+    "temporaryBranch": "codex/local-access-proof-1792888710695",
+    "enrollment": {
+      "command": "cf-ci oidc",
+      "success": true,
+      "savedFields": [
+        "issuer",
+        "repository"
+      ]
+    },
+    "doctor": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "doctor",
+      "location": "remote",
+      "targets": [],
+      "targetDiscovery": "project",
+      "dispatched": false
+    },
+    "remote": {
+      "command": "cf-ci run --remote",
+      "instanceId": "c973babc-d5ce-48b3-be41-be7da565d29d",
+      "status": "complete",
+      "exitCode": 0,
+      "dispatchAndLogs": true,
+      "finalStatusRead": 200
+    },
+    "authentication": {
+      "source": "cloudflared cached Access session",
+      "privateAPIProfile": false,
+      "staticCIToken": false,
+      "workloadToken": false
+    }
+  }
+}

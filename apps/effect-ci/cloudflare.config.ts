@@ -26,6 +26,8 @@ const demo = defineConfig({
     compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      TokenLease: exports.durableObject({ storage: "sqlite" }),
+      OidcRepositories: exports.durableObject({ storage: "sqlite" }),
       StaticAssetSourceReader: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       ShowcaseCIWorkflow: exports.workflow({ name: "effect-ci-showcase" }),
@@ -100,6 +102,8 @@ export default profile.profile === "demo" ? demo : defineConfig({
     compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
     observability: { enabled: true, headSamplingRate: 1, redactQueryString: true },
     exports: {
+      TokenLease: exports.durableObject({ storage: "sqlite" }),
+      OidcRepositories: exports.durableObject({ storage: "sqlite" }),
       GitCheckoutOutbound: exports.worker(),
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: standaloneWorkspace! }),
       EffectCIWorkflow: exports.workflow({ name: profile.name }),

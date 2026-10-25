@@ -45,7 +45,7 @@ test("one host routes root repository runs separately from existing demo service
     assert.equal((await request("/runs", { method: "POST", body: "{}" })).status, 401);
     const capabilities = await (await request("/capabilities", { headers })).json();
     assert.equal(capabilities.targetDiscovery, "project");
-    assert.deepEqual(capabilities.authentication, ["api-token"]);
+    assert.deepEqual(capabilities.authentication, ["api-token", "cloudflare-access-identity", "github-oidc", "hosted-workload"]);
     const demoCapabilities = await (await request("/demo/capabilities", { headers })).json();
     assert.notEqual(demoCapabilities.targetDiscovery, "project");
     assert.ok(demoCapabilities.targets.includes("build"));

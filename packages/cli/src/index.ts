@@ -1,3 +1,5 @@
+import { hasWorkloadIdentity, workloadHeaders } from "./workload-auth.ts"
+import { runOidc } from "./oidc.ts"
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
@@ -217,8 +219,18 @@ const remoteConnection = (root: string) => {
     )
   }
 
+  if (hasWorkloadIdentity()) {
+    const service = new URL(remoteUrl)
+    if (!["/", "/api"].includes(service.pathname)) throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
+      "Workload authentication requires the hosted service origin, without a demo route prefix")
+    return { remoteUrl: service.origin + "/api", headers: new Headers(), accessOnly: false, workload: true,
+      requestHeaders: () => workloadHeaders(service.origin) }
+  }
+  if (process.env.GITHUB_ACTIONS === "true" && !configured.token && !hasWorkloadIdentity())
+    throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable, "GitHub Actions remote authentication requires permissions: id-token: write")
   const headers = remoteHeaders(remoteUrl, configured.token)
   const accessOnly = !configured.token && headers.has("cf-access-token")
+  if (accessOnly) headers.delete("authorization")
   if (!configured.token && !accessOnly) {
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
@@ -227,13 +239,13 @@ const remoteConnection = (root: string) => {
     )
   }
 
-  return { remoteUrl, headers, accessOnly }
+  return { remoteUrl, headers, accessOnly, workload: false, requestHeaders: async () => headers }
 }
 
-const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType<typeof remoteConnection>) => {
+const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHeaders }: ReturnType<typeof remoteConnection>) => {
   let available: unknown
   try {
-    const response = await fetch(`${remoteUrl}/capabilities`, { headers, redirect: "manual", signal: AbortSignal.timeout(15_000) })
+    const response = await fetch(`${remoteUrl}/capabilities`, { headers: await requestHeaders(), redirect: "manual", signal: AbortSignal.timeout(15_000) })
     let accessLogin = false
     if ([301,302,303,307,308].includes(response.status)) {
       try {
@@ -246,7 +258,8 @@ const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType
     if (response.status === 401 || response.status === 403 || accessLogin) {
       await response.body?.cancel().catch(() => {})
       throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
-        `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
+        workload ? "Workload authentication was rejected. Grant id-token: write and enable this repository with cf-ci oidc. No run was dispatched."
+          : `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
     }
     if (response.ok) available = await response.json()
   } catch (error) {
@@ -264,6 +277,8 @@ const remoteCapabilities = async ({ remoteUrl, headers, accessOnly }: ReturnType
     !descriptor.authentication.includes("cloudflare-access-identity")))
     throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
       "This host has not enrolled Access-only remote authentication. Configure its private API profile; no run was dispatched.")
+  if (workload && (!Array.isArray(descriptor.authentication) || !descriptor.authentication.includes("github-oidc")))
+    throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable, "This host has not enabled workload identity authentication")
   return { targets: targets as string[],
     ...(descriptor.rerun === true ? { rerun: true as const } : {}),
     ...(descriptor.targetDiscovery === "project" ? { targetDiscovery: "project" as const } : {}) }
@@ -274,7 +289,7 @@ const builtInRemote = async (
   root: string,
 ): Promise<unknown> => {
   const connection = remoteConnection(root)
-  const { remoteUrl, headers } = connection
+  const { remoteUrl } = connection
 
   if (invocation.command !== "run") {
     throw new CliFailure(
@@ -296,7 +311,7 @@ const builtInRemote = async (
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
   const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
-  if (!targets && connection.accessOnly) await remoteCapabilities(connection)
+  if (!targets && (connection.accessOnly || connection.workload)) await remoteCapabilities(connection)
   if (targets) {
     if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
@@ -314,7 +329,7 @@ const builtInRemote = async (
   const response = await fetch(`${remoteUrl}/runs`, {
     method: "POST",
     redirect: "error",
-    headers,
+    headers: await connection.requestHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
   })
@@ -340,7 +355,7 @@ const builtInRemote = async (
     const before = events.length
     try {
       await streamRemoteEvents(await fetch(eventUrl, {
-        headers, redirect: "error",
+        headers: await connection.requestHeaders(), redirect: "error",
       }), invocation.format, events, cursor)
       if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(events.at(-1)?.type ?? "")) break
     } catch (error) {
@@ -384,7 +399,7 @@ const builtInRemote = async (
     // Same-origin validation precedes forwarding any execution/Access credential.
     const statusUrl = remoteEventUrl(remoteUrl, run.statusUrl)
     try {
-      const response = await fetch(statusUrl, { headers, redirect: "error", signal: AbortSignal.timeout(15_000) })
+      const response = await fetch(statusUrl, { headers: await connection.requestHeaders(), redirect: "error", signal: AbortSignal.timeout(15_000) })
       if (!response.ok) throw Error("Status unavailable")
       const status = await response.json() as { status?: unknown; output?: unknown }
       if (status.status !== "complete" || !status.output) throw Error("Result unavailable")
@@ -500,6 +515,8 @@ const parseInvocation = (
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
+  cf-ci oidc [--service https://your-ci-host]
+  cf-ci oidc -- <deploy command>
   cf-ci                         Show this help and project targets
   cf-ci run [targets...] [--local|--remote] [--format=text|json]
   cf-ci run <compute goals...> --remote --rerun-from <run UUID>
@@ -512,6 +529,7 @@ Usage:
   cf-ci run --remote --env-file path/to/.env.production
 
 Commands:
+  oidc    Enable repository deployment, or run a command with temporary credentials
   run     Execute the default workflow, or fan out to the selected exported actions
   plan    Resolve the graph without executing commands
   list    List runnable commands for this project
@@ -1066,6 +1084,10 @@ export const runCli = async (
       }
     }
     args = remaining.length ? remaining : ["--help"]
+    if (args[0] === "oidc") {
+      await runOidc(args.slice(1), cwd, remoteHeaders(process.env.EFFECT_CI_REMOTE_URL ?? "https://effect-ci-github-cloudflare.ericclemmons.workers.dev"))
+      return
+    }
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
     // Keep explicit paths and discovered programs on the existing custom-runner path.
     const explicit = args.some((arg) => arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg))
