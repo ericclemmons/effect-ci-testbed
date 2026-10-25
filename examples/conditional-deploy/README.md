@@ -4,12 +4,7 @@ Skip work when its inputs did not change. Use ordinary control flow:
 
 ## Start with a source query
 
-```ts
-const source = yield* CI.Source
-if (yield* source.changed(["apps/website/**", "packages/ui/**", "pnpm-lock.yaml"])) {
-  yield* actions.deploy()
-}
-```
+[Source](./.cloudflare/ci/if-else.ts#symbol=default "source")
 
 Paths are repository-relative. Include shared dependencies and configuration.
 Globs support `*`, `**`, `?`, and alternatives such as `**/*.(ts|tsx|json)`.
@@ -26,10 +21,7 @@ branch; event adapters supply the comparison in CI.
 
 A source change need not change what ships. Build first, then compare the result:
 
-```ts
-const workspace = yield* build()
-if (yield* workspace.changed("dist/**")) yield* deploy()
-```
+[Source](./.cloudflare/ci/output-changes.ts#symbol=default "source")
 
 ```sh
 pnpm ci:changed-outputs

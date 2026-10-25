@@ -2,12 +2,7 @@
 
 Retry a build without repeating its installation dependency.
 
-```ts
-const build = CI.action("build", function* () {
-  const workspace = yield* install()
-  return () => workspace.exec("npm run build")
-}, { retries: { limit: 2, delay: "1 second" }, timeout: "2 minutes" })
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=flaky "source")
 
 Resolve prerequisites first, then return the body the runner may retry.
 `limit: 2` allows three attempts; the timeout applies to each attempt.

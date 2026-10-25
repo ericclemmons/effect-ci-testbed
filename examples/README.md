@@ -43,6 +43,8 @@ in the recipes run from that root unless they say otherwise.
 - [Reuse verified checks](./verification-evidence)
 - [Rerun affected checks](./dependency-aware-reruns) and
   [keep previous attempts](./immutable-attempts)
+- [Run every matrix combination](./matrix), [split tests](./test-splitting), or
+  [balance shards using recorded timings](./timing-aware-splitting)
 - [Run isolated parallel checks](./snapshot-fanout)
 - [Share build artifacts](./portable-artifacts)
 
@@ -53,6 +55,7 @@ in the recipes run from that root unless they say otherwise.
 - [Deployment hooks](./deploy-hook), [ordered deployments](./ordered-deploy),
   and [D1 migrations](./d1-migration)
 - [GitHub approval](./hitl-deploy) or [Slack approval](./cloudflare-hitl-release)
+- [Release from verified local checks](./release-flywheel)
 - [Health-gated rollout](./health-mediated-release) or
   [human review of uncertain health](./health-mediated-approval)
 - [Model-assisted repair proposals](./flue-repair)

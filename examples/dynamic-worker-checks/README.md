@@ -2,13 +2,7 @@
 
 Run a formatter in a Worker isolate instead of starting a container.
 
-```ts
-const source = yield* workspace.readFile("app/src/index.ts")
-const formatted = yield* Tools.format({
-  files: { "app/src/index.ts": source },
-  options: { semi: false },
-})
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=format "source")
 
 ## Run it
 

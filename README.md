@@ -4,6 +4,10 @@
 
 > Experimental prototype. The examples are the product specification.
 
+Read the [public documentation](https://effect-ci-docs.ericclemmons.workers.dev)
+or preview the collocated READMEs locally with `pnpm docs:dev`.
+See [documentation authoring](./apps/docs/README.md) for source-backed snippets.
+
 **CI isn't a pipeline. It's a flywheel.** Check a change, reuse trustworthy
 evidence, release it, observe it, and turn failures into verified repair proposals.
 
@@ -294,6 +298,9 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./examples/deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./examples/optional-checks) | ✅ | ✅ | ✅ | ✅ |
+| [Run every combination in a matrix](./examples/matrix) | ✅ | ✅ | ✅ | ✅ |
+| [Split tests across parallel jobs](./examples/test-splitting) | ✅ | ✅ | ✅ | ✅ |
+| [Balance test shards using recorded timings](./examples/timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |
@@ -332,6 +339,7 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 | --- | :---: | :---: | :---: | :---: |
 | [Run GitHub CI on Cloudflare](./examples/github-cloudflare-ci) ([deploy service](./apps/effect-ci)) | — | — | — | ✅ |
 | [Run CI remotely from the CLI](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
+| [Release from verified local checks](./examples/release-flywheel) | — | ✅ | — | ✅ |
 | [Approve a deployment in GitHub](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Approve a release in Slack](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Request release approval in Discord](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |

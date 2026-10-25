@@ -13,16 +13,7 @@ cf-ci oidc --service https://your-ci-host
 Commit `.cloudflare/ci/oidc.json`, which contains only the public service origin
 and repository name. In GitHub Actions, use the same CLI with `id-token: write`:
 
-```yaml
-permissions:
-  contents: read
-  id-token: write
-# After checkout, Node setup, and dependency installation:
-steps:
-  - run: cf-ci oidc
-  - run: cf-ci oidc -- pnpm exec wrangler deploy
-    working-directory: examples/oidc-wrangler
-```
+[Source](./.github/workflows/deploy.yml "source")
 
 For a fresh job without committed configuration, set the public
 `EFFECT_CI_REMOTE_URL`. `cf-ci oidc` verifies the signed job's repository and

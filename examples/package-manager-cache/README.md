@@ -2,10 +2,7 @@
 
 Avoid downloading packages again without skipping installation.
 
-```ts
-const npm = yield* CI.PackageManager.JavaScript(workspace)
-return yield* npm.install()
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=install "source")
 
 The capability uses `.effect-ci/cache/npm`. The runner persists that directory;
 npm still runs the locked install against the current checkout.

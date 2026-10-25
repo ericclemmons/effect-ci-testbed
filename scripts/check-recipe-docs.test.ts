@@ -61,7 +61,7 @@ test("the check-reuse recipe explains the useful API and the host trust boundary
   const readme = readFileSync("examples/verification-evidence/README.md", "utf8");
   assert.ok(readme.includes("../../apps/effect-ci/TRUSTED-REMOTE.md"));
   assert.match(readme, /host-issued\s+receipts/);
-  assert.match(readme, /reuse: \{ scope: "commit" \}/);
+  assert.match(readFileSync("examples/verification-evidence/.cloudflare/ci/actions.ts", "utf8"), /reuse: \{ scope: "commit" \}/);
   assert.match(readme, /host chooses trusted signers/i);
   assert.doesNotMatch(readme, /It does \*\*not\*\* yet reuse lint or the test suite/);
   assert.doesNotMatch(readme, /Full test-suite reuse, the remaining/);
@@ -180,7 +180,7 @@ test("recipe documentation links resolve locally", () => {
   ];
   for (const file of files) {
     const markdown = readFileSync(file, "utf8");
-    for (const match of markdown.matchAll(/\]\((\.{1,2}\/[^)]+)\)/g)) {
+    for (const match of markdown.matchAll(/\]\((\.{1,2}\/[^\s)]+)(?:\s+"[^"]*")?\)/g)) {
       const path = match[1].split("#")[0];
       assert.ok(existsSync(resolve(dirname(file), path)), `${file}: ${match[1]}`);
     }

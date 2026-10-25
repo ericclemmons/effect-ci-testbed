@@ -2,10 +2,7 @@
 
 Expose useful goals without exposing every setup step.
 
-```ts
-export { check } from "./actions.ts"
-export default CI.workflow("exported-actions", () => actions.check())
-```
+[Source](./.cloudflare/ci/workflow.ts "source")
 
 From this example directory:
 

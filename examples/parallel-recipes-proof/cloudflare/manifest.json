@@ -1,0 +1,44 @@
+{
+  "sourceRevision": "98a3452d3ff55dc0980b3331df13b55dacd2655a",
+  "environment": "Cloudflare hosted Workflows and isolated Containers",
+  "containerImageDigest": "sha256:69957cfa935ca227775b508da78362d3ae30faba356a5210ae06d964ebae203b",
+  "workers": {
+    "matrix": {
+      "name": "effect-ci-matrix",
+      "version": "b174a49f-5065-4d5d-9855-af2e07b93512",
+      "instances": [
+        "matrix-20261024-2"
+      ]
+    },
+    "test-splitting": {
+      "name": "effect-ci-test-splitting",
+      "version": "f196a6a8-7bd1-4d0c-9eaf-a3d5a74a4aa9",
+      "instances": [
+        "splitting-20261024-1"
+      ]
+    },
+    "timing-aware-splitting": {
+      "name": "effect-ci-timing-aware-splitting",
+      "version": "e900b01b-b21d-4a00-885e-5acd4406e3af",
+      "instances": [
+        "timing-cold-20261024-1",
+        "timing-warm-20261024-1"
+      ]
+    }
+  },
+  "assertions": {
+    "allInstancesComplete": true,
+    "allMatrixCombinationsPassed": true,
+    "allTestsExactlyOncePerSplitRun": true,
+    "reportsJoinedAcrossIsolatedFilesystems": true,
+    "coldHistoryEmpty": true,
+    "warmHistoryExactlyMatchesColdDurations": true,
+    "warmAssignmentsMatchMeasuredHistory": true,
+    "warmCacheMaterialized": true,
+    "timingsCheckpointedAndCached": true
+  },
+  "preliminaryAttempt": {
+    "instance": "matrix-20261024-1",
+    "outcome": "Terminated after source fetch rejected abbreviated revision 98a3452; replaced with matrix-20261024-2 using the full SHA."
+  }
+}

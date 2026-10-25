@@ -2,10 +2,7 @@
 
 Install an operating-system dependency before your build.
 
-```ts
-const apt = yield* CI.PackageManager.Apt(workspace)
-return yield* apt.install(["imagemagick"])
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=installImageMagick "source")
 
 The capability uses the current user when root and `sudo` otherwise. The workflow
 does not need runner-specific branches.

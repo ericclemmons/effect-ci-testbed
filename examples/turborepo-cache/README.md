@@ -2,9 +2,7 @@
 
 Keep Turborepo's task cache between CI runs without recreating its hashing rules.
 
-```ts
-return yield* workspace.exec("cd app && npx turbo run build")
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
 
 Turborepo decides whether the task inputs match and restores `dist/**` on a hit.
 Effect CI's runner persists `.turbo/cache` between runs.

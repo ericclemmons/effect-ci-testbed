@@ -1,0 +1,437 @@
+{
+  "schema": "effect-ci-release-flywheel-proof-v1",
+  "recordedAt": "2026-10-24T04:25:47.804Z",
+  "assertionResult": "passed",
+  "journeyComplete": false,
+  "samples": 1,
+  "host": {
+    "sourceRevision": null,
+    "sourceDigest": "e3a2dade8b55668176d4fd801153a4cb6de76a78951d78522510188ba9d47a36",
+    "baselineWorkerVersion": "d7e085a2-3ad9-4642-9b30-39fdbf4d92dc",
+    "reusedCheckWorkerVersion": "9b05684f-d2b7-42e2-b8cd-3e5339d1a391"
+  },
+  "local": {
+    "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+    "startedAt": 1792815280193,
+    "finishedAt": 1792815280314,
+    "executions": [
+      {
+        "step": "worker-tests",
+        "elapsedMs": 83
+      },
+      {
+        "step": "build",
+        "elapsedMs": 0
+      }
+    ],
+    "nodes": [
+      {
+        "id": "prepare",
+        "status": "complete"
+      },
+      {
+        "id": "worker-tests",
+        "status": "complete"
+      },
+      {
+        "id": "build",
+        "status": "complete"
+      }
+    ],
+    "toolchain": {
+      "node": "24.22.1",
+      "v8": "13.6.233.17-node.58"
+    },
+    "elapsedMs": 121
+  },
+  "upload": {
+    "version": "041850ee-aaa0-4a8a-8f39-dd24f4054011",
+    "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+    "moduleDigest": "b8847a3d3ecc88ce730e5ca1629c4594d6441824d3809b494a67f07e8dd17d7a",
+    "startedAt": 1792815380361,
+    "finishedAt": 1792815380891,
+    "deployed": false
+  },
+  "evidence": {
+    "notesRef": "refs/notes/effect-ci-hosted-checks-v1",
+    "envelope": {
+      "version": 1,
+      "keyId": "release-flywheel-demo-v1",
+      "identity": {
+        "kind": "check",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+        "workflowId": "release-flywheel",
+        "stepId": "worker-tests",
+        "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+        "policyDigest": "9cb93cfc27b4ac6d7a178df73423bec3faa6d4ba34f0f0cfb7f00481ccf067b5",
+        "sourceDigest": "e9f99e158dee3fb3dea9a9344ea3e9253d6887f24f549dc0ddd7c48848a5c5c9",
+        "toolchainDigest": "bca01cbe4ef2bfe7ff3a30bd08028f008f19b9286c9d44af2a9637c046693d8c"
+      },
+      "signature": "59x7cEBHkFg6YEe631d1BRNy31zHtmW6EVLuZtD4dzVaeynk2VnMLgfERJMbsnXeuTjdzlP59fg6MNOKi5NKAA"
+    }
+  },
+  "cold": {
+    "id": "cf_c2c1dae92881fa69abdeac367878fd88a6927db10a380b4124ae22abbc677660",
+    "workflowVersion": "df0d0d84-9c22-4783-ba11-7260078eebed",
+    "sourceRevision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+    "status": "complete",
+    "rawSnapshotDigest": "fb5ccc73a9c2eb12b9c75b5741a99a2f9eaa7d8be3e7ca4a67cd34e5b34396cb",
+    "output": {
+      "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+      "mode": "verify",
+      "startedAt": 1792815507419,
+      "verifiedAt": 1792815526101,
+      "executions": [
+        {
+          "step": "worker-tests",
+          "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+          "elapsedMs": 884
+        },
+        {
+          "step": "build",
+          "command": "cp worker.mjs candidate.mjs",
+          "elapsedMs": 627
+        }
+      ],
+      "lookups": [
+        {
+          "hit": false,
+          "elapsedMs": 2589
+        }
+      ],
+      "identity": {
+        "kind": "check",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+        "workflowId": "release-flywheel",
+        "stepId": "worker-tests",
+        "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+        "policyDigest": "9cb93cfc27b4ac6d7a178df73423bec3faa6d4ba34f0f0cfb7f00481ccf067b5",
+        "sourceDigest": "e9f99e158dee3fb3dea9a9344ea3e9253d6887f24f549dc0ddd7c48848a5c5c9",
+        "toolchainDigest": "bca01cbe4ef2bfe7ff3a30bd08028f008f19b9286c9d44af2a9637c046693d8c"
+      },
+      "nodes": [
+        {
+          "id": "prepare",
+          "status": "complete"
+        },
+        {
+          "id": "worker-tests",
+          "status": "complete"
+        },
+        {
+          "id": "build",
+          "status": "complete"
+        }
+      ],
+      "checkReused": false
+    },
+    "timingsMs": {
+      "queue": 3069,
+      "workflow": 18906,
+      "queuedToFinished": 21975,
+      "verification": 18682,
+      "evidenceLookup": 2589,
+      "testCommandIncludingDispatch": 884,
+      "buildCommandIncludingDispatch": 627,
+      "approvalWait": null,
+      "rolloutIncludingHealthWaits": null
+    },
+    "nativeSteps": [
+      {
+        "name": "checkout-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:27.450Z",
+        "end": "2026-10-24T04:18:36.656Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": null
+      },
+      {
+        "name": "prepare:commit-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:36.692Z",
+        "end": "2026-10-24T04:18:39.146Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "2c75102791d9b91a738f1675cb6627f7ddbace4157c31ce2b883acdb0e6b2b04"
+      },
+      {
+        "name": "proof-identity:read-worker-mjs-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:39.194Z",
+        "end": "2026-10-24T04:18:39.977Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "098c7f41c098ed89ac8ef1dd7e22e89ad3aae5db524cc597eba2960c22230626"
+      },
+      {
+        "name": "proof-identity:read-worker-test-mjs-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:40.013Z",
+        "end": "2026-10-24T04:18:40.075Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "e4676147b3724c60e7b3eae21844289d54a5251cb288a0716119a634bff147a9"
+      },
+      {
+        "name": "command:[\"proof-runtime\",1]-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:40.113Z",
+        "end": "2026-10-24T04:18:41.121Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "d72d52a33ba6dbead71ba5e3458361c1195df123d5f9aae48592a729577ab72a"
+      },
+      {
+        "name": "command:[\"worker-tests\",1]-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:41.783Z",
+        "end": "2026-10-24T04:18:42.631Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "63290e443883e74b2062d112fea5f824288ddb88dcc1b9258f4bc378c42b2d26"
+      },
+      {
+        "name": "command:[\"build\",1]-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:42.667Z",
+        "end": "2026-10-24T04:18:43.258Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "6dbd58e3d9b72bce5d75a1e8390c01a6e87f2b5c8f120c75d9e486c446386472"
+      },
+      {
+        "name": "build:commit-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:43.294Z",
+        "end": "2026-10-24T04:18:46.030Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "7d716a5811a3109a32754d4dad4fd725ec206e64717a45b6473e8c753c83753f"
+      },
+      {
+        "name": "proof:verification-1",
+        "type": "step",
+        "start": "2026-10-24T04:18:46.066Z",
+        "end": "2026-10-24T04:18:46.101Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "e35961d75454368c088347f2c4223977213309804903c5e60c04351280b2a794"
+      }
+    ]
+  },
+  "warm": {
+    "id": "cf_19bd874f6ba6f6d0ee4ebae5fc08c1d4cdebf7fa6ac703da37fefb0dffd46613",
+    "workflowVersion": "773cadb8-3d51-433d-9717-82dc58f9241a",
+    "sourceRevision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+    "status": "complete",
+    "rawSnapshotDigest": "ec532b176d9b9282c71dc72a49d9417f3735eabc891b146c032032f31fcd0a1a",
+    "output": {
+      "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+      "mode": "verify",
+      "startedAt": 1792815866798,
+      "verifiedAt": 1792815876508,
+      "executions": [
+        {
+          "step": "build",
+          "command": "cp worker.mjs candidate.mjs",
+          "elapsedMs": 576
+        }
+      ],
+      "lookups": [
+        {
+          "hit": true,
+          "elapsedMs": 2114
+        }
+      ],
+      "noteReads": [
+        {
+          "httpCode": 200,
+          "endpoint": "notes"
+        },
+        {
+          "httpCode": 200,
+          "endpoint": "commits"
+        },
+        {
+          "httpCode": 200,
+          "endpoint": "trees"
+        },
+        {
+          "httpCode": 200,
+          "endpoint": "blobs"
+        }
+      ],
+      "transports": [
+        {
+          "transport": "github-api"
+        }
+      ],
+      "identity": {
+        "kind": "check",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+        "workflowId": "release-flywheel",
+        "stepId": "worker-tests",
+        "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+        "policyDigest": "9cb93cfc27b4ac6d7a178df73423bec3faa6d4ba34f0f0cfb7f00481ccf067b5",
+        "sourceDigest": "e9f99e158dee3fb3dea9a9344ea3e9253d6887f24f549dc0ddd7c48848a5c5c9",
+        "toolchainDigest": "bca01cbe4ef2bfe7ff3a30bd08028f008f19b9286c9d44af2a9637c046693d8c"
+      },
+      "nodes": [
+        {
+          "id": "prepare",
+          "status": "complete"
+        },
+        {
+          "id": "worker-tests",
+          "status": "verified"
+        },
+        {
+          "id": "build",
+          "status": "complete"
+        }
+      ],
+      "checkReused": true
+    },
+    "timingsMs": {
+      "queue": 614,
+      "workflow": 10062,
+      "queuedToFinished": 10676,
+      "verification": 9710,
+      "evidenceLookup": 2114,
+      "testCommandIncludingDispatch": null,
+      "buildCommandIncludingDispatch": 576,
+      "approvalWait": null,
+      "rolloutIncludingHealthWaits": null
+    },
+    "nativeSteps": [
+      {
+        "name": "checkout-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:26.798Z",
+        "end": "2026-10-24T04:24:29.003Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": null
+      },
+      {
+        "name": "prepare:commit-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:29.028Z",
+        "end": "2026-10-24T04:24:31.219Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "b06289b8e7f75ebe558644e07b89a6d0198821d16e7ba7ed9e9458428df2098e"
+      },
+      {
+        "name": "proof-identity:read-worker-mjs-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:31.245Z",
+        "end": "2026-10-24T04:24:31.692Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "098c7f41c098ed89ac8ef1dd7e22e89ad3aae5db524cc597eba2960c22230626"
+      },
+      {
+        "name": "proof-identity:read-worker-test-mjs-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:31.718Z",
+        "end": "2026-10-24T04:24:31.769Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "e4676147b3724c60e7b3eae21844289d54a5251cb288a0716119a634bff147a9"
+      },
+      {
+        "name": "command:[\"proof-runtime\",1]-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:31.796Z",
+        "end": "2026-10-24T04:24:32.519Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "d72d52a33ba6dbead71ba5e3458361c1195df123d5f9aae48592a729577ab72a"
+      },
+      {
+        "name": "command:[\"build\",1]-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:33.359Z",
+        "end": "2026-10-24T04:24:33.909Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "6dbd58e3d9b72bce5d75a1e8390c01a6e87f2b5c8f120c75d9e486c446386472"
+      },
+      {
+        "name": "build:commit-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:33.935Z",
+        "end": "2026-10-24T04:24:36.450Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "b71455ea3b6a6822e9cc97fa55e04ed08a65a4a974414b4a43398fb5f7afc67e"
+      },
+      {
+        "name": "proof:verification-1",
+        "type": "step",
+        "start": "2026-10-24T04:24:36.475Z",
+        "end": "2026-10-24T04:24:36.508Z",
+        "success": true,
+        "attempts": 1,
+        "outputDigest": "9079d9077c8b352fe4b875b9df741c734cf32d63094321f5fa62b918856dc91f"
+      }
+    ]
+  },
+  "limitations": {
+    "video": null,
+    "transcript": null,
+    "cpu": null,
+    "billedCost": null,
+    "hardwareAttestation": false,
+    "crossPlatformEquivalence": "reviewed fixture only",
+    "approval": "Human decision relayed by the agent through the authenticated Workflow API",
+    "coldWarm": "Evidence absent/present; fresh workspace per run. Engine/image caches not controlled.",
+    "health": "Dedicated demo HTTP cohorts; independent-sample assumption; no ambient traffic or native WOBS proof"
+  },
+  "retrievalMissesAfterNotePublication": [
+    {
+      "id": "cf_437533bd8f83f6eeb77c4d146d15648ed973fd84daceccd8b3cf172006dbb1cc",
+      "rawSnapshotDigest": "8273bea1d378eab3d2d854f6418c1a678bf432a2ef2f1bab9b1d029986b47d5e",
+      "outcome": "executed tests normally",
+      "identity": {
+        "kind": "check",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+        "workflowId": "release-flywheel",
+        "stepId": "worker-tests",
+        "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+        "policyDigest": "9cb93cfc27b4ac6d7a178df73423bec3faa6d4ba34f0f0cfb7f00481ccf067b5",
+        "sourceDigest": "e9f99e158dee3fb3dea9a9344ea3e9253d6887f24f549dc0ddd7c48848a5c5c9",
+        "toolchainDigest": "bca01cbe4ef2bfe7ff3a30bd08028f008f19b9286c9d44af2a9637c046693d8c"
+      },
+      "noteReads": null
+    },
+    {
+      "id": "cf_192a7ffd31ef7ffcb49964e5e84e08154453ceb5b0130ab2307e8ddce64c85c9",
+      "rawSnapshotDigest": "cfc383e5c06e2bee767d32769426b7a46054b06e27784cc81d9901c65433b39d",
+      "outcome": "executed tests normally",
+      "identity": {
+        "kind": "check",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "724c4f73a48f98faa246e92a3b15c160c65eb3c0",
+        "workflowId": "release-flywheel",
+        "stepId": "worker-tests",
+        "command": "env -i PATH=/usr/local/bin:/usr/bin:/bin node --test worker.test.mjs",
+        "policyDigest": "9cb93cfc27b4ac6d7a178df73423bec3faa6d4ba34f0f0cfb7f00481ccf067b5",
+        "sourceDigest": "e9f99e158dee3fb3dea9a9344ea3e9253d6887f24f549dc0ddd7c48848a5c5c9",
+        "toolchainDigest": "bca01cbe4ef2bfe7ff3a30bd08028f008f19b9286c9d44af2a9637c046693d8c"
+      },
+      "noteReads": [
+        {
+          "status": "unknown",
+          "endpoint": "notes"
+        }
+      ]
+    }
+  ]
+}

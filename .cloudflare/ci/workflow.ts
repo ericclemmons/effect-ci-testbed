@@ -1,7 +1,8 @@
 import * as CI from "@effect-ci-testbed/ci";
 
-// Product apps only. Test hosts live in test/apps; the copy-out tutorial lives
-// in examples/demo. Neither is a production CD target.
+// App runtime deployments. Public docs use the separate main-branch Cloudflare
+// Builds trigger recorded in apps/docs/builds.json. Test hosts in test/apps and
+// the copy-out tutorial in examples/demo are not CD targets.
 export const platformApps = ["github-actions-runner", "effect-ci"] as const;
 
 const checkout = CI.action("checkout", function* () {

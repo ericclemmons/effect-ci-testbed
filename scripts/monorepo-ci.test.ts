@@ -88,8 +88,14 @@ test("feature pushes and manual runs validate without automatic production deplo
   }
 });
 
-test("every product app is in ordinary CD and test apps stay separate", () => {
-  assert.deepEqual([...platformApps].sort(), readdirSync("apps").sort());
+test("every product app has main-branch CD and test apps stay separate", () => {
+  const docs = JSON.parse(readFileSync("apps/docs/builds.json", "utf8"));
+  assert.equal(docs.provider, "Cloudflare Workers Builds");
+  assert.equal(docs.branch, "main");
+  assert.equal(docs.worker, "effect-ci-docs");
+  assert.equal(docs.buildCommand, "pnpm docs:build");
+  assert.equal(docs.deployCommand, "pnpm --filter @effect-ci-testbed/docs exec cf deploy --prebuilt");
+  assert.deepEqual([...platformApps, "docs"].sort(), readdirSync("apps").sort());
   assert.ok(readdirSync("test/apps").includes("repair-events"));
   assert.ok(readdirSync("examples/demo").includes("tutorial"));
 });

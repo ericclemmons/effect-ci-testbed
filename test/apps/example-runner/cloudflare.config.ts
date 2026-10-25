@@ -27,6 +27,7 @@ export default defineConfig({
     limits: { subrequests: HMD_SUBREQUEST_LIMIT },
     env: { RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }), LOADER: bindings.workerLoader(), ARTIFACTS: bindings.artifacts({ namespace: "default" }), ANALYTICS_SQL: bindings.analyticsSQL(), SOURCE_BUCKET: bindings.r2({ name: "effect-ci-example-source" }) },
     exports: {
+      FlywheelWorkflow: exports.workflow({ name: "effect-ci-release-flywheel" }),
       WorkspaceContainer: exports.durableObject({ storage: "sqlite", container: workspace }),
       SecretWorkspaceContainer: exports.durableObject({ storage: "sqlite", container: secretWorkspace }),
       CredentialVault: exports.durableObject({ storage: "sqlite" }),

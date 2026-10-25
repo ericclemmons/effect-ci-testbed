@@ -5,9 +5,7 @@ Bake tools into the runner image instead of installing them on every run.
 The [Dockerfile](./Dockerfile) adds Python and the Sandbox shim to Debian.
 The portable action only needs:
 
-```ts
-yield* workspace.exec("python3 --version")
-```
+[Source](./.cloudflare/ci/actions.ts#symbol=verifyPython "source")
 
 ## Use it on Cloudflare
 
