@@ -1,0 +1,49 @@
+README.md
+  s_ebeef85f2c1f87::t_1e04c8f7a37565 307
+examples/README.md
+  s_ebeef85f2c1f87::t_9761be255cff09 55
+examples/actionable-lifecycle/.cloudflare/ci/workflow.ts
+  s_ebeef85f2c1f87::t_dd8f0fdb67af45 1-32
+examples/actionable-lifecycle/README.md
+  s_ebeef85f2c1f87::t_5c44d0c9d5c6ae 1-35
+examples/actionable-lifecycle/demo.ts
+  s_ebeef85f2c1f87::t_e84274902a206e 1-28
+examples/actionable-lifecycle/tsconfig.json
+  s_ebeef85f2c1f87::t_a39edb75bf9dcd 1-5
+examples/actionable-lifecycle/verification.md
+  s_ebeef85f2c1f87::t_c0d35729d9992d 1-33
+packages/ci/LIFECYCLE.md
+  s_ebeef85f2c1f87::t_e281f2e6b1b845 1-118
+packages/ci/README.md
+  s_ebeef85f2c1f87::t_936895a5b07646 3-5
+packages/ci/package.json
+  s_ebeef85f2c1f87::t_dc30729d882426 9
+packages/ci/src/index.ts
+  s_ebeef85f2c1f87::t_0562a38fca9066 16-18,213,306-307,417-428,1509-1513,1752,1756-1761,1781-1786,1827-1836,1884,1959,1962,1985-1986,2047,2054,2065,2072,2097-2098,2225,2243,2250,2437,2444,2446,2467,2738-2781,2783-2798,2803,2808-2809
+packages/ci/src/lifecycle.ts
+  s_ebeef85f2c1f87::t_88936fa5248865 1-106
+packages/ci/src/observers.ts
+  s_ebeef85f2c1f87::t_ca39cadd4d6f04 2,12-13,69-70
+packages/cli/src/index.ts
+  s_ebeef85f2c1f87::t_0e00f0f54cd5b5 997-1000
+packages/github-cloudflare/src/index.ts
+  s_ebeef85f2c1f87::t_6661e144e8e965 513-514,520-521
+packages/github-cloudflare/src/run-card.ts
+  s_ebeef85f2c1f87::t_46e5ab2ed896d6 2,23,34,68-70,116-140,147-149,181,187-189,211-212,214,260,268,286-287,296,315,329-332,366-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "77627001dda60d9f9f70cc8793f11f55759a9462",
+  "prompts": {},
+  "sessions": {
+    "s_ebeef85f2c1f87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-04cb-7313-8af1-701a0d84d09c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
