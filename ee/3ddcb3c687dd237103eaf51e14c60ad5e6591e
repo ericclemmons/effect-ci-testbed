@@ -1,0 +1,19 @@
+examples/conditional-deploy/subgraph-verification.md
+  s_817d10094530c4::t_9028300dd29d23 6-8,64-66,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ee3ddcb3c687dd237103eaf51e14c60ad5e6591e",
+  "prompts": {},
+  "sessions": {
+    "s_817d10094530c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7b33-7103-8052-4e6f89248fae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
