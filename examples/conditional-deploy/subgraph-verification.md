@@ -4,7 +4,7 @@ This extends the existing single-action `CI.when` recipe; it does not replace it
 workflow, source-change example, or historical hosted proof. The implementation
 baseline is `20f29103911800606929de4f9afa095667606e48` on `main`.
 The local receipt's source hashes match implementation commit
-[`bd0ff1b5bd952c0c94b16fa8af2ebb8b710de2f0`](https://github.com/ericclemmons/effect-ci-testbed/commit/bd0ff1b5bd952c0c94b16fa8af2ebb8b710de2f0)
+[`490747ac6db43200c36e905a58d5b7e9116f10d0`](https://github.com/ericclemmons/effect-ci-testbed/commit/490747ac6db43200c36e905a58d5b7e9116f10d0)
 in [Draft PR #408](https://github.com/ericclemmons/effect-ci-testbed/pull/408).
 
 ## Evidence boundary
@@ -63,7 +63,9 @@ existing token setup; it does not introduce credentials or modify the adapter.
 No pipeline waiting is part of this change. Configured jobs are not passing jobs.
 The one post-push snapshot found
 [run 40438670248](https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40438670248)
-queued for that exact implementation commit; no completed GitHub result is claimed.
+queued for the initial `bd0ff1b5bd952c0c94b16fa8af2ebb8b710de2f0` implementation;
+no completed GitHub result or hosted proof of the later rollback-ownership guard
+is claimed.
 
 ## Existing validation
 
