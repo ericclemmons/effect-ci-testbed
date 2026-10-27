@@ -1,0 +1,23 @@
+apps/effect-ci/DEMO-RELEASE.md
+  s_757e0f53bc0ff7::t_a0424d57457d65 3-23
+apps/effect-ci/HUMAN-REVIEW.md
+  s_757e0f53bc0ff7::t_fc6b2b6efe435e 1-89
+apps/effect-ci/README.md
+  s_757e0f53bc0ff7::t_71a7d099b4bdf4 99-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "018d7f19f4ab9e08c4a22a220f9ff2c15cc8947d",
+  "prompts": {},
+  "sessions": {
+    "s_757e0f53bc0ff7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-68ab-7e03-b345-4f85916615ed",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
