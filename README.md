@@ -343,6 +343,7 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 | [Approve a deployment in GitHub](./examples/hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Approve a release in Slack](./examples/cloudflare-hitl-release) | — | — | — | ✅ |
 | [Request release approval in Discord](./examples/cloudflare-hitl-release) | — | — | — | 🔜 |
+| [Maintain and clean up PR previews](./examples/pull-request-preview) | — | — | — | 🔜 |
 
 ### Deployment and progressive release
 

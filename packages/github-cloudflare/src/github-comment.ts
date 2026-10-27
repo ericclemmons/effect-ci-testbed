@@ -9,6 +9,8 @@ export interface GitHubCommentOptions {
   readonly botUserId: number
   readonly token: () => Promise<string>
   readonly transport?: typeof fetch
+  readonly lifecycle?: string
+  readonly reconcileOnly?: boolean
 }
 
 const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0
@@ -38,7 +40,7 @@ export const renderGitHubComment = (run: RunSnapshot): string => {
   return `### ${phase} · ${text(run.workflowId)}\n\n${source}@${revision}${details ? ` • [Details](${details})` : ""}\n\n${checks.join("  \n") || "Preparing checks…"}${run.checks.length > 100 ? "\n\nAdditional checks are available in Details." : ""}${health}`
 }
 
-/** One maintained comment per run/PR. Separate runs cannot overwrite each other.
+/** Default per-run ownership; lifecycle callers must serialize and fence PR-wide writes.
  * Receipt recovery scans at most 500 comments and fails closed on ambiguity or overflow.
  * External posting is not exactly-once, but replay can rediscover an acknowledged post.
  */
@@ -46,6 +48,8 @@ export const githubCommentProvider = (options: GitHubCommentOptions): Notificati
   options = { ...options }
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(options.repository) ||
     !positiveId(options.pullRequest) || !positiveId(options.botUserId)) throw new Error("Invalid GitHub comment destination")
+  if (options.lifecycle !== undefined && !/^[a-z][a-z0-9-]{0,63}$/.test(options.lifecycle))
+    throw new Error("Invalid notification lifecycle")
   const base = `https://api.github.com/repos/${options.repository}`
   const issue = `${base}/issues/${options.pullRequest}`.toLowerCase()
   const transport = options.transport ?? fetch
@@ -55,12 +59,15 @@ export const githubCommentProvider = (options: GitHubCommentOptions): Notificati
       try: async (): Promise<NotificationReceipt> => {
         const repository = run.identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
         if (repository.toLowerCase() !== options.repository.toLowerCase()) throw new Error("Wrong notification repository")
-        const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify([
-          options.repository.toLowerCase(), options.pullRequest, run.identity.instanceId, run.identity.revision,
-        ])))
+        const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(options.lifecycle
+          ? [options.repository.toLowerCase(), options.pullRequest, "lifecycle", options.lifecycle]
+          : [options.repository.toLowerCase(), options.pullRequest, run.identity.instanceId, run.identity.revision])))
         const identity = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("")
         const marker = `<!-- effect-ci-run:${identity} -->`
-        const body = `${marker}\n${renderGitHubComment(run)}`
+        const operation = options.lifecycle ? `\n<!-- effect-ci-operation:${Array.from(new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(run))),
+        ), byte => byte.toString(16).padStart(2, "0")).join("")} -->` : ""
+        const body = `${marker}\n${renderGitHubComment(run)}${operation}`
         const token = await options.token()
         const request = async (path: string, method = "GET", value?: unknown): Promise<any> => {
           const response = await transport(`${base}${path}`, {
@@ -110,6 +117,8 @@ export const githubCommentProvider = (options: GitHubCommentOptions): Notificati
             if (page === 5) throw new Error("Comment discovery limit reached")
           }
         }
+        if (options.reconcileOnly && (!comment || comment.body !== body))
+          throw new Error("Notification acknowledgement remains unknown")
         const result = comment
           ? comment.body === body ? comment : await request(`/issues/comments/${comment.id}`, "PATCH", { body })
           : await request(`/issues/${options.pullRequest}/comments`, "POST", { body })
