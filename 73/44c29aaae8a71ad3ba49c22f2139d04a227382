@@ -1,0 +1,37 @@
+README.md
+  s_8a0d377d214c51::t_c98e756f902b60 305
+examples/README.md
+  s_8a0d377d214c51::t_224aa39927c9a5 49
+examples/automatic-fanout/.cloudflare/ci/actions.ts
+  s_8a0d377d214c51::t_da95dc2a465bb6 1-48
+examples/automatic-fanout/.cloudflare/ci/workflow.ts
+  s_8a0d377d214c51::t_73530cc39ff344 1-10
+examples/automatic-fanout/README.md
+  s_8a0d377d214c51::t_5c71cd7c1748ea 1-256
+examples/automatic-fanout/app/aggregate.mjs
+  s_8a0d377d214c51::t_0277dee3ad0ed8 1-12
+examples/automatic-fanout/app/check.mjs
+  s_8a0d377d214c51::t_306d2128885bf9 1-13
+examples/automatic-fanout/app/prepare.mjs
+  s_8a0d377d214c51::t_76789ebb43514d 1-9
+examples/automatic-fanout/proposal.json
+  s_8a0d377d214c51::t_5579278d0eb014 1-16
+examples/automatic-fanout/tsconfig.json
+  s_8a0d377d214c51::t_9351754e5f2a31 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7344c29aaae8a71ad3ba49c22f2139d04a227382",
+  "prompts": {},
+  "sessions": {
+    "s_8a0d377d214c51": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-15e1-7782-9523-563f0e741f5e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
