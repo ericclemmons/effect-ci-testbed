@@ -1,0 +1,41 @@
+README.md
+  s_948596ff8616bb::t_42f01c80328c81 361
+examples/README.md
+  s_948596ff8616bb::t_6dca294eab0aa4 56
+examples/ordered-deploy/apps/backend/package.json
+  s_948596ff8616bb::t_593d57d59f757c 6-8
+examples/ordered-deploy/apps/frontend/package.json
+  s_948596ff8616bb::t_547d5269034eac 6-8
+examples/task-graph-deploy/README.md
+  s_948596ff8616bb::t_975f52bb0d30a8 1-120
+examples/task-graph-deploy/graph.ts
+  s_948596ff8616bb::t_bc459ad2396c0a 1-126
+examples/task-graph-deploy/package.json
+  s_948596ff8616bb::t_07b443f4c6c905 1-11
+examples/task-graph-deploy/plan.ts
+  s_948596ff8616bb::t_5e4f946e5ed10e 1-32
+examples/task-graph-deploy/tsconfig.json
+  s_948596ff8616bb::t_15366ae3d15e90 1-4
+examples/task-graph-deploy/turbo.json
+  s_948596ff8616bb::t_78421527daa974 1-20
+examples/task-graph-deploy/verification.md
+  s_948596ff8616bb::t_bb803e8b091b2c 1-65
+pnpm-lock.yaml
+  s_948596ff8616bb::t_7f99a60f61cd08 1583-1588,7315-7348,13454-13480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e95da7b9ad783d7fc23ff824a9bdbfc600c236c5",
+  "prompts": {},
+  "sessions": {
+    "s_948596ff8616bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-77de-7423-9830-da415dd0c1b2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
