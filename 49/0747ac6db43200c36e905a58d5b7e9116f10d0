@@ -1,0 +1,23 @@
+examples/conditional-deploy/README.md
+  s_08c1a49edbfde6::t_85a39c436f3412 55-56
+examples/conditional-deploy/verification/subgraph-local.json
+  s_08c1a49edbfde6::t_a20d32fea9692b 5,1107,1125,1133,1141,1149,1480,1498,1516,1524,1532,1873,1891,1899,1907,1915,2246,2264,2282,2290,2298
+packages/ci/src/index.ts
+  s_08c1a49edbfde6::t_4e949c5b6d96db 2151-2157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "490747ac6db43200c36e905a58d5b7e9116f10d0",
+  "prompts": {},
+  "sessions": {
+    "s_08c1a49edbfde6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-9462-7e82-8188-cbf693f03511",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
