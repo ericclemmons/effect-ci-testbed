@@ -1,0 +1,23 @@
+examples/health-mediated-release/README.md
+  s_6750c2c7dd3e57::t_62f271c6aa7cfc 30-35
+test/apps/example-runner/README.md
+  s_6750c2c7dd3e57::t_3a26f29bd376ae 258-262
+test/apps/example-runner/native-health-evidence.md
+  s_6750c2c7dd3e57::t_f248f9f55cd3cf 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1d8fd588174f63094431843f2fde2b333e66f0be",
+  "prompts": {},
+  "sessions": {
+    "s_6750c2c7dd3e57": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-fd84-7940-8394-a878b45f64c8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
