@@ -96,7 +96,9 @@ These are not automatic enrollment for a fresh copy of the tutorial.
 approval authority. Host policy selects which runs notify. The root CI/CD workflow
 has no human gate. The [HITL example](../../examples/cloudflare-hitl-release/README.md)
 shows an explicit approval action; [demo release evidence](./DEMO-RELEASE.md) retains
-the earlier release integration.
+the earlier release integration. The [human walkthrough handoff](./HUMAN-REVIEW.md)
+separates that signed, delegated execution from the independent human evidence
+still required by issue #141. Do not replay a release to refresh old documentation.
 
 ### Separate health-mediated approval lab
 
