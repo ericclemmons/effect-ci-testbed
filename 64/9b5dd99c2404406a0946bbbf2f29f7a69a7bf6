@@ -1,0 +1,19 @@
+packages/github-cloudflare/src/github-comment.ts
+  s_93690ecc46a825::t_e0a56ba3a591d4 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "649b5dd99c2404406a0946bbbf2f29f7a69a7bf6",
+  "prompts": {},
+  "sessions": {
+    "s_93690ecc46a825": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-9abe-7a82-ada7-4408db66bc50",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
