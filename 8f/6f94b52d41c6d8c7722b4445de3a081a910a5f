@@ -1,0 +1,41 @@
+examples/docker-in-docker/.cloudflare/ci/actions.ts
+  s_75cfb25e945fb2::t_71562bcabfdf59 9,12-13
+examples/docker-in-docker/.cloudflare/ci/build-and-run.mjs
+  s_75cfb25e945fb2::t_f58436c5fe660b 1-81
+examples/docker-in-docker/.dockerignore
+  s_75cfb25e945fb2::t_efa804c0916971 1-4
+examples/docker-in-docker/Dockerfile
+  s_75cfb25e945fb2::t_f3d4678ae4f9de 1,3-5,11-16,18
+examples/docker-in-docker/README.md
+  s_75cfb25e945fb2::t_d73ebac3cfabea 3-5,7-10,13,16-37,40-42,45-47,50-86,90-92
+examples/docker-in-docker/app/.dockerignore
+  s_75cfb25e945fb2::t_e92753e18898f4 1-3
+examples/docker-in-docker/app/Dockerfile
+  s_75cfb25e945fb2::t_eaf4531fce9663 5-8
+examples/docker-in-docker/runner/docker.sh
+  s_75cfb25e945fb2::t_4dcfbac0ebfa6a 1-8
+examples/docker-in-docker/runner/ready.sh
+  s_75cfb25e945fb2::t_d3e2dd0546fc63 1-6
+examples/docker-in-docker/runner/start.sh
+  s_75cfb25e945fb2::t_7ed03bd8d77431 1-7
+examples/docker-in-docker/src/worker.ts
+  s_75cfb25e945fb2::t_c6cd80d186b5e8 2,6-29,37,39,41-43,46,48-73
+examples/docker-in-docker/verification.md
+  s_75cfb25e945fb2::t_1938a4a9c485aa 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8f6f94b52d41c6d8c7722b4445de3a081a910a5f",
+  "prompts": {},
+  "sessions": {
+    "s_75cfb25e945fb2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-7fe6-7d10-86bb-c27cbe37fd09",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
