@@ -52,6 +52,8 @@ runtime rejects an undeclared prerequisite rather than discovering ownership by
 executing an unselected body. IDs are supplied by the author, remain unchanged
 across outcomes, and cannot be shared between alternatives. Branches belong in
 the workflow, not inside actions. Use an empty array for a no-op alternative.
+Rollback actions also need exclusive IDs so their condition and `rollbackFor`
+owner stay unambiguous.
 
 `plan.branches` records the branch ID, predicate, ordered `onTrue`/`onFalse` IDs
 and selected alternative for the supplied event. Every member and rollback has

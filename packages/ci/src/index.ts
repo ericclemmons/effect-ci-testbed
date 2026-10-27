@@ -2148,6 +2148,13 @@ const makeRuntime = (
             const definition = actionDefinitions.get(member.effect as object)
             if (definition) registerDefinition(runtime, definition)
             branchConditions.set(member.id, predicate)
+            if (definition?.rollback) {
+              const rollbackId = definition.rollback.id
+              if (branchConditions.has(rollbackId) || (nodes.has(rollbackId) && !reusable.has(rollbackId))) {
+                return yield* Effect.fail(new WorkflowPlanError(`CI branch rollback must have an exclusive id: ${rollbackId}`))
+              }
+              branchConditions.set(rollbackId, predicate)
+            }
             if (member.optional) optionalSteps.add(member.id)
           }
         }
