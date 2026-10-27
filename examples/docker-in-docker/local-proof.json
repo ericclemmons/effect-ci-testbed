@@ -1,0 +1,35 @@
+{
+  "localDate": "2026-10-26",
+  "sourceCommit": "8f6f94b52d41c6d8c7722b4445de3a081a910a5f",
+  "command": "cf-ci run --workflow examples/docker-in-docker/.cloudflare/ci/workflow.ts --format=text",
+  "mode": "local Docker Desktop daemon, not a nested local daemon",
+  "signed": false,
+  "report": {
+    "name": "effect-ci-user-12dced8d-5090-409f-b1b5-774786eef54a",
+    "image": "effect-ci-user-12dced8d-5090-409f-b1b5-774786eef54a:proof",
+    "imageId": "sha256:8e23e7eea85b1cf923f7c1fd254dd852dfc7c8da8d341d714ba2ea63b5e26d25",
+    "daemon": "29.9.2",
+    "buildx": "github.com/docker/buildx v0.38.1 0dbe87f36ed472fe36b6796c3f70b4210a731fc5",
+    "exitCode": 0,
+    "output": "hello from a user-provided Dockerfile\n",
+    "network": "bridge",
+    "memoryBytes": 134217728,
+    "nanoCpus": 250000000,
+    "pids": 32,
+    "mounts": 0,
+    "readOnly": true,
+    "user": "65534:65534",
+    "cleanup": "container and image removed"
+  },
+  "independentReadback": {
+    "remainingContainersWithInvocationPrefix": 0,
+    "remainingImagesWithInvocationPrefix": 0
+  },
+  "outerImage": {
+    "platform": "linux/amd64",
+    "id": "sha256:f48b9b609fcfda3560e3fccfac6fad5dc85071bc97f919694ecfb796d2e6e594",
+    "offlineUnprivilegedToolCheck": "passed: Node v24.22.1, git 2.54.0, Docker/buildx/dockerd 29.9.2/0.38.1/29.9.2",
+    "nestedDaemonExecution": "not attempted with privileged local Docker; no host privilege changes"
+  },
+  "hosted": "not executed; scoped new deployment and account authentication required"
+}

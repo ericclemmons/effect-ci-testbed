@@ -45,6 +45,38 @@ one action so its `finally` owns the image lifecycle, rather than leaving an
 image stranded between action snapshots. No signer, callback, registry push,
 production deployment or secret binding is added.
 
+## Local execution
+
+The [unsigned execution report](./local-proof.json) records an actual inner project
+image build, Dockerfile `RUN` execution, an unprivileged container's expected
+output, inspected limits, and independent empty container/image readback at
+`8f6f94b52d41c6d8c7722b4445de3a081a910a5f`. An outer-environment sentinel was
+present; the inner image's environment contained only `PATH`. The local daemon
+was Docker Desktop, not a privileged nested daemon. This is local execution
+evidence, not hosted acceptance or signed reusable check evidence.
+
+Disposable copies of the project Dockerfile also exercised real build failure
+(exit 42), inner-process failure (exit 42 with stderr retained), and a running
+container whose `docker wait` exceeded 30 seconds (`ETIMEDOUT`). Each returned
+nonzero; independent Docker listings found no invocation containers or images.
+These experiments preceded the final cleanup-confirmation log addition; they
+did not modify or add repository tests. Abrupt external local process death,
+daemon loss and provider alarm delivery were not fault-injected.
+
+The AMD64 outer image built successfully, and an offline, read-only container
+with dropped capabilities verified Node, git, Docker/buildx and dockerd.
+An initial APK-based layer failed TLS verification in this local environment.
+The final image instead copies Node and its runtime libraries from the official
+Node Alpine image, reusing Docker's existing git/CA tools; TLS verification was
+not disabled. This image build is not evidence of a hosted inner run.
+
+Validation passed: the existing root `cf-ci run check build`, the readiness-shell
+and recipe-documentation tests (13 checks), recipe planning, Worker bundle
+dry-run, shell/Node syntax checks and `git diff --check`. Root validation also
+built the public documentation and verified its source includes. Initial sandbox
+network/loopback restrictions were retried with scoped approval. No repository
+test was created or changed, and no hosted pipeline was watched.
+
 ## Remaining hosted authority
 
 No deployment or hosted workflow invocation was made in this task. Wrangler's
