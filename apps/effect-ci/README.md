@@ -75,6 +75,10 @@ remote-to-SCM verification and App PR approvals. It distinguishes retained runs 
 current deployment state. Reuse retains the original execution identity; it is not
 a claim that the command ran again or permission to skip arbitrary checks.
 
+The [cross-commit reuse decision](./CHECK-REUSE-DECISION.md) compares exact-commit
+checks, trusted input-addressed reuse and selective invalidation at thousands of
+commits. It is a proposal, not a change to the host's current trust policy.
+
 The [PR workflow](./src/workflows/pull-request.ts) composes
 `inspect PR → review → approve PR`. The host supplies canonical evidence and a
 journaled exact-head writer. This path does not merge a PR or bypass GitHub rules.
