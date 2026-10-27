@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process"
-import { randomUUID } from "node:crypto"
-import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { createHash, randomUUID } from "node:crypto"
+import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, relative } from "node:path"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import { sourceIdentity } from "../../../coverage-receipt.ts"
 
 const attempt = <A>(operation: () => A) => Effect.try({ try: operation, catch: (error) => error })
 
@@ -14,6 +15,24 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
   const provider = "snapshot-fanout-files"
   const snapshots = new Map([["source", root]])
   const workspaces = new Map<string, string>()
+  const captures: Array<{ stepId: string; directory: string; digest: string }> = []
+  const commands: Array<{ stepId: string; started: number; finished: number; exitCode: number }> = []
+  const digest = (directory: string): string => {
+    const hash = createHash("sha256")
+    const visit = (path: string) => {
+      for (const name of readdirSync(path).sort()) {
+        const target = join(path, name)
+        const info = lstatSync(target)
+        hash.update(JSON.stringify([relative(directory, target), info.mode & 0o777, info.isDirectory()]))
+        if (info.isDirectory()) visit(target)
+        else if (info.isFile()) hash.update(readFileSync(target))
+        else throw Error("Snapshot contains a non-regular entry")
+      }
+    }
+    visit(directory)
+    return hash.digest("hex")
+  }
+  const originalDigest = digest(join(root, "app"))
   let directory: string | undefined
   const allocate = () => {
     directory ??= mkdtempSync(join(tmpdir(), "effect-ci-file-snapshots-"))
@@ -60,7 +79,9 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
   }
   const capture = (workspace: CI.Workspace, stepId: string): CI.WorkspaceCheckpointHandle => {
     const value = randomUUID()
-    snapshots.set(value, copy(materialize(workspace, stepId)))
+    const directory = copy(materialize(workspace, stepId))
+    snapshots.set(value, directory)
+    captures.push({ stepId, directory, digest: digest(join(directory, "app")) })
     return { provider, value }
   }
   const file = (workspace: CI.Workspace, path: string, stepId: string) => {
@@ -77,6 +98,7 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
     executor: {
       execute: ({ workspace, stepId, command, onOutput }) => Effect.tryPromise({
         try: () => new Promise<CI.CommandExecutionResult>((resolve, reject) => {
+          const started = Date.now()
           const child = spawn("sh", ["-c", command], {
             cwd: file(workspace, "", stepId), stdio: ["ignore", "pipe", "pipe"],
           })
@@ -90,7 +112,10 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
             onOutput("stderr", chunk.toString())
           })
           child.once("error", reject)
-          child.once("close", (code) => resolve({ exitCode: code ?? 1, stdout, stderr }))
+          child.once("close", (code) => {
+            commands.push({ stepId, started, finished: Date.now(), exitCode: code ?? 1 })
+            resolve({ exitCode: code ?? 1, stdout, stderr })
+          })
         }),
         catch: (error) => new CI.CommandError(stepId, command, workspace.cwd, 1, String(error)),
       }),
@@ -112,9 +137,41 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
       }),
     },
     dispose: async () => {
-      if (directory) rmSync(directory, { recursive: true, force: true })
-      workspaces.clear()
-      snapshots.clear()
+      try {
+        if (!commands.length) return
+        const [prepared] = captures.filter(capture => capture.stepId === "prepare")
+        const [left] = commands.filter(command => command.stepId === "left")
+        const [right] = commands.filter(command => command.stepId === "right")
+        const preparedUnchanged = !!prepared && digest(join(prepared.directory, "app")) === prepared.digest &&
+          readFileSync(join(prepared.directory, "app/prepared.txt"), "utf8") === "prepared" &&
+          !existsSync(join(prepared.directory, "app/branch.txt"))
+        const branches = ["left", "right"].map(stepId => {
+          const [capture] = captures.filter(capture => capture.stepId === stepId)
+          return { stepId, isolated: !!capture && capture.directory !== prepared?.directory,
+            contents: capture ? readFileSync(join(capture.directory, "app/branch.txt"), "utf8") : undefined }
+        })
+        const receipt = {
+          schemaVersion: 1, recordedAt: new Date().toISOString(),
+          recipe: "snapshot-fanout", environment: process.env.GITHUB_ACTIONS === "true" ? "effect-on-github" : "effect-local",
+          source: sourceIdentity(root, [".cloudflare/ci/local.ts", ".cloudflare/ci/actions.ts", ".cloudflare/ci/workflow.ts", "../coverage-receipt.ts"]),
+          github: process.env.GITHUB_RUN_ID ? { runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT } : null,
+          runtime: { node: process.version, platform: process.platform, arch: process.arch },
+          originalDigest, sourceUnchanged: digest(join(root, "app")) === originalDigest,
+          preparedDigest: prepared?.digest, preparedUnchanged,
+          prepareExecutions: commands.filter(command => command.stepId === "prepare").length,
+          allSnapshotsUnchanged: captures.every(capture => digest(join(capture.directory, "app")) === capture.digest),
+          branches, overlapping: !!left && !!right && Math.max(left.started, right.started) < Math.min(left.finished, right.finished),
+          commands, boundary: "Trusted shell commands in separate filesystem copies; not a VM security boundary or signed reusable evidence",
+        }
+        if (process.env.EFFECT_CI_SNAPSHOT_RECEIPT) writeFileSync(process.env.EFFECT_CI_SNAPSHOT_RECEIPT, JSON.stringify(receipt, null, 2) + "\n")
+        if (!receipt.sourceUnchanged || !preparedUnchanged || !receipt.allSnapshotsUnchanged || receipt.prepareExecutions !== 1 ||
+          !receipt.overlapping || commands.length !== 3 || commands.some(command => command.exitCode !== 0) ||
+          branches.some(branch => !branch.isolated || branch.contents !== branch.stepId)) throw Error("Snapshot fanout invariants failed")
+      } finally {
+        if (directory) rmSync(directory, { recursive: true, force: true })
+        workspaces.clear()
+        snapshots.clear()
+      }
     },
   }
 }

@@ -23,3 +23,18 @@ private bucket, then dispatch `effect-ci-r2-source-checks` with its object key a
 Object keys follow `source/<sha256>.json`. Changing the contents requires a new
 digest. The manifest supports regular files and executable bits, up to 64 KiB
 of decoded source; it is not an archive or a Git clone.
+
+## Conventional GitHub comparison
+
+[Conventional runner](../source-comparison.ts "source")
+
+The manual [comparison workflow](../../.github/workflows/source-comparisons.yml)
+fetches the fixed fixture on the host using a short-lived HTTPS read capability,
+validates the same manifest contract, then gives only decoded files to a
+network-disabled container. It does not run Effect CI or the Effect workflow.
+
+It has not run against R2 on GitHub. The `R2_COMPARISON_MANIFEST_URL` secret must
+be issued for the existing bucket and exact digest, with separate authority and
+an issuer receipt. Do not use a copied Git fixture or a workflow result as R2
+checkout evidence. Local and Effect-on-GitHub recipe checks currently read the
+checked-in `source.txt`, not the private bucket. See [coverage](../remaining-coverage.md).

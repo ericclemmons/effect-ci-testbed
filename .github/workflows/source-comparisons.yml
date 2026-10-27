@@ -1,0 +1,35 @@
+name: Conventional source comparisons
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        type: choice
+        options: [r2, durable-object]
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: docker pull node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+      - name: Host checkout, credential-free conventional workload
+        env:
+          SOURCE_MANIFEST_URL: ${{ secrets[inputs.provider == 'r2' && 'R2_COMPARISON_MANIFEST_URL' || 'DO_COMPARISON_MANIFEST_URL'] }}
+          SOURCE_COMPARISON_RECEIPT: ${{ runner.temp }}/source-comparison.json
+          PROVIDER: ${{ inputs.provider }}
+        run: node examples/source-comparison.ts "$PROVIDER"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: conventional-${{ inputs.provider }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/source-comparison.json
+          if-no-files-found: error
