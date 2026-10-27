@@ -137,7 +137,9 @@ export class PreviewRegistry extends DurableObject<PreviewEnvironment> {
       }
       await this.schedule();
       const notification = await this.notify(token, state);
-      return { ...previewLease(state), phase: state.phase, notification };
+      return { ...previewLease(state), phase: state.phase, notification,
+        ...(state.phase === "ready" && state.site && state.expiresAt > Date.now()
+          ? { digest: state.site.assetDigest, url: previewUrl(state, state.site.assetDigest) } : {}) };
     }));
   }
 

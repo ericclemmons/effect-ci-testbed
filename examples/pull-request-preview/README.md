@@ -23,6 +23,7 @@ as this recipe's hosted acceptance.
 | Build | Existing network-free Dynamic Worker builder, 250 ms CPU/5 s deadline, no container, secrets or host bindings |
 | Publication | Only `/pr/<number>/<generation>/<40-character-head>/<asset-digest>/<asset>` on the new origin; no mutable alias |
 | Retention | Current generation only, up to 24 hours from admission; update, close, deleted source branch or expiry removes its served assets |
+| Execution history | Native Workflow source/build checkpoints remain under platform retention; no automatic Workflow-history deletion or source erasure is authorized |
 | Forks | Reject all forks, including collaborator-owned forks; no actor allowlist or label override |
 | GitHub | Existing App `effect-ci` (5089816), installation 165265172, bot `effect-ci[bot]` (334321206); one maintained bot-owned comment only on individually approved PR destinations |
 | Token | Host mints a repository-restricted installation token with Contents read and Pull requests read; Issues write is requested only when notification destinations are configured; revocation follows each operation |
@@ -82,6 +83,11 @@ response. Expiry blocks reads even if an alarm is delayed; alarms remove stored
 asset bodies. Compact generation/budget/notification records remain for replay
 and fencing; there is no `deleteAll`, external Worker deletion or historical
 registry cleanup capability.
+
+Native Workflow history separately retains its recorded source/build outputs
+under platform retention. The 24-hour limit applies to served previews and the
+registry's asset bodies, not execution-history erasure. At most 64 build
+admissions can create those histories in this namespace; no history is deleted.
 
 Workflow creation records its deterministic intent first. A lost create ACK is
 read back using the **same** instance ID on a later delivery. No second create is
