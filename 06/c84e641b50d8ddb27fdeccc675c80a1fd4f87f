@@ -1,0 +1,43 @@
+README.md
+  s_46ff382cf96310::t_0c96420aed9905 356
+examples/ordered-deploy/.cloudflare/ci/failure.ts
+  s_46ff382cf96310::t_463b0c431e60ac 1-18
+examples/ordered-deploy/.cloudflare/ci/hosted.ts
+  s_46ff382cf96310::t_75f913fc86df93 1-40
+examples/ordered-deploy/README.md
+  s_46ff382cf96310::t_77bb118a0688cc 3-6,8-11,14-17,19,21-29,32-123,125-133
+examples/ordered-deploy/apps/backend/cloudflare.config.ts
+  s_46ff382cf96310::t_fd220079e83238 1,8-10
+examples/ordered-deploy/apps/backend/src/index.ts
+  s_46ff382cf96310::t_8a089f543a2053 3-4,6-15,17
+examples/ordered-deploy/apps/backend/vite.config.ts
+  s_46ff382cf96310::t_b3cd50ec160676 3,7
+examples/ordered-deploy/apps/frontend/cloudflare.config.ts
+  s_46ff382cf96310::t_50f4082fafbc74 1,8-13
+examples/ordered-deploy/apps/frontend/src/index.ts
+  s_46ff382cf96310::t_0753611bb9603c 3-4,6-48,50
+examples/ordered-deploy/apps/frontend/vite.config.ts
+  s_46ff382cf96310::t_e9c49f8f85007c 3,7
+examples/ordered-deploy/src/build.ts
+  s_46ff382cf96310::t_7052667f575ad9 1-7
+examples/ordered-deploy/src/target.ts
+  s_46ff382cf96310::t_c95c1b310aa569 1-153
+examples/ordered-deploy/tsconfig.json
+  s_46ff382cf96310::t_9ae62fbb6eb721 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "06c84e641b50d8ddb27fdeccc675c80a1fd4f87f",
+  "prompts": {},
+  "sessions": {
+    "s_46ff382cf96310": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-8d44-7b40-b73d-a0d74c25de82",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
