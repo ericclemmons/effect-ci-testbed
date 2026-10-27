@@ -1,0 +1,23 @@
+examples/remaining-coverage-proof/secret-outbound-local.json
+  s_8f9ce82fde8468::t_763fbf27ada2bf 1-49
+examples/remaining-coverage-proof/snapshot-fanout-local.json
+  s_8f9ce82fde8468::t_adeb4da185c611 1-61
+examples/remaining-coverage.md
+  s_8f9ce82fde8468::t_8364613da3dcfc 30-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ff545b6e13e3a7f7bdc613995592b804c7bd96cd",
+  "prompts": {},
+  "sessions": {
+    "s_8f9ce82fde8468": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7146-75a1-967d-17c00dd11aee",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
