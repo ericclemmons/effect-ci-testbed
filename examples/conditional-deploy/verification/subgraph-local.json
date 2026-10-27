@@ -1,0 +1,2304 @@
+{
+  "environment": "Local macOS / Node 24.22.1",
+  "baseline": "20f29103911800606929de4f9afa095667606e48",
+  "sourceHashes": {
+    "packages/ci/src/index.ts": "1445021c3ff520826734a07d4a6b2eedbab6256f17a3a37a534ae8044df776f9",
+    "examples/conditional-deploy/.cloudflare/ci/subgraph.ts": "cfc7551001a54923954b826e1107506412f9a52172b53b1f9a3a959604996330",
+    "examples/conditional-deploy/.cloudflare/ci/subgraph-actions.ts": "823b97f422da2947e6b2ff992d29d295fff1c33cc85be0d16b5ddd2d8f28e740",
+    "examples/conditional-deploy/conventional.sh": "d43075ee4cf978fb00f2e2e9a44713b40fcf3f6091c7679cef077552ee011b3f"
+  },
+  "plans": [
+    {
+      "event": "push",
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "plan",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onTrue"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "branch report",
+            "after": [],
+            "dependencies": [
+              "branch checkout",
+              "preview verify",
+              "release verify"
+            ],
+            "commands": [
+              {
+                "command": "echo 'branch:report'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          }
+        ]
+      }
+    },
+    {
+      "event": "pull_request",
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "plan",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onFalse"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "branch report",
+            "after": [],
+            "dependencies": [
+              "branch checkout",
+              "preview verify",
+              "release verify"
+            ],
+            "commands": [
+              {
+                "command": "echo 'branch:report'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "planned"
+          }
+        ]
+      }
+    }
+  ],
+  "runs": [
+    {
+      "event": "push",
+      "ref": "refs/heads/main",
+      "exitCode": 0,
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "execute",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onTrue"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "warning"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "branch report",
+            "after": [],
+            "dependencies": [
+              "branch checkout",
+              "release verify"
+            ],
+            "commands": [
+              {
+                "command": "echo 'branch:report'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release prepare",
+          "stream": "stdout",
+          "text": "release:prepare\n",
+          "timestamp": "2026-10-27T02:27:44.873Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release advisory",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "release advisory",
+            "command": "echo 'release:advisory'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "release:advisory\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:44.880Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release publish",
+          "stream": "stdout",
+          "text": "release:publish\n",
+          "timestamp": "2026-10-27T02:27:44.886Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release verify",
+          "stream": "stdout",
+          "text": "release:verify\n",
+          "timestamp": "2026-10-27T02:27:44.892Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "branch report",
+          "stream": "stdout",
+          "text": "branch:report\n",
+          "timestamp": "2026-10-27T02:27:44.898Z"
+        }
+      ],
+      "conventional": "release:prepare\nrelease:advisory\nrelease:publish\nrelease:verify\nbranch:report\n"
+    },
+    {
+      "event": "push",
+      "ref": "refs/heads/required-failure",
+      "exitCode": 1,
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "execute",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onTrue"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "warning"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:publish'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "failed"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'release:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release prepare",
+          "stream": "stdout",
+          "text": "release:prepare\n",
+          "timestamp": "2026-10-27T02:27:45.050Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release advisory",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "release advisory",
+            "command": "echo 'release:advisory'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "release:advisory\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:45.056Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "release publish",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "release publish",
+            "command": "echo 'release:publish'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "release:publish\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:45.064Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "undo release publish",
+          "stream": "stdout",
+          "text": "release:undo publish\n",
+          "timestamp": "2026-10-27T02:27:45.073Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "undo release prepare",
+          "stream": "stdout",
+          "text": "release:undo prepare\n",
+          "timestamp": "2026-10-27T02:27:45.086Z"
+        }
+      ],
+      "conventional": "release:prepare\nrelease:advisory\nrelease:publish\nrelease:undo publish\nrelease:undo prepare\n"
+    },
+    {
+      "event": "pull_request",
+      "ref": "refs/heads/main",
+      "exitCode": 0,
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "execute",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onFalse"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "warning"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:verify'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "branch report",
+            "after": [],
+            "dependencies": [
+              "branch checkout",
+              "preview verify"
+            ],
+            "commands": [
+              {
+                "command": "echo 'branch:report'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview prepare",
+          "stream": "stdout",
+          "text": "preview:prepare\n",
+          "timestamp": "2026-10-27T02:27:45.384Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview advisory",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "preview advisory",
+            "command": "echo 'preview:advisory'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "preview:advisory\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:45.393Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview publish",
+          "stream": "stdout",
+          "text": "preview:publish\n",
+          "timestamp": "2026-10-27T02:27:45.403Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview verify",
+          "stream": "stdout",
+          "text": "preview:verify\n",
+          "timestamp": "2026-10-27T02:27:45.412Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "branch report",
+          "stream": "stdout",
+          "text": "branch:report\n",
+          "timestamp": "2026-10-27T02:27:45.418Z"
+        }
+      ],
+      "conventional": "preview:prepare\npreview:advisory\npreview:publish\npreview:verify\nbranch:report\n"
+    },
+    {
+      "event": "pull_request",
+      "ref": "refs/heads/required-failure",
+      "exitCode": 1,
+      "plan": {
+        "workflowId": "conditional-subgraph",
+        "environment": "development",
+        "mode": "execute",
+        "branches": [
+          {
+            "id": "publication",
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "onTrue": [
+              "release prepare",
+              "release advisory",
+              "release publish",
+              "release verify"
+            ],
+            "onFalse": [
+              "preview prepare",
+              "preview advisory",
+              "preview publish",
+              "preview verify"
+            ],
+            "selected": "onFalse"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "branch checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "preview advisory",
+            "after": [],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:advisory'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "warning"
+          },
+          {
+            "id": "preview publish",
+            "after": [
+              "preview advisory"
+            ],
+            "dependencies": [
+              "preview prepare"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:publish'; exit 1",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "failed"
+          },
+          {
+            "id": "preview verify",
+            "after": [],
+            "dependencies": [
+              "preview publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release advisory",
+            "after": [],
+            "dependencies": [
+              "release prepare"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": true,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release publish",
+            "after": [
+              "release advisory"
+            ],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "release verify",
+            "after": [],
+            "dependencies": [
+              "release publish"
+            ],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo preview prepare",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo prepare'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "undo preview publish",
+            "after": [],
+            "dependencies": [
+              "branch checkout"
+            ],
+            "commands": [
+              {
+                "command": "echo 'preview:undo publish'",
+                "cwd": "<recipe>"
+              }
+            ],
+            "artifacts": [],
+            "condition": {
+              "_tag": "not",
+              "condition": {
+                "_tag": "event",
+                "oneOf": [
+                  "push"
+                ]
+              }
+            },
+            "rollbackFor": "preview publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "undo release prepare",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release prepare",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          },
+          {
+            "id": "undo release publish",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "condition": {
+              "_tag": "event",
+              "oneOf": [
+                "push"
+              ]
+            },
+            "rollbackFor": "release publish",
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "skipped"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview prepare",
+          "stream": "stdout",
+          "text": "preview:prepare\n",
+          "timestamp": "2026-10-27T02:27:45.569Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview advisory",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "preview advisory",
+            "command": "echo 'preview:advisory'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "preview:advisory\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:45.577Z"
+        },
+        {
+          "type": "step.command.failed",
+          "workflowId": "conditional-subgraph",
+          "stepId": "preview publish",
+          "diagnostics": {
+            "version": 1,
+            "stepId": "preview publish",
+            "command": "echo 'preview:publish'; exit 1",
+            "cwd": "<recipe>",
+            "exitCode": 1,
+            "output": {
+              "stdout": "preview:publish\n",
+              "stderr": "",
+              "truncated": false
+            }
+          },
+          "timestamp": "2026-10-27T02:27:45.589Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "undo preview publish",
+          "stream": "stdout",
+          "text": "preview:undo publish\n",
+          "timestamp": "2026-10-27T02:27:45.598Z"
+        },
+        {
+          "type": "step.output",
+          "workflowId": "conditional-subgraph",
+          "stepId": "undo preview prepare",
+          "stream": "stdout",
+          "text": "preview:undo prepare\n",
+          "timestamp": "2026-10-27T02:27:45.607Z"
+        }
+      ],
+      "conventional": "preview:prepare\npreview:advisory\npreview:publish\npreview:undo publish\npreview:undo prepare\n"
+    }
+  ]
+}

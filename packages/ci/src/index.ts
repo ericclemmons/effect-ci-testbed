@@ -126,6 +126,21 @@ export interface WorkflowPlan {
   readonly environment: string
   readonly mode: "plan" | "execute"
   readonly nodes: ReadonlyArray<PlanNode>
+  readonly branches?: ReadonlyArray<PlanBranch>
+}
+
+export interface PlanBranch {
+  readonly id: string
+  readonly condition: Condition
+  readonly onTrue: ReadonlyArray<string>
+  readonly onFalse: ReadonlyArray<string>
+  readonly selected: "onTrue" | "onFalse"
+}
+
+interface BranchMember {
+  readonly id: string
+  readonly effect: Effect.Effect<unknown, unknown, any>
+  readonly optional: boolean
 }
 
 export interface WorkflowRerunPlan {
@@ -302,11 +317,19 @@ interface RuntimeShape {
   readonly definitions: Map<string, StepDefinition>
   readonly ci: boolean
   readonly workflowId: string
+  readonly event: WorkflowEventShape
   readonly mode: WorkflowPlan["mode"]
   readonly nodes: Map<string, RuntimeNode>
   readonly afterEdges: Set<string>
   readonly edges: Set<string>
   readonly optionalSteps: Set<string>
+  readonly branches: Map<string, PlanBranch>
+  readonly branchConditions: Map<string, Condition>
+  readonly allowBranchDependency: (stepId: string) => boolean
+  readonly branch: (
+    plan: PlanBranch,
+    members: { readonly onTrue: ReadonlyArray<BranchMember>; readonly onFalse: ReadonlyArray<BranchMember> },
+  ) => Effect.Effect<void, unknown, any>
   readonly outputs: Map<string, unknown>
   readonly cache: Cache.Cache<string, unknown, unknown, Runtime>
   readonly addDependency: (parent: string, child: string) => Effect.Effect<void>
@@ -1483,6 +1506,14 @@ const runStep = <A>(
     }
     const runtime = yield* Runtime
     registerDefinition(runtime, definition)
+    const condition = runtime.branchConditions.get(id)
+    if (runtime.mode === "execute" && condition &&
+        !matchesCondition(condition, runtime.event)) {
+      return yield* Effect.fail(new WorkflowPlanError(`Required dependency belongs to an unselected branch: ${id}`))
+    }
+    if (!runtime.allowBranchDependency(id)) {
+      return yield* Effect.fail(new WorkflowPlanError(`Branch prerequisite must be an earlier member or run before CI.branch: ${id}`))
+    }
     const parent = yield* CurrentStep
     yield* runtime.addDependency(parent, id)
     for (const dependency of dependencies) {
@@ -1499,6 +1530,7 @@ const actionIds = new WeakMap<object, string>()
 const actionFactories = new WeakSet<Function>()
 const actionFactoryIds = new WeakMap<Function, string>()
 const optionalEffects = new WeakSet<object>()
+const conditionalEffects = new WeakSet<object>()
 
 export const optional = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -1521,6 +1553,7 @@ export const optional = <A, E, R>(
   const definition = actionDefinitions.get(effect as object)
   if (definition) actionDefinitions.set(optionalEffect as object, definition)
   optionalEffects.add(optionalEffect as object)
+  if (conditionalEffects.has(effect as object)) conditionalEffects.add(optionalEffect as object)
   return optionalEffect
 }
 
@@ -1558,9 +1591,43 @@ export const when = <A, E, R>(
   })
 
   actionIds.set(conditional as object, stepId)
+  conditionalEffects.add(conditional as object)
   const definition = actionDefinitions.get(effect as object)
   if (definition) actionDefinitions.set(conditional as object, definition)
   return conditional
+}
+
+export const branch = <E, R>(
+  id: string,
+  condition: Condition,
+  branches: {
+    readonly onTrue: ReadonlyArray<Effect.Effect<unknown, E, R>>
+    readonly onFalse: ReadonlyArray<Effect.Effect<unknown, E, R>>
+  },
+): Effect.Effect<void, E | WorkflowPlanError, R | Runtime | CurrentStep | WorkflowEvent> => {
+  if (!id.trim()) throw new Error("CI.branch requires a stable id")
+  const ids = new Set<string>()
+  const members = (effects: ReadonlyArray<Effect.Effect<unknown, E, R>>): ReadonlyArray<BranchMember> =>
+    effects.map((effect) => {
+      const stepId = actionIds.get(effect as object)
+      if (!stepId) throw new Error("CI.branch expects CI actions or steps")
+      if (conditionalEffects.has(effect as object)) throw new Error("Use CI.branch's condition for its members, not CI.when")
+      if (ids.has(stepId)) throw new Error(`Duplicate CI branch member: ${stepId}`)
+      ids.add(stepId)
+      return { id: stepId, effect, optional: optionalEffects.has(effect as object) }
+    })
+  const onTrue = members(branches.onTrue)
+  const onFalse = members(branches.onFalse)
+  return Effect.gen(function* () {
+    if ((yield* CurrentStep) !== "$workflow") {
+      return yield* Effect.fail(new WorkflowPlanError("CI.branch belongs in the workflow, not inside an action"))
+    }
+    const runtime = yield* Runtime
+    const event = yield* WorkflowEvent
+    yield* runtime.branch({ id, condition, onTrue: onTrue.map((member) => member.id),
+      onFalse: onFalse.map((member) => member.id),
+      selected: matchesCondition(condition, event) ? "onTrue" : "onFalse" }, { onTrue, onFalse })
+  }) as Effect.Effect<void, E | WorkflowPlanError, R | Runtime | CurrentStep | WorkflowEvent>
 }
 
 export const parallel = <Effects extends ReadonlyArray<Effect.Effect<any, any, any>>>(
@@ -1790,6 +1857,9 @@ const makeRuntime = (
     const edges = new Set<string>()
     const failureOrigins = new Map<unknown, string>()
     const optionalSteps = new Set<string>()
+    const branches = new Map<string, PlanBranch>()
+    const branchConditions = new Map<string, Condition>()
+    let activeBranchMembers: Set<string> | undefined
     const outputs = new Map<string, unknown>()
     const parallelSteps = new Set<string>()
     const completedRollbacks: Array<{
@@ -1866,6 +1936,8 @@ const makeRuntime = (
           status: "planned" as const,
         }
         nodes.set(id, node)
+        const condition = branchConditions.get(id)
+        if (condition) node.condition = condition
 
         if (reusable.has(id)) {
           const reused = Effect.succeed(outputs.get(id))
@@ -2050,11 +2122,79 @@ const makeRuntime = (
       definitions,
       ci,
       workflowId,
+      event,
       mode,
       nodes,
       afterEdges,
       edges,
       optionalSteps,
+      branches,
+      branchConditions,
+      allowBranchDependency: (stepId) => !activeBranchMembers || activeBranchMembers.has(stepId) ||
+        (!branchConditions.has(stepId) && nodes.has(stepId)),
+      branch: (plan, members) => Effect.gen(function* () {
+        if (branches.has(plan.id)) {
+          return yield* Effect.fail(new WorkflowPlanError(`Duplicate CI branch id: ${plan.id}`))
+        }
+        if (rerun && JSON.stringify(rerun.previous.plan.branches?.find((branch) => branch.id === plan.id)) !== JSON.stringify(plan)) {
+          return yield* Effect.fail(new WorkflowPlanError(`CI branch changed since the previous attempt: ${plan.id}`))
+        }
+        for (const outcome of ["onTrue", "onFalse"] as const) {
+          const predicate = outcome === "onTrue" ? plan.condition : Condition.not(plan.condition)
+          for (const member of members[outcome]) {
+            if (branchConditions.has(member.id) || (nodes.has(member.id) && !reusable.has(member.id))) {
+              return yield* Effect.fail(new WorkflowPlanError(`CI branch member already used: ${member.id}`))
+            }
+            const definition = actionDefinitions.get(member.effect as object)
+            if (definition) registerDefinition(runtime, definition)
+            branchConditions.set(member.id, predicate)
+            if (member.optional) optionalSteps.add(member.id)
+          }
+        }
+        branches.set(plan.id, plan)
+        const before = workflowBarrier
+        const tails: Array<typeof workflowBarrier> = []
+        for (const outcome of ["onTrue", "onFalse"] as const) {
+          if (mode === "plan" || outcome === plan.selected) continue
+          workflowBarrier = before
+          const predicate = outcome === "onTrue" ? plan.condition : Condition.not(plan.condition)
+          for (const member of members[outcome]) {
+            yield* runtime.addDependency("$workflow", member.id)
+            yield* runtime.skip(member.id, predicate)
+            const rollback = definitions.get(member.id)?.rollback
+            if (rollback) {
+              yield* runtime.registerRollback(member.id, rollback.id, rollback.effect)
+            }
+          }
+        }
+        for (const outcome of ["onTrue", "onFalse"] as const) {
+          if (mode !== "plan" && outcome !== plan.selected) continue
+          workflowBarrier = before
+          activeBranchMembers = new Set()
+          for (const member of members[outcome]) {
+            activeBranchMembers.add(member.id)
+            const rollbackId = definitions.get(member.id)?.rollback?.id
+            if (rollbackId) activeBranchMembers.add(rollbackId)
+            yield* member.effect.pipe(Effect.onExit((exit) => Effect.gen(function* () {
+              if (Exit.isSuccess(exit)) return
+              activeBranchMembers = undefined
+              for (const pending of members[outcome]) {
+                if (nodes.has(pending.id)) continue
+                yield* runtime.addDependency("$workflow", pending.id)
+                yield* runtime.skip(pending.id, branchConditions.get(pending.id)!)
+                const rollback = definitions.get(pending.id)?.rollback
+                if (rollback) yield* runtime.registerRollback(pending.id, rollback.id, rollback.effect)
+              }
+            })))
+          }
+          activeBranchMembers = undefined
+          tails.push(workflowBarrier)
+        }
+        workflowBarrier = {
+          after: [...new Set(tails.flatMap((tail) => tail.after))],
+          dependencies: [...new Set(tails.flatMap((tail) => tail.dependencies))],
+        }
+      }),
       outputs,
       cache,
       addDependency: (parent, child) => Effect.gen(function* () {
@@ -2137,6 +2277,8 @@ const makeRuntime = (
           status: mode === "plan" ? "planned" as const : "skipped" as const,
         }
         node.rollbackFor = primaryId
+        const condition = branchConditions.get(primaryId)
+        if (condition) node.condition = condition
         nodes.set(rollbackId, node)
 
         if (mode !== "plan") return
@@ -2497,6 +2639,7 @@ const toPlan = (
     workflowId,
     environment,
     mode: runtime.mode,
+    ...(runtime.branches.size > 0 ? { branches: [...runtime.branches.values()] } : {}),
     nodes: ordered.map((node) => ({
       id: node.id,
       after: [...(after.get(node.id) ?? [])].sort(),
@@ -2534,6 +2677,12 @@ export const formatPlan = (plan: WorkflowPlan): string => {
     `CI ${plan.mode === "plan" ? "plan" : "execution summary"}: ${plan.workflowId}`,
     `Environment: ${plan.environment}`,
   ]
+
+  for (const branch of plan.branches ?? []) {
+    lines.push(`Branch ${branch.id}: ${formatCondition(branch.condition)}; selected: ${branch.selected}`)
+    lines.push(`  onTrue: ${branch.onTrue.join(", ") || "(empty)"}`)
+    lines.push(`  onFalse: ${branch.onFalse.join(", ") || "(empty)"}`)
+  }
 
   for (const node of plan.nodes) {
     const after = node.after.length > 0 ? ` after ${node.after.join(", ")}` : ""

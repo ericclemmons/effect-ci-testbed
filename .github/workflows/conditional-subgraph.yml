@@ -1,0 +1,35 @@
+name: Conditional subgraph recipe
+
+on:
+  pull_request:
+    paths:
+      - packages/ci/**
+      - examples/conditional-deploy/**
+      - .github/workflows/conditional-subgraph.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        event: [push, pull_request]
+    steps:
+      - uses: actions/checkout@v7
+      - run: sh examples/conditional-deploy/conventional.sh '${{ matrix.event }}'
+
+  effect:
+    strategy:
+      fail-fast: false
+      matrix:
+        event: [push, pull_request]
+    uses: ./.github/workflows/effect-ci.yml
+    with:
+      workflow: examples/conditional-deploy/.cloudflare/ci/subgraph.ts
+      event: ${{ matrix.event }}
+      cache: false
+    secrets: inherit
