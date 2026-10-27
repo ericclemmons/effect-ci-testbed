@@ -1,0 +1,11 @@
+{
+  "name": "effect-ci-task-graph-deploy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "plan": "node plan.ts"
+  },
+  "devDependencies": {
+    "turbo": "2.11.10"
+  }
+}

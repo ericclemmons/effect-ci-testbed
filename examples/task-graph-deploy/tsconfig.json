@@ -1,0 +1,4 @@
+{
+  "extends": "../../examples/ordered-deploy/tsconfig.json",
+  "include": ["*.ts"]
+}

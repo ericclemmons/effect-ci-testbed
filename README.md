@@ -358,7 +358,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | [Recover from a deploy failure after migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll out a Worker with health checks](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Review a rollout when health is uncertain](./examples/health-mediated-approval) | — | 🔜 | — | 🔜 |
-| Deploy monorepo apps in dependency order | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Derive deployment order from a task graph](./examples/task-graph-deploy) | 🔜 | 🔜 | 🔜 | 🔜 |
 | Manage multiple Workers and their settings as code | 🔜 | 🔜 | 🔜 | 🔜 |
 | Keep a long-running rollout on compatible code | 🔜 | 🔜 | 🔜 | 🔜 |
 | Create and clean up PR preview deployments | 🔜 | 🔜 | 🔜 | 🔜 |

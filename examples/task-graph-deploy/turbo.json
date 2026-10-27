@@ -1,0 +1,20 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "cacheDir": ".effect-ci/cache/turbo",
+  "tasks": {
+    "effect-ci-ordered-deploy-backend#build": {
+      "cache": false
+    },
+    "effect-ci-ordered-deploy-frontend#build": {
+      "cache": false
+    },
+    "effect-ci-ordered-deploy-backend#deploy": {
+      "dependsOn": ["build", "effect-ci-ordered-deploy-frontend#build"],
+      "cache": false
+    },
+    "effect-ci-ordered-deploy-frontend#deploy": {
+      "dependsOn": ["build", "effect-ci-ordered-deploy-backend#deploy"],
+      "cache": false
+    }
+  }
+}
