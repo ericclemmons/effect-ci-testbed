@@ -227,6 +227,11 @@ local `cf dev` counts as Local, not Cloudflare. 🔜 means unverified roadmap co
 not necessarily missing code; — means the execution model is irrelevant. Moving a
 recipe into a group does not change its verification status.
 
+The [remaining-comparison ledger](./examples/remaining-coverage.md) separates
+fanout receipts, Local outbound proxying, and storage-provider comparisons.
+R2 and DO Local/Effect-on-GitHub checkmarks cover checked-in files, not reads
+from those storage services. Their conventional GitHub comparisons remain unverified.
+
 `· containerless` is a capability label in the **Effect CI Cloudflare** column,
 not another execution environment. `✅ · containerless` means the entire recorded
 recipe ran without a Container; `🔜 · containerless` is a planned containerless
@@ -301,7 +306,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Run every combination in a matrix](./examples/matrix) | ✅ | ✅ | ✅ | ✅ |
 | [Split tests across parallel jobs](./examples/test-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./examples/timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
-| [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
+| [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | 🔜 | ✅ |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |
 | [Roll back after a failed action](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
@@ -327,7 +332,7 @@ Keep credentials outside workspace containers, including authenticated outbound 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Use secrets without exposing them to containers](./examples/secure-secrets) | ✅ | ✅ | ✅ | ✅ |
-| [Call authenticated APIs without exposing credentials](./examples/secret-outbound) | — | 🔜 | — | ✅ |
+| [Call authenticated APIs without exposing credentials](./examples/secret-outbound) | — | ✅ | — | ✅ |
 | [Deploy with Wrangler using short-lived credentials](./examples/oidc-wrangler) | ✅ | — | — | — |
 | [Deploy with cf using short-lived credentials](./examples/oidc-cf) | ✅ | — | — | — |
 

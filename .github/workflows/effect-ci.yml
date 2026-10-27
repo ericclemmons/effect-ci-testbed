@@ -100,4 +100,11 @@ jobs:
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}
+          EFFECT_CI_SNAPSHOT_RECEIPT: ${{ inputs.workflow == 'examples/snapshot-fanout/.cloudflare/ci/workflow.ts' && matrix.mode == 'execute' && format('{0}/snapshot-fanout.json', runner.temp) || '' }}
         run: node packages/github/run.run.ts
+      - uses: actions/upload-artifact@v7
+        if: always() && inputs.workflow == 'examples/snapshot-fanout/.cloudflare/ci/workflow.ts' && matrix.mode == 'execute'
+        with:
+          name: snapshot-fanout-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/snapshot-fanout.json
+          if-no-files-found: error

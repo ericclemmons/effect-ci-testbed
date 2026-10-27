@@ -18,5 +18,27 @@ cf workflows instances create effect-ci-example-secret-outbound --body '{"instan
 The example uses an inert per-container test credential. A real integration
 should resolve its own host-held secret and restrict the allowed operation.
 
-The virtual hostname requires the host interceptor; ordinary local execution
-does not provide it. Other internet access is not blocked by this example.
+## Run locally
+
+Preload the public `node:24-alpine` Docker image, then run:
+
+```sh
+EFFECT_CI_OUTBOUND_RECEIPT=/tmp/secret-outbound.json pnpm exec cf-ci run --workflow examples/secret-outbound/.cloudflare/ci/workflow.ts
+```
+
+[Local host adapter](./.cloudflare/ci/local.ts "source")
+
+The host creates an inert credential and a loopback upstream. The read-only
+container has no host mounts or inherited host environment. Node's explicit HTTP
+proxy sends the placeholder to the host, which substitutes the credential and
+returns only `{ authenticated: true }`. Wrong placeholders, paths and queries
+are rejected. Even an upstream that reflects the credential cannot return it to
+the workload. The host removes the container and closes both listeners on exit.
+
+This is an opt-in Node proxy, not transparent interception for arbitrary programs
+or a VM-wide firewall. The proxy serves only `credential.ci:80`; it does not
+tunnel to external destinations. Other internet access is not blocked. The
+receipt records the actual image digest and host platform; it does not prove an
+external API integration. See [evidence and limits](../remaining-coverage.md).
+The proxy listener binds host interfaces so Docker can reach it. Use only the
+inert fixture credential here, not a production secret.
