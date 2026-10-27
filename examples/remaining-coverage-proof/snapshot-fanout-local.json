@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27T02:33:11.431Z",
+  "recipe": "snapshot-fanout",
+  "environment": "effect-local",
+  "source": {
+    "commit": "8d139227f04ad5099b7561eb9d8037324374febf",
+    "files": {
+      "examples/snapshot-fanout/.cloudflare/ci/local.ts": "1338001800be9234995d360d2b9e20d0cbfb192a5c33e09b3c7a2765bfde6890",
+      "examples/snapshot-fanout/.cloudflare/ci/actions.ts": "6f5408138b11f991c0907ef35084b88701b0413d446941e55bddc16123223501",
+      "examples/snapshot-fanout/.cloudflare/ci/workflow.ts": "b536e29741032d6f580c713a8132082bf6169619f5166604c3d25da04b470bc3",
+      "examples/coverage-receipt.ts": "ccce338dc9c242ef06f9cda82199b26ffc36f5e1e8bdabeb112b00f2dc3c3caa"
+    }
+  },
+  "github": null,
+  "runtime": {
+    "node": "v24.22.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "originalDigest": "9359cfd6783f61007bf3ffaac54dea5125aba68aa2a268a0f227db3f47fa45a7",
+  "sourceUnchanged": true,
+  "preparedDigest": "cc630e0c8a58ba77ed05d58c76c91bcbed20931df72da5bf16e13a1d1a012c13",
+  "preparedUnchanged": true,
+  "prepareExecutions": 1,
+  "allSnapshotsUnchanged": true,
+  "branches": [
+    {
+      "stepId": "left",
+      "isolated": true,
+      "contents": "left"
+    },
+    {
+      "stepId": "right",
+      "isolated": true,
+      "contents": "right"
+    }
+  ],
+  "overlapping": true,
+  "commands": [
+    {
+      "stepId": "prepare",
+      "started": 1793068389374,
+      "finished": 1793068389387,
+      "exitCode": 0
+    },
+    {
+      "stepId": "left",
+      "started": 1793068389391,
+      "finished": 1793068391428,
+      "exitCode": 0
+    },
+    {
+      "stepId": "right",
+      "started": 1793068389388,
+      "finished": 1793068391429,
+      "exitCode": 0
+    }
+  ],
+  "boundary": "Trusted shell commands in separate filesystem copies; not a VM security boundary or signed reusable evidence"
+}

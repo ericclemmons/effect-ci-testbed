@@ -27,6 +27,19 @@ identity of a dirty worktree. GitHub receipts additionally record run/attempt.
 Committed receipts and run-specific GitHub artifacts are evidence snapshots,
 not signatures, provenance attestations or reusable signed check evidence.
 
+- [Snapshot fanout / Effect Local](./remaining-coverage-proof/snapshot-fanout-local.json)
+- [Host-only outbound / Effect Local](./remaining-coverage-proof/secret-outbound-local.json)
+
+Both runs executed implementation commit
+`8d139227f04ad5099b7561eb9d8037324374febf`. The outbound receipt records successful
+container removal, the image digest, zero mounts, guest environment names and
+absence of the host credential in the guest configuration and output. The
+snapshot receipt records the original/prepared hashes and both branch intervals.
+Existing validation passed: repository-wide `pnpm check`, the 47 focused
+workflow/credential/documentation checks, seven existing source checks, explicit
+conventional-runner typechecking and the unchanged October 24 proof assertions.
+No tests were added or edited.
+
 Conventional source receipts deliberately omit the capability URL. Their input
 digest proves bytes, not the service that supplied them. A genuine comparison
 also requires an issuer receipt linking the read capability to R2 or the exact
