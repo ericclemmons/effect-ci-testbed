@@ -1,0 +1,45 @@
+.github/workflows/effect-ci.yml
+  s_8f9ce82fde8468::t_0dfefe7356ebc0 103,105-110
+.github/workflows/source-comparisons.yml
+  s_8f9ce82fde8468::t_d9d8c408c8b175 1-35
+README.md
+  s_8f9ce82fde8468::t_e22b803ca19448 230-234,309,335
+examples/coverage-receipt.ts
+  s_8f9ce82fde8468::t_9da3b73cc02f7c 1-13
+examples/durable-object-source/README.md
+  s_8f9ce82fde8468::t_8d9ef705d488b1 24-39
+examples/r2-source/README.md
+  s_8f9ce82fde8468::t_efd38b9b9b88eb 26-40
+examples/remaining-coverage.md
+  s_8f9ce82fde8468::t_94f1644ede65b7 1-83
+examples/secret-outbound/.cloudflare/ci/actions.ts
+  s_8f9ce82fde8468::t_3077d2ce2c53c7 11
+examples/secret-outbound/.cloudflare/ci/local.ts
+  s_8f9ce82fde8468::t_42870616ba3ce4 1-153
+examples/secret-outbound/.cloudflare/ci/workflow.ts
+  s_8f9ce82fde8468::t_65d2d6f10b4c99 4-5
+examples/secret-outbound/README.md
+  s_8f9ce82fde8468::t_52615015341b5a 21-44
+examples/snapshot-fanout/.cloudflare/ci/local.ts
+  s_8f9ce82fde8468::t_752b94314ebd30 2-3,8,18-35,82-84,101,115-118,140-174
+examples/snapshot-fanout/README.md
+  s_8f9ce82fde8468::t_6a07cd5a92c584 21-27
+examples/source-comparison.ts
+  s_8f9ce82fde8468::t_a1b1d4ada50a8d 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8d139227f04ad5099b7561eb9d8037324374febf",
+  "prompts": {},
+  "sessions": {
+    "s_8f9ce82fde8468": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7146-75a1-967d-17c00dd11aee",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
