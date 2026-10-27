@@ -16,3 +16,10 @@ depends on test, which depends on lint. Shared installation runs once.
 
 Compare the [Effect workflow](./.cloudflare/ci/workflow.ts) with
 [GitHub Actions YAML](./.github/workflows/github.yml).
+
+## Own the Cloudflare host
+
+The [standalone host](./hosted/README.md) owns its config, Workflow, Container
+binding and Dockerfile. Its dependencies are separate from this npm fixture.
+It has not been deployed or run independently; the old shared-host run is not
+standalone evidence.

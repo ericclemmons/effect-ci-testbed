@@ -4,6 +4,7 @@ packages:
   - test/fixtures/*
   - packages/*
   - examples/*
+  - examples/*/hosted
   - examples/ordered-deploy/apps/*
   - examples/vite-plus-cache/app
 

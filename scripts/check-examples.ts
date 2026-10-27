@@ -4,7 +4,10 @@ import { join } from "node:path"
 
 const examples = readdirSync("examples", { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
-  .map((entry) => join("examples", entry.name, "tsconfig.json"))
+  .flatMap((entry) => [
+    join("examples", entry.name, "tsconfig.json"),
+    join("examples", entry.name, "hosted", "tsconfig.json"),
+  ])
   .filter(existsSync)
   .sort()
 

@@ -15,3 +15,10 @@ pnpm exec cf-ci run check
 only named `CI.action` exports become CLI targets.
 
 [Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)
+
+## Own the Cloudflare host
+
+The [standalone host](./hosted/README.md) runs this default workflow without the
+shared example app. It owns its config, Container binding and Dockerfile.
+It does not expose a remote target-discovery endpoint. Independent deployment
+and execution remain unverified.

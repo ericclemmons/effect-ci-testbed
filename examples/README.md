@@ -67,3 +67,5 @@ in the recipes run from that root unless they say otherwise.
 - [Wrangler OIDC deployment](./oidc-wrangler) and [cf OIDC deployment](./oidc-cf)
 
 Hosted credentials and service setup live in the [host guide](../apps/effect-ci/README.md).
+Standalone ownership and retained proof are tracked in the
+[migration inventory](./standalone-migrations.md); a wrapper alone is not hosted proof.
