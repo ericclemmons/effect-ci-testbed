@@ -304,6 +304,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |
+| [Explain lifecycle waits and terminal outcomes](./examples/actionable-lifecycle) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll back after a failed action](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
 
 ### Caching, reruns, and verification

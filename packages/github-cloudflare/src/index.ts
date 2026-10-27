@@ -510,12 +510,15 @@ export const workflowEntrypoint = <A>(
         actionExecutor: runner.actionExecutor,
         ...(onAttempt ? { onAttempt } : {}),
         onEvent: async (runtimeEvent: CI.RuntimeEvent) => {
+          if (runtimeEvent.type === "workflow.lifecycle" && runtimeEvent.outcome === "success" &&
+              (options.finalize || options.executionEvidence || options.onAttempt)) return
           if ((options.finalize || options.executionEvidence || options.onAttempt) && runtimeEvent.type === "workflow.completed" && runtimeEvent.conclusion === "success") {
             deferredCompletion = runtimeEvent
             return
           }
           await reporter?.report(runtimeEvent)
-          const key = runtimeEvent.type === "step.status"
+          const key = runtimeEvent.type === "step.lifecycle" ? `${runtimeEvent.stepId}:lifecycle:${runtimeEvent.phase}:${runtimeEvent.timestamp}`
+              : runtimeEvent.type === "workflow.lifecycle" ? `lifecycle:${runtimeEvent.outcome}` : runtimeEvent.type === "step.status"
               ? `${runtimeEvent.stepId}:${runtimeEvent.status}`
               : runtimeEvent.type === "step.command.failed" ? `${runtimeEvent.stepId}:command-failed`
               : runtimeEvent.type === "step.command.unavailable" ? `${runtimeEvent.stepId}:command-unavailable`

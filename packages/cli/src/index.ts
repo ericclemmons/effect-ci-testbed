@@ -994,6 +994,10 @@ export const main = async (
       try {
         return await CI.runPromise(localWorkflow, {
           ...configured,
+          onEvent: async (event) => {
+            await configured.onEvent?.(event)
+            if (format === "text" && (event.type === "step.lifecycle" || event.type === "workflow.lifecycle")) console.log(CI.formatLifecycle(event))
+          },
           mode: invocation.command === "plan" ? "plan" : "execute",
           ...(format === "json" || format === "mermaid"
             ? { output: "silent" as const }

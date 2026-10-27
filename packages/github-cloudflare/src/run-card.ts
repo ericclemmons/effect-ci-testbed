@@ -1,4 +1,5 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
+import { LifecycleProjection, lifecycleLabels, lifecycleOutcomes, lifecycleTerminal, type LifecycleOutcome, type LifecycleTiming } from "@effect-ci-testbed/ci/lifecycle"
 import { copyHealthMetrics, type HealthMetrics } from "./health-metrics.ts"
 import { failedCommandOutput } from "./failed-command-output.ts"
 
@@ -19,6 +20,7 @@ export interface RunIdentity {
 
 /** Provider-neutral status only: no output, event payloads, or approval capabilities. */
 export interface RunSnapshot {
+  readonly outcome?: LifecycleOutcome
   readonly identity: Readonly<Pick<RunIdentity, "instanceId" | "repository" | "revision" | "detailsUrl">>
   readonly workflowId: string
   readonly phase: "running" | "waiting" | "success" | "failure"
@@ -29,6 +31,7 @@ export interface RunSnapshot {
     readonly optional: boolean
     readonly dependencies: ReadonlyArray<string>
     readonly failureReason?: string
+    readonly lifecycle?: LifecycleTiming
   }>
 }
 
@@ -62,6 +65,9 @@ const sourceLinks = (identity: RunIdentity): string => {
 
 /** Reconstructed on replay. Enrolled redacted failure presentation stays outside semantic snapshots. */
 export class RunCard {
+  private readonly lifecycle = new LifecycleProjection()
+  private readonly statusTimestamps = new Map<string, number>()
+  private completed = false
   private workflowId = "Effect CI"
   private phase: "running" | "waiting" | "success" | "failure" = "running"
   private readonly checks = new Map<string, { status: keyof typeof symbols; optional: boolean; dependencies: Set<string> }>()
@@ -107,12 +113,40 @@ export class RunCard {
   }
 
   update(event: RuntimeEvent): boolean {
+    if (this.completed) return false
+    if (event.type === "step.lifecycle" || event.type === "workflow.lifecycle") {
+      if (!this.lifecycle.update(event)) return false
+      this.workflowId = event.workflowId
+      if (event.type === "step.lifecycle") this.statusTimestamps.set(event.stepId, Date.parse(event.timestamp))
+      if (event.type === "step.lifecycle") this.check(event.stepId).status =
+        event.phase === "awaiting-decision" ? "waiting" : event.phase === "succeeded" ? "complete" :
+        event.phase === "failed" ? "failed" : event.phase === "reused" ? "reused" :
+        event.phase === "cancelled" || event.phase === "skipped" ? "skipped" :
+        event.phase === "dependencies" || event.phase === "available-compute" ? "queued" : "running"
+      if (event.type === "workflow.lifecycle") {
+        if (this.lifecycle.terminal) this.phase = event.outcome === "success" ? "success" : "failure"
+        this.review = undefined
+        for (const check of this.checks.values()) if (["queued", "planned", "running", "waiting"].includes(check.status)) check.status = "skipped"
+      }
+      return true
+    }
+    if (this.lifecycle.terminal && event.type !== "workflow.completed" && event.type !== "workflow.plan") return false
+    if ("stepId" in event && ["step.status", "approval.requested", "approval.resolved"].includes(event.type)) {
+      const timestamp = Date.parse(event.timestamp)
+      if (Number.isFinite(timestamp)) {
+        if (timestamp < (this.statusTimestamps.get(event.stepId) ?? -Infinity)) return false
+        this.statusTimestamps.set(event.stepId, timestamp)
+      }
+    }
     this.workflowId = event.workflowId
     const timestamp = Date.parse(event.timestamp)
     if (Number.isFinite(timestamp)) this.latestTimestamp = Math.max(this.latestTimestamp, timestamp)
     switch (event.type) {
       case "workflow.started": return true
       case "step.status":
+        if (Number.isFinite(timestamp) && timestamp < (this.statusTimestamps.get(event.stepId) ?? -Infinity)) return false
+        if (Number.isFinite(timestamp) && finished.has(this.checks.get(event.stepId)?.status ?? "") && ["planned", "queued", "running"].includes(event.status)) return false
+        if (Number.isFinite(timestamp)) this.statusTimestamps.set(event.stepId, timestamp)
         Object.assign(this.check(event.stepId), { status: event.status, optional: event.optional })
         if (Number.isFinite(timestamp)) {
           if (event.status === "running" && (!this.timings.has(event.stepId) || this.timings.get(event.stepId)!.end !== undefined))
@@ -144,12 +178,15 @@ export class RunCard {
         this.setFailure(event.stepId, `Command result unavailable (${event.stage}). Process exit unknown. No stdout or stderr was captured. External effects may already exist; reconcile this run and do not rerun automatically.`)
         return true
       case "dependency.added":
+        if (event.stepId === "$workflow" || event.stepId === "$rollback") return false
         this.check(event.stepId).dependencies.add(event.dependency)
 
         return false
       case "workflow.plan":
         for (const node of event.plan.nodes) {
-          Object.assign(this.check(node.id), { status: node.status, optional: node.optional, dependencies: new Set(node.dependencies) })
+          const check = this.check(node.id)
+          if (!finished.has(check.status)) check.status = node.status
+          Object.assign(check, { optional: node.optional, dependencies: new Set(node.dependencies) })
         }
 
         return true
@@ -171,8 +208,10 @@ export class RunCard {
 
         return true
       case "workflow.completed":
-        this.phase = event.conclusion
+        this.completed = Number.isFinite(timestamp)
+        this.phase = this.lifecycle.outcome && this.lifecycle.outcome !== "success" ? "failure" : event.conclusion
         this.review = undefined
+        for (const check of this.checks.values()) if (["queued", "planned", "running", "waiting"].includes(check.status)) check.status = "skipped"
 
         return true
       default: return false
@@ -218,6 +257,7 @@ export class RunCard {
       identity: Object.freeze({ instanceId, repository, revision, ...(detailsUrl ? { detailsUrl } : {}) }),
       workflowId: this.workflowId,
       phase: this.phase,
+      ...(this.lifecycle.outcome ? { outcome: this.lifecycle.outcome } : {}),
       ...(this.health ? { health: Object.freeze({ phase: this.health.phase,
         decision: this.health.decision, evidenceSource: this.health.evidenceSource,
         ...(this.health.metrics ? { metrics: this.health.metrics } : {}) }) } : {}),
@@ -225,6 +265,7 @@ export class RunCard {
         id, status: check.status, optional: check.optional,
         dependencies: Object.freeze(Array.from(check.dependencies)),
         ...(this.failures.has(id) ? { failureReason: this.failures.get(id)! } : {}),
+        ...(this.lifecycle.step(id) ? { lifecycle: this.lifecycle.step(id)! } : {}),
       }))),
     })
   }
@@ -242,6 +283,8 @@ export class RunCard {
     const rows = ids.slice(0, 99).map(id => ({ id, status: this.checks.get(id)?.status ?? "planned" }))
     const time = (id: string, status: keyof typeof plainSymbols) => {
       if (status === "reused" || status === "verified") return "(cached)"
+      const lifecycle = this.lifecycle.step(id)
+      if (lifecycle) return `queue ${lifecycle.queueMs ?? "?"} / exec ${lifecycle.executionMs ?? "?"} / decision ${lifecycle.decisionMs ?? "?"} / evidence ${lifecycle.evidenceMs ?? "?"} ms`
       const timing = this.timings.get(id)
       if (!timing) return "—"
       const seconds = Math.max(0, Math.round(((timing.end ?? this.latestTimestamp) - timing.start) / 1000))
@@ -250,7 +293,7 @@ export class RunCard {
     return { text: rows.map(({ id, status }) => `${id}: ${status}`).join("\n"), blocks: [
       { type: "table", column_settings: [{ is_wrapped: true }, { is_wrapped: false }, { is_wrapped: false }],
         rows: [[cell("Step"), cell("Status"), cell("Time")], ...rows.map(({ id, status }) => [
-          cell(id, safeUrl(stepLinks.get(id))), cell(plainSymbols[status]), cell(time(id, status)),
+          cell(id, safeUrl(stepLinks.get(id))), cell(this.lifecycle.step(id) ? lifecycleLabels[this.lifecycle.step(id)!.phase] : plainSymbols[status]), cell(time(id, status)),
         ])] },
       ...(ids.length > 99 ? [{ type: "context", elements: [{ type: "plain_text", text: `${ids.length - 99} more steps; see Dashboard.` }] }] : []),
     ] }
@@ -269,7 +312,7 @@ export class RunCard {
 
     const restored = Boolean(options.rollbackStep && (this.phase === "success" || this.phase === "failure") &&
       this.checks.get(options.rollbackStep)?.status === "complete")
-    const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
+    const headline = this.lifecycle.outcome ? lifecycleOutcomes[this.lifecycle.outcome] : restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
       { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     if (options.statusOnly) {
       const current = (this.phase === "success" ? this.lastCompletedStep : undefined) ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
@@ -283,7 +326,10 @@ export class RunCard {
       const count = total ? `${"▰".repeat(done)}${"▱".repeat(total - done)} ${done}/${total}` :
         done ? `${done} step${done === 1 ? "" : "s"} done` : undefined
       const symbol = { running: "►", waiting: "∗", success: "✓", failure: "✗" }[this.phase]
-      const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")
+      const lifecycle = current ? this.lifecycle.step(current) : undefined
+      const reason = this.lifecycle.outcome ? lifecycleOutcomes[this.lifecycle.outcome] :
+        lifecycle && !lifecycleTerminal(lifecycle.phase) ? `${lifecycleLabels[lifecycle.phase]}${lifecycle.deadline ? ` until ${lifecycle.deadline}` : ""}` : undefined
+      const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${reason ? ` · ${reason}` : this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")
       return { text: title, blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity) + (this.resultLink ? ` • ${link(this.resultLink.url, this.resultLink.label.replace(/^Open /, "").replace(/^preview$/, "Preview").replace(/^checked build$/, "Checked build"))}` : ""), verbatim: true }] },
@@ -317,7 +363,8 @@ export class RunCard {
       const seconds = timing?.end === undefined ? undefined : Math.max(0, Math.round((timing.end - timing.start) / 1000))
       const duration = check.status === "reused" || check.status === "verified" ? "(cached)" :
         seconds === undefined ? undefined : seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
-      const suffix = options.onlyStep ? duration ? ` · ${duration}` : "" : check.status === "complete" ? "" : ` — ${check.status}`
+      const lifecycle = this.lifecycle.step(id)
+      const suffix = lifecycle ? ` — ${lifecycleLabels[lifecycle.phase]}${lifecycle.deadline ? ` until ${lifecycle.deadline}` : ""}` : options.onlyStep ? duration ? ` · ${duration}` : "" : check.status === "complete" ? "" : ` — ${check.status}`
       return `${options.onlyStep ? "" : `${index + 1}. `}${restored && id === options.rollbackStep ? "↩️" : (options.onlyStep ? plainSymbols : symbols)[check.status]} ${id}${suffix}${check.optional ? " (optional)" : ""}${this.failures.has(id) ? `\n   > ${this.failures.get(id)}` : ""}`
     })
     const blocks: Array<SlackBlock> = options.onlyStep ? [] : [

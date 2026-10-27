@@ -52,6 +52,7 @@ in the recipes run from that root unless they say otherwise.
 
 - [Required and optional checks](./optional-checks)
 - [Retries](./retry), [timeouts](./execution-policy), and [rollback](./rollback-compensation)
+- [Actionable lifecycle, local cancellation and wait timing](./actionable-lifecycle)
 - [Deployment hooks](./deploy-hook), [ordered deployments](./ordered-deploy),
   and [D1 migrations](./d1-migration)
 - [GitHub approval](./hitl-deploy) or [Slack approval](./cloudflare-hitl-release)
