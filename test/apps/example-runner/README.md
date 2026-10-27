@@ -6,6 +6,78 @@ This app imports the examples unchanged and gives each its own native Workflow.
 It is separate from the GitHub/Slack service, has no production credentials, and serves no HTTP
 control plane. Instance creation and inspection require Cloudflare API credentials.
 
+## Admitted Workflow outcome fixture (#139)
+
+Implementation only; no hosted good/bad/reset campaign is claimed for this change.
+The existing `HumanReviewedHmdWorkflow` export (`effect-ci-example-hmd-review` in
+Worker `effect-ci-examples`) now has three opt-in intents. None invokes the
+release broker, changes traffic, starts containers, or installs a cron schedule.
+The original administrative HMD path is unchanged when none of these intents is used.
+
+[Native intent routing](./src/hmd-review-controller.ts#symbol=HumanReviewedHmdWorkflow "source")
+
+[Bounded application fixture](./src/workflow-outcome-fixture.ts#symbol=runWorkflowOutcomeFixture "source")
+
+`workflow-outcome-fixture` accepts `mode` equal to `good`, `bad`, or
+`reset-then-success`. Good completes; bad throws a non-retryable terminal error.
+The reset case intentionally fails the first native step attempt, succeeds on its
+one allowed retry, then waits at most two minutes for `outcome-finish`. Its owner
+restarts that same **in-progress** instance once before sending the finish event.
+The instance ID and logical admission do not change. The fixture cannot prove a
+restart merely by returning success: retain independent before/restart/after API
+receipts and native attempt history. A wait timeout is a real terminal failure,
+not a successful reset demonstration. Native restart is not a claim that the
+platform evicted or reset a Durable Object.
+
+`workflow-window-admission` accepts a `window` with its own reserved `admissionId`.
+Create that record before its execution window opens. The native creation time
+and original parameters, bound by a canonical SHA-256 digest, are the independent
+admission proof. Its ID cannot also be an application invocation ID. Separate
+records allow a previous window to be admitted before a later Workflow version
+is deployed; the observer does not need to exist before the previous window.
+
+`workflow-health-controller` accepts `previous` and `current` admitted windows,
+`policy`, and `ownedMessage` (existing Slack timestamp and/or Discord message ID).
+Each window must match its independently read native admission record. An authorized
+collector sends JSON-string snapshot payloads as `workflow-health-previous-0` and
+`workflow-health-current-0`, then suffixes `1` and `2` only if still uncertain.
+Each wait is bounded to one minute. The controller consumes these through native
+checkpoints and calls the real semantic notification transport. No channel or
+owned message means unavailable delivery, never a new root message. This host has
+no configured notification credentials added by this change.
+
+[Admission, availability and evidence contract](../../../packages/cloudflare/src/workflow-telemetry.md)
+
+[Read-only native receipt collector](../../../scripts/collect-workflow-window.ts "source")
+
+The collector takes a pre-recorded admission JSON file and a **new** output path.
+It reads native instance metadata and bounded SQL using the local `cf` session,
+and retains the window, scoped snapshot, reconciled evidence and selected native
+metadata. It omits arbitrary instance parameters, outputs, errors and credentials.
+It never starts/restarts instances, sends events, posts messages or deploys. Its
+receipt is attributable read evidence, not a signed reusable check or proof that
+the manifest existed before execution. Keep the native admission-record creation
+receipt as the independent admission record.
+
+```sh
+HMD_CF_BIN=/path/to/cf node scripts/collect-workflow-window.ts admission.json receipt.json
+```
+
+Hosted completion requires an explicitly approved existing account/Worker/Workflow,
+deployment operation, bounded run/query/reset budget, allowed notification update
+and cleanup. Record the source commit, Worker deployment version, separate Workflow
+version, admitted instance IDs, retry/reset history, final metadata, SQL rows,
+controller output and notification delivery receipts. Do not use two old controller
+histories as application integration proof. Keep #139 open until these receipts
+exist; #138 owns binding feasibility and #140 owns live GitHub presentation.
+
+Local validation: package and collector type checks pass; 64 existing telemetry,
+health, notification and HMD regression tests pass. Existing docs build and
+verification pass. No tests were added or changed. Those regression tests do not
+exercise the new adapter or prove native retry/reset/cron behavior.
+
+## Release broker probe
+
 The fixed-target release-broker probe additionally holds a service binding to
 [`test/apps/release-manager`](../release-manager/README.md), never its deployment token.
 It is trusted host code, not a capability available to imported repository actions
