@@ -1,0 +1,29 @@
+apps/effect-ci/README.md
+  s_51742b8c7bd87f::t_8d39623c315c2d 31-87
+apps/effect-ci/src/hmd-github.ts
+  s_51742b8c7bd87f::t_479a02a30139d7 1-165
+apps/effect-ci/src/hmd-workflow.ts
+  s_51742b8c7bd87f::t_6d35d7b207aa74 15,17,27,62,94-103,136,145
+apps/effect-ci/src/private-cards.ts
+  s_51742b8c7bd87f::t_3608d14ae48106 2-3,8-24
+packages/github-cloudflare/src/github-comment.ts
+  s_51742b8c7bd87f::t_a51a918ce06f34 12,38,114
+packages/github-cloudflare/src/run-card.ts
+  s_51742b8c7bd87f::t_46598aa3a2695e 11-12,210-211,215-216,221-226,235-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2b0f56739bbccdf1825e4d2039bef57c2c43b3cf",
+  "prompts": {},
+  "sessions": {
+    "s_51742b8c7bd87f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-100b-7d33-a2f7-52fc229757a9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
