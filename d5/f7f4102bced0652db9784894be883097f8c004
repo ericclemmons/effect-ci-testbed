@@ -1,0 +1,23 @@
+examples/verification-evidence/EVIDENCE.md
+  s_58b9bc67eef1dd::t_72e3af870eae58 1-102
+examples/verification-evidence/README.md
+  s_58b9bc67eef1dd::t_07c130fb808f34 24-25
+examples/verification-evidence/verification/github-40149142030.json
+  s_58b9bc67eef1dd::t_1fb850bb3b255b 1-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d5f7f4102bced0652db9784894be883097f8c004",
+  "prompts": {},
+  "sessions": {
+    "s_58b9bc67eef1dd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-88d0-77a1-ae53-f3218567ab1d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
