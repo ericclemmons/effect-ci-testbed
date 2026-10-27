@@ -1,0 +1,21 @@
+examples/pull-request-preview/README.md
+  s_93690ecc46a825::t_fdc9792c9b065e 26,87-91
+examples/pull-request-preview/src/worker.ts
+  s_93690ecc46a825::t_69e5084b621f1a 140-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7b34d9a2ae1c342574a38e9b04346c4e1536af30",
+  "prompts": {},
+  "sessions": {
+    "s_93690ecc46a825": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-9abe-7a82-ada7-4408db66bc50",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
