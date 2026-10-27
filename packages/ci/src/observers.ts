@@ -1,4 +1,5 @@
 import type { RuntimeEvent, PlanNode } from "./index.ts"
+import type { LifecyclePhase, LifecycleOutcome } from "./lifecycle.ts"
 
 /** Presentation metadata only: no output, plan, payload, actor or review capability. */
 export interface RuntimeObservation {
@@ -8,6 +9,8 @@ export interface RuntimeObservation {
   readonly stepId?: string
   readonly status?: PlanNode["status"]
   readonly conclusion?: "success" | "failure"
+  readonly phase?: LifecyclePhase
+  readonly outcome?: LifecycleOutcome
 }
 
 export interface RuntimeObserver {
@@ -63,6 +66,8 @@ export function makeRuntimeObservers(input: ReadonlyArray<RuntimeObserver>, time
         workflowId: event.workflowId, timestamp: event.timestamp,
         ...("stepId" in event ? { stepId: event.stepId } : {}),
         ...("status" in event ? { status: event.status } : {}),
+        ...("phase" in event ? { phase: event.phase } : {}),
+        ...("outcome" in event ? { outcome: event.outcome } : {}),
         ...("conclusion" in event ? { conclusion: event.conclusion } : {}) })
       await Promise.all(observers.map(observer => {
         const delivery = observer.queue.then(async () => {

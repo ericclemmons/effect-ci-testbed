@@ -6,6 +6,7 @@
   "files": ["src/**/*.ts", "!src/**/*.test.ts"],
   "exports": {
     ".": "./src/index.ts",
+    "./lifecycle": "./src/lifecycle.ts",
     "./command-diagnostics": "./src/command-diagnostics.ts",
     "./directory-deployment": "./src/directory-deployment.ts",
     "./source-changes": "./src/source-changes.ts",

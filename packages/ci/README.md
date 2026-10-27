@@ -1,5 +1,8 @@
 # Effect CI SDK
 
+[Lifecycle events and timing](./LIFECYCLE.md) separate observed work, waits,
+decisions and terminal outcomes. [Try the local recipe](../../examples/actionable-lifecycle).
+
 > How do actions keep workflows small?
 
 Actions own prerequisites. Workflows select goals and coordinate events, parallel

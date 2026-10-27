@@ -13,6 +13,9 @@ import type { RuntimeObservers } from "./observers.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./path-glob.ts"
+import type { LifecycleEvent, LifecycleOutcome, LifecyclePhase } from "./lifecycle.ts"
+export { LifecycleProjection, lifecycleLabels, lifecycleOutcomes, formatLifecycle, lifecycleTerminal,
+  type LifecycleEvent, type LifecycleOutcome, type LifecyclePhase, type LifecycleTiming } from "./lifecycle.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -207,6 +210,7 @@ export const planRerun = (
 }
 
 export type RuntimeEvent =
+  | LifecycleEvent
   | {
       readonly type: "approval.requested"
       readonly workflowId: string
@@ -299,6 +303,8 @@ interface RuntimeNode {
 }
 
 interface RuntimeShape {
+  readonly lifecycle: (stepId: string, phase: LifecyclePhase, deadline?: string) => Effect.Effect<void>
+  readonly outcome: () => LifecycleOutcome | undefined
   readonly definitions: Map<string, StepDefinition>
   readonly ci: boolean
   readonly workflowId: string
@@ -407,6 +413,18 @@ export class Attempt extends ServiceMap.Service<Attempt, number>()("@effect-ci-t
 /** Capability-backed actions must be able to declare dependencies without executing during planning. */
 export const executionMode = Effect.gen(function* () {
   return (yield* Runtime).mode
+})
+export const withLifecycle = <A, E, R>(
+  phase: "available-compute" | "executor-startup" | "collecting-evidence",
+  effect: Effect.Effect<A, E, R>,
+  deadline?: string,
+): Effect.Effect<A, E, R | Runtime | CurrentStep> => Effect.gen(function* () {
+  const runtime = yield* Runtime
+  const stepId = yield* CurrentStep
+  yield* runtime.lifecycle(stepId, phase, deadline)
+  const value = yield* effect
+  yield* runtime.lifecycle(stepId, "executing")
+  return value
 })
 class PolicyBody extends ServiceMap.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
 
@@ -1488,7 +1506,11 @@ const runStep = <A>(
     for (const dependency of dependencies) {
       yield* runtime.addDependency(id, dependency)
     }
-    return (yield* Cache.get(runtime.cache, id)) as A
+    const waiting = parent !== "$workflow" && parent !== "$rollback" && !runtime.outputs.has(id)
+    if (waiting) yield* runtime.lifecycle(parent, "dependencies")
+    const value = (yield* Cache.get(runtime.cache, id)) as A
+    if (waiting && !runtime.definitions.get(parent)?.prepare) yield* runtime.lifecycle(parent, "executing")
+    return value
   })
   actionIds.set(effect as object, id)
   actionDefinitions.set(effect as object, definition)
@@ -1727,10 +1749,16 @@ const makeLocalCommandExecutor = (output: "inherit" | "silent" = "inherit"): Com
 const withStepPolicy = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   options: WorkflowStepConfig,
+  lifecycle?: (phase: LifecyclePhase, deadline?: string) => Effect.Effect<void>,
 ): Effect.Effect<A, any, R> => {
   let attempt = 0
   const effectBody = effect
-  effect = Effect.suspend(() => effectBody.pipe(Effect.provideService(Attempt, ++attempt))) as Effect.Effect<A, E, R>
+  effect = Effect.suspend(() => {
+    attempt++
+    return (lifecycle?.("executing", options.timeout === undefined ? undefined :
+      new Date(Date.now() + Duration.toMillis(Duration.fromInputUnsafe(options.timeout))).toISOString()) ?? Effect.void).pipe(
+      Effect.andThen(effectBody), Effect.provideService(Attempt, attempt))
+  }) as Effect.Effect<A, E, R>
   const timed = options.timeout === undefined
     ? effect
     : effect.pipe(Effect.timeout(options.timeout))
@@ -1750,7 +1778,12 @@ const withStepPolicy = <A, E, R>(
       )
     : Schedule.spaced(retries.delay)
 
-  return timed.pipe(Effect.retry({ times: retries.limit, schedule }))
+  return timed.pipe(Effect.tapError(() => {
+    if (attempt > retries.limit || !lifecycle) return Effect.void
+    const delay = Duration.toMillis(Duration.fromInputUnsafe(retries.delay)) *
+      (retries.backoff === "exponential" ? 2 ** (attempt - 1) : retries.backoff === "linear" ? attempt : 1)
+    return lifecycle("retry-backoff", new Date(Date.now() + delay).toISOString())
+  }), Effect.retry({ times: retries.limit, schedule }))
 }
 
 const makeRuntime = (
@@ -1791,6 +1824,16 @@ const makeRuntime = (
     const failureOrigins = new Map<unknown, string>()
     const optionalSteps = new Set<string>()
     const outputs = new Map<string, unknown>()
+    let outcome: LifecycleOutcome | undefined
+    const phases = new Map<string, LifecyclePhase>()
+    const lifecycle = (stepId: string, phase: LifecyclePhase, deadline?: string) => Effect.suspend(() => {
+      if (mode === "plan" || phases.get(stepId) === phase) return Effect.void
+      phases.set(stepId, phase)
+      return emitEvent({ type: "step.lifecycle", workflowId, stepId, phase,
+        ...(deadline ? { deadline } : {}), timestamp: new Date().toISOString() })
+    })
+    const reportOutcome = (value: LifecycleOutcome) => Effect.sync(() => { outcome = value }).pipe(
+      Effect.andThen(emitEvent({ type: "workflow.lifecycle", workflowId, outcome: value, timestamp: new Date().toISOString() })))
     const parallelSteps = new Set<string>()
     const completedRollbacks: Array<{
       readonly primaryId: string
@@ -1838,6 +1881,7 @@ const makeRuntime = (
         status: "reused",
       })
       outputs.set(id, rerun!.previous.outputs[id])
+      yield* lifecycle(id, "reused")
       yield* emitEvent({
         type: "step.status",
         workflowId,
@@ -1912,8 +1956,10 @@ const makeRuntime = (
               options: definition.options,
               run: (attempt) => Effect.sync(() => {
                 node.commands.length = 0
+                phases.delete(id)
                 bufferedEvents.set(id, [])
               }).pipe(
+                Effect.andThen(lifecycle(id, "executing")),
                 Effect.andThen(leaf),
                 Effect.flatMap(commit),
                 Effect.map((value) => ({ value, commands: [...node.commands], events: [...bufferedEvents.get(id)!],
@@ -1936,7 +1982,8 @@ const makeRuntime = (
               return result.value
             }))
           }
-          return (commandExecutor.handlesStepOptions ? leaf : withStepPolicy(leaf, definition.options))
+          return (commandExecutor.handlesStepOptions ? lifecycle(id, "executing").pipe(Effect.andThen(leaf)) :
+            withStepPolicy(leaf, definition.options, (phase, deadline) => lifecycle(id, phase, deadline)))
             .pipe(Effect.flatMap(commit))
         }))
 
@@ -1997,14 +2044,14 @@ const makeRuntime = (
               ? "verified"
               : "complete"
 
-            return emitEvent({
+            return lifecycle(id, resultReused ? "reused" : "succeeded").pipe(Effect.andThen(Effect.suspend(() => emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
               status: node.status,
               optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
-            })
+            }))))
           }),
           Effect.onExit((exit) => {
             if (Exit.isSuccess(exit)) return Effect.void
@@ -2015,14 +2062,14 @@ const makeRuntime = (
             node.status = interrupted || (origin && origin !== id) ? "skipped" : "failed"
             if (!interrupted && !origin) failureOrigins.set(error, id)
 
-            const status = emitEvent({
+            const status = lifecycle(id, interrupted ? "cancelled" : node.status === "skipped" ? "skipped" : "failed").pipe(Effect.andThen(Effect.suspend(() => emitEvent({
               type: "step.status",
               workflowId,
               stepId: id,
               status: node.status,
               optional: optionalSteps.has(id),
               timestamp: new Date().toISOString(),
-            })
+            }))))
             // A native action checkpoint can restore a CommandError without
             // rerunning its body. Emit only the failing command's typed data,
             // once at its origin, before status observers render the failure.
@@ -2047,6 +2094,8 @@ const makeRuntime = (
     })
 
     runtime = {
+      lifecycle,
+      outcome: () => outcome,
       definitions,
       ci,
       workflowId,
@@ -2173,6 +2222,7 @@ const makeRuntime = (
           ),
         ]
         const failures: Array<unknown> = []
+        if (rollbacks.length) yield* reportOutcome("rollback-requested")
 
         for (const rollback of rollbacks) {
           yield* runtime.registerRollback(
@@ -2190,12 +2240,14 @@ const makeRuntime = (
         }
 
         if (failures.length > 0) {
+          yield* reportOutcome("rollback-failed")
           return yield* Effect.fail(new RollbackError(
             failedId ?? "workflow",
             original,
             failures.length === 1 ? failures[0] : new AggregateError(failures),
           ))
         }
+        if (rollbacks.length) yield* reportOutcome("rollback-completed")
       }) as Effect.Effect<undefined, RollbackError>,
       requireSecret: (stepId, name) => Effect.sync(() => {
         const node = nodes.get(stepId)
@@ -2382,16 +2434,16 @@ const makeRuntime = (
         }
 
         const requestId = `${workflowId}:${stepId}`
-        const requested = emitEvent({
+        const requested = Effect.suspend(() => emitEvent({
           type: "approval.requested",
           workflowId,
           stepId,
           requestId,
           approval: request,
           timestamp: new Date().toISOString(),
-        })
+        }))
 
-        return requested.pipe(
+        return lifecycle(stepId, "awaiting-decision").pipe(Effect.andThen(requested),
           Effect.andThen(approvalHandler.request({
             ...request,
             requestId,
@@ -2412,7 +2464,7 @@ const makeRuntime = (
               timestamp: new Date().toISOString(),
             })
 
-            return resolved.pipe(
+            return resolved.pipe(Effect.andThen(lifecycle(stepId, "executing")),
               Effect.andThen(result.decision === "approved"
                 ? Effect.succeed(result)
                 : Effect.fail(new ApprovalError(
@@ -2683,71 +2735,78 @@ const interpret = <A>(
           : Effect.succeed(Redacted.make(value, { label: name }))
       },
     }
-    const result = yield* workflowDefinition.effect.pipe(
-      Effect.catchCause((cause) => Cause.hasFails(cause) || Cause.hasDies(cause)
-        ? runtime.unwind(Cause.squash(cause)).pipe(
-          Effect.flatMap(() => Effect.failCause(cause)),
-        )
-        : Effect.failCause(cause)),
-      Effect.provideService(Runtime, runtime),
-      Effect.provideService(CurrentStep, "$workflow"),
-      Effect.provideService(PolicyBody, false),
-      Effect.provideService(Attempt, 1),
-      Effect.provideService(Source, makeSourceQueries(options.source ?? localSource, {
-        executor: options.executor ?? makeLocalCommandExecutor(options.output),
-        workflowId: workflowDefinition.id, event, mode,
-      })),
-      Effect.provideService(WorkflowEvent, event),
-      Effect.provideService(Approval, approval),
-      Effect.provideService(SecretStore, secrets),
-      Effect.exit,
-    )
+    return yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () {
+      const result = yield* restore(workflowDefinition.effect.pipe(
+        Effect.catchCause((cause) => Cause.hasFails(cause) || Cause.hasDies(cause)
+          ? runtime.unwind(Cause.squash(cause)).pipe(
+            Effect.flatMap(() => Effect.failCause(cause)),
+          )
+          : Effect.failCause(cause)),
+        Effect.provideService(Runtime, runtime),
+        Effect.provideService(CurrentStep, "$workflow"),
+        Effect.provideService(PolicyBody, false),
+        Effect.provideService(Attempt, 1),
+        Effect.provideService(Source, makeSourceQueries(options.source ?? localSource, {
+          executor: options.executor ?? makeLocalCommandExecutor(options.output),
+          workflowId: workflowDefinition.id, event, mode,
+        })),
+        Effect.provideService(WorkflowEvent, event),
+        Effect.provideService(Approval, approval),
+        Effect.provideService(SecretStore, secrets),
+      )).pipe(Effect.exit)
 
-    const plan = toPlan(
-      workflowDefinition.id,
-      runtime,
-      environment,
-    )
-    const completedAt = new Date().toISOString()
-    const attempt = Object.freeze({
-      id: attemptId,
-      number: attemptNumber,
-      workflowId: workflowDefinition.id,
-      ...(previous ? { previousAttemptId: previous.id } : {}),
-      requested: Object.freeze([...(selection?.requested ?? [])]),
-      plan,
-      outputs: Object.freeze(Object.fromEntries(runtime.outputs)),
-      conclusion: Exit.isFailure(result) ? "failure" as const : "success" as const,
-      startedAt,
-      completedAt,
-    }) satisfies WorkflowAttempt
-    yield* emitEvent({
-      type: "workflow.plan",
-      workflowId: workflowDefinition.id,
-      plan,
-      timestamp: new Date().toISOString(),
-    })
+      const plan = toPlan(
+        workflowDefinition.id,
+        runtime,
+        environment,
+      )
+      const completedAt = new Date().toISOString()
+      const attempt = Object.freeze({
+        id: attemptId,
+        number: attemptNumber,
+        workflowId: workflowDefinition.id,
+        ...(previous ? { previousAttemptId: previous.id } : {}),
+        requested: Object.freeze([...(selection?.requested ?? [])]),
+        plan,
+        outputs: Object.freeze(Object.fromEntries(runtime.outputs)),
+        conclusion: Exit.isFailure(result) ? "failure" as const : "success" as const,
+        startedAt,
+        completedAt,
+      }) satisfies WorkflowAttempt
+      yield* emitEvent({
+        type: "workflow.plan",
+        workflowId: workflowDefinition.id,
+        plan,
+        timestamp: new Date().toISOString(),
+      })
 
-    if (Exit.isFailure(result)) {
+      if (mode === "execute" && (runtime.outcome() === undefined || runtime.outcome() === "rollback-requested")) yield* emitEvent({ type: "workflow.lifecycle",
+        workflowId: workflowDefinition.id, outcome: Exit.isFailure(result)
+          ? !Cause.hasFails(result.cause) && !Cause.hasDies(result.cause) ? "cancelled" :
+            runtime.outcome() === "rollback-requested" ? "rollback-failed" : "failure" : "success",
+        timestamp: completedAt })
+
+      if (Exit.isFailure(result)) {
+        yield* emitEvent({
+          type: "workflow.completed",
+          workflowId: workflowDefinition.id,
+          conclusion: "failure",
+          timestamp: new Date().toISOString(),
+        })
+        yield* publishAttempt(options.onAttempt, attempt)
+        return yield* Effect.failCause(result.cause)
+      }
+
       yield* emitEvent({
         type: "workflow.completed",
         workflowId: workflowDefinition.id,
-        conclusion: "failure",
+        conclusion: "success",
         timestamp: new Date().toISOString(),
       })
       yield* publishAttempt(options.onAttempt, attempt)
-      return yield* Effect.failCause(result.cause)
-    }
 
-    yield* emitEvent({
-      type: "workflow.completed",
-      workflowId: workflowDefinition.id,
-      conclusion: "success",
-      timestamp: new Date().toISOString(),
-    })
-    yield* publishAttempt(options.onAttempt, attempt)
-
-    return { attempt, plan, value: result.value }
+      return { attempt, plan, value: result.value }
+    }))
   })
 
 export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
