@@ -1,0 +1,35 @@
+packages/cloudflare/src/workflow-health-controller.ts
+  s_662f0c073afe9b::t_55b1f9c2a05e9e 1-101
+packages/cloudflare/src/workflow-health-source.ts
+  s_662f0c073afe9b::t_2b83a1fa4c3316 1-52
+packages/cloudflare/src/workflow-telemetry.md
+  s_662f0c073afe9b::t_617fec228fadbb 25-131
+packages/cloudflare/src/workflow-window.ts
+  s_662f0c073afe9b::t_f1c935f8579b58 1-176
+packages/github-cloudflare/src/workflow-health.ts
+  s_662f0c073afe9b::t_be877a4caf117f 1-33
+scripts/collect-workflow-window.ts
+  s_662f0c073afe9b::t_ed2a9277c93612 1-54
+test/apps/example-runner/README.md
+  s_662f0c073afe9b::t_5f3dceff00b53a 9-80
+test/apps/example-runner/src/hmd-review-controller.ts
+  s_662f0c073afe9b::t_60c883dce08b34 5-18,22,24-54
+test/apps/example-runner/src/workflow-outcome-fixture.ts
+  s_662f0c073afe9b::t_0ad9a9fce82a10 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4fd1ef242259e2a1b4cbe00e37f1dadd38d4da52",
+  "prompts": {},
+  "sessions": {
+    "s_662f0c073afe9b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-0624-7373-8dd2-37bbe5891c57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
