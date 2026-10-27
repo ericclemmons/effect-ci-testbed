@@ -1,0 +1,21 @@
+examples/docker-in-docker/local-proof.json
+  s_75cfb25e945fb2::t_64dbc08262570c 1-35
+examples/docker-in-docker/verification.md
+  s_75cfb25e945fb2::t_3a9e5bf2f7eaf7 48-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1bb7d6736482698bd0f6d49a03a7cb406fd8bf09",
+  "prompts": {},
+  "sessions": {
+    "s_75cfb25e945fb2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-7fe6-7d10-86bb-c27cbe37fd09",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
