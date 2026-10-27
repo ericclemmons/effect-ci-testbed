@@ -1,0 +1,19 @@
+examples/d1-migration/verification.md
+  s_b3bc7fe3631cfe::t_2cfc7498c03f39 24,37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "771aa07cd43fdda7fba226073886c32628fea1a6",
+  "prompts": {},
+  "sessions": {
+    "s_b3bc7fe3631cfe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-9059-7ac2-bacf-a86a53f9a9a6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
