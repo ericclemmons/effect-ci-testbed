@@ -27,5 +27,11 @@ The hosted lab uses dedicated targets and restores its baseline afterward.
 It is not a general production rollout installer. Complete healthy rollout using
 native production telemetry is still being connected.
 
+The [retained release journey](../release-flywheel/proof/README.md) proves real
+healthy 10/25/75/100 progression through closed client HTTP cohorts, not timer-risk
+acceptance. A separate strict native controller is already implemented; its
+[contract and evidence review](../../test/apps/example-runner/native-health-evidence.md)
+records the supported-source blocker and the missing strict native success.
+
 Use [human review](../health-mediated-approval) when uncertainty should pause
 for a decision rather than roll back automatically.
