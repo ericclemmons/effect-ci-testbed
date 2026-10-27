@@ -17,6 +17,15 @@ const Node = Schema.Struct({
   status: Schema.Literals(["complete", "reused", "verified"]),
 });
 const Metadata = Schema.Struct({ revision: ShowcaseRevision, version: ShowcaseVersion, instanceId: ShowcaseVersion });
+const Identity = Schema.Struct({
+  definitionId: Text, logicalRunId: Text, workflowAttemptId: Text,
+  workflowAttemptNumber: Count.check(Schema.isGreaterThan(0)),
+  previousWorkflowAttemptId: Schema.optionalKey(Text),
+  operation: Schema.Literals(["invocation", "rerun", "resume"]),
+  source: Schema.optionalKey(Schema.Struct({ repository: Text, revision: Text })),
+  backend: Schema.optionalKey(Schema.Struct({ provider: Text, id: Text })),
+});
+const Origin = Schema.Struct({ kind: Schema.Literals(["executed", "retained"]), workflowAttemptId: Text, executionAttemptId: Schema.optionalKey(Text) });
 const Retained = Schema.Struct({
   revision: ShowcaseRevision, version: ShowcaseVersion, instanceId: ShowcaseVersion,
   number: Count.check(Schema.isGreaterThan(0)),
@@ -24,6 +33,8 @@ const Retained = Schema.Struct({
   environment: Text,
   requested: Schema.Array(NodeId), nodes: Schema.Array(Node).check(Schema.isLengthBetween(1, 5)),
   outputs: Schema.Record(NodeId, Schema.optionalKey(Output)),
+  identity: Schema.optionalKey(Identity),
+  outputOrigins: Schema.optionalKey(Schema.Record(NodeId, Schema.optionalKey(Origin))),
 });
 export type RetainedShowcaseAttempt = typeof Retained.Encoded;
 type MetadataInput = typeof Metadata.Encoded;
@@ -49,6 +60,8 @@ export function retainShowcaseAttempt(attempt: CI.WorkflowAttempt, metadata: Met
     const encoded = Schema.encodeSync(Retained)(Schema.decodeUnknownSync(Retained)({ ...metadata,
       number: attempt.number, startedAt: attempt.startedAt, completedAt: attempt.completedAt,
       environment: attempt.plan.environment, requested: attempt.requested, nodes: attempt.plan.nodes, outputs,
+      ...(attempt.identity?.backend?.provider === "cloudflare-workflows" ? { identity: attempt.identity,
+        ...(attempt.outputOrigins ? { outputOrigins: attempt.outputOrigins } : {}) } : {}),
     }));
     if (encoded.nodes.some(node => !Object.hasOwn(encoded.outputs, node.id)) ||
       new Set(encoded.nodes.map(node => node.id)).size !== encoded.nodes.length || JSON.stringify(encoded).length > 65_536) return;
@@ -71,7 +84,11 @@ export function restoreShowcaseAttempt(value: unknown, metadata: MetadataInput):
       outputs[id] = output.kind === "void" ? undefined :
         CI.Workspace.remote(metadata.instanceId, showcaseRoot, { provider: "cloudflare-container", value: output.snapshot });
     }
-    return { id: `${previous.instanceId}:${previous.number}`, number: previous.number, workflowId: "demo",
+    if (previous.identity && (previous.identity.definitionId !== "demo" || previous.identity.workflowAttemptNumber !== previous.number ||
+      previous.identity.source?.revision !== previous.revision || previous.identity.backend?.id !== previous.instanceId)) throw Error();
+    return { id: previous.identity?.workflowAttemptId ?? `${previous.instanceId}:${previous.number}`, number: previous.number, workflowId: "demo",
+      ...(previous.identity ? { identity: previous.identity } : {}),
+      ...(previous.outputOrigins ? { outputOrigins: Object.fromEntries(Object.entries(previous.outputOrigins).filter((entry): entry is [string, CI.OutputOrigin] => entry[1] !== undefined)) } : {}),
       requested: previous.requested, conclusion: "success", startedAt: previous.startedAt, completedAt: previous.completedAt,
       plan: { workflowId: "demo", mode: "execute", environment: previous.environment,
         nodes: previous.nodes.map(node => ({ ...node, options: {} })) }, outputs };

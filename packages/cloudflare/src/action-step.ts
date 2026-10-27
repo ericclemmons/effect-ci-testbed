@@ -74,7 +74,7 @@ export const makeActionExecutor = (
       } as WorkflowStepConfig, async (context) => {
         activeBodies.add(request.stepId)
         try {
-          const body = request.run(context.attempt).pipe(
+          const body = request.run(context.attempt, { provider: "cloudflare-workflows-step", id: `action:${JSON.stringify(request.stepId)}` }).pipe(
             Effect.tapCause(cause => Effect.logWarning("Action attempt failed; native policy decides retry", cause)),
             Effect.annotateLogs({ "ci.step": request.stepId, "ci.attempt": context.attempt }),
           )
@@ -88,6 +88,7 @@ export const makeActionExecutor = (
           return {
             commands: result.commands,
             events: result.events ?? [],
+            executions: result.executions ?? [],
             ...(result.metadata ? { metadata: result.metadata } : {}),
             value: encodeValue(result.value),
           }
@@ -100,6 +101,7 @@ export const makeActionExecutor = (
     return {
       commands: result.commands,
       events: result.events,
+      executions: result.executions,
       ...(result.metadata ? { metadata: result.metadata } : {}),
       value: decodeValue(result.value),
     }

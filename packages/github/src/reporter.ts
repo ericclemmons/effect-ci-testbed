@@ -1,4 +1,6 @@
 import {
+  CorrelationCursor,
+  formatRunIdentity,
   formatCondition,
   type PlanNode,
   type RuntimeEvent,
@@ -354,6 +356,10 @@ const checkOutput = (
 }
 
 export class Reporter {
+  private delivery: Promise<void> = Promise.resolve()
+  private readonly correlation = new CorrelationCursor()
+  private readonly attempts = new Map<string, Set<number>>()
+  private readonly outputOrigins = new Map<string, string>()
   private readonly checks = new Map<string, StepCheck>()
   private readonly output = new Map<string, string>()
   private readonly failures = new Map<string, string>()
@@ -425,6 +431,9 @@ export class Reporter {
     const output = checkOutput(this.workflowId, stepId, status, optional)
     const text =
       [
+        this.correlation.current ? formatRunIdentity(this.correlation.current) : undefined,
+        this.attempts.has(stepId) ? `Step ${stepId} · execution attempts ${[...this.attempts.get(stepId)!].join(", ")}` : undefined,
+        this.outputOrigins.get(stepId),
         this.failures.get(stepId) ?? (status === "failed" && !this.output.has(stepId)
           ? "#### Failure details\n\nNo stdout or stderr was captured. Inspect the failed action checkpoint; no process exit is established by this missing output."
           : undefined),
@@ -523,7 +532,25 @@ export class Reporter {
     })
   }
 
-  async report(event: RuntimeEvent): Promise<void> {
+  report(event: RuntimeEvent): Promise<void> {
+    const delivery = this.delivery.then(() => this.reportEvent(event))
+    this.delivery = delivery.catch(() => {})
+    return delivery
+  }
+
+  private async reportEvent(event: RuntimeEvent): Promise<void> {
+    if (this.correlation.current && event.correlation?.run.workflowAttemptId !== this.correlation.current.workflowAttemptId) return
+    if (!this.correlation.accept(event)) return
+    const execution = event.correlation?.step
+    if (execution?.executionAttemptNumber !== undefined) {
+      const numbers = this.attempts.get(execution.id) ?? new Set<number>()
+      for (let number = 1; number <= execution.executionAttemptNumber; number += 1) numbers.add(number)
+      this.attempts.set(execution.id, numbers)
+    }
+    if (event.correlation?.outputOrigin && "stepId" in event) {
+      const origin = event.correlation.outputOrigin
+      this.outputOrigins.set(event.stepId, `Reused output ${origin.kind === "retained" ? "retained by" : "produced by"} workflow attempt ${origin.workflowAttemptId}${origin.executionAttemptId ? ` / execution ${origin.executionAttemptId}` : ""}`)
+    }
     switch (event.type) {
       case "approval.requested":
       case "approval.resolved":

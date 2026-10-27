@@ -911,6 +911,7 @@ export const main = async (
   workflowPath: string = resolve(process.cwd(), ".cloudflare/ci/workflow.ts"),
 ): Promise<ExitCode> => {
   let format: OutputFormat = detectedFormat()
+  let attempt: CI.WorkflowAttempt | undefined
 
   try {
     const invocation = parseInvocation(args, value => { format = value })
@@ -994,6 +995,10 @@ export const main = async (
       try {
         return await CI.runPromise(localWorkflow, {
           ...configured,
+          onAttempt: async value => {
+            attempt = value
+            await configured.onAttempt?.(value)
+          },
           mode: invocation.command === "plan" ? "plan" : "execute",
           ...(format === "json" || format === "mermaid"
             ? { output: "silent" as const }
@@ -1015,6 +1020,7 @@ export const main = async (
         ...(invocation.target ? { target: invocation.target } : {}),
         ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
         workflow: workflow.id,
+        attempt: CI.attemptDetails(result.attempt),
         plan: result.plan,
       })
     } else if (format === "mermaid") {
@@ -1029,6 +1035,7 @@ export const main = async (
       printJson({
         schemaVersion: 1,
         ok: false,
+        ...(attempt ? { attempt: CI.attemptDetails(attempt) } : {}),
         error: {
           code: failure.code,
           message: failure.message,
@@ -1037,6 +1044,7 @@ export const main = async (
       })
     } else {
       console.error(`Error [${failure.code}]: ${failure.message}`)
+      if (attempt) console.error(CI.formatAttempt(attempt))
     }
 
     return failure.exitCode

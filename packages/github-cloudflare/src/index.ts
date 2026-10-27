@@ -486,6 +486,8 @@ export const workflowEntrypoint = <A>(
       const rerun = await options.rerun?.(this.env, { runner, exports: this.ctx.exports,
         instanceId: event.instanceId, parameters: event.payload, step })
       const result = await Effect.runPromise(Cloudflare.withWobsLogging(CI.run(definition, {
+        correlation: { ...(!rerun ? { logicalRunId: `cloudflare:${event.instanceId}` } : {}),
+          workflowAttemptId: `cloudflare:${event.instanceId}`, backend: { provider: "cloudflare-workflows", id: event.instanceId } },
         ...(rerun ? { rerun } : {}),
         approval: approvalHandler(this.env, event.instanceId, step, (requestId, url) =>
           notify(`${requestId}:review`, () => {
