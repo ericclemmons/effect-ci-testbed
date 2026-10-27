@@ -1,0 +1,93 @@
+examples/README.md
+  s_817d10094530c4::t_85c8077cd5ac4a 70-71
+examples/exported-actions/README.md
+  s_817d10094530c4::t_04e0f89483d99d 18-24
+examples/exported-actions/hosted/Dockerfile
+  s_817d10094530c4::t_c6ef5d8cd309b2 1-14
+examples/exported-actions/hosted/README.md
+  s_817d10094530c4::t_9f762078e72953 1-49
+examples/exported-actions/hosted/cloudflare.config.ts
+  s_817d10094530c4::t_15f37b4f5fb2d6 1-24
+examples/exported-actions/hosted/package.json
+  s_817d10094530c4::t_2450401dc76417 1-19
+examples/exported-actions/hosted/src/worker.ts
+  s_817d10094530c4::t_30883568e5652d 1-12
+examples/exported-actions/hosted/tsconfig.json
+  s_817d10094530c4::t_164b7a02c90bce 1-5
+examples/exported-actions/hosted/vite.config.ts
+  s_817d10094530c4::t_643d8b308d7938 1-15
+examples/node-npm/README.md
+  s_817d10094530c4::t_9ca4eb454e2fb5 19-25
+examples/node-npm/hosted/Dockerfile
+  s_817d10094530c4::t_3962b58fc3e527 1-14
+examples/node-npm/hosted/README.md
+  s_817d10094530c4::t_fa110449bb39fe 1-51
+examples/node-npm/hosted/cloudflare.config.ts
+  s_817d10094530c4::t_960f0efe81fad0 1-24
+examples/node-npm/hosted/package.json
+  s_817d10094530c4::t_cc43178f5c003d 1-19
+examples/node-npm/hosted/src/worker.ts
+  s_817d10094530c4::t_7e84be42da13f1 1-11
+examples/node-npm/hosted/tsconfig.json
+  s_817d10094530c4::t_d7a72244396e0c 1-5
+examples/node-npm/hosted/vite.config.ts
+  s_817d10094530c4::t_636e568c765272 1-15
+examples/node-pnpm/README.md
+  s_817d10094530c4::t_9ee705591be34c 18-24
+examples/node-pnpm/hosted/Dockerfile
+  s_817d10094530c4::t_190c77bf5cb577 1-14
+examples/node-pnpm/hosted/README.md
+  s_817d10094530c4::t_a0b3fe778a8644 1-50
+examples/node-pnpm/hosted/cloudflare.config.ts
+  s_817d10094530c4::t_25618cd2c6c6ee 1-24
+examples/node-pnpm/hosted/package.json
+  s_817d10094530c4::t_66fde7a9060045 1-19
+examples/node-pnpm/hosted/src/worker.ts
+  s_817d10094530c4::t_a64a2fc1b9008e 1-15
+examples/node-pnpm/hosted/tsconfig.json
+  s_817d10094530c4::t_bf9975d4c1f67e 1-5
+examples/node-pnpm/hosted/vite.config.ts
+  s_817d10094530c4::t_e62a5a26eca507 1-15
+examples/standalone-migrations.md
+  s_817d10094530c4::t_c1939640f84af6 1-142
+examples/zero-config/README.md
+  s_817d10094530c4::t_dde2290ad1224d 23-30
+examples/zero-config/hosted/Dockerfile
+  s_817d10094530c4::t_81699640c0c6cf 1-14
+examples/zero-config/hosted/README.md
+  s_817d10094530c4::t_608870c595d911 1-57
+examples/zero-config/hosted/cloudflare.config.ts
+  s_817d10094530c4::t_a091915b6a473a 1-24
+examples/zero-config/hosted/package.json
+  s_817d10094530c4::t_7a85804c46bf1a 1-19
+examples/zero-config/hosted/src/source-manifest.ts
+  s_817d10094530c4::t_124b2d8caa2a5a 1-35
+examples/zero-config/hosted/src/worker.ts
+  s_817d10094530c4::t_93f11d85cd39b8 1-17
+examples/zero-config/hosted/tsconfig.json
+  s_817d10094530c4::t_c0941fc1a8c739 1-5
+examples/zero-config/hosted/vite.config.ts
+  s_817d10094530c4::t_14f2c1b4273cac 1-4
+pnpm-lock.yaml
+  s_817d10094530c4::t_3781ed7c85617b 668-698,785-815,818-848,1171-1201
+pnpm-workspace.yaml
+  s_817d10094530c4::t_4fd90e7a5e7758 7
+scripts/check-examples.ts
+  s_817d10094530c4::t_38f0d4529acef1 7-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2cc1f93ef26eb372fff227f967183d21e2eabfe9",
+  "prompts": {},
+  "sessions": {
+    "s_817d10094530c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7b33-7103-8052-4e6f89248fae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
