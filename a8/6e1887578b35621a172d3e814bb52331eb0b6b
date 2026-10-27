@@ -1,0 +1,21 @@
+apps/effect-ci/CHECK-REUSE-DECISION.md
+  s_b5dac84c8bdea0::t_5aca843b13ad1a 1-349
+apps/effect-ci/README.md
+  s_b5dac84c8bdea0::t_6f3836a4559f02 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a86e1887578b35621a172d3e814bb52331eb0b6b",
+  "prompts": {},
+  "sessions": {
+    "s_b5dac84c8bdea0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-8070-7f93-84a1-dccf508bf91a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
