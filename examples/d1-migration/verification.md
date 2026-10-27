@@ -21,6 +21,7 @@ Validated source Git blobs:
 - `node node_modules/typescript/bin/tsc -p examples/d1-migration/tsconfig.json --noEmit`.
 - Recipe plan: `checkout → build → migrate database → deploy worker`, with no
   migration reversal or automatic deployment retry.
+- `node scripts/check-example-plans.ts`: all recipe plans pass.
 - Existing tests: 17 documentation/ergonomics tests and 44 CI package tests pass.
   No tests were added or changed.
 - `cf build --mode production` using the installed `cf@1.0.0-beta.12`, followed by
@@ -33,6 +34,9 @@ Validated source Git blobs:
   exited 1 before invoking `cf`. This is SQL/script validation, not D1 runtime,
   Worker HTTP, migration-ledger replay or hosted evidence.
 - `git diff --check`.
+- `pnpm docs:build`: builds and verifies 92 document routes, source snippets,
+  internal links and search assets. The package manager required execution
+  outside the sandbox; this does not publish the documentation site.
 
 ## Incomplete or blocked
 
