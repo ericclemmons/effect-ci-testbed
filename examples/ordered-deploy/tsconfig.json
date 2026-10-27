@@ -10,5 +10,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": [".cloudflare/**/*.ts", "apps/**/*.ts"]
+  "include": [".cloudflare/**/*.ts", "apps/**/*.ts", "src/**/*.ts"]
 }

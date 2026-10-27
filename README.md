@@ -353,7 +353,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Deploy an app to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Build or publish static files without a container](./examples/static-assets-source) | — | 🔜 | — | ✅ · containerless |
 | [Build and serve a static site without a container](./examples/containerless-site) | — | 🔜 | — | ✅ · containerless |
-| [Deploy apps in dependency order](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Deploy apps in dependency order (dry run)](./examples/ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Migrate D1 before deploying a Worker](./examples/d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Recover from a deploy failure after migration](./examples/d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll out a Worker with health checks](./examples/health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
