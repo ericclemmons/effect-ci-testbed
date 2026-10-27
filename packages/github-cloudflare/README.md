@@ -126,6 +126,25 @@ existing behavior. Existing historical messages are not rewritten or replayed.
 
 ## Optional presentation failure isolation
 
+### PR-wide notification ownership
+
+`githubCommentProvider({ lifecycle: "pr-previews-v1", ... })` opts into one
+bot-owned comment per repository/PR/lifecycle instead of the default per-run
+identity. Only trusted hosts may select this scope. They must serialize delivery
+and fence revision ownership; the provider is a presentation transport, not a
+deployment controller. Existing per-run callers keep their existing identities.
+
+`reconcileOnly: true` reads the existing owned comment and requires the exact
+intended body, including its operation digest. It never creates or patches a
+message. A host must persist intent before delivery, quarantine an ambiguous
+write, and reconcile that same intent before sending a newer update. An absent,
+changed, deleted, ambiguous or unowned message requires operator reconciliation,
+not an automatic repost. No API can infer that an unacknowledged remote write
+will never arrive. The [PR preview recipe](../../examples/pull-request-preview)
+uses this contract with its own durable ownership controller.
+
+### Ordinary workflow reporting
+
 Ordinary maintained-card and thread checkpoints have zero retries and a
 20-second timeout. A checkpoint exception records a redacted
 `notification-delivery-failed:*` receipt when storage is available, blocks that
