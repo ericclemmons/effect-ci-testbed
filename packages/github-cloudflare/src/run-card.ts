@@ -8,6 +8,8 @@ export interface RunHealth {
   readonly decision: "uncertain" | "advance" | "rollback" | "regression"
   readonly evidenceSource: "closed-client-http-cohort" | "native-wobs" | "experimental-native-wobs"
   readonly metrics?: Readonly<HealthMetrics>
+  readonly decisionBasis?: "health" | "human-risk-acceptance" | "deadline-risk-acceptance"
+  readonly restored?: true
 }
 export interface RunIdentity {
   readonly instanceId: string
@@ -205,11 +207,21 @@ export class RunCard {
     if (![10, 25, 75, 100].includes(health.phase) ||
       !["uncertain", "advance", "rollback", "regression"].includes(health.decision) ||
       !["closed-client-http-cohort", "native-wobs", "experimental-native-wobs"].includes(health.evidenceSource) ||
+      (health.decisionBasis !== undefined && !["health", "human-risk-acceptance", "deadline-risk-acceptance"].includes(health.decisionBasis)) ||
+      (health.restored !== undefined && health.restored !== true) ||
       (fileId !== undefined && !/^F[A-Z0-9]+$/.test(fileId))) throw new Error("Invalid health presentation")
     this.health = Object.freeze({ phase: health.phase, decision: health.decision,
       evidenceSource: health.evidenceSource, ...(health.metrics ? { metrics: copyHealthMetrics(health.metrics) } : {}),
+      ...(health.decisionBasis ? { decisionBasis: health.decisionBasis } : {}),
+      ...(health.restored ? { restored: true as const } : {}),
       ...(fileId ? { fileId } : {}) })
     if (fileId) this.lastHealthChart = Object.freeze({ phase: health.phase, fileId })
+  }
+
+  setHealthProvenance(provenance: Pick<RunHealth, "decisionBasis" | "restored">): void {
+    if ((provenance.decisionBasis !== undefined && !["health", "human-risk-acceptance", "deadline-risk-acceptance"].includes(provenance.decisionBasis)) ||
+      (provenance.restored !== undefined && provenance.restored !== true)) throw new Error("Invalid health provenance")
+    if (this.health) this.health = Object.freeze({ ...this.health, ...provenance })
   }
 
   snapshot(): RunSnapshot {
@@ -220,7 +232,9 @@ export class RunCard {
       phase: this.phase,
       ...(this.health ? { health: Object.freeze({ phase: this.health.phase,
         decision: this.health.decision, evidenceSource: this.health.evidenceSource,
-        ...(this.health.metrics ? { metrics: this.health.metrics } : {}) }) } : {}),
+        ...(this.health.metrics ? { metrics: this.health.metrics } : {}),
+        ...(this.health.decisionBasis ? { decisionBasis: this.health.decisionBasis } : {}),
+        ...(this.health.restored ? { restored: true as const } : {}) }) } : {}),
       checks: Object.freeze(Array.from(this.checks, ([id, check]) => Object.freeze({
         id, status: check.status, optional: check.optional,
         dependencies: Object.freeze(Array.from(check.dependencies)),

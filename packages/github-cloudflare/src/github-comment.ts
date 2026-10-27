@@ -9,6 +9,7 @@ export interface GitHubCommentOptions {
   readonly botUserId: number
   readonly token: () => Promise<string>
   readonly transport?: typeof fetch
+  readonly reconcileOnly?: boolean
 }
 
 const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0
@@ -34,7 +35,7 @@ export const renderGitHubComment = (run: RunSnapshot): string => {
   const symbols = { planned: "⏳", queued: "⏳", running: "▶️", complete: "✅", reused: "♻️", verified: "✅", warning: "⚠️", failed: "❌", skipped: "➖", waiting: "⏳", approved: "✅", rejected: "❌" }
   const checks = run.checks.slice(0, 100).map((check, index) =>
     `${index + 1}. ${symbols[check.status]} ${text(check.id)}${check.status === "complete" ? "" : ` — ${check.status}`}${check.optional ? " (optional)" : ""}${check.failureReason ? `\n   > ${text(check.failureReason)}` : ""}`)
-  const health = run.health ? `\n\n#### Release ${run.health.phase}% · ${text(run.health.decision)}\n\n${text(run.health.evidenceSource)}${run.health.metrics ? `\n\n${healthMetricsMarkdown(run.health.metrics)}` : "\n\nMetric evidence unavailable."}` : ""
+  const health = run.health ? `\n\n#### Release ${run.health.phase}% · ${text(run.health.decision)}\n\n${text(run.health.evidenceSource)}${run.health.metrics ? `\n\n${healthMetricsMarkdown(run.health.metrics)}` : "\n\nMetric evidence unavailable."}${run.health.decisionBasis ? `\n\nProgress basis: ${text(run.health.decisionBasis)}. Risk acceptance does not establish health.` : ""}${run.health.restored ? "\n\nPrevious version allocation restored; the observations above remain historical." : ""}` : ""
   return `### ${phase} · ${text(run.workflowId)}\n\n${source}@${revision}${details ? ` • [Details](${details})` : ""}\n\n${checks.join("  \n") || "Preparing checks…"}${run.checks.length > 100 ? "\n\nAdditional checks are available in Details." : ""}${health}`
 }
 
@@ -110,6 +111,7 @@ export const githubCommentProvider = (options: GitHubCommentOptions): Notificati
             if (page === 5) throw new Error("Comment discovery limit reached")
           }
         }
+        if (!comment && options.reconcileOnly) throw new Error("Unacknowledged comment requires reconciliation")
         const result = comment
           ? comment.body === body ? comment : await request(`/issues/comments/${comment.id}`, "PATCH", { body })
           : await request(`/issues/${options.pullRequest}/comments`, "POST", { body })
