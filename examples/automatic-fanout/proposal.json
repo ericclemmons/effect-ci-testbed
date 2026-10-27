@@ -1,0 +1,16 @@
+{
+  "status": "design-only; not accepted by cf-ci",
+  "group": "checks",
+  "selected": ["aggregate"],
+  "budget": { "actions": 2, "capabilities": { "isolated-workspace": 2 } },
+  "targets": {
+    "checkout": { "needs": {}, "resources": { "actions": 1, "isolated-workspace": 1 } },
+    "prepare": { "needs": { "source": "checkout" }, "resources": { "actions": 1, "isolated-workspace": 1 } },
+    "left": { "needs": { "prepared": "prepare" }, "resources": { "actions": 1, "isolated-workspace": 1 } },
+    "right": { "needs": { "prepared": "prepare" }, "resources": { "actions": 1, "isolated-workspace": 1 } },
+    "aggregate": {
+      "needs": { "prepared": "prepare", "left": "left", "right": "right" },
+      "resources": { "actions": 1, "isolated-workspace": 1 }
+    }
+  }
+}

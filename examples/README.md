@@ -46,6 +46,7 @@ in the recipes run from that root unless they say otherwise.
 - [Run every matrix combination](./matrix), [split tests](./test-splitting), or
   [balance shards using recorded timings](./timing-aware-splitting)
 - [Run isolated parallel checks](./snapshot-fanout)
+- [Review automatic scheduling](./automatic-fanout) (proposal; runnable explicit baseline)
 - [Share build artifacts](./portable-artifacts)
 
 ## Control failures and releases

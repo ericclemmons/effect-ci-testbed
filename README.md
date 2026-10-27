@@ -302,6 +302,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Split tests across parallel jobs](./examples/test-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./examples/timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Run checks in parallel from one workspace](./examples/snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
+| [Review automatic scheduling](./examples/automatic-fanout) (explicit baseline only) | — | ✅ | — | — |
 | [Set retry and timeout limits](./examples/execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./examples/retry) | — | ✅ | ✅ | ✅ |
 | [Roll back after a failed action](./examples/rollback-compensation) | ✅ | ✅ | ✅ | ✅ |

@@ -1,0 +1,12 @@
+const [leftJson, rightJson] = process.argv.slice(2)
+const left = JSON.parse(leftJson)
+const right = JSON.parse(rightJson)
+const started = Date.now()
+if (left.name !== "left" || right.name !== "right") throw new Error("Missing check result")
+if (left.preparation.count !== 1 || right.preparation.count !== 1 ||
+  left.preparation.token !== right.preparation.token) throw new Error("Preparation was not shared")
+if (left.workspace === right.workspace) throw new Error("Checks shared a mutable workspace")
+if (started < Math.max(left.finished, right.finished)) throw new Error("Aggregate started early")
+const overlapMs = Math.min(left.finished, right.finished) - Math.max(left.started, right.started)
+if (overlapMs <= 0) throw new Error("Checks did not overlap")
+console.log(JSON.stringify({ event: "aggregated", started, overlapMs, left, right }))
