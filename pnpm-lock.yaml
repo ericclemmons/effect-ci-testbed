@@ -495,6 +495,9 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
+      '@cloudflare/build-output-utils':
+        specifier: 0.8.5
+        version: 0.8.5
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
@@ -504,9 +507,9 @@ importers:
       vite-plus:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.3)(@vitest/ui@5.0.1)(esbuild@0.28.2)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-      wrangler:
-        specifier: 4.145.0
-        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+      cf:
+        specifier: 1.0.0-beta.12
+        version: 1.0.0-beta.12(@types/node@26.6.3)
 
   examples/deploy-hook:
     devDependencies:

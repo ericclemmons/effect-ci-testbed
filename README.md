@@ -34,6 +34,13 @@ The [legacy hosted fixture](./test/fixtures/demo/README.md) records Slack, previ
 test attestation and the real error-to-unmerged-PR proof.
 [Browse recipes](./examples/README.md) for one focused capability at a time.
 
+This repository's committed `.env` selects Eric's existing shared CI host.
+Override `EFFECT_CI_REMOTE_URL` in ignored `.env.local` for another host. These
+files configure the endpoint, not access: local remote commands use Cloudflare
+Access, and GitHub jobs use OIDC. Reusing this host does not require self-hosting
+again. The copied tutorial carries its public host setting in
+`.cloudflare/ci/oidc.json` instead.
+
 ## Self-hosting
 
 Requires Node 24.11+ or 26+, pnpm, Docker, and a Cloudflare account with Workers
