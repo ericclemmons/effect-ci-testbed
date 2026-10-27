@@ -1,0 +1,231 @@
+{
+  "schema": "effect-ci-retained-github-observation-v1",
+  "sourceRevision": "20f29103911800606929de4f9afa095667606e48",
+  "workflowPath": ".github/workflows/e2e.yml",
+  "run": {
+    "id": 40149142030,
+    "attempt": 1,
+    "event": "push",
+    "conclusion": "failure"
+  },
+  "job": {
+    "completed_at": "2026-10-25T01:11:57Z",
+    "conclusion": "success",
+    "head_sha": "20f29103911800606929de4f9afa095667606e48",
+    "html_url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/40149142030/job/121036768534",
+    "id": 121036768534,
+    "labels": [
+      "ubuntu-latest"
+    ],
+    "name": "verification-evidence / signed Git note reuse",
+    "run_attempt": 1,
+    "run_id": 40149142030,
+    "runner_group_name": "GitHub Actions",
+    "runner_name": "GitHub Actions 1000131413",
+    "started_at": "2026-10-25T01:11:34Z",
+    "status": "completed",
+    "steps": [
+      {
+        "completed_at": "2026-10-25T01:11:36Z",
+        "conclusion": "success",
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-10-25T01:11:35Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:37Z",
+        "conclusion": "success",
+        "name": "Run actions/checkout@v7",
+        "number": 2,
+        "started_at": "2026-10-25T01:11:36Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:40Z",
+        "conclusion": "success",
+        "name": "Run pnpm/action-setup@v4",
+        "number": 3,
+        "started_at": "2026-10-25T01:11:37Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:49Z",
+        "conclusion": "success",
+        "name": "Run actions/setup-node@v7",
+        "number": 4,
+        "started_at": "2026-10-25T01:11:40Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:53Z",
+        "conclusion": "success",
+        "name": "Run pnpm install",
+        "number": 5,
+        "started_at": "2026-10-25T01:11:49Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:54Z",
+        "conclusion": "success",
+        "name": "Record locally and verify with a public-only CI runner",
+        "number": 6,
+        "started_at": "2026-10-25T01:11:53Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:54Z",
+        "conclusion": "success",
+        "name": "Post Run actions/setup-node@v7",
+        "number": 10,
+        "started_at": "2026-10-25T01:11:54Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:54Z",
+        "conclusion": "success",
+        "name": "Post Run pnpm/action-setup@v4",
+        "number": 11,
+        "started_at": "2026-10-25T01:11:54Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:55Z",
+        "conclusion": "success",
+        "name": "Post Run actions/checkout@v7",
+        "number": 12,
+        "started_at": "2026-10-25T01:11:54Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-25T01:11:55Z",
+        "conclusion": "success",
+        "name": "Complete job",
+        "number": 13,
+        "started_at": "2026-10-25T01:11:55Z",
+        "status": "completed"
+      }
+    ]
+  },
+  "runner": {
+    "version": "2.338.0",
+    "os": "Ubuntu 24.04.5 LTS",
+    "image": "ubuntu-24.04",
+    "imageVersion": "20261012.334.1"
+  },
+  "logSha256": "9f27a0b8cf353aa5133f6e974b87308301e3f49bb5967f90f2cdf2354ac03742",
+  "results": [
+    {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "run",
+      "location": "local",
+      "workflow": "verification-evidence",
+      "plan": {
+        "workflowId": "verification-evidence",
+        "environment": "test",
+        "mode": "execute",
+        "nodes": [
+          {
+            "id": "verification checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "verified lint",
+            "after": [],
+            "dependencies": [
+              "verification checkout"
+            ],
+            "commands": [
+              {
+                "command": "node --check app/index.js",
+                "cwd": "/home/runner/work/effect-ci-testbed/effect-ci-testbed/examples/verification-evidence"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {
+              "reuse": {
+                "scope": "commit"
+              }
+            },
+            "secrets": [],
+            "status": "complete"
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "run",
+      "location": "local",
+      "workflow": "verification-evidence",
+      "plan": {
+        "workflowId": "verification-evidence",
+        "environment": "test",
+        "mode": "execute",
+        "nodes": [
+          {
+            "id": "verification checkout",
+            "after": [],
+            "dependencies": [],
+            "commands": [],
+            "artifacts": [],
+            "optional": false,
+            "options": {},
+            "secrets": [],
+            "status": "complete"
+          },
+          {
+            "id": "verified lint",
+            "after": [],
+            "dependencies": [
+              "verification checkout"
+            ],
+            "commands": [
+              {
+                "command": "node --check app/index.js",
+                "cwd": "/home/runner/work/effect-ci-testbed/effect-ci-testbed/examples/verification-evidence"
+              }
+            ],
+            "artifacts": [],
+            "optional": false,
+            "options": {
+              "reuse": {
+                "scope": "commit"
+              }
+            },
+            "secrets": [],
+            "status": "verified"
+          }
+        ]
+      }
+    }
+  ],
+  "timings": {
+    "jobMs": 23000,
+    "combinedRecordAndReuseStepMs": 1000,
+    "executeMs": null,
+    "reuseMs": null,
+    "fallbackMs": null,
+    "queueMs": null
+  },
+  "boundaries": [
+    "Read-only extraction from completed GitHub job; no new execution.",
+    "CLI location local and plan environment test; physically executed on the recorded GitHub-hosted Ubuntu runner, not Cloudflare.",
+    "Fresh ephemeral key generated on the GitHub runner; no enrollment in the Cloudflare host and no note push.",
+    "Job API timestamps have whole-second precision. Combined step includes key generation, signing and both CLI invocations; it is not a per-condition timing.",
+    "Plan commands describe intended commands even on verified hits; the job asserts verified status, not an independent process audit.",
+    "No invalid-evidence or public-note transport run in this job; standalone conventional GitHub comparison remains unverified.",
+    "Parent workflow failed; this successful job is not a successful full-suite claim.",
+    "Original log and signatures are unchanged; this extraction is not signed proof or authority for cache reuse."
+  ]
+}

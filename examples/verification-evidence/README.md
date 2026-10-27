@@ -21,5 +21,7 @@ This example uses Git notes; the deployed host's
 [remote-result integration](../../apps/effect-ci/TRUSTED-REMOTE.md) uses host-issued
 receipts. Build-output caching and PR approval are separate decisions.
 
+[Recorded environment coverage and remaining comparison work](./EVIDENCE.md).
+
 [Actions](./.cloudflare/ci/actions.ts) ·
 [Check-cache API](../../packages/github/src/check-cache.ts)
