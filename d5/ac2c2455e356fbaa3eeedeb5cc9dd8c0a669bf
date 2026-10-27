@@ -1,0 +1,55 @@
+README.md
+  s_79a654204d67bd::t_3529c300849691 322
+apps/effect-ci/src/showcase-attempt.ts
+  s_79a654204d67bd::t_27d1c96bd19c83 20-28,36-37,63-64,87-91
+examples/README.md
+  s_79a654204d67bd::t_eb98757fc570ee 46
+examples/run-identities/.cloudflare/ci/actions.ts
+  s_79a654204d67bd::t_058dfbd015dcf6 1-11
+examples/run-identities/.cloudflare/ci/journey.ts
+  s_79a654204d67bd::t_276e3a3e092a7b 1-35
+examples/run-identities/.cloudflare/ci/workflow.ts
+  s_79a654204d67bd::t_f625e575310c4c 1-9
+examples/run-identities/README.md
+  s_79a654204d67bd::t_cfb9d6baa4258b 1-40
+examples/run-identities/tsconfig.json
+  s_79a654204d67bd::t_eec176ae58eaa2 1-7
+packages/ci/README.md
+  s_79a654204d67bd::t_7cc3ca5963f46a 3-4
+packages/ci/correlation.md
+  s_79a654204d67bd::t_4d34c59f696752 1-112
+packages/ci/src/correlation.ts
+  s_79a654204d67bd::t_d683e203a64369 1-96
+packages/ci/src/index.ts
+  s_79a654204d67bd::t_c60ea597323578 13,17,150-152,214,287,307-308,424,433,1741-1744,1769,1794-1796,1800-1806,1863-1866,1927-1945,1958,1962,1964,1972-1975,1988-1992,2019-2021,2105-2106,2490-2497,2706-2734,2746,2815-2817,2848-2861,2864,2866
+packages/cli/src/index.ts
+  s_79a654204d67bd::t_b00439b529793e 914,998-1001,1023,1038,1047
+packages/cloudflare/src/action-step.ts
+  s_79a654204d67bd::t_54ec6506a4988c 77,91,104
+packages/cloudflare/src/host-attempt.md
+  s_79a654204d67bd::t_f739d98825cc06 18-22
+packages/cloudflare/src/index.ts
+  s_79a654204d67bd::t_e806ada05a63b3 1246-1247
+packages/github-cloudflare/src/index.ts
+  s_79a654204d67bd::t_b765dd74cddc8a 489-490
+packages/github-cloudflare/src/run-card.ts
+  s_79a654204d67bd::t_4f29adcf3519a0 2,23,67-69,115-122,231,301-302,305,326,384-392
+packages/github/src/reporter.ts
+  s_79a654204d67bd::t_41c476093b060d 2-3,359-362,434-436,535-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d5ac2c2455e356fbaa3eeedeb5cc9dd8c0a669bf",
+  "prompts": {},
+  "sessions": {
+    "s_79a654204d67bd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-fd8a-7392-b8de-eed8a8150d78",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
