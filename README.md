@@ -319,6 +319,7 @@ Keep download caches, task caches, workspace checkpoints, and signed commit evid
 | [Reuse verified checks for a commit](./examples/verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
 | [Rerun only affected checks](./examples/dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Keep rerun history and reuse passed steps](./examples/immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Follow retries and reruns](./examples/run-identities) | — | ✅ | 🔜 | 🔜 |
 
 ### Secrets and outbound authentication
 

@@ -1,5 +1,7 @@
 # Effect CI SDK
 
+[Run, retry, rerun, and replay identity contract](./correlation.md)
+
 > How do actions keep workflows small?
 
 Actions own prerequisites. Workflows select goals and coordinate events, parallel

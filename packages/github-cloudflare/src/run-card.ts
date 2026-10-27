@@ -1,4 +1,5 @@
 import type { ApprovalRequest, PlanNode, RuntimeEvent } from "@effect-ci-testbed/ci"
+import { CorrelationCursor, formatRunIdentity, type RunIdentity as CorrelatedRunIdentity } from "@effect-ci-testbed/ci"
 import { copyHealthMetrics, type HealthMetrics } from "./health-metrics.ts"
 import { failedCommandOutput } from "./failed-command-output.ts"
 
@@ -19,6 +20,7 @@ export interface RunIdentity {
 
 /** Provider-neutral status only: no output, event payloads, or approval capabilities. */
 export interface RunSnapshot {
+  readonly correlation?: CorrelatedRunIdentity
   readonly identity: Readonly<Pick<RunIdentity, "instanceId" | "repository" | "revision" | "detailsUrl">>
   readonly workflowId: string
   readonly phase: "running" | "waiting" | "success" | "failure"
@@ -62,6 +64,9 @@ const sourceLinks = (identity: RunIdentity): string => {
 
 /** Reconstructed on replay. Enrolled redacted failure presentation stays outside semantic snapshots. */
 export class RunCard {
+  private readonly correlation = new CorrelationCursor()
+  private readonly executionNumbers = new Map<string, number>()
+  private readonly outputOrigins = new Map<string, string>()
   private workflowId = "Effect CI"
   private phase: "running" | "waiting" | "success" | "failure" = "running"
   private readonly checks = new Map<string, { status: keyof typeof symbols; optional: boolean; dependencies: Set<string> }>()
@@ -107,6 +112,14 @@ export class RunCard {
   }
 
   update(event: RuntimeEvent): boolean {
+    if (this.correlation.current && event.correlation?.run.workflowAttemptId !== this.correlation.current.workflowAttemptId) return false
+    if (event.correlation?.run.backend?.provider === "cloudflare-workflows" &&
+      event.correlation.run.backend.id !== this.identity.instanceId) return false
+    if (!this.correlation.accept(event)) return false
+    const execution = event.correlation?.step
+    if (execution?.executionAttemptNumber !== undefined) this.executionNumbers.set(execution.id, execution.executionAttemptNumber)
+    if (event.correlation?.outputOrigin && "stepId" in event)
+      this.outputOrigins.set(event.stepId, event.correlation.outputOrigin.workflowAttemptId)
     this.workflowId = event.workflowId
     const timestamp = Date.parse(event.timestamp)
     if (Number.isFinite(timestamp)) this.latestTimestamp = Math.max(this.latestTimestamp, timestamp)
@@ -215,6 +228,7 @@ export class RunCard {
   snapshot(): RunSnapshot {
     const { instanceId, repository, revision, detailsUrl } = this.identity
     return Object.freeze({
+      ...(this.correlation.current ? { correlation: this.correlation.current } : {}),
       identity: Object.freeze({ instanceId, repository, revision, ...(detailsUrl ? { detailsUrl } : {}) }),
       workflowId: this.workflowId,
       phase: this.phase,
@@ -284,9 +298,11 @@ export class RunCard {
         done ? `${done} step${done === 1 ? "" : "s"} done` : undefined
       const symbol = { running: "►", waiting: "∗", success: "✓", failure: "✗" }[this.phase]
       const title = `${symbol} ${this.workflowId.slice(0, 70)}${current ? ` · ${current.slice(0, 100)}` : " · Preparing"}${this.phase === "waiting" ? " · Awaiting review" : ""}${restored ? " · Restored" : ""}${count ? ` · ${count}` : ""}`.replace(/[\r\n]/g, " ")
-      return { text: title, blocks: [
+      const correlation = this.correlation.current ? formatRunIdentity(this.correlation.current) : undefined
+      return { text: title + (correlation ? `\n${correlation}` : ""), blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${escape(title)}*`, verbatim: true } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity) + (this.resultLink ? ` • ${link(this.resultLink.url, this.resultLink.label.replace(/^Open /, "").replace(/^preview$/, "Preview").replace(/^checked build$/, "Checked build"))}` : ""), verbatim: true }] },
+        ...(correlation ? [{ type: "context", elements: [{ type: "plain_text", text: correlation.slice(0, 2000) }] }] : []),
         // Latest evidence remains visible without opening the thread, including
         // after terminal success/failure. Approval capabilities stay in replies.
         ...(this.lastHealthChart ? [{ type: "image", slack_file: { id: this.lastHealthChart.fileId }, alt_text: `Latest successfully rendered health confidence intervals: Release ${this.lastHealthChart.phase}%; not a forecast` }] : []),
@@ -307,6 +323,7 @@ export class RunCard {
       return { text: title, blocks: [
         { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
+        ...(this.correlation.current ? [{ type: "context", elements: [{ type: "plain_text", text: formatRunIdentity(this.correlation.current).slice(0, 2000) }] }] : []),
         ...(this.review ? [{ type: "section", text: { type: "plain_text", text: this.review.request.summary.slice(0, 1000) } }] : []),
         ...actions,
       ] }
@@ -364,6 +381,14 @@ export class RunCard {
     const review = this.review ? `\n${this.review.request.title}\n${this.review.request.summary}` : ""
     const health = this.health ? `\nRelease ${this.health.phase}% · ${this.health.decision} · ${this.health.evidenceSource}` : ""
 
-    return { text: options.onlyStep ? `${lines.join("\n")}${commandFailure ? `\n${escape(commandFailure.text)}` : ""}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`, blocks }
+    const correlation = this.correlation.current ? formatRunIdentity(this.correlation.current) : undefined
+    if (correlation) blocks.push({ type: "context", elements: [{ type: "plain_text", text: correlation.slice(0, 2000) }] })
+    const executions = [...this.executionNumbers].filter(([stepId]) => !options.onlyStep || options.onlyStep === stepId)
+      .map(([stepId, number]) => `${stepId} · execution attempts 1–${number}`).join("\n")
+    if (executions) blocks.push({ type: "context", elements: [{ type: "plain_text", text: executions.slice(0, 2000) }] })
+    const origins = [...this.outputOrigins].filter(([stepId]) => !options.onlyStep || options.onlyStep === stepId)
+      .map(([stepId, origin]) => `${stepId} · reused from workflow attempt ${origin}`).join("\n")
+    if (origins) blocks.push({ type: "context", elements: [{ type: "plain_text", text: origins.slice(0, 2000) }] })
+    return { text: (options.onlyStep ? `${lines.join("\n")}${commandFailure ? `\n${escape(commandFailure.text)}` : ""}${health}${review}` : `${headline} · ${this.workflowId}\n${lines.join("\n")}${health}${review}\nRun: ${this.identity.instanceId}`) + (correlation ? `\n${correlation}` : ""), blocks }
   }
 }

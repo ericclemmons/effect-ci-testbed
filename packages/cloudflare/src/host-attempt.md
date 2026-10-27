@@ -15,8 +15,11 @@ redacted error; it cannot publish a successful overall result first. The handler
 return value is not serialized. Store identity/evidence deliberately—never copy
 the host context, credentials or arbitrary private outputs into a public receipt.
 
-Use `context.instanceId` and `attempt.number` for durable identity. The kernel's
-`attempt.id` can change during native replay. Journal uncertain external writes;
+Both entrypoints now set `attempt.identity` and `attempt.id` from the native
+instance, retaining them during checkpoint replay. `context.instanceId` and
+`attempt.number` remain compatible durable keys. Direct kernel callers must
+provide a host correlation context to get the same replay guarantee; otherwise
+their IDs are invocation-local. Journal uncertain external writes;
 a lost acknowledgement is not permission to issue a second record or signature.
 
 This observes the **CI definition's attempt**, before any `finalize` continuation.

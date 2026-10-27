@@ -10,9 +10,11 @@ import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as ServiceMap from "effect/ServiceMap"
 import type { RuntimeObservers } from "./observers.ts"
+import { executionAttemptId, formatRunIdentity, type RunIdentity, type EventCorrelation, type ExecutionAttempt, type OutputOrigin } from "./correlation.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./path-glob.ts"
+export * from "./correlation.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -145,6 +147,9 @@ export interface WorkflowAttempt {
   readonly conclusion: "success" | "failure"
   readonly startedAt: string
   readonly completedAt: string
+  readonly identity?: RunIdentity
+  readonly executions?: ReadonlyArray<ExecutionAttempt>
+  readonly outputOrigins?: Readonly<Record<string, OutputOrigin>>
 }
 
 export interface WorkflowRerun {
@@ -206,7 +211,7 @@ export const planRerun = (
   }
 }
 
-export type RuntimeEvent =
+export type RuntimeEvent = { readonly correlation?: EventCorrelation } & (
   | {
       readonly type: "approval.requested"
       readonly workflowId: string
@@ -279,7 +284,7 @@ export type RuntimeEvent =
       readonly workflowId: string
       readonly conclusion: "success" | "failure"
       readonly timestamp: string
-    }
+    })
 
 interface RuntimeNode {
   readonly id: string
@@ -299,6 +304,8 @@ interface RuntimeNode {
 }
 
 interface RuntimeShape {
+  readonly executions: Map<string, ExecutionAttempt>
+  readonly outputOrigins: Map<string, OutputOrigin>
   readonly definitions: Map<string, StepDefinition>
   readonly ci: boolean
   readonly workflowId: string
@@ -414,6 +421,7 @@ export interface ActionExecutionResult {
   readonly value: unknown
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly events?: ReadonlyArray<RuntimeEvent>
+  readonly executions?: ReadonlyArray<ExecutionAttempt>
   readonly metadata?: Pick<PlanNode, "artifacts" | "secrets" | "approval">
 }
 
@@ -422,7 +430,7 @@ export interface ActionExecutor {
   readonly execute: (request: {
     readonly stepId: string
     readonly options: WorkflowStepConfig
-    readonly run: (attempt: number) => Effect.Effect<ActionExecutionResult, unknown, any>
+    readonly run: (attempt: number, backend?: RunIdentity["backend"]) => Effect.Effect<ActionExecutionResult, unknown, any>
   }) => Effect.Effect<ActionExecutionResult, unknown, any>
 }
 
@@ -1730,7 +1738,10 @@ const withStepPolicy = <A, E, R>(
 ): Effect.Effect<A, any, R> => {
   let attempt = 0
   const effectBody = effect
-  effect = Effect.suspend(() => effectBody.pipe(Effect.provideService(Attempt, ++attempt))) as Effect.Effect<A, E, R>
+  effect = Effect.suspend(() => {
+    attempt += 1
+    return effectBody.pipe(Effect.provideService(Attempt, attempt), Effect.annotateLogs({ "ci.attempt": attempt }))
+  }) as Effect.Effect<A, E, R>
   const timed = options.timeout === undefined
     ? effect
     : effect.pipe(Effect.timeout(options.timeout))
@@ -1755,6 +1766,7 @@ const withStepPolicy = <A, E, R>(
 
 const makeRuntime = (
   workflowId: string,
+  identity: RunIdentity,
   ci: boolean,
   mode: WorkflowPlan["mode"],
   output: "inherit" | "silent",
@@ -1779,9 +1791,19 @@ const makeRuntime = (
 ) =>
   Effect.gen(function* () {
     const definitions = new Map<string, StepDefinition>()
+    const executions = new Map<string, ExecutionAttempt>()
+    const outputOrigins = new Map<string, OutputOrigin>()
+    const currentExecutions = new Map<string, ExecutionAttempt>()
     const bufferedEvents = new Map<string, Array<RuntimeEvent>>()
     const emitOutsideBody = emitEvent
     emitEvent = (event) => {
+      const execution = "stepId" in event ? currentExecutions.get(event.stepId) : undefined
+      if ("stepId" in event) event = { ...event, correlation: {
+        run: identity, sequence: 0, step: { id: event.stepId,
+          ...(execution ? { executionAttemptId: execution.id, executionAttemptNumber: execution.number } : {}) },
+        ...(outputOrigins.get(event.stepId)?.workflowAttemptId !== identity.workflowAttemptId && outputOrigins.has(event.stepId)
+          ? { outputOrigin: outputOrigins.get(event.stepId)! } : {}),
+      } }
       const buffer = "stepId" in event ? bufferedEvents.get(event.stepId) : undefined
       return buffer ? Effect.sync(() => { buffer.push(event) }) : emitOutsideBody(event)
     }
@@ -1838,6 +1860,10 @@ const makeRuntime = (
         status: "reused",
       })
       outputs.set(id, rerun!.previous.outputs[id])
+      outputOrigins.set(id, rerun!.previous.outputOrigins?.[id] ?? {
+        kind: "retained",
+        workflowAttemptId: rerun!.previous.id,
+      })
       yield* emitEvent({
         type: "step.status",
         workflowId,
@@ -1898,6 +1924,25 @@ const makeRuntime = (
         })
 
         const prepared = definition.prepare ?? Effect.succeed(definition.body)
+        const observeExecution = (leaf: Effect.Effect<unknown, unknown, any>, number: number, backend?: RunIdentity["backend"]) => Effect.suspend(() => {
+          if (mode === "plan") return leaf
+          const execution: ExecutionAttempt = { id: executionAttemptId(identity.workflowAttemptId, id, number),
+            stepId: id, number, outcome: "running", ...(backend ? { backend: Object.freeze({ ...backend }) } : {}) }
+          for (let previousNumber = 1; previousNumber < number; previousNumber += 1) {
+            const previousId = executionAttemptId(identity.workflowAttemptId, id, previousNumber)
+            if (!executions.has(previousId)) executions.set(previousId, { id: previousId, stepId: id, number: previousNumber, outcome: "retried" })
+          }
+          currentExecutions.set(id, execution)
+          executions.set(execution.id, execution)
+          return emitEvent({ type: "step.status", workflowId, stepId: id, status: "running",
+            optional: optionalSteps.has(id), timestamp: new Date().toISOString() }).pipe(
+            Effect.andThen(leaf),
+            Effect.onExit(exit => Effect.sync(() => {
+              executions.set(execution.id, { ...execution, outcome: Exit.isSuccess(exit) ? "success" :
+                Cause.hasFails(exit.cause) || Cause.hasDies(exit.cause) ? "failure" : "interrupted" })
+            })),
+          )
+        })
         const commit = (value: unknown) => mode === "execute" && value instanceof Workspace
           ? workspacePersistence.commit({ stepId: id, workflowId, workspace: value })
           : Effect.succeed(value)
@@ -1910,13 +1955,13 @@ const makeRuntime = (
             return started.pipe(Effect.andThen(actionExecutor.execute({
               stepId: id,
               options: definition.options,
-              run: (attempt) => Effect.sync(() => {
+              run: (attempt, backend) => Effect.sync(() => {
                 node.commands.length = 0
                 bufferedEvents.set(id, [])
               }).pipe(
-                Effect.andThen(leaf),
-                Effect.flatMap(commit),
+                Effect.andThen(observeExecution(leaf.pipe(Effect.flatMap(commit)), attempt, backend)),
                 Effect.map((value) => ({ value, commands: [...node.commands], events: [...bufferedEvents.get(id)!],
+                  executions: [...executions.values()].filter(execution => execution.stepId === id),
                   metadata: { artifacts: [...node.artifacts], secrets: [...node.secrets],
                     ...(node.approval ? { approval: node.approval } : {}) } })),
                 Effect.provideService(Attempt, attempt),
@@ -1924,6 +1969,10 @@ const makeRuntime = (
               ),
             })), Effect.tap((result) => {
               bufferedEvents.delete(id)
+              for (const execution of result.executions ?? []) {
+                executions.set(execution.id, execution)
+                currentExecutions.set(id, execution)
+              }
               return Effect.forEach(result.events ?? [], emitOutsideBody, { discard: true })
             }), Effect.ensuring(Effect.sync(() => { bufferedEvents.delete(id) })), Effect.map((result) => {
               node.commands.splice(0, node.commands.length, ...result.commands)
@@ -1936,8 +1985,11 @@ const makeRuntime = (
               return result.value
             }))
           }
-          return (commandExecutor.handlesStepOptions ? leaf : withStepPolicy(leaf, definition.options))
-            .pipe(Effect.flatMap(commit))
+          const observed = Effect.gen(function* () {
+            const number = yield* Attempt
+            return yield* observeExecution(leaf, number)
+          })
+          return (commandExecutor.handlesStepOptions ? observed : withStepPolicy(observed, definition.options)).pipe(Effect.flatMap(commit))
         }))
 
         const resultRequest = { workflowId, stepId: id, event }
@@ -1964,6 +2016,9 @@ const makeRuntime = (
           Effect.annotateLogs({ "ci.step": id, "ci.attempt": 1 }),
           Effect.tap((value) => Effect.sync(() => {
             outputs.set(id, value)
+            const execution = currentExecutions.get(id)
+            outputOrigins.set(id, { kind: resultReused ? "retained" : "executed", workflowAttemptId: identity.workflowAttemptId,
+              ...(!resultReused && execution ? { executionAttemptId: execution.id } : {}) })
           })),
           Effect.tap(() => {
             if (!definition.rollback) return Effect.void
@@ -2047,6 +2102,8 @@ const makeRuntime = (
     })
 
     runtime = {
+      executions,
+      outputOrigins,
       definitions,
       ci,
       workflowId,
@@ -2430,6 +2487,14 @@ const makeRuntime = (
   })
 
 export interface RunOptions {
+  readonly correlation?: {
+    readonly logicalRunId?: string
+    readonly workflowAttemptId?: string
+    readonly workflowAttemptNumber?: number
+    readonly previousWorkflowAttemptId?: string
+    readonly resume?: boolean
+    readonly backend?: RunIdentity["backend"]
+  }
   readonly actionExecutor?: ActionExecutor
   readonly approval?: ApprovalHandler
   readonly ci?: boolean
@@ -2626,7 +2691,6 @@ const interpret = <A>(
   Effect.gen(function* () {
     const environment = options.env ?? "development"
     const event: WorkflowEventShape = options.event ?? { type: "workflow_dispatch" }
-    const emitEvent = makeEventEmitter(options.onEvent, options.observers)
     const startedAt = new Date().toISOString()
     const previous = options.rerun?.previous
 
@@ -2639,8 +2703,35 @@ const interpret = <A>(
     const selection = previous
       ? planRerun(previous.plan, options.rerun?.steps ?? [])
       : undefined
-    const attemptNumber = previous ? previous.number + 1 : 1
-    const attemptId = `${workflowDefinition.id}:${attemptNumber}:${globalThis.crypto.randomUUID()}`
+    const attemptNumber = previous ? previous.number + 1 : options.correlation?.workflowAttemptNumber ?? 1
+    const attemptId = options.correlation?.workflowAttemptId ?? `${workflowDefinition.id}:${attemptNumber}:${globalThis.crypto.randomUUID()}`
+    const logicalRunId = previous?.identity?.logicalRunId ?? previous?.id ?? options.correlation?.logicalRunId ?? globalThis.crypto.randomUUID()
+    if (!attemptId.trim() || !logicalRunId.trim() || !Number.isSafeInteger(attemptNumber) || attemptNumber < 1 ||
+      (options.correlation?.workflowAttemptNumber !== undefined && options.correlation.workflowAttemptNumber !== attemptNumber) ||
+      (!options.correlation?.resume && !previous && attemptNumber !== 1) ||
+      (previous && attemptId === previous.id) ||
+      (previous && options.correlation?.resume) ||
+      (options.correlation?.resume && (!options.correlation.workflowAttemptId || !options.correlation.logicalRunId)) ||
+      (options.correlation?.resume && (!options.actionExecutor || !options.executor?.handlesStepOptions)) ||
+      (options.correlation?.previousWorkflowAttemptId !== undefined && !options.correlation.resume) ||
+      (previous && options.correlation?.logicalRunId && options.correlation.logicalRunId !== logicalRunId))
+      return yield* Effect.fail(new WorkflowPlanError("Invalid run correlation or resume/rerun identity"))
+    const source = event.source ?? options.source?.reference
+    if (previous?.identity?.source && source?.kind === "git" && previous.identity.source.repository !== source.repository)
+      return yield* Effect.fail(new WorkflowPlanError("Cannot correlate a rerun across repositories"))
+    const identity: RunIdentity = Object.freeze({ definitionId: workflowDefinition.id, logicalRunId,
+      workflowAttemptId: attemptId, workflowAttemptNumber: attemptNumber,
+      ...(source?.kind === "git" ? { source: Object.freeze({ repository: source.repository, revision: source.revision }) } : {}),
+      ...(previous ? { previousWorkflowAttemptId: previous.id } : options.correlation?.previousWorkflowAttemptId ?
+        { previousWorkflowAttemptId: options.correlation.previousWorkflowAttemptId } : {}),
+      operation: previous ? "rerun" : options.correlation?.resume ? "resume" : "invocation",
+      ...(options.correlation?.backend ? { backend: Object.freeze({ ...options.correlation.backend }) } : {}),
+    })
+    let sequence = 0
+    const publishEvent = makeEventEmitter(options.onEvent, options.observers)
+    const emitEvent = (event: RuntimeEvent) => Effect.suspend(() => publishEvent({ ...event,
+      correlation: { ...event.correlation, run: identity, sequence: ++sequence },
+    }))
 
     yield* emitEvent({
       type: "workflow.started",
@@ -2652,6 +2743,7 @@ const interpret = <A>(
 
     const runtime = yield* makeRuntime(
       workflowDefinition.id,
+      identity,
       options.ci ?? (typeof process !== "undefined" && process.env.CI !== undefined),
       mode,
       options.output ?? "inherit",
@@ -2720,6 +2812,9 @@ const interpret = <A>(
       conclusion: Exit.isFailure(result) ? "failure" as const : "success" as const,
       startedAt,
       completedAt,
+      identity,
+      executions: Object.freeze([...runtime.executions.values()].map(execution => Object.freeze({ ...execution }))),
+      outputOrigins: Object.freeze(Object.fromEntries([...runtime.outputOrigins].map(([id, origin]) => [id, Object.freeze({ ...origin })]))),
     }) satisfies WorkflowAttempt
     yield* emitEvent({
       type: "workflow.plan",
@@ -2750,11 +2845,25 @@ const interpret = <A>(
     return { attempt, plan, value: result.value }
   })
 
+export const attemptDetails = (attempt: WorkflowAttempt) => ({
+  id: attempt.id, number: attempt.number, workflowId: attempt.workflowId, conclusion: attempt.conclusion,
+  ...(attempt.identity ? { identity: attempt.identity } : {}),
+  ...(attempt.previousAttemptId ? { previousAttemptId: attempt.previousAttemptId } : {}),
+  executions: attempt.executions ?? [], outputOrigins: attempt.outputOrigins ?? {},
+})
+
+export const formatAttempt = (attempt: WorkflowAttempt): string => [
+  attempt.identity ? formatRunIdentity(attempt.identity) : `${attempt.workflowId} · workflow attempt ${attempt.number}`,
+  ...(attempt.executions ?? []).map(execution => `  ${execution.stepId} · execution attempt ${execution.number}: ${execution.outcome}`),
+  ...Object.entries(attempt.outputOrigins ?? {}).filter(([, origin]) => origin.workflowAttemptId !== attempt.id)
+    .map(([stepId, origin]) => `  ${stepId} · reused ${origin.kind === "retained" ? "via" : "from"} ${origin.workflowAttemptId}${origin.executionAttemptId ? ` / ${origin.executionAttemptId}` : ""}`),
+].join("\n")
+
 export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}) =>
   interpret(workflowDefinition, options.mode ?? "execute", options).pipe(
-    Effect.tap(({ plan }) => options.output === "silent"
+    Effect.tap(({ plan, attempt }) => options.output === "silent"
       ? Effect.void
-      : Effect.sync(() => console.log(`\n${formatPlan(plan)}`))),
+      : Effect.sync(() => console.log(`\n${formatPlan(plan)}\n${formatAttempt(attempt)}`))),
   )
 
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>

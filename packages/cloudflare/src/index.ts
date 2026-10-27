@@ -1243,6 +1243,8 @@ export const workflowEntrypoint = <
       ? await workflow(event.payload, step)
       : workflow
     const result = await Effect.runPromise(withWobsLogging(CI.run(definition, {
+      correlation: { logicalRunId: `cloudflare:${event.instanceId}`,
+        workflowAttemptId: `cloudflare:${event.instanceId}`, backend: { provider: "cloudflare-workflows", id: event.instanceId } },
       ci: true,
       env: "cloudflare",
       event: {

@@ -43,6 +43,7 @@ in the recipes run from that root unless they say otherwise.
 - [Reuse verified checks](./verification-evidence)
 - [Rerun affected checks](./dependency-aware-reruns) and
   [keep previous attempts](./immutable-attempts)
+- [Follow retry and rerun identities](./run-identities)
 - [Run every matrix combination](./matrix), [split tests](./test-splitting), or
   [balance shards using recorded timings](./timing-aware-splitting)
 - [Run isolated parallel checks](./snapshot-fanout)
