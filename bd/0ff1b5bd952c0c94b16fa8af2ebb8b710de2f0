@@ -1,0 +1,35 @@
+.github/workflows/conditional-subgraph.yml
+  s_08c1a49edbfde6::t_c76a27e7e6629d 1-35
+examples/conditional-deploy/.cloudflare/ci/subgraph-actions.ts
+  s_08c1a49edbfde6::t_a52c2d8d35ba26 1-45
+examples/conditional-deploy/.cloudflare/ci/subgraph.ts
+  s_08c1a49edbfde6::t_32d52e4daaa855 1-11
+examples/conditional-deploy/README.md
+  s_08c1a49edbfde6::t_df7ff482cab75a 38-90
+examples/conditional-deploy/conventional.sh
+  s_08c1a49edbfde6::t_89744723501c8b 1-23
+examples/conditional-deploy/subgraph-verification.md
+  s_08c1a49edbfde6::t_3a5ec944d8da0f 1-71
+examples/conditional-deploy/verification/subgraph-local.json
+  s_08c1a49edbfde6::t_4872faafda34ea 1-2304
+packages/ci/README.md
+  s_08c1a49edbfde6::t_6ab0f6fcfff3f4 77-81
+packages/ci/src/index.ts
+  s_08c1a49edbfde6::t_1e47a356569348 129-143,320,326-332,1509-1516,1533,1556,1594,1600-1632,1860-1862,1939-1940,2125,2131-2197,2280-2281,2642,2681-2686
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bd0ff1b5bd952c0c94b16fa8af2ebb8b710de2f0",
+  "prompts": {},
+  "sessions": {
+    "s_08c1a49edbfde6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b26-9462-7e82-8188-cbf693f03511",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
