@@ -18,8 +18,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # cf-ci must be installed alongside the project's CI dependencies.
-      - run: pnpm exec cf-ci oidc
-        env:
-          EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
-      - run: pnpm exec cf-ci oidc -- pnpm exec wrangler deploy
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@main
+        with:
+          enroll: "true"
+          worker: effect-ci-tutorial
+      - run: pnpm run deploy

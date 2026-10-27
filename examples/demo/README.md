@@ -29,17 +29,20 @@ Open the Vite URL. Stop the server with Ctrl-C.
 
 Start adopting Effect CI before changing how your checks run. Keep GitHub-hosted
 execution and your normal deployment command. Add one authentication step to
-exchange GitHub's OIDC identity for a 15-minute token scoped to this Worker.
+exchange GitHub's OIDC identity for a 15-minute Cloudflare token.
 
 The supplied [deployment workflow](./tutorial/oidc.example.yml) builds this same
 app, authenticates, and runs its existing deployment tool. After pushing the app
 to your own repository:
 
-1. Bootstrap the configured Worker once with operator credentials, then follow
-   [OIDC setup](../../apps/github-actions-runner/OIDC.md) with your repository,
-   `--worker effect-ci-tutorial --workflow .github/workflows/deploy.yml --ref main`.
-   This needs a trusted host and a one-time issuer credential; copying the demo
-   does not grant deployment authority.
+1. Use the existing shared host configured in
+   [.cloudflare/ci/oidc.json](./.cloudflare/ci/oidc.json). Its GitHub App must be
+   installed on your repository, and its operator must allow your GitHub owner.
+   The supplied default is Eric's personal host, not a public deployment service.
+   For another host, change the committed issuer. No host redeployment,
+   GitHub repository variable, local Cloudflare login, or Worker bootstrap is
+   required for an already-authorized owner. A new owner still needs the host
+   operator's approval.
 2. Copy the workflow into place and push it:
 
    ```sh
@@ -50,22 +53,38 @@ to your own repository:
    gh workflow run deploy.yml
    ```
 
-The job needs `id-token: write`; it requests only `workers:edit`. The action
-revokes the token after the job. No long-lived Cloudflare token goes into GitHub.
+The job needs `id-token: write`; it requests only `workers:edit`. The
+[authentication action](../../.github/actions/cloudflare-auth/README.md) discovers
+the committed host, enrolls the signed repository identity, and exports temporary
+credentials for later steps. The existing `pnpm run deploy` script runs
+`cf deploy --prebuilt`; it does not need the CI CLI or an authentication wrapper.
+The action revokes the token after the job, including on deployment failure.
+No long-lived Cloudflare token goes into GitHub. The shared host's operator-owned
+account policy permits creating new Workers; the Worker name is not a
+single-Worker permission boundary. Do not grant an untrusted repository access
+to that account-wide policy.
 Checks can keep using ordinary package scripts; the next chapter introduces
 `cf-ci` without requiring another authentication change.
 
-The [cf](../oidc-cf) and [Wrangler](../oidc-wrangler) recipes own the deployment
-actions that the repository's E2E workflow runs on trusted pushes. Both verify
-single-Worker access, denial of the other Worker and R2, deployment, and cleanup.
-Those two recipes provide the live OIDC proof; this demo supplies the same
-adoption step for its own app, with separate Worker enrollment.
+The [cf recipe](../oidc-cf) and
+[shared-host evidence](../../apps/effect-ci/verification/oidc-shared-app.json)
+record the earlier live proof of enrollment, remote execution, new Worker
+creation, and credential cleanup. They are not proof that your copied app has
+already deployed. This tutorial uses the same shared host and ordinary cf CLI.
+
+[Deployment workflow](./tutorial/oidc.example.yml "source")
+
+[Deployment script](./package.json#json=scripts "source")
+
+[Build Output preparation](./scripts/build-output.mjs "source")
 
 ## 3. Existing scripts become CI
 
 [Package scripts](./package.json#json=scripts "source")
 
-Link the unpublished CLI and SDK from your Effect CI checkout. Replace the paths:
+Link the unpublished CLI and SDK from your installed Effect CI checkout. Replace
+the paths. The link makes the CLI available through `pnpm exec` in this app;
+it is not a global installation or part of OIDC authentication:
 
 ```sh
 pnpm link /path/to/effect-ci-testbed/packages/cli /path/to/effect-ci-testbed/packages/ci
@@ -173,10 +192,14 @@ implicitly authorize a release.
 
 ## 9. Remote execution without a second workflow
 
-With a configured host and an enrolled, clean pushed commit, move execution off
-your laptop:
+The copied app already names the shared host in `.cloudflare/ci/oidc.json`.
+For your local commands, sign into that host's Cloudflare Access application;
+your `gh` login and `cf auth login` are separate identities. The repository must
+be accessible to the host's GitHub App. Use a clean, pushed commit, then move
+execution off your laptop:
 
 ```sh
+cloudflared access login --quiet https://effect-ci-github-cloudflare.ericclemmons.workers.dev
 pnpm exec cf-ci doctor --remote
 pnpm exec cf-ci run --remote
 pnpm exec cf-ci run test build --remote
