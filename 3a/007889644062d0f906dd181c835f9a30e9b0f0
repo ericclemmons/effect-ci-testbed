@@ -1,0 +1,43 @@
+README.md
+  s_93690ecc46a825::t_03fff24eea98e8 346
+examples/README.md
+  s_93690ecc46a825::t_cc7c8867881946 58
+examples/pull-request-preview/README.md
+  s_93690ecc46a825::t_df411411bc1e38 1-179
+examples/pull-request-preview/cloudflare.config.ts
+  s_93690ecc46a825::t_bfccfb632264a8 1-17
+examples/pull-request-preview/package.json
+  s_93690ecc46a825::t_3bdf23977f93c7 1-22
+examples/pull-request-preview/src/github.ts
+  s_93690ecc46a825::t_795eccb1667a5c 1-84
+examples/pull-request-preview/src/policy.ts
+  s_93690ecc46a825::t_2ae4d0ab0c91b1 1-41
+examples/pull-request-preview/src/worker.ts
+  s_93690ecc46a825::t_3d7c7b8539b727 1-292
+examples/pull-request-preview/tsconfig.json
+  s_93690ecc46a825::t_c073af959826f0 1-5
+examples/pull-request-preview/vite.config.ts
+  s_93690ecc46a825::t_9d643bd0384ad2 1-3
+packages/github-cloudflare/README.md
+  s_93690ecc46a825::t_89dfbe9e04ae55 129-147
+packages/github-cloudflare/src/github-comment.ts
+  s_93690ecc46a825::t_4d3e72d9da61d7 12-13,43,51-52,62-64,67-70,120-121
+pnpm-lock.yaml
+  s_93690ecc46a825::t_2e4285e32fe46d 850-880
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3a007889644062d0f906dd181c835f9a30e9b0f0",
+  "prompts": {},
+  "sessions": {
+    "s_93690ecc46a825": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b27-9abe-7a82-ada7-4408db66bc50",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
