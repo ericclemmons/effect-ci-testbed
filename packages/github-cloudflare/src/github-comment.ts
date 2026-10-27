@@ -60,7 +60,7 @@ export const githubCommentProvider = (options: GitHubCommentOptions): Notificati
         const repository = run.identity.repository.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
         if (repository.toLowerCase() !== options.repository.toLowerCase()) throw new Error("Wrong notification repository")
         const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(options.lifecycle
-          ? [options.repository.toLowerCase(), options.pullRequest, "lifecycle", options.lifecycle]
+          ? ["effect-ci-lifecycle-v1", options.repository.toLowerCase(), options.pullRequest, options.lifecycle]
           : [options.repository.toLowerCase(), options.pullRequest, run.identity.instanceId, run.identity.revision])))
         const identity = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("")
         const marker = `<!-- effect-ci-run:${identity} -->`
