@@ -5,6 +5,7 @@
   "type": "module",
   "files": ["src/**/*.ts", "!src/**/*.test.ts"],
   "bin": {
+    "effect-ci": "./src/effect-ci.ts",
     "cf-ci": "./src/bin.ts"
   },
   "scripts": {

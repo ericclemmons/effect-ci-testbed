@@ -8,7 +8,7 @@ locally or in CI. The lockfile selects npm automatically.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/node-npm/.cloudflare/ci/workflow.ts
+effect-ci run --workflow examples/node-npm/.cloudflare/ci/workflow.ts
 ```
 
 [Actions](./.cloudflare/ci/actions.ts) declare their own prerequisites: build

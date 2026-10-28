@@ -5,7 +5,10 @@ Public site: https://effect-ci-docs.ericclemmons.workers.dev
 The Starlight site reads existing Markdown directly from the repository. Keep
 recipe documentation beside its code in `examples/<recipe>/README.md`; service
 documentation belongs in `apps/<service>/README.md`. No copied pages or generated
-Markdown are committed. Recipe navigation follows the existing examples guide.
+Markdown are committed. The homepage is a feature checklist. The walkthrough comes from
+`examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
+Ecosystem pages link tools to their runnable examples. Other recipes follow the
+examples guide. Self-hosting and environment evidence belong in Reference.
 
 From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
 build the static site. Output is in `apps/docs/dist/`.

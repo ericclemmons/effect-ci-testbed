@@ -1,11 +1,19 @@
-# Examples
+# Recipes
 
-Find the problem you want to solve. Each example has a workflow and instructions
-for trying it. Start with [npm](./node-npm), [pnpm](./node-pnpm), or the
-[demo app](./demo).
+Pick a problem. Read the code. Run it.
+
+New here? Start with [the walkthrough](./demo). Package managers, task runners,
+and source hosts live in [Ecosystem](./ECOSYSTEM.md).
 
 Install dependencies once at the repository root with `pnpm install`. Commands
-in the recipes run from that root unless they say otherwise.
+in the recipes run from that root unless they say otherwise. Add the unpublished
+CLI to your shell once:
+
+```sh
+export PATH="$PWD/node_modules/.bin:$PATH"
+```
+
+[Execution evidence](./COVERAGE.md) distinguishes local examples from verified hosted runs.
 
 ## Write less CI
 

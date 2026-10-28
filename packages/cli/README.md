@@ -1,23 +1,48 @@
-# cf-ci CLI
+# CLI
 
-`cf-ci` discovers and runs a project's CI workflow, or dispatches it to a hosted
-Cloudflare CI app. Run `cf-ci --help` for execution and planning commands.
+`effect-ci` discovers and runs a project's CI workflow, or dispatches it to a hosted
+Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
+
+## Commands
+
+| Command | Result |
+| --- | --- |
+| `effect-ci list` | Runnable project goals. |
+| `effect-ci plan test build --format=mermaid` | Dependency graph; no execution. |
+| `effect-ci run test build` | Execute selected goals locally. |
+| `effect-ci run test build --remote` | Dispatch advertised goals to an enrolled host. |
+| `effect-ci doctor --remote` | Check host access without starting a run. |
+| `effect-ci oidc -- <command>` | Run a child with temporary deployment credentials. |
+
+`AI_AGENT=demo` selects agent-friendly JSON. `--format=text|json` overrides detection;
+`plan` also supports `--format=mermaid`.
+
+Without a workflow, the CLI discovers conventional `package.json` scripts. The
+first local run creates an empty `.cloudflare/ci/ci.ts` marker; help, list, and
+plan do not write it. An authored workflow takes precedence. Export actions to
+make them CLI goals; keep private prerequisites unexported.
+
+The package is unpublished. Install this repository's dependencies and add its
+`node_modules/.bin` to `PATH`. `cf-ci` remains a compatibility alias; the new
+entrypoint prints `effect-ci` commands.
+
+[CLI entrypoint](./src/effect-ci.ts "source")
 
 ## OIDC deployment
 
-Run `cf-ci oidc --service https://your-hosted-ci-origin` once from a repository with
+Run `effect-ci oidc --service https://your-hosted-ci-origin` once from a repository with
 a GitHub remote. Authenticate through the hosted app's Cloudflare Access policy;
 the command reuses configured Access credentials or the `cloudflared` session.
 Established setups can use the existing `EFFECT_CI_REMOTE_TOKEN` too. Environment
-files and aliases work as they do for `cf-ci run --remote`.
+files and aliases work as they do for `effect-ci run --remote`.
 
 The GitHub App must be installed on the repository. Successful enrollment writes
 `.cloudflare/ci/oidc.json` with the service origin and repository name. Commit that
 file; it contains no credentials. Repeating enrollment is safe.
 
-In CI, use `cf-ci oidc -- pnpm exec wrangler deploy` or
-`cf-ci oidc -- pnpm exec cf deploy`. The command uses GitHub Actions OIDC (with
-`id-token: write`) or a short-lived identity supplied by the hosted cf-ci runner.
+In CI, use `effect-ci oidc -- pnpm exec wrangler deploy` or
+`effect-ci oidc -- pnpm exec cf deploy`. The command uses GitHub Actions OIDC (with
+`id-token: write`) or a short-lived identity supplied by the hosted effect-ci runner.
 It exports Cloudflare credentials only to the child command and revokes them when
 the command exits. Deployment failures retain their exit code. `--scopes` requests
 an explicit subset of the operator's permissions; it defaults to `workers:edit`.
@@ -33,15 +58,15 @@ in the shared app. Project enrollment cannot grant itself arbitrary permissions.
 
 ## Identity for remote execution
 
-`cf-ci doctor --remote` and `cf-ci run --remote` automatically choose identity:
+`effect-ci doctor --remote` and `effect-ci run --remote` automatically choose identity:
 local users reuse their enrolled Cloudflare Access session; GitHub Actions and
 hosted CI use their execution-platform identity. Dispatch, status, and logs all
 use the same repository authorization. The CLI obtains fresh GitHub tokens as
 requests are made, so reconnecting logs does not reuse an expired job token.
 
 In GitHub Actions, give the job `permissions: id-token: write` and configure the
-public `EFFECT_CI_REMOTE_URL`. Run `cf-ci oidc` once to enroll that repository, then
-`cf-ci run --remote`. CI enrollment never changes the checkout and never needs
+public `EFFECT_CI_REMOTE_URL`. Run `effect-ci oidc` once to enroll that repository, then
+`effect-ci run --remote`. CI enrollment never changes the checkout and never needs
 an Access secret or stored Effect CI API token. Local enrollment saves only the
 public origin and repository name in `.cloudflare/ci/oidc.json`, which subsequent
 remote commands discover automatically.

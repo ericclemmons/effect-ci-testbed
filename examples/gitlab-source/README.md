@@ -8,7 +8,7 @@ The workflow only uses `CI.Source`; no GitHub-specific action is needed.
 ## Try it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/gitlab-source/.cloudflare/ci/workflow.ts
+effect-ci run --workflow examples/gitlab-source/.cloudflare/ci/workflow.ts
 ```
 
 Locally, the example reads its included `VERSION` file. The

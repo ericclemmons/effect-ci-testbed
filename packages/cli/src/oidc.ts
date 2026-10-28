@@ -4,6 +4,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { dirname, join } from "node:path"
 import { parseArgs } from "node:util"
 import { remoteOrigin } from "./remote-protocol.ts"
+import { commandName } from "./command-name.ts"
 
 interface Configuration { issuer: string; repository: string }
 
@@ -21,14 +22,14 @@ export const runOidc = async (args: string[], cwd: string, headers: Headers): Pr
     help: { type: "boolean", short: "h" },
   } })
   if (values.help) {
-    console.log("cf-ci oidc [--service https://your-ci-host]     Enable this repository through Access\ncf-ci oidc -- <deploy command>                 Deploy using temporary credentials")
+    console.log(`${commandName} oidc [--service https://your-ci-host]     Enable this repository through Access\n${commandName} oidc -- <deploy command>                 Deploy using temporary credentials`)
     return
   }
   const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd, encoding: "utf8" }).trim()
   const path = join(root, ".cloudflare", "ci", "oidc.json")
   const saved = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) as Configuration : undefined
   const configured = values.service ?? process.env.EFFECT_CI_REMOTE_URL ?? saved?.issuer
-  if (!configured) throw new Error("Set EFFECT_CI_REMOTE_URL or use cf-ci oidc --service https://your-ci-host")
+  if (!configured) throw new Error(`Set EFFECT_CI_REMOTE_URL or use ${commandName} oidc --service https://your-ci-host`)
   const issuer = remoteOrigin(configured)
   if (new URL(issuer).pathname !== "/") throw new Error("OIDC service must be an HTTPS origin without a path")
 
@@ -55,7 +56,7 @@ export const runOidc = async (args: string[], cwd: string, headers: Headers): Pr
     }
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, JSON.stringify({ issuer, repository: result.repository }, null, 2) + "\n")
-    console.log(`OIDC enabled for ${result.repository}. Commit .cloudflare/ci/oidc.json, then use cf-ci oidc -- <deploy command>.`)
+    console.log(`OIDC enabled for ${result.repository}. Commit .cloudflare/ci/oidc.json, then use ${commandName} oidc -- <deploy command>.`)
     return
   }
   if (!command.length) throw new Error("Provide a deploy command after --")
@@ -66,7 +67,7 @@ export const runOidc = async (args: string[], cwd: string, headers: Headers): Pr
     headers: { authorization: `Bearer ${identity}`, "content-type": "application/json" },
     body: JSON.stringify({ worker: values.worker ?? "*", scopes: values.scopes!.split(/\s+/).filter(Boolean) }),
   })
-  if (!response.ok) throw new Error(`OIDC exchange rejected (${response.status}); enable this repository with cf-ci oidc first`)
+  if (!response.ok) throw new Error(`OIDC exchange rejected (${response.status}); enable this repository with ${commandName} oidc first`)
   const credential = await response.json() as { token: string; accountId: string; receipt: string }
   if (!credential.token || /[\r\n]/.test(credential.token) || !credential.receipt || /[\r\n]/.test(credential.receipt) || !/^[a-f0-9]{32}$/.test(credential.accountId)) {
     throw new Error("Invalid credential service response")

@@ -5,10 +5,10 @@ Already have package scripts? Run them without writing a workflow.
 From this example directory:
 
 ```sh
-pnpm exec cf-ci run
-pnpm exec cf-ci list
-pnpm exec cf-ci plan --format=mermaid
-pnpm exec cf-ci run lint
+effect-ci run
+effect-ci list
+effect-ci plan --format=mermaid
+effect-ci run lint
 ```
 
 The CLI detects the package manager and conventional format, lint, check,

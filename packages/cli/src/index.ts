@@ -17,6 +17,7 @@ import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
 import { readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 import { githubSourceComparison } from "./source-comparison.ts"
+import { commandName } from "./command-name.ts"
 
 export type OutputFormat = "json" | "mermaid" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -235,7 +236,7 @@ const remoteConnection = (root: string) => {
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
+      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then ${commandName} doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
     )
   }
 
@@ -258,8 +259,8 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
     if (response.status === 401 || response.status === 403 || accessLogin) {
       await response.body?.cancel().catch(() => {})
       throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
-        workload ? "Workload authentication was rejected. Grant id-token: write and enable this repository with cf-ci oidc. No run was dispatched."
-          : `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
+        workload ? `Workload authentication was rejected. Grant id-token: write and enable this repository with ${commandName} oidc. No run was dispatched.`
+          : `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then ${commandName} doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
     }
     if (response.ok) available = await response.json()
   } catch (error) {
@@ -488,10 +489,10 @@ const parseInvocation = (
   if (rerunFrom !== undefined && (command !== "run" || !parsed.values.remote || targets.length === 0 ||
     !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(rerunFrom)))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
-      "Use cf-ci run <compute goals...> --remote --rerun-from <run UUID>")
+      `Use ${commandName} run <compute goals...> --remote --rerun-from <run UUID>`)
 
   if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid"))
-    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Use cf-ci doctor --remote [--format=text|json]; it checks access without running work")
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Use ${commandName} doctor --remote [--format=text|json]; it checks access without running work`)
 
   if (command === "list" && targets.length) {
     throw new CliFailure(
@@ -515,18 +516,18 @@ const parseInvocation = (
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
-  cf-ci oidc [--service https://your-ci-host]
-  cf-ci oidc -- <deploy command>
-  cf-ci                         Show this help and project targets
-  cf-ci run [targets...] [--local|--remote] [--format=text|json]
-  cf-ci run <compute goals...> --remote --rerun-from <run UUID>
-  cf-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
-  cf-ci list [--format=text|json]
-  cf-ci doctor --remote [--format=text|json]
-  cf-ci run path/to/workflow.ts [target]
-  cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
-  cf-ci --workflow path/to/package [run|plan|list] [target]
-  cf-ci run --remote --env-file path/to/.env.production
+  ${commandName} oidc [--service https://your-ci-host]
+  ${commandName} oidc -- <deploy command>
+  ${commandName}                         Show this help and project targets
+  ${commandName} run [targets...] [--local|--remote] [--format=text|json]
+  ${commandName} run <compute goals...> --remote --rerun-from <run UUID>
+  ${commandName} plan [targets...] [--local|--remote] [--format=text|json|mermaid]
+  ${commandName} list [--format=text|json]
+  ${commandName} doctor --remote [--format=text|json]
+  ${commandName} run path/to/workflow.ts [target]
+  ${commandName} --workflow path/to/workflow.ts [run|plan|list] [target]
+  ${commandName} --workflow path/to/package [run|plan|list] [target]
+  ${commandName} run --remote --env-file path/to/.env.production
 
 Commands:
   oidc    Enable repository deployment, or run a command with temporary credentials
@@ -535,14 +536,14 @@ Commands:
   list    List runnable commands for this project
 
 Examples:
-  cf-ci run                     Execute the whole default workflow
-  cf-ci run test build          Run both goals with their shared dependencies
-  cf-ci plan                    Inspect the whole workflow without executing
-  cf-ci plan --format=mermaid    Print its Mermaid graph
-  cf-ci list                    Discover exact commands to run
-  AI_AGENT=demo cf-ci list       Preview automatic agent-friendly JSON
+  ${commandName} run                     Execute the whole default workflow
+  ${commandName} run test build          Run both goals with their shared dependencies
+  ${commandName} plan                    Inspect the whole workflow without executing
+  ${commandName} plan --format=mermaid    Print its Mermaid graph
+  ${commandName} list                    Discover exact commands to run
+  AI_AGENT=demo ${commandName} list       Preview automatic agent-friendly JSON
 
-Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
+Without an explicit path, ${commandName} discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
 a project; an explicit local run can initialize supported package scripts.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
@@ -894,15 +895,15 @@ const list = (program: Program, format: OutputFormat): void => {
       command: "list",
       workflow: program.workflow.id,
       targets,
-      commands: ["cf-ci run", ...targets.map((target) => `cf-ci run ${target}`)],
+      commands: [`${commandName} run`, ...targets.map((target) => `${commandName} run ${target}`)],
     })
     return
   }
 
   console.log(`Workflow: ${program.workflow.id}`)
   console.log("Run commands:")
-  console.log("  cf-ci run  (whole workflow)")
-  for (const target of targets) console.log(`  cf-ci run ${target}`)
+  console.log(`  ${commandName} run  (whole workflow)`)
+  for (const target of targets) console.log(`  ${commandName} run ${target}`)
 }
 
 export const main = async (
