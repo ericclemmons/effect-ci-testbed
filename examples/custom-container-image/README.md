@@ -11,7 +11,7 @@ does not download a base image.
 With Docker running:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/custom-container-image/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/custom-container-image/.cloudflare/ci/workflow.ts
 ```
 
 Publication prints a stand-in for a registry push; configure a registry and

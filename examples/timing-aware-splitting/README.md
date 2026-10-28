@@ -61,8 +61,8 @@ assignment and feedback behavior; it is not evidence of a CI speedup.
 From the repository root after `pnpm install`:
 
 ```sh
-pnpm cf-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts plan
-pnpm cf-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts run --format=text
+pnpm effect-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts plan
+pnpm effect-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts run --format=text
 node --test examples/timing-aware-splitting/.cloudflare/ci/tests/timing-aware-splitting.test.ts
 ```
 

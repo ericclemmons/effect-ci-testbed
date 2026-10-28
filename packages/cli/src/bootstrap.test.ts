@@ -20,7 +20,7 @@ const fixture = (body: (root: string) => void) => {
 }
 
 test("explicit local run creates one empty marker and actually executes the inferred check", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const result = spawnSync(process.execPath, [bin, "run", "lint", "--format=text"], {
     cwd: root, encoding: "utf8", timeout: 30_000,
   })
@@ -41,19 +41,19 @@ test("plan, list, remote and explicit paths never initialize", () => fixture(roo
 }))
 
 test("bare CLI and --help describe commands without initializing or executing an unconfigured package", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   for (const args of [[], ["--help"]]) {
     const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, /cf-ci plan --format=mermaid/)
-    assert.match(result.stdout, /cf-ci run lint/)
+    assert.match(result.stdout, /effect-ci plan --format=mermaid/)
+    assert.match(result.stdout, /effect-ci run lint/)
     assert.equal(existsSync(join(root, ".cloudflare")), false)
     assert.equal(existsSync(join(root, "checked.txt")), false)
   }
 }))
 
 test("marker-free package supports list and full Mermaid planning without writing or executing", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(listed.status, 0, listed.stderr)
   assert.deepEqual(JSON.parse(listed.stdout).targets, ["lint"])
@@ -66,7 +66,7 @@ test("marker-free package supports list and full Mermaid planning without writin
 }))
 
 test("explicit marker-free directory works for GitHub runners without generating CI config", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const plan = spawnSync(process.execPath, [bin, "--workflow", root, "plan", "--format=mermaid"], {
     cwd: tmpdir(), encoding: "utf8",
   })

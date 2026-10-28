@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
+  "commandSpelling": "Normalized to the current executable name; this historical run was not repeated.",
   "observedDate": "2026-10-23",
   "hostOrigin": "https://effect-ci-github-cloudflare.ericclemmons.workers.dev",
   "hostSourceRevision": "ad21d5cb1b3bb9c9a739d5fdf3da720d835a39c8",
   "workerVersion": "9d62b613-9169-4748-97f0-9cd27ab34abf",
   "repositoryImageDigest": "sha256:e517b271d0cd09ae710574ec90155a8aa44aefc8062883c0118cc5b6f57bca3e",
-  "clientCommand": "cf-ci run build --remote --format=text",
+  "clientCommand": "effect-ci run build --remote --format=text",
   "clientEnvironment": "automatic ignored .env.local; existing host API token and existing cloudflared Access session; no --env-file",
   "positive": {
     "instanceId": "e1530273-f69d-413c-aabb-3e83e6d7bdc5",

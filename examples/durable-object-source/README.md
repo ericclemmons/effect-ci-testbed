@@ -10,7 +10,7 @@ storage binding.
 ## Try it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/durable-object-source/.cloudflare/ci/standalone.ts
+pnpm exec effect-ci run --workflow examples/durable-object-source/.cloudflare/ci/standalone.ts
 ```
 
 This command uses local files. For the storage-backed version, the

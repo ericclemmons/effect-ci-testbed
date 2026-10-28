@@ -12,7 +12,7 @@ test("a failed command emits both retained streams before failure without retryi
   })
   const failure = new CI.CommandError("test", "pnpm test", "/fixture", 1, undefined,
     { stdout: "Expected hello\nReceived goodbye\n", stderr: "test assertion failed\n", truncated: false })
-  await assert.rejects(CI.runPromise(CI.workflow("cf-ci-demo", () => action()), {
+  await assert.rejects(CI.runPromise(CI.workflow("effect-ci-demo", () => action()), {
     output: "silent", onEvent: event => { events.push(event) },
     source: { checkout: () => Effect.succeed(CI.Workspace.local("/fixture")) },
     executor: { execute: () => { executions++; return Effect.fail(failure) } },

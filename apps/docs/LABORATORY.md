@@ -12,8 +12,8 @@ for demo-only edits.
 ```sh
 pnpm install
 export PATH="$PWD/node_modules/.bin:$PATH"
-cf-ci plan
-cf-ci run
+effect-ci plan
+effect-ci run
 ```
 
 The signed GitHub App event selects the root workflow for native Cloudflare
@@ -114,15 +114,15 @@ Workflows and exported actions serve different entrypoints:
   A push, deleted branch, deployment hook, or observability issue can therefore enter
   the same program and request a different desired outcome.
 - Actions become local and agent commands only when the workflow deliberately
-  re-exports them. `cf-ci list` shows that narrow public surface and `cf-ci run check`
+  re-exports them. `effect-ci list` shows that narrow public surface and `effect-ci run check`
   invokes a target with all of its prerequisites. Internal checkout, install, and
   deployment actions stay private by default.
-- Bare `cf-ci` prints help, including list/plan/Mermaid usage and configured project
+- Bare `effect-ci` prints help, including list/plan/Mermaid usage and configured project
   targets, without executing or initializing a project.
-- `cf-ci run test build` creates an on-demand parallel workflow from exported
+- `effect-ci run test build` creates an on-demand parallel workflow from exported
   actions, sharing their declared prerequisites once. All targets are validated
   before execution. Remote goals must be advertised by the host; the demo supports
-  test/build. Check access and available goals with `cf-ci doctor --remote`.
-- Running `cf-ci run` with no target executes the default workflow using the local event
+  test/build. Check access and available goals with `effect-ci doctor --remote`.
+- Running `effect-ci run` with no target executes the default workflow using the local event
   adapter. This is useful for full local validation, but agents can choose the smallest
   exported action instead of pretending to emit a GitHub event.

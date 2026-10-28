@@ -9,7 +9,7 @@ import test from "node:test"
 import { runOidc } from "./oidc.ts"
 
 test("OIDC enrollment works without a workflow, saves no secrets, and deployment revokes on child failure", async () => {
-  const root = mkdtempSync(join(tmpdir(), "cf-ci-oidc-"))
+  const root = mkdtempSync(join(tmpdir(), "effect-ci-oidc-"))
   const previousFetch = globalThis.fetch
   const previous = { ...process.env }
   const previousExit = process.exitCode
@@ -60,8 +60,8 @@ test("OIDC command help works before git initialization", async () => {
   await runOidc(["--help"], tmpdir(), new Headers())
 })
 
-test("cf-ci oidc enrolls a workflow-free project using the normal env-file loader", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "cf-ci-oidc-entry-"))
+test("effect-ci oidc enrolls a workflow-free project using the normal env-file loader", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "effect-ci-oidc-entry-"))
   const server = createServer(async (request, response) => {
     assert.equal(request.url, "/oidc/repositories")
     assert.equal(request.headers.authorization, "Bearer fixture-api-token")
@@ -84,7 +84,7 @@ test("cf-ci oidc enrolls a workflow-free project using the normal env-file loade
     const env = { ...process.env }
     for (const key of ["EFFECT_CI_REMOTE_URL", "EFFECT_CI_REMOTE_TOKEN", "EFFECT_CI_API_TOKEN", "CF_ACCESS_TOKEN"]) delete env[key]
     const result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [fileURLToPath(new URL("./bin.ts", import.meta.url)), "oidc"], { cwd: directory, env })
+      const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), "oidc"], { cwd: directory, env })
       let output = ""
       child.stdout.on("data", (chunk) => { output += chunk })
       child.stderr.on("data", (chunk) => { output += chunk })

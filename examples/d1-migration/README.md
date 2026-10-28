@@ -14,7 +14,7 @@ The [actions](./.cloudflare/ci/actions.ts) encode those dependencies. The
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/d1-migration/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/d1-migration/.cloudflare/ci/workflow.ts
 ```
 
 This applies the migration to local D1 and dry-runs deployment. No production

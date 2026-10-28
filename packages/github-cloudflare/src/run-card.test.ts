@@ -36,12 +36,12 @@ test("unknown process results have explicit step detail without fabricated outpu
 
 test("enrolled failure output stays in its step reply, redacted and bounded, never root or provider snapshot", () => {
   const card = new RunCard(identity, { failedCommandOutput: { redactValues: ["owned-private-value"] } })
-  const failure: RuntimeEvent = { type: "step.command.failed", workflowId: "cf-ci-demo", stepId: "test", timestamp: "now",
+  const failure: RuntimeEvent = { type: "step.command.failed", workflowId: "effect-ci-demo", stepId: "test", timestamp: "now",
     diagnostics: { version: 1, stepId: "test", command: "pnpm test", cwd: "/fixture", exitCode: 1,
       output: { stdout: "Expected hello\nReceived goodbye\nowned-private-value\n<!channel>\n" + "x".repeat(6000),
         stderr: "Authorization: Bearer abc-private-token\nassertion failed\n", truncated: true } } }
   assert.equal(card.update(failure), true)
-  card.update({ type: "step.status", workflowId: "cf-ci-demo", stepId: "test", status: "failed", optional: false, timestamp: "now" })
+  card.update({ type: "step.status", workflowId: "effect-ci-demo", stepId: "test", status: "failed", optional: false, timestamp: "now" })
   const rendered = card.render({ onlyStep: "test" })
   assert.match(JSON.stringify(rendered), /assertion failed|Received goodbye/)
   assert.match(rendered.text, /exit 1/)
@@ -89,9 +89,9 @@ test("parent retains workflow, rotating status and latest evidence; replies cont
   assert.match(card.render({ statusOnly: true }).text, /^► build · Release 25% · 2 steps done$/)
   card.setHealth({ phase: 75, decision: "uncertain", evidenceSource: "native-wobs" }, "FLATEST")
   card.update(event("Release 25%", "complete"))
-  card.update({ type: "workflow.completed", workflowId: "cf-ci-demo", conclusion: "success", timestamp: "now" })
+  card.update({ type: "workflow.completed", workflowId: "effect-ci-demo", conclusion: "success", timestamp: "now" })
   const final = card.render({ statusOnly: true })
-  assert.equal(final.text, "✓ cf-ci-demo · Release 25% · 3 steps done")
+  assert.equal(final.text, "✓ effect-ci-demo · Release 25% · 3 steps done")
   assert.match(JSON.stringify(final.blocks), /FLATEST/)
   assert.doesNotMatch(JSON.stringify(final.blocks), /FPRIVATE|actions|1\. /)
 })

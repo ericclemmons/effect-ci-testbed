@@ -12,7 +12,7 @@ import { main } from "./index.ts"
 const failedCommand = (script: string, check: (output: any) => void) => {
   const root = mkdtempSync(join(tmpdir(), "effect-ci-failure-"))
   const ci = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   try {
     writeFileSync(join(root, "failure.mjs"), `import{appendFileSync}from'node:fs';appendFileSync('calls.txt','once\\n');${script};process.exitCode=7;`)
     writeFileSync(join(root, "workflow.ts"), `import * as CI from ${JSON.stringify(ci)};

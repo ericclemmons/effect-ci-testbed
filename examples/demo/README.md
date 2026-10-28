@@ -217,12 +217,12 @@ when pushed. Cross-commit reuse is not the default.
 
 ## Add one thing
 
-| Problem | Example |
-| --- | --- |
-| Keep GitHub Actions, or receive GitHub checks | [GitHub](../GITHUB.md) |
-| Keep Turbo's task graph | [Turborepo](../turborepo-cache) |
-| Approve a small safe change | [Safe-change approval](../small-change) |
-| Keep secrets out of the process | [Outbound authentication](../secret-outbound) |
-| Compare output before deploying | [Changed output](../deploy-changed-output) |
+| Problem                                       | Example                                       |
+| --------------------------------------------- | --------------------------------------------- |
+| Keep GitHub Actions, or receive GitHub checks | [GitHub](../GITHUB.md)                        |
+| Keep Turbo's task graph                       | [Turborepo](../turborepo-cache)               |
+| Approve a small safe change                   | [Safe-change approval](../small-change)       |
+| Keep secrets out of the process               | [Outbound authentication](../secret-outbound) |
+| Compare output before deploying               | [Changed output](../deploy-changed-output)    |
 
 [Complete authored example](./tutorial/workflow.ts) · [All recipes](../README.md)

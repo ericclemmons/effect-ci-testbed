@@ -13,7 +13,7 @@ This example uses [`.node-version`](./.node-version). The capability also reads
 With Docker running:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/node-version/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/node-version/.cloudflare/ci/workflow.ts
 ```
 
 [Actions](./.cloudflare/ci/actions.ts) · [Multiple runtimes with Mise](../mise-toolchain)

@@ -7,7 +7,7 @@ Run a formatter in a Worker isolate instead of starting a container.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/dynamic-worker-checks/.cloudflare/ci/workflow.ts
 ```
 
 Local execution uses Prettier. The [Cloudflare adapter](./src/worker.ts) runs

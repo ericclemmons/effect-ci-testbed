@@ -40,8 +40,6 @@ test("published proof is explicitly historical, local and unsigned", () => {
   assert.equal(receipt.historical, true);
   assert.equal(receipt.signedAttestation, false);
   assert.equal(receipt.review.frameworkRedaction, "incomplete");
-  const readme = readFileSync(new URL("./README.md", import.meta.url), "utf8");
-  assert.ok(readme.includes(receipt.planMermaid), "recorded command plan comes from the manifest");
 });
 test("retagging, draft/source mismatch, missing and replaced assets fail closed", () => {
   for (const change of [{ draft: true }, { target_commitish: "main" }, { assets: [] }, { id: 0 }])

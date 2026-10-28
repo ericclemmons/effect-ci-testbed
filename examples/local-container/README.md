@@ -11,13 +11,13 @@ actions there. Source edits remain visible on the host.
 With Docker running:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/local-container/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/local-container/.cloudflare/ci/workflow.ts
 ```
 
 Planning does not start a container:
 
 ```sh
-pnpm exec cf-ci plan --workflow examples/local-container/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci plan --workflow examples/local-container/.cloudflare/ci/workflow.ts
 ```
 
 [Actions](./.cloudflare/ci/actions.ts) ·

@@ -75,7 +75,7 @@ const pageFixture = (negative = false) => {
       captureId,
       runId: run.id,
       scenario: negative ? "intentional wrong expectation" : "build then browser interaction",
-      command: "cf-ci run build --format=json",
+      command: "effect-ci run build --format=json",
       actual: run.status,
       expected: run.status,
       signedAttestation: false,

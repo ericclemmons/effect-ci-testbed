@@ -23,8 +23,7 @@ plan do not write it. An authored workflow takes precedence. Export actions to
 make them CLI goals; keep private prerequisites unexported.
 
 The package is unpublished. Install this repository's dependencies and add its
-`node_modules/.bin` to `PATH`. `cf-ci` remains a compatibility alias; the new
-entrypoint prints `effect-ci` commands.
+`node_modules/.bin` to `PATH`. The executable is `effect-ci`.
 
 [CLI entrypoint](./src/effect-ci.ts "source")
 

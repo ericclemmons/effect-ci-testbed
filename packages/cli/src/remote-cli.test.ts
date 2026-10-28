@@ -12,7 +12,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-remote-"))
   const workstationHome = await mkdtemp(join(tmpdir(), "effect-ci-private-home-"))
   const ci = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const server = createServer()
   let dispatches = 0
   let disconnectOnce = false

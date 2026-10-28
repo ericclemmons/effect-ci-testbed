@@ -38,8 +38,8 @@ Next: [split a suite](../test-splitting) when parallel jobs should run different
 From the repository root after `pnpm install`:
 
 ```sh
-pnpm cf-ci --workflow examples/matrix/.cloudflare/ci/workflow.ts plan
-pnpm cf-ci --workflow examples/matrix/.cloudflare/ci/workflow.ts run --format=text
+pnpm effect-ci --workflow examples/matrix/.cloudflare/ci/workflow.ts plan
+pnpm effect-ci --workflow examples/matrix/.cloudflare/ci/workflow.ts run --format=text
 node --test examples/matrix/.cloudflare/ci/tests/matrix.test.ts
 ```
 

@@ -10,7 +10,7 @@ import test from "node:test"
 test("Access-only CLI negotiates host enrollment before any default or selected dispatch; API profiles stay optional only for that mode", async () => {
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-access-only-")), server = createServer()
   let enrolled = true, allowed = true, dispatches = 0, capabilityReads = 0
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   try {
     await writeFile(join(directory, "package.json"), JSON.stringify({ name: "access-fixture", scripts: { test: "node test.mjs", build: "node build.mjs" } }))
     for (const args of [["init", "-q"], ["config", "user.name", "CI fixture"], ["config", "user.email", "ci@example.invalid"],

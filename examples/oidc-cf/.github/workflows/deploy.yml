@@ -15,7 +15,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec cf-ci oidc
+      - run: pnpm exec effect-ci oidc
         env:
           EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
-      - run: pnpm exec cf-ci oidc -- pnpm --dir examples/oidc-cf run deploy
+      - run: pnpm exec effect-ci oidc -- pnpm --dir examples/oidc-cf run deploy

@@ -3,10 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "files": ["src/**/*.ts", "!src/**/*.test.ts"],
+  "files": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts"
+  ],
   "bin": {
-    "effect-ci": "./src/effect-ci.ts",
-    "cf-ci": "./src/bin.ts"
+    "effect-ci": "./src/effect-ci.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

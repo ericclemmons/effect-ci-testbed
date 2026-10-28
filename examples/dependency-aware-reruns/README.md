@@ -11,7 +11,7 @@ Dependencies come from actions yielding other actions. In this example:
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
 ```
 
 Read the [workflow](./.cloudflare/ci/workflow.ts) and
