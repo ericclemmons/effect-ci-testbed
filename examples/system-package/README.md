@@ -12,7 +12,7 @@ does not need runner-specific branches.
 With Docker running:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/system-package/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/system-package/.cloudflare/ci/workflow.ts
 ```
 
 The example installs ImageMagick and prints its version.

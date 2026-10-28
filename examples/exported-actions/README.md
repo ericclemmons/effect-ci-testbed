@@ -7,8 +7,8 @@ Expose useful goals without exposing every setup step.
 From this example directory:
 
 ```sh
-pnpm exec cf-ci list
-pnpm exec cf-ci run check
+pnpm exec effect-ci list
+pnpm exec effect-ci run check
 ```
 
 `check` runs its checkout prerequisite automatically. Checkout remains private:

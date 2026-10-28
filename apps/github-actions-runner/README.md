@@ -27,7 +27,7 @@ your existing job; do not rewrite its steps or Effect CI's execution model.
        - run: pnpm build
 ```
 
-Each YAML step has normal GitHub Actions logs and status. `cf-ci run test build`
+Each YAML step has normal GitHub Actions logs and status. `effect-ci run test build`
 can replace commands later, but remains **one GitHub step**: its action graph does
 not become dynamic YAML steps. Existing native Cloudflare Workflows, event
 routing, Slack, attestation and dependency semantics are unchanged.

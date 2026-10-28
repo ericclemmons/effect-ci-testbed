@@ -10,7 +10,7 @@ or outbound network.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/dynamic-project-checks/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/dynamic-project-checks/.cloudflare/ci/workflow.ts
 ```
 
 The CLI starts a local workerd service automatically. No Docker or Cloudflare

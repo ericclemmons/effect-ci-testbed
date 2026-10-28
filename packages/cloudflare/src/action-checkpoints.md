@@ -57,6 +57,15 @@ long outer action must not silently grant snapshotting another timeout window.
 An already journaled workspace commit still replays successfully after the
 deadline, without starting another snapshot or command.
 
+For these recorded-command commits, the exact provider error “The container
+snapshot could not be completed due to an internal error” gets at most two
+additional snapshot attempts, after one and two seconds. Only the checkpoint RPC
+is repeated, on a fresh stub for the same workspace and action. The original
+Workflow step timeout and command deadline still bound the whole commit. The
+command is not launched again. Other errors and explicit non-retryable errors
+are not retried; losing the live container still fails closed. This is bounded
+recovery, not a repair of the provider's internal snapshot failure.
+
 Enrollment is deliberately limited to the host's exact native compute commands,
 with no cache restoration or post-command side effects. Credential-bearing
 deployment actions and untrusted project commands retain the existing path.

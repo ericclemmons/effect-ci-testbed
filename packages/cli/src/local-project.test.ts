@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import test from "node:test"
 
 const root = fileURLToPath(new URL("../../../", import.meta.url))
-const bin = join(root, "packages/cli/src/bin.ts")
+const bin = join(root, "packages/cli/src/effect-ci.ts")
 const ci = new URL("../../ci/src/index.ts", import.meta.url).href
 const service = new URL("../../cloudflare-dynamic-worker/src/project-service.ts", import.meta.url).href
 const invoke = (workflow: string, command = "run") => {
@@ -28,7 +28,7 @@ test("normal local CLI executes unchanged portable project workflow in real work
   assert.ok(result.json.plan.nodes.every((n: { commands: unknown[] }) => n.commands.length === 0))
 })
 test("normal CLI planning is module-free; hostile modules stay inside real workerd", { timeout: 90000 }, async () => {
-  const dir = await mkdtemp(join(tmpdir(), "cf-ci-local-project-")), marker = join(dir, "must-not-exist")
+  const dir = await mkdtemp(join(tmpdir(), "effect-ci-local-project-")), marker = join(dir, "must-not-exist")
   const workflow = join(dir, ".cloudflare/ci/workflow.ts")
   await mkdir(join(dir, ".cloudflare/ci"), { recursive: true }); await mkdir(join(dir, "app"))
   await writeFile(join(dir, "package.json"), '{"name":"owned-local-isolate-probe","type":"module"}')

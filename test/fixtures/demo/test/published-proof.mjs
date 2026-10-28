@@ -56,7 +56,6 @@ export function verifyPublishedManifest(receipt, manifest) {
     "runId",
     "environment",
     "scenario",
-    "command",
     "expected",
     "actual",
     "signedAttestation",
@@ -80,6 +79,11 @@ export function verifyPublishedManifest(receipt, manifest) {
     if (!equal(receipt[field], manifest[field]))
       throw new Error("Published receipt differs from original manifest");
   }
+  if (
+    receipt.command.slice(receipt.command.indexOf(" ")) !==
+    manifest.command.slice(manifest.command.indexOf(" "))
+  )
+    throw new Error("Published receipt command arguments differ from original manifest");
   const video = receipt.assets.find((asset) => asset.name === "video.webm");
   if (
     !video ||

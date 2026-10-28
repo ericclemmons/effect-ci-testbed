@@ -25,7 +25,7 @@ const reporter = new Reporter({
     ? { externalId: process.env.EFFECT_CI_EXTERNAL_ID }
     : {}),
 })
-const runtime = fileURLToPath(new URL("../cli/src/bin.ts", import.meta.url))
+const runtime = fileURLToPath(new URL("../cli/src/effect-ci.ts", import.meta.url))
 const child = spawn(process.execPath, [
   runtime,
   "--workflow",

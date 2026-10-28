@@ -7,7 +7,7 @@ Run lint and formatting together, without letting advisory formatting block CI.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/optional-checks/.cloudflare/ci/workflow.ts
 ```
 
 Formatting deliberately fails; lint passes, so the run succeeds. Remove

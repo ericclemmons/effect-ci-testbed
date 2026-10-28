@@ -8,7 +8,7 @@ import test from "node:test"
 import { projectEnvironment } from "./project-env.ts"
 
 test("automatic environment loading stops at the repo and honors local/directory precedence", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "cf-ci-env-"))
+  const directory = await mkdtemp(join(tmpdir(), "effect-ci-env-"))
   try {
     const root = join(directory, "repo")
     const nested = join(root, "src")
@@ -28,7 +28,7 @@ test("automatic environment loading stops at the repo and honors local/directory
     await mkdir(join(root, ".cloudflare/ci"), { recursive: true })
     const sdk = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
     await writeFile(join(root, ".cloudflare/ci/workflow.ts"), `import * as CI from ${JSON.stringify(sdk)}; export default CI.workflow(process.env.VALUE, function* () {});`)
-    const bin = fileURLToPath(new URL("bin.ts", import.meta.url))
+    const bin = fileURLToPath(new URL("effect-ci.ts", import.meta.url))
     const run = (value?: string, explicit = false) => {
       const env = { ...process.env }
       delete env.VALUE

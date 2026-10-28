@@ -51,7 +51,7 @@ test(
     };
     const build=CI.action('build',()=>function*(){return receipt;});
     // TEST ONLY clock: keep the real Workflow/RPC/approval composition, skip elapsed settling time.
-    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,slackLayout:'status-thread',finalize:ctx=>finalizeDemoRelease({...ctx,
+    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('effect-ci-demo',function*(){return yield*build();}),{cache:false,slackLayout:'status-thread',finalize:ctx=>finalizeDemoRelease({...ctx,
       observe:async(key,presentation,thread)=>{failObservationNow=failObservationCase&&key==='settled-100';try{return await ctx.observe(key,presentation,thread);}finally{failObservationNow=false;}},
       step:{do:(...args)=>ctx.step.do(...args),waitForEvent:(...args)=>{if(reviewFailureCase){deadlineWaits++;if(args[1].timeout!=='5 minutes')throw Error('Changed review deadline');throw Error('TEST ONLY simulated review deadline; no human decision');}return ctx.step.waitForEvent(...args);},sleep:async(name,duration)=>{if(!name.startsWith('vite-release:settle-')||duration!=='2 minutes')throw Error('Unexpected test clock sleep');}}})});
     export default{async fetch(request,env,ctx){const p=await request.json();
@@ -181,7 +181,7 @@ test(
         assert.equal(state.rejectedPhases.length, state.images, "each private image's definite validation rejection is bounded and recovered before review");
         assert.equal(state.requests, id !== "reject" ? 500 : 300);
         const roots = state.messages.filter((m: any) => !m.body.thread_ts && (!m.body.ts || m.body.ts === "123.456"));
-        assert.ok(roots.every((m: any) => m.body.blocks[0].type === "section" && /cf-ci-demo/.test(m.body.text)));
+        assert.ok(roots.every((m: any) => m.body.blocks[0].type === "section" && /effect-ci-demo/.test(m.body.text)));
         assert.ok(roots.every((m: any) => !/hmd_approve|1\\. |2\\. /.test(JSON.stringify(m.body.blocks))));
         assert.ok(roots.at(-1).body.blocks.some((b: any) => b.type === "image" && b.slack_file.id === "F123"), "terminal parent preserves latest graph");
         const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");

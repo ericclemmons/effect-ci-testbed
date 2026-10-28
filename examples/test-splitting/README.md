@@ -42,8 +42,8 @@ matrix and the same standalone script. Reports upload even on test failure.
 From the repository root after `pnpm install`:
 
 ```sh
-pnpm cf-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts plan
-pnpm cf-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts run --format=text
+pnpm effect-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts plan
+pnpm effect-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts run --format=text
 node --test examples/test-splitting/.cloudflare/ci/tests/test-splitting.test.ts
 ```
 

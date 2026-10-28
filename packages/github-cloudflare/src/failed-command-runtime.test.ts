@@ -33,7 +33,7 @@ for (const logMode of ["inline", "snippet", "lost-ack"] as const) test(`native f
     export class WorkspaceContainer extends DurableObject{}
     const action=CI.action('test',()=>function*(){runs++;return yield* Effect.fail(new CI.CommandError('test','pnpm test','/fixture',1,undefined,
       {stdout:'Expected hello\\nReceived goodbye\\n'+'x'.repeat(1600),stderr:'Assertion failed\\nowned-private-value\\n',truncated:false}));},{retries:{limit:0,delay:0}});
-    export const Failure=workflowEntrypoint(CI.workflow('cf-ci-demo',()=>action()),{cache:false,slackLayout:'status-thread',slackCommandOutput:'failed',
+    export const Failure=workflowEntrypoint(CI.workflow('effect-ci-demo',()=>action()),{cache:false,slackLayout:'status-thread',slackCommandOutput:'failed',
       ...('${logMode}'==='inline'?{}:{slackCommandLog:({exports,instanceId,stepId,threadTs,text})=>exports.PrivateSlackImages.getByName(instanceId).uploadLog(instanceId,stepId,threadTs,text)})});
     export default{async fetch(request,env,ctx){const p=await request.json();
       if(p.op==='start'){await ctx.exports.Failure.create({id:'failure',params:{trigger:'remote',repository:'https://github.com/owner/repo.git',revision:'a'.repeat(40)}});return Response.json({started:true});}

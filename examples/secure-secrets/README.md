@@ -13,7 +13,7 @@ capability—not by interpolating it into a shell command.
 With an inert test value in `GITHUB_TOKEN`:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/secure-secrets/.cloudflare/ci/workflow.ts
+effect-ci run --workflow examples/secure-secrets/.cloudflare/ci/workflow.ts
 ```
 
 Local resolution uses the process environment. The

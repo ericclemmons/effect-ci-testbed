@@ -10,7 +10,7 @@ Resolve prerequisites first, then return the body the runner may retry.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/execution-policy/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/execution-policy/.cloudflare/ci/workflow.ts
 ```
 
 Local execution uses Effect's retry/timeout operators. Cloudflare uses native

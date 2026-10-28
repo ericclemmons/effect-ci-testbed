@@ -17,9 +17,9 @@ export default CI.workflow("project", function* () {
 ```
 
 ```sh
-cf-ci list
-cf-ci plan test build --format=mermaid
-cf-ci run test build
+effect-ci list
+effect-ci plan test build --format=mermaid
+effect-ci run test build
 ```
 
 Shared prerequisites run once. Parallelism is explicit; the runtime does not
@@ -46,7 +46,7 @@ workspace from the shared install action instead. See the complete
 [pnpm actions](../../examples/node-pnpm/.cloudflare/ci/actions.ts).
 
 Putting lint before test only in the default workflow is not enough: a caller can
-request `cf-ci run test` directly. The test action must own its required validation.
+request `effect-ci run test` directly. The test action must own its required validation.
 
 ## Keep the runner out of the program
 

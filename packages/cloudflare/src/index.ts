@@ -1095,27 +1095,33 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             throw new Error(`Workspace ${workspace.cwd} does not belong to this Container`)
           }
 
-          const container = containerFor(stepId, workspace)
           if (workspace.revision && workspace.revision.provider !== "cloudflare-container") {
             throw new Error(`Cannot materialize ${workspace.revision.provider} with Cloudflare`)
           }
           const deadline = commandDeadlines.get(stepId)
           const commit = async () => {
-            if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline")
-            // Returning a dependency workspace is enough: even a pass-through
-            // action with no commands must commit that revision, not an empty container.
-            // The same-step materializer preserves any writes this action already made.
-            const snapshot = await container.checkpoint(
-              `${stepId}-workspace`,
-              options.reuseWorkspace === false,
-              {
-                stepId, cwd: workspace.cwd,
-                ...(workspace.revision ? { revision: workspace.revision.value as ContainerSnapshotValue } : {}),
-                ...(options.container ? { options: options.container } : {}),
-              },
-            )
-            if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline; its snapshot may already exist")
-            return snapshot
+            for (let attempt = 0; ; attempt++) {
+              if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline")
+              try {
+                const snapshot = await containerFor(stepId, workspace).checkpoint(
+                  `${stepId}-workspace`,
+                  options.reuseWorkspace === false,
+                  {
+                    stepId, cwd: workspace.cwd,
+                    ...(workspace.revision ? { revision: workspace.revision.value as ContainerSnapshotValue } : {}),
+                    ...(options.container ? { options: options.container } : {}),
+                  },
+                )
+                if (deadline !== undefined && Date.now() >= deadline) throw Error("Workspace commit exceeded the original command deadline; its snapshot may already exist")
+                return snapshot
+              } catch (error) {
+                if (deadline === undefined || attempt === 2 || !(error instanceof Error) ||
+                  Object.getPrototypeOf(error) !== Error.prototype || error.name !== "Error" ||
+                  !/^The container snapshot could not be completed due to an internal error(?:; try again(?: \(reference ID: [a-zA-Z0-9-]+\))?)?$/.test(error.message)) throw error
+                console.warn("Retrying workspace snapshot", { stepId, attempt: attempt + 2, error: error.message })
+                await new Promise(resolve => setTimeout(resolve, Math.min(1000 * 2 ** attempt, Math.max(0, deadline - Date.now()))))
+              }
+            }
           }
           // Guards belong inside the checkpoint body: replay of an already
           // committed snapshot must return its journaled value after deadline.

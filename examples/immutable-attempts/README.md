@@ -10,7 +10,7 @@ and format reuse their previous outputs. The original attempt stays unchanged.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/immutable-attempts/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/immutable-attempts/.cloudflare/ci/workflow.ts
 ```
 
 See the [rerun code](./.cloudflare/ci/tests/immutable-attempts.test.ts) for retaining

@@ -5,7 +5,7 @@ Your Cloudflare account. Your GitHub App. Your notification destinations.
 If you already use `effect-ci-github-cloudflare.ericclemmons.workers.dev`, its root
 API supports repository runs with the same existing API token and Access login.
 Use `EFFECT_CI_REMOTE_URL=https://effect-ci-github-cloudflare.ericclemmons.workers.dev`
-without `/demo`, then run `cf-ci run build --remote` from a clean, pushed repository.
+without `/demo`, then run `effect-ci run build --remote` from a clean, pushed repository.
 The host checks out origin/HEAD and discovers CI at the repository root inside an
 isolated container. The `/demo` endpoint continues to serve its fixed demonstration.
 The setup below is for a new host, not a requirement for each new repository.
@@ -46,15 +46,15 @@ For the CLI, configure your host origin as `EFFECT_CI_REMOTE_URL` (no `/demo`
 suffix) and keep the API token in a private user-owned remote profile, not a
 project env file. [CLI authentication](#cli-authentication) shows its format;
 [Access setup](#access) explains the separate authentication boundary.
-`cf-ci doctor --remote` is an optional preflight; normal commands perform their
+`effect-ci doctor --remote` is an optional preflight; normal commands perform their
 own authentication and capability checks.
 
 The [standalone workflow](./src/standalone-program.ts) installs with the project's
-detected package manager, then runs `cf-ci run --local` inside the workspace.
+detected package manager, then runs `effect-ci run --local` inside the workspace.
 It discovers the project's `.cloudflare/ci/workflow.ts` (including a configured
 nested root), or uses the CLI's package-script discovery when no workflow exists.
-The host does not import project code. `cf-ci run --remote` runs the whole workflow;
-`cf-ci run test build --remote` selects exported actions. The standalone host
+The host does not import project code. `effect-ci run --remote` runs the whole workflow;
+`effect-ci run test build --remote` selects exported actions. The standalone host
 advertises project goal discovery, then validates the requested names through the
 real CLI inside the isolated workspace. Fixed-goal hosts keep their allowlists.
 The standalone image includes Node 24.22, pnpm 12.8.1 and the locked CLI/SDK
@@ -123,7 +123,7 @@ For the generated host configuration, run from the repository root:
 The CLI automatically loads `.env` then `.env.local` from the Git root through
 the current directory. Shell values override automatic files; `--env-file`
 overrides both. For a laptop demo, put these client settings in the root's ignored
-`.env.local`, then run `cf-ci run build --remote` without an environment flag:
+`.env.local`, then run `effect-ci run build --remote` without an environment flag:
 
 ```dotenv
 EFFECT_CI_REMOTE_URL=https://YOUR-WORKER.workers.dev
@@ -139,7 +139,7 @@ the tutorial at its own Git root; the testbed fixture path is never sent remotel
 An explicit deployment file remains supported:
 
 ```sh
-pnpm exec cf-ci run --remote --env-file apps/effect-ci/.env.production
+pnpm exec effect-ci run --remote --env-file apps/effect-ci/.env.production
 ```
 
 This starts a hosted CI run and streams its result. The explicit file option
@@ -151,7 +151,7 @@ Alternatively, use the existing human Access session, then retry the original CL
 cloudflared access login "$EFFECT_CI_PUBLIC_URL"
 ```
 
-Without explicit Access headers, `cf-ci` reads the application-scoped session through
+Without explicit Access headers, `effect-ci` reads the application-scoped session through
 `cloudflared` and keeps the JWT in memory. It does not initiate browser login.
 For unattended clients, add a Service Auth Access policy and provide its
 `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` pair privately instead.
@@ -181,8 +181,8 @@ Access-only identity is not inherited by a new host.
 From a clean, committed and pushed project with the App installed:
 
 ```sh
-cf-ci run --remote
-cf-ci run test build --remote
+effect-ci run --remote
+effect-ci run test build --remote
 ```
 
 The CLI selects the host's advertised goals, streams native events and exits with

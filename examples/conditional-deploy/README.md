@@ -11,7 +11,7 @@ Globs support `*`, `**`, `?`, and alternatives such as `**/*.(ts|tsx|json)`.
 Added, deleted, and renamed paths count. Unknown comparisons return `true`.
 
 ```sh
-pnpm exec cf-ci run --workflow examples/conditional-deploy/.cloudflare/ci/if-else.ts
+pnpm exec effect-ci run --workflow examples/conditional-deploy/.cloudflare/ci/if-else.ts
 ```
 
 This deployment prints a message. Local comparisons use the remote default

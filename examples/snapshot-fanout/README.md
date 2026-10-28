@@ -11,7 +11,7 @@ files or the prepared workspace.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/snapshot-fanout/.cloudflare/ci/workflow.ts
+pnpm exec effect-ci run --workflow examples/snapshot-fanout/.cloudflare/ci/workflow.ts
 ```
 
 The local adapter copies the example's `app/` directory per action. It isolates

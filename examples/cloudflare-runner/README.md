@@ -15,7 +15,7 @@ its prerequisite's saved revision.
 Run the portable workflow locally:
 
 ```sh
-pnpm exec cf-ci run --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts
+effect-ci run --workflow examples/cloudflare-runner/.cloudflare/ci/workflow.ts
 ```
 
 For native execution, follow the [host setup](../../apps/effect-ci/SELF-HOST.md).

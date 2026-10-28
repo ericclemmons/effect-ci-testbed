@@ -14,9 +14,9 @@ export const patterns = [
 export function pages() {
   return [...new Set(globSync(patterns, { cwd: root }))].filter(path => !path.endsWith("/AGENTS.md")).sort().map((path) => {
     const body = readFileSync(resolve(root, path), "utf8")
-    const id = path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
+    const id = path === "examples/demo/README.md" ? "walkthrough" : path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
     return { path, id, body, title: body.match(/^# (.+)$/m)?.[1] ?? path }
-  })
+  }).flatMap(page => page.id === "walkthrough" ? [{ ...page, id: "examples/demo" }, page] : [page])
 }
 
 export const href = (id) => id === "index" ? "/" : `/${id}/`
@@ -26,7 +26,8 @@ export function sidebar() {
   const recipes = new Map(docs.filter((page) => /^examples\/[^/]+\/README\.md$/.test(page.path))
     .map((page) => [page.path.split("/")[1], page]))
   const groups = []
-  const used = new Set()
+  const ecosystem = ["node-npm", "node-pnpm", "vite-plus-cache", "turborepo-cache", "github-cloudflare-ci", "gitlab-source", "cloudflare-runner", "blacksmith"]
+  const used = new Set(["demo", ...ecosystem])
   for (const section of readFileSync(resolve(root, "examples/README.md"), "utf8").split(/^## /m).slice(1)) {
     const items = []
     for (const [, name] of section.matchAll(/\]\(\.\/([^/#)]+)/g)) {
@@ -40,15 +41,23 @@ export function sidebar() {
     .map(([, page]) => ({ label: page.title, slug: page.id }))
   if (extra.length) groups.push({ label: "More examples", collapsed: true, items: extra })
   return [
-    { label: "Start here", items: [
-      { label: "Overview & quickstart", link: "/" },
-      { label: "Demo", slug: "examples/demo" },
-      ...(docs.some(page => page.id === "examples/demo/talking-script") ? [{ label: "Demo walkthrough", slug: "examples/demo/talking-script" }] : []),
-      { label: "Self-hosting", slug: "apps/effect-ci" },
+    { label: "Features", link: "/" },
+    { label: "Walkthrough", slug: "walkthrough" },
+    { label: "Ecosystem", collapsed: true, items: [
+      { label: "Tools and cache ownership", slug: "examples/ecosystem" },
+      { label: "GitHub", slug: "examples/github" },
+      ...ecosystem.map(name => ({ label: recipes.get(name).title, slug: recipes.get(name).id })),
     ] },
-    { label: "Recipes", items: [{ label: "Reading guide", slug: "examples" }, ...groups] },
-    { label: "Services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
-    { label: "Reference", collapsed: true, items: [{ autogenerate: { directory: "packages" } }] },
+    { label: "Recipes", collapsed: true, items: [{ label: "Find a recipe", slug: "examples" }, ...groups] },
+    { label: "Reference", collapsed: true, items: [
+      { label: "CLI", slug: "packages/cli" },
+      { label: "SDK", slug: "packages/ci" },
+      { label: "Execution evidence", slug: "examples/coverage" },
+      { label: "Self-hosting", slug: "apps/effect-ci" },
+      { label: "Repository wiring", slug: "apps/docs/laboratory" },
+      { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
+      { label: "Hosts and services", items: [{ autogenerate: { directory: "apps" } }] },
+    ] },
   ]
 }
 

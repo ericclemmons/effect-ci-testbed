@@ -16,6 +16,8 @@ export function readmes(): Loader {
         for (const page of documents) {
           const data = await parseData({ id: page.id, data: {
             title: page.title,
+            pagefind: page.id !== "examples/demo",
+            banner: { content: "<strong>Prototype.</strong> Eric Clemmons’s CI laboratory. Not a production CI service. Use disposable projects." },
             editUrl: `${repository}/edit/main/${page.path}`,
           } })
           const body = page.body.replace(/^# .+\r?\n/m, "")
