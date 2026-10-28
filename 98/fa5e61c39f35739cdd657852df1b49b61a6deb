@@ -1,0 +1,21 @@
+packages/cloudflare/src/action-checkpoints.md
+  s_acb31f2182c42a::t_d868ca5b1b0d2c 60-68
+packages/cloudflare/src/index.ts
+  s_acb31f2182c42a::t_091b36e9a44cd1 1103-1124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "98fa5e61c39f35739cdd657852df1b49b61a6deb",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
