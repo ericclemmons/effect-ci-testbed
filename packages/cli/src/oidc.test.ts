@@ -18,6 +18,7 @@ test("OIDC enrollment works without a workflow, saves no secrets, and deployment
     execFileSync("git", ["init", "-q"], { cwd: root })
     execFileSync("git", ["remote", "add", "origin", "git@github.com:owner/new-project.git"], { cwd: root })
     process.env.EFFECT_CI_REMOTE_URL = "https://ci.example.com"
+    delete process.env.GITHUB_ACTIONS
     delete process.env.EFFECT_CI_OIDC_TOKEN
     delete process.env.ACTIONS_ID_TOKEN_REQUEST_URL
     delete process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
@@ -82,7 +83,8 @@ test("effect-ci oidc enrolls a workflow-free project using the normal env-file l
     origin = `http://127.0.0.1:${address.port}`
     writeFileSync(join(directory, ".env.local"), `EFFECT_CI_PUBLIC_URL=${origin}\nEFFECT_CI_API_TOKEN=fixture-api-token\nCF_ACCESS_TOKEN=fixture-access-token\n`)
     const env = { ...process.env }
-    for (const key of ["EFFECT_CI_REMOTE_URL", "EFFECT_CI_REMOTE_TOKEN", "EFFECT_CI_API_TOKEN", "CF_ACCESS_TOKEN"]) delete env[key]
+    for (const key of ["EFFECT_CI_REMOTE_URL", "EFFECT_CI_REMOTE_TOKEN", "EFFECT_CI_API_TOKEN", "CF_ACCESS_TOKEN",
+      "GITHUB_ACTIONS", "EFFECT_CI_OIDC_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"]) delete env[key]
     const result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), "oidc"], { cwd: directory, env })
       let output = ""

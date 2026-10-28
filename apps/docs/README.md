@@ -14,12 +14,12 @@ From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
 build the static site. Output is in `apps/docs/dist/`.
 
 Pushes to `main` build and publish this site through Cloudflare Workers Builds.
-PRs build and verify the docs in GitHub Actions without deployment credentials.
+PRs build the docs in GitHub Actions without deployment credentials.
 
 [Continuous deployment settings](./builds.json "source")
 
 Publish manually with `pnpm docs:deploy` from an authenticated
-Cloudflare CLI session. This builds and verifies the site, then deploys the static
+Cloudflare CLI session. This builds the site, then deploys the static
 assets as the separate `effect-ci-docs` Worker. It has no app bindings or secrets;
 the app's Access policies remain on its own hostname.
 

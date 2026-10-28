@@ -41,7 +41,9 @@ test("Access-only CLI negotiates host enrollment before any default or selected 
     })
     const run = (args: string[], serviceOnly = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, ...args, "--remote", "--format=json"], { cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "",
+        env: { ...process.env, GITHUB_ACTIONS: "false", EFFECT_CI_OIDC_TOKEN: "",
+          ACTIONS_ID_TOKEN_REQUEST_URL: "", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "",
+          EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "",
           EFFECT_CI_REMOTE_PROFILE: join(directory, "missing-profile.json"), CF_ACCESS_TOKEN: serviceOnly ? "" : "fixture-owner-access",
           CF_ACCESS_CLIENT_ID: "fixture-service-id", CF_ACCESS_CLIENT_SECRET: "fixture-service-secret" } })
       let output = ""; child.stdout.on("data", b => { output += b }); child.stderr.on("data", b => { output += b })
