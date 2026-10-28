@@ -1,0 +1,23 @@
+apps/docs/README.md
+  s_acb31f2182c42a::t_e8b7a5d5bebc2c 17,22
+packages/cli/src/oidc.test.ts
+  s_acb31f2182c42a::t_68be93cc4ad0fe 21,86-87
+packages/cli/src/remote-access.test.ts
+  s_acb31f2182c42a::t_6e5bb2190e832e 44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bd710a2a390c7c8a9384b36f2e445e576b11dda9",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
