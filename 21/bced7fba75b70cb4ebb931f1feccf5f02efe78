@@ -1,0 +1,21 @@
+packages/cloudflare/src/demo-test-check.test.ts
+  s_acb31f2182c42a::t_b6ab5ddcf8ba97 70-72
+packages/cloudflare/src/demo-test-check.ts
+  s_acb31f2182c42a::t_38245aa7cca6f1 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "21bced7fba75b70cb4ebb931f1feccf5f02efe78",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
