@@ -1,0 +1,91 @@
+README.md
+  s_acb31f2182c42a::t_42d984d96c404e 1,3-4,6-7,9,11-12,14-26,28,30,32,37,40-41,43,45-47
+apps/docs/LABORATORY.md
+  s_acb31f2182c42a::t_4e77b154202e5b 1-128
+apps/docs/README.md
+  s_31519c04239b19::t_09aaca194045a4 8-11
+apps/docs/astro.config.mjs
+  s_31519c04239b19::t_6f549c8567f8f7 11
+apps/docs/src/readme-loader.ts
+  s_acb31f2182c42a::t_5b8588f60cf6b0 19-20
+apps/docs/src/repository.mjs
+  s_31519c04239b19::t_ae914f934f7981 17,19,29-30,44-55,57-59
+examples/COVERAGE.md
+  s_acb31f2182c42a::t_b74747aa3ebac7 1-177
+examples/ECOSYSTEM.md
+  s_acb31f2182c42a::t_59f31d929979f7 1-34
+examples/GITHUB.md
+  s_acb31f2182c42a::t_35467ef45774e4 1-45
+examples/README.md
+  s_acb31f2182c42a::t_2f2de5c022bcb4 1,3-6,9-16
+examples/blacksmith/README.md
+  s_acb31f2182c42a::t_7d44f4d8811880 12
+examples/cloudflare-runner/README.md
+  s_acb31f2182c42a::t_fff43339210c75 18
+examples/demo/README.md
+  s_acb31f2182c42a::t_f0116646257606 1,3-4,6-7,9,11-12,16-17,20,22,24-25,28-31,34-35,38-39,41,43-45,47,50,53-61,64-65,68,71-87,89,92,95-104,106-107,109,112,115,117-121,123-127,129-130,132-133,135,137-140,142-161,163-178,180-181,183,185-188,190-194,196-198,200,202-204,206-209,211-212,214-216,218,220-226,228
+examples/demo/tutorial/oidc.example.yml
+  s_acb31f2182c42a::t_0e8d7e0b1ea11b 20,22-23,26
+examples/github-cloudflare-ci/README.md
+  s_acb31f2182c42a::t_f53558a25cbbfe 11
+examples/gitlab-source/README.md
+  s_acb31f2182c42a::t_ac20aba9321660 11
+examples/node-npm/README.md
+  s_acb31f2182c42a::t_04a0eb071a5a5e 11
+examples/node-pnpm/README.md
+  s_acb31f2182c42a::t_31ba856146338f 9
+examples/secure-secrets/README.md
+  s_acb31f2182c42a::t_9f08677f565fe5 16
+examples/verification-evidence/README.md
+  s_acb31f2182c42a::t_6f93230ddb074f 10
+examples/vite-plus-cache/README.md
+  s_acb31f2182c42a::t_143d1b68dd2805 13-14,22-25
+examples/zero-config/README.md
+  s_acb31f2182c42a::t_c3f6bb94da90e8 8-11
+packages/cli/README.md
+  s_acb31f2182c42a::t_6590f48f0d2330 1,3-29,33,37,43-45,61,68-69
+packages/cli/src/command-name.ts
+  s_acb31f2182c42a::t_c4e410b55bce8a 1-3
+packages/cli/src/effect-ci.ts
+  s_acb31f2182c42a::t_4dcd070edc5cb4 1-5
+packages/cli/src/index.ts
+  s_acb31f2182c42a::t_6ccbb176c5010b 20,239,262-263,492,495,519-530,539-546,898,905-906
+packages/cli/src/oidc.ts
+  s_acb31f2182c42a::t_d2ecd1d9cef756 7,25,32,59,70
+packages/cli/src/workload-auth.ts
+  s_acb31f2182c42a::t_be941eeca99cc1 9
+packages/cli/package.json
+  s_954db075a365be::t_eb6198ed70f20f 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "98a1a8c282b23449aab5734be86b30b87faae673",
+  "prompts": {},
+  "sessions": {
+    "s_31519c04239b19": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18452-8a9b-7150-9d6d-0378b1a20bb1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_954db075a365be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18464-ae5b-7422-bbff-c79720e833ff",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
