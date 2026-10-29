@@ -1,0 +1,21 @@
+examples/turbo-ci/app/package-lock.json
+  s_3d0b9ece164d06::t_c4f7973d23ce54 12,32-34,46-48,60-62,75-77,90-92,104-106,118-120,127-132
+examples/turbo-ci/app/package.json
+  s_3d0b9ece164d06::t_f8ecc47f27c180 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ebb87232f46c55046048dc223a0720f63d66b326",
+  "prompts": {},
+  "sessions": {
+    "s_3d0b9ece164d06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18803-3ca9-7d82-8260-c59f94dc80e3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
