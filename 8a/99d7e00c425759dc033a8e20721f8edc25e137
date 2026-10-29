@@ -1,0 +1,19 @@
+apps/effect-ci/SELF-HOST.md
+  s_13d2056961ef9d::t_915a763140ccd9 3-4,10,12,14,27,39,41,44-45,47,51,83,85,89,171,184,192-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8a99d7e00c425759dc033a8e20721f8edc25e137",
+  "prompts": {},
+  "sessions": {
+    "s_13d2056961ef9d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b49-4e56-7f12-b7e0-2d9fb52a3a4e",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
