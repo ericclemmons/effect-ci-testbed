@@ -1,0 +1,31 @@
+packages/cloudflare/src/index.ts
+  s_acb31f2182c42a::t_a8d86d4c9c296e 857,1004,1115,1119,1123,1125
+packages/cloudflare/src/recorded-command-step.ts
+  s_acb31f2182c42a::t_84c41cac0cc7e6 15,17,19,26-29,31-35,37-44,46-47
+packages/cloudflare/src/action-checkpoints.md
+  s_110868fbb906ff::t_4e947a2610d1e1 50-52,56-60,65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2c8d4741f042b1a99e3a33754c16e4c4e6da63a7",
+  "prompts": {},
+  "sessions": {
+    "s_110868fbb906ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a184ff-fa14-76e0-bcba-5cdc91090ea6",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
