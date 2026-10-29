@@ -8,7 +8,7 @@ export default defineConfig({
   markdown: { processor: unified({ remarkPlugins: [repositoryMarkdown] }) },
   integrations: [starlight({
     title: "Effect CI",
-    description: "Eric Clemmons’s prototype CI laboratory. Runnable examples, not a production service.",
+    description: "CI experiments by Eric Clemmons.",
     social: [{ icon: "github", label: "GitHub", href: repository }],
     sidebar: sidebar(),
     components: { Head: "./src/components/Head.astro" },
