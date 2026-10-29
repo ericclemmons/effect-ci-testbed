@@ -1,0 +1,23 @@
+README.md
+  s_110868fbb906ff::t_03798a6b51cae1 3,10-22,26,34,40
+apps/docs/astro.config.mjs
+  s_110868fbb906ff::t_77038c2160cb09 11
+apps/docs/src/readme-loader.ts
+  s_110868fbb906ff::t_9ce03c98874859 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d808c9c1c1f896a4ab05215b5a7c81d17ed5d788",
+  "prompts": {},
+  "sessions": {
+    "s_110868fbb906ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a184ff-fa14-76e0-bcba-5cdc91090ea6",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
