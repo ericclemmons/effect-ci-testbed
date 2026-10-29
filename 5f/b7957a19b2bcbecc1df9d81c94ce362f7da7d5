@@ -1,0 +1,19 @@
+examples/demo/README.md
+  s_acb31f2182c42a::t_f87ce62d6d0902 40,74,175-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5fb7957a19b2bcbecc1df9d81c94ce362f7da7d5",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
