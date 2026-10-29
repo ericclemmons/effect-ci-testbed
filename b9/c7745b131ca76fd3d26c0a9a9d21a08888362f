@@ -1,0 +1,23 @@
+apps/docs/src/repository.mjs
+  s_13d2056961ef9d::t_484e71c625633f 56
+apps/effect-ci/SELF-HOST-ENV.md
+  s_13d2056961ef9d::t_9baae0562687a0 1-104
+apps/effect-ci/SELF-HOST.md
+  s_13d2056961ef9d::t_efe87b2fbba5fc 3-166,168-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b9c7745b131ca76fd3d26c0a9a9d21a08888362f",
+  "prompts": {},
+  "sessions": {
+    "s_13d2056961ef9d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b49-4e56-7f12-b7e0-2d9fb52a3a4e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
