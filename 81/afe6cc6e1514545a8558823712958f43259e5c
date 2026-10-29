@@ -1,0 +1,19 @@
+apps/effect-ci/SELF-HOST.md
+  s_13d2056961ef9d::t_7723480a9ae0cb 57-58,61-65,70-73,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "81afe6cc6e1514545a8558823712958f43259e5c",
+  "prompts": {},
+  "sessions": {
+    "s_13d2056961ef9d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b49-4e56-7f12-b7e0-2d9fb52a3a4e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
