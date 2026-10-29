@@ -54,21 +54,26 @@ Use configuration to identify candidates, not as an automatic deletion list:
 1. Confirm the approved destination account and spending limit. Use a separate
    checkout/worktree with Node 24.11+, pnpm 12.8.1, and the container build
    prerequisites required by `cf`. Run `pnpm install --frozen-lockfile`.
-2. From this checkout's root, create and bind a named profile:
+2. Use the project's CLI, not an assumed global installation. From the checkout
+   root, enter the host project and bind the profile to the checkout root:
 
    ```sh
-   cf auth create effect-ci-work --no-browser
-   cf auth activate effect-ci-work .
-   cf auth whoami
+   cd apps/effect-ci
+   pnpm exec cf --version
+   pnpm exec cf auth create effect-ci-work --no-browser
+   pnpm exec cf auth activate effect-ci-work ../..
+   pnpm exec cf auth whoami
    ```
 
    Use the intended identity for authorization. Reuse an existing profile rather
    than reauthenticating it without approval. Profiles do not pin the account:
-   verify the explicit destination account ID before every cloud write.
-3. From `apps/effect-ci`, run the existing one-time bootstrap:
+   verify the explicit destination account ID before every cloud write. If this
+   version lacks named profiles, stop and select an approved compatible CLI;
+   do not fall back to replacing the default login.
+3. Still in `apps/effect-ci`, run the existing one-time bootstrap:
 
    ```sh
-   pnpm run setup -- --account <approved-account-id> --subdomain <workers-dev-subdomain>
+   pnpm run setup --account <approved-account-id> --subdomain <workers-dev-subdomain>
    ```
 
    This writes ignored `.env.production`, generates an API token, and creates a
