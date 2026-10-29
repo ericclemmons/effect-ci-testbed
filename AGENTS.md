@@ -11,9 +11,14 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 
 ## How we work
 
+This is a prototype. Test real-world examples end to end, not the implementation.
+Don't write tests that lock a buggy prototype in place by asserting its internal
+details.
+
 Keep moving. Stop and ask at one-way doors: irreversible changes, destructive
 operations, or decisions that need authority we do not have. Two-way doors swing
-freely: make reversible changes, test them, and use the results to decide.
+freely. Walk through them: try reversible changes and learn from running them
+before making a one-way decision.
 
 We are figuring out what actually works. Prefer a small working end-to-end proof
 over polishing a speculative design. Once it works, we can work backwards to
