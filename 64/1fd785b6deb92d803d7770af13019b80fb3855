@@ -1,0 +1,19 @@
+examples/demo/README.md
+  s_acb31f2182c42a::t_a318b54b35b875 3,7-10,20,22-23,27-29,34,37,39-41,43,52,59-61,72-73,77,82,85,93,96,99,102,105,108,110-115,123-124,128-129,131-132,137,140-141,145-146,150,152,159,163,167,171,174-175,179-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "641fd785b6deb92d803d7770af13019b80fb3855",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
