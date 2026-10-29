@@ -15,8 +15,8 @@ behavior merely by installing Effect CI today.
 
 The fixture has two apps, `web` and `admin`, sharing `core`. Both apps build and
 check. Their builds require `core#build`. Turbo owns dependency order, hashes,
-environment filtering, and cache restoration. Native concurrency is capped at
-two tasks in this recipe; that is not two Containers.
+environment filtering, and cache restoration. This recipe adds no concurrency
+cap; native Turbo scheduling still runs in one workspace, not separate Containers.
 
 - `core#build` has `!ci`: it is not an entrypoint but still runs as a dependency.
 - `core#check` has `!ci` and is not needed, so it does not run.
@@ -69,7 +69,7 @@ graph; use the native `--plan` command above to inspect it.
 
 [Recipe selection bridge](./app/scripts/ci.mjs "source")
 
-The bridge asks Turbo 2.11.6 for resolved package/task tags through `turbo query`.
+The bridge asks Turbo 2.11.10 for resolved package/task tags through `turbo query`.
 Turbo resolves package configuration and tag inheritance. A native query
 predicate selects `ci` without `!ci`; only those task IDs are passed to
 `turbo run`. Turbo adds required dependencies, including excluded entrypoints
@@ -80,10 +80,11 @@ query fails clearly instead of running everything.
 This follows the task-selection rules in the
 [Vercel CI configuration reference](https://vercel.com/docs/ci/configuration)
 (updated October 28, 2026). Concrete CLI/query behavior follows the installed
-Turbo 2.11.6 docs: `docs/README.md`, `reference/query.mdx`, `reference/run.mdx`,
+Turbo 2.11.10 docs: `docs/README.md`, `reference/query.mdx`, `reference/run.mdx`,
 `reference/configuration.mdx`, and `crafting-your-repository/constructing-ci.mdx`.
-The existing `turborepo-cache` recipe supplies the pinned version and npm-workspace
-prior art; `apps/docs/README.md` supplies the source-link authoring convention.
+The existing `turborepo-cache` recipe supplies npm-workspace prior art;
+`apps/docs/README.md` supplies the source-link authoring convention. This example
+updates independently to the npm `latest` release checked October 29, 2026.
 
 This is not full Vercel CI emulation. Vercel deployment dependencies, OIDC,
 resource tags, services, affected-only selection, and hosted execution are not
@@ -92,11 +93,31 @@ deployment. Neither cache entries nor task results receive Effect CI signatures.
 
 ## Distributed execution: next boundary
 
-Yes, the native plan is useful input to distributed compute. Independent ready
-tasks could start in separate Containers from one immutable installed snapshot.
-Dependent tasks additionally need their prerequisite outputs. Snapshot reuse
-removes a requirement to keep one mutable workspace alive; it does not transport
-new dependency outputs automatically or make startup free.
+The intended user surface stays `effect-ci run --remote`, or the existing
+`PackageManager.JavaScript(workspace).run(script)` in an authored workflow.
+There is no proposed `workspace.tasks()` method or user-authored parallel group.
+This routing is not implemented: the current example still runs one Turbo process.
+
+Assume Container fan-out and compute are freely available. The remaining design
+is a graph-to-workspace mapping. The runtime recognizes a supported Turbo run,
+asks Turbo for its native graph, and represents its tasks as execution units.
+Every node whose required predecessors succeeded can start immediately.
+
+- A linear successor can reuse an idle Container if its filesystem is exactly
+  the required predecessor result and there is no competing mutable owner.
+- Sibling consumers get independent Containers restored from the same immutable
+  parent snapshot. Their writes never affect each other or the saved parent.
+- A join needs the outputs of all required parents. A single parent's snapshot
+  is insufficient. Restore declared outputs with provenance and reject conflicting
+  writes; never merge whole sibling filesystems blindly.
+- Returning from `manager.run` still needs a coherent `Workspace` for later
+  sequential actions. Successful branch outputs must be assembled before that
+  return, rather than returning an arbitrary sibling's workspace.
+
+For this fixture, `core#build` produces snapshot S1 containing the installed
+workspace, its output, and native Turbo cache. `web#build` and `admin#build` can
+both consume S1 concurrently in separate Containers. Physical Container identity
+is an optimization; the task's input snapshot and output provenance are the contract.
 
 Baseline: landed `main` at `09f8d50`. Unprefixed calls remain; `+` is implemented
 in this recipe. The second block is future architecture, not implemented APIs.
@@ -111,19 +132,66 @@ in this recipe. The second block is future architecture, not implemented APIs.
 ```
 
 ```diff
- Future distributed path, relative to this recipe:
-   recipe bridge → native task selection and planning
--  turbo run(entrypoints) executes the whole graph in one workspace
-+  distributed adapter(plan, snapshot, budget) owns task admission
-+    ready task → isolated Container → restore snapshot + prerequisite outputs
-+    native task execution/cache boundary → result and output references
-+    required failure blocks dependents; eligible results get host-signed receipts
-+    finally → stop allocated compute and release capacity
+ Full proposed remote path, relative to the landed baseline above:
+   PackageManager.JavaScript(workspace).run(script): Effect<Workspace>
+-    workspace.exec(package-manager command) → one opaque Turbo process
++    supported Turbo invocation → native query/dry-run graph
++      executeTurboPlan(plan, initialWorkspace): Effect<Workspace>
++        each dependency-ready task → workspaceFor(task, inputSnapshots)
++          exclusive linear continuation → reuse exact predecessor workspace
++          sibling branch → new Container restored from shared parent snapshot
++          join → assemble required outputs, reject conflicts
+           runner.executor.execute(request) → native execution/cache semantics
++          on success → commit snapshot/output references; unblock successors
++          on required failure → block dependents; preserve the original error
++        join successful outputs → return coherent Workspace to caller
++        finally → stop run-owned Containers
+```
+
+`executeTurboPlan` and `workspaceFor` are architecture notation, not new SDK APIs.
+The existing Cloudflare runner instead selects a Container using the action ID
+when a workspace has a revision; it does not infer native Turbo task identities
+inside a process. It also reuses an already materialized revision within that
+Container. A task adapter must expose those boundaries before graph-driven
+workspace selection can happen. No change to the user's package scripts is needed
+for supported invocations; opaque shell wrappers must retain their existing behavior.
+
+## Native execution boundary checked on the new release
+
+Turbo 2.11.10 still exposes resolved task IDs, dependency edges, hashes, commands,
+and output metadata through its documented query/dry-run interfaces. Its bundled
+run/query docs and CLI help do not document a pluggable remote executor or a
+single-node execution flag that preserves the full graph's hash.
+
+The same fixture produced these hashes in native dry runs on October 29, 2026:
+
+| Invocation | `web#build` hash |
+| --- | --- |
+| Both app builds, with dependency closure | `60ee5e9415a64460` |
+| Web build alone, with dependency closure | `60ee5e9415a64460` |
+| Web build with `--only` | `f8e9df15287b1694` |
+
+These are observed fixture identities, not constants an adapter should hardcode.
+The update does not remove the `--only` cache-identity difference. A first
+cacheable-task path can retain the native dependency closure: restore S1 and invoke
+each app's normal Turbo target. Core then restores from its native cache while the
+app executes with its ordinary hash. That is not a general single-node executor:
+uncacheable dependencies or a cache miss may rerun prerequisites. Such cases need
+an explicit supported contract, not an exactly-once claim.
+
+The graph is sufficient to identify independence; task execution and filesystem
+results are the missing integration. Host signing is a separate continuation
+after eligible execution, never a key exposed to the project Container.
+
+```text
+core result S1
+  ├─ web Container   ← S1 → web output
+  └─ admin Container ← S1 → admin output
 ```
 
 That adapter still needs a proven native single-task execution/cache contract,
-output transport, resource and companion-task handling, cancellation/cleanup,
-and trust enrollment. It must not rerun prerequisites in every Container, merge
+output transport, companion-task handling, cancellation/cleanup,
+and trust enrollment. It must not silently rerun prerequisites in every Container, merge
 sibling filesystems blindly, or replace Turbo's environment/cache rules with a
 home-grown approximation. This example does not implement that adapter, import
 the nested plan into Effect CI, or prove distributed speedup. Existing isolated
@@ -138,7 +206,10 @@ next execution restored all three with five cache hits. Changing the shared
 source rebuilt core and both apps while retaining the two app-check cache hits;
 both app outputs contained the changed value.
 
-The Effect CI wrapper's plan and execution, the recipe's TypeScript check, and
-the existing documentation build also passed. No tests were added or changed.
+The initial verification used Turbo 2.11.6. After updating to 2.11.10, native
+graph/hash comparisons were repeated; the `--only` distinction remains as shown
+above. A cold run completed all five tasks, and the next run reported five cache
+hits. The Effect CI wrapper's plan and execution, the recipe's TypeScript check,
+and the existing documentation build also passed. No tests were added or changed.
 These observations establish local selection, ordering, and cache behavior, not
 hosted execution, distributed overlap, resource isolation, or signatures.

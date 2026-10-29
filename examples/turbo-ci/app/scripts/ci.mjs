@@ -36,7 +36,7 @@ const targets = query.data.packages.items.flatMap(({ tasks }) =>
   tasks.items.map(({ fullName }) => fullName)).sort()
 if (!targets.length) throw Error("No Turbo tasks tagged ci were selected")
 
-const args = ["run", ...targets, "--concurrency=2", "--cache=local:rw"]
+const args = ["run", ...targets, "--cache=local:rw"]
 if (process.argv.includes("--plan")) {
   process.stdout.write(execute([...args, "--dry=json"]))
 } else {

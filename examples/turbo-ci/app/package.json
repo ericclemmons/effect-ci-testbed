@@ -8,5 +8,5 @@
     "ci": "node scripts/ci.mjs",
     "check": "node scripts/ci.mjs"
   },
-  "devDependencies": { "turbo": "2.11.6" }
+  "devDependencies": { "turbo": "2.11.10" }
 }
