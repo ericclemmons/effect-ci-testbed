@@ -37,7 +37,7 @@ vp dev
 Open the printed URL. Click the **Name from API** button to call the Worker:
 
 ```json
-{"name":"Cloudflare"}
+{ "name": "Cloudflare" }
 ```
 
 Stop the server with Ctrl-C. Nothing has been deployed.
@@ -71,11 +71,7 @@ AI_AGENT=demo effect-ci list
   "command": "list",
   "workflow": "walkthrough",
   "targets": ["build", "lint"],
-  "commands": [
-    "effect-ci run",
-    "effect-ci run build",
-    "effect-ci run lint"
-  ]
+  "commands": ["effect-ci run", "effect-ci run build", "effect-ci run lint"]
 }
 ```
 
@@ -176,10 +172,10 @@ and [GitHub integration](../GITHUB.md) are separate guides.
 
 ## Add one thing
 
-| What next? | Guide |
-| --- | --- |
-| Run from GitHub | [GitHub](../GITHUB.md) |
-| Use Turbo's task graph | [Turborepo](../turborepo-cache) |
-| Add custom CI logic | [Exported actions](../exported-actions) |
-| Approve a small safe change | [Safe-change approval](../small-change) |
+| What next?                      | Guide                                         |
+| ------------------------------- | --------------------------------------------- |
+| Run from GitHub                 | [GitHub](../GITHUB.md)                        |
+| Use Turbo's task graph          | [Turborepo](../turborepo-cache)               |
+| Add custom CI logic             | [Exported actions](../exported-actions)       |
+| Approve a small safe change     | [Safe-change approval](../small-change)       |
 | Keep secrets out of the process | [Outbound authentication](../secret-outbound) |
