@@ -1,0 +1,19 @@
+AGENTS.md
+  s_acb31f2182c42a::t_da80f779bdc3bb 14-17,20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d836a11ec804ef2bf4e1cae5d0707bf342685d25",
+  "prompts": {},
+  "sessions": {
+    "s_acb31f2182c42a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18462-f369-7c10-a46e-e81c1abc6629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
