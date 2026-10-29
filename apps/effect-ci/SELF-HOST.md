@@ -1,248 +1,207 @@
 # Self-host Effect CI
 
-Your Cloudflare account. Your GitHub App. Your notification destinations.
+Give this guide to your agent on each machine. Retire the old host, deploy in the
+new Cloudflare account, then prove it with a new app. Self-hosting here means
+hosting in **your Cloudflare account**, not running a server on your laptop.
 
-If you already use `effect-ci-github-cloudflare.ericclemmons.workers.dev`, its root
-API supports repository runs with the same existing API token and Access login.
-Use `EFFECT_CI_REMOTE_URL=https://effect-ci-github-cloudflare.ericclemmons.workers.dev`
-without `/demo`, then run `effect-ci run build --remote` from a clean, pushed repository.
-The host checks out origin/HEAD and discovers CI at the repository root inside an
-isolated container. The `/demo` endpoint continues to serve its fixed demonstration.
-The setup below is for a new host, not a requirement for each new repository.
+Local execution needs no hosted account, GitHub App, Access login, or OIDC.
+`--remote`, GitHub-triggered runs, and cloud deployment need their respective setup.
+GitHub App ownership and Cloudflare hosting/billing are separate.
 
-Use `standalone`, not the owned demo profile:
+## Instructions for the agent
 
-```sh
-pnpm install
-cd apps/effect-ci
-pnpm exec cf auth login
-pnpm run setup
-pnpm run deploy -- --dry-run
-pnpm run deploy
-```
+- Confirm the source account, destination account, approved budget, host name,
+  GitHub App choice, and approved secret provider. Access is not spending authority
+  or permission to copy personal credentials into a work vault.
+- Check `cf --version`; discover resource commands with `cf cli search` and the
+  selected command's `--help`. Never include identifiers in discovery searches.
+- Never print secrets, credential files, private keys, or resolved environment
+  values. Record resource IDs and verification results instead.
+- Inventory is read-only. Ask before provisioning, changing App settings, deleting
+  an exact resource list, or changing subscriptions. Do not replace default logins.
 
-Setup discovers the account and reviewer email, asks for the account's
-`workers.dev` subdomain, and writes the ignored `.env.production` with generated
-API and Access credentials. Use `--account <id> --subdomain <name>` for
-non-interactive setup; repeat runs preserve credentials. Add the [GitHub App](#github-app)
-secrets to this file before deploying webhook integration.
-The deploy wrapper configures Access before deploying the Worker.
-Build/dev/deploy read `.env.production`; build/dev do not reconcile Access or deploy.
+The order below supports **teardown first**, with downtime and no old-host
+rollback. For a no-downtime move, deploy and prove the replacement first, switch
+the webhook, then tear down. Preserve required credentials and history either way.
 
-## Choose the host
+## 1. Old machine: preserve what you need, then tear down
 
-| Setting | Standalone default |
+1. Select a named `cf` profile for the old account; confirm identity and account
+   ID. Check whether inherited `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID`
+   overrides that selection. Report presence, not values. Do not log out globally.
+2. Inventory deployed Workers, Workflows/active runs, containers/images, Durable
+   Object storage, Access applications/service tokens, routes, DNS, and referenced
+   services/storage. Include separate docs/demo/runner services only when owned by
+   this teardown. A name prefix is not proof of ownership. Note state-loss risks.
+3. Save required history, the inventory, App ID/settings, and webhook URL privately.
+   Transfer necessary credentials through the approved password manager, never
+   chat, email, Git, or a copied credential directory. See the transfer table below.
+4. With approval, stop new dispatches and drain or explicitly cancel active runs.
+   Present the exact account/resource IDs, dependency order, and state loss; wait
+   for approval of that deletion list. Do not delete or recreate the GitHub App.
+5. Delete only approved resources with the installed `cf` commands. Stop on shared
+   bindings rather than forcing deletion. Re-list resources and report leftovers.
+6. Check subscriptions and outstanding usage separately. Deleting resources does
+   not cancel paid plans. Obtain separate approval for
+   [subscription cancellation](https://developers.cloudflare.com/billing/manage/cancel-subscription/).
+
+Use configuration to identify candidates, not as an automatic deletion list:
+
+[Host configuration](./cloudflare.config.ts)
+
+## 2. Work machine: deploy an independent host
+
+1. Confirm the approved destination account and spending limit. Use a separate
+   checkout/worktree with Node 24.11+, pnpm 12.8.1, and the container build
+   prerequisites required by `cf`. Run `pnpm install --frozen-lockfile`.
+2. Use the project's CLI, not an assumed global installation. From the checkout
+   root, enter the host project and bind the profile to the checkout root:
+
+   ```sh
+   cd apps/effect-ci
+   pnpm exec cf --version
+   pnpm exec cf auth create effect-ci-work --no-browser
+   pnpm exec cf auth activate effect-ci-work ../..
+   pnpm exec cf auth whoami
+   ```
+
+   Use the intended identity for authorization. Reuse an existing profile rather
+   than reauthenticating it without approval. Profiles do not pin the account:
+   verify the explicit destination account ID before every cloud write. If this
+   version lacks named profiles, stop and select an approved compatible CLI;
+   do not fall back to replacing the default login.
+3. Still in `apps/effect-ci`, run the existing one-time bootstrap:
+
+   ```sh
+   pnpm run setup --account <approved-account-id> --subdomain <workers-dev-subdomain>
+   ```
+
+   This writes ignored `.env.production`, generates an API token, and creates a
+   cloud Access service token. It is not a preview. An existing file for another
+   account requires a separate checkout, not overwriting. Keep
+   `EFFECT_CI_PROFILE=standalone`, an independent Worker name, and project root `.`
+   unless a nested project is intended. Do not use the backward-compatible `demo`
+   default.
+4. Follow [GitHub App and credential transfer](#github-app-and-credential-transfer)
+   and [environment and secret management](./SELF-HOST-ENV.md). Use
+   `.env.production`, not `.deploy.env`. Do not rerun bootstrap after replacing
+   values with provider references: bootstrap does not resolve those references.
+5. After installing/configuring Varlock and the selected provider as described in
+   the environment guide, resolve credentials before calling the deploy code:
+
+   ```sh
+   APP_ENV=production varlock run --inject vars -- pnpm exec node scripts/deploy.ts --dry-run
+   APP_ENV=production varlock run --inject vars -- pnpm exec node scripts/deploy.ts
+   ```
+
+   The dry run packages/builds local artifacts. Deployment configures Access
+   first, then uploads allowlisted secrets and deploys. Temporary secret files are
+   cleaned on exit, but failed deployments do not roll back Access changes.
+6. Confirm resources are in the new account. Anonymous `/` must redirect to
+   Access; unsigned `/webhooks/github` must return `401`; unauthenticated
+   `POST /runs` must start no work. Check readiness after authentication. With
+   approval, point the App webhook at the new origin plus `/webhooks/github`.
+
+**Current command boundary:** bare `cf deploy` does not configure Access, package
+the standalone CLI runtime, or select/upload host secrets. Host bootstrap still
+uses the existing scripts above. Ordinary application projects can use `cf deploy`
+as described below. This documentation does not implement native host deployment
+or automatically install Varlock.
+
+## GitHub App and credential transfer
+
+| Item | Existing App, new host | New App |
+| --- | --- | --- |
+| App ID | Keep | Record new ID |
+| Private PEM key | Retrieve securely, or generate another key for this App | Generate and store securely |
+| Webhook secret | Keep during host-only cutover; both ends must match | Generate a high-entropy secret |
+| Installations | Keep selected repositories | Install on selected repositories |
+| Webhook URL | Change at cutover | New origin plus `/webhooks/github` |
+| Host API token and Access credentials | Generate for new host/account | Generate for new host/account |
+| OIDC issuer credential and receipt key | Generate for destination; re-enroll repositories | Generate for destination |
+
+For a new App, use GitHub **Settings → Developer settings → GitHub Apps**. Set the
+homepage to the host origin and enable webhook SSL verification. Grant **Checks:
+read/write** and **Contents: read**; subscribe to **Check suite** events. Subscribe
+to **Push** only for deliberately enabled branch-sensitive routing. Basic CI
+needs no repair/write or approval capabilities.
+
+Store `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY` (original multiline PEM), and
+`GITHUB_WEBHOOK_SECRET` in the approved provider. `EFFECT_CI_API_TOKEN` is a separate
+secret. Never put App credentials in tutorial apps, GitHub Actions, or containers.
+
+An App has one configured webhook URL; changing it affects all installations.
+Confirm which repositories move. Keep the old key/settings until the replacement
+is proven; revoke obsolete keys only with approval.
+
+[GitHub App registration](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
+and [settings changes](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration).
+
+## 3. Prove it with a new app
+
+1. Follow the [tutorial's local app and CLI setup](../../examples/demo/README.md)
+   in a new disposable repository. Run its normal local checks and
+   `effect-ci run --local` **before configuring a host**. Local execution must not
+   depend on cloud credentials or contact the hosted runner.
+2. Put public `EFFECT_CI_REMOTE_URL=https://<new-host>` in the app's committed
+   `.env`. It is configuration, not a secret. The CLI already loads `.env` and
+   ignored `.env.local`; no GitHub variable or secret is needed for the URL.
+3. With approval, create/push the GitHub repository and install the chosen App.
+   Configure the host's run identity as described below. From the clean, pushed
+   checkout, authenticate with `cloudflared access login https://<new-host>`, then
+   run `effect-ci oidc`. For Access-only enrollment, first configure the host's
+   Access issuer and audience; otherwise also inject its API token privately as
+   `EFFECT_CI_REMOTE_TOKEN`. Enrollment does not read the private remote profile.
+   Commit generated `.cloudflare/ci/oidc.json`; it contains no credentials.
+4. Run `effect-ci doctor --remote`, then `effect-ci run build --remote`, matching
+   the tutorial's discovered build target. Human Access-only authentication needs
+   host `EFFECT_CI_ACCESS_ISSUER` and `EFFECT_CI_ACCESS_AUD` configured. Otherwise,
+   provide the host API token privately as well as Access authentication. Use
+   provider injection or a private user-owned remote profile, never committed
+   configuration; see [environment management](./SELF-HOST-ENV.md).
+5. Push a harmless app change. Verify App delivery, GitHub checks, the Workflow
+   result, and the requested commit in the **new account**. Record run ID, commit
+   SHA, account ID, and pass/fail results. A ready page or dry run is not proof of
+   repository execution. Inspect an existing run ID after a stream disconnect
+   rather than dispatching another run.
+
+## 4. Enable OIDC for hosted runs and application deployment
+
+Use the shared host's OIDC support, not the legacy separate runner broker.
+
+| Capability | Host configuration |
 | --- | --- |
-| `EFFECT_CI_PROFILE` | `standalone` in the template |
-| `EFFECT_CI_WORKER_NAME` | `effect-ci` |
-| `EFFECT_CI_PROJECT_ROOT` | `.` relative to the checked-out repository |
+| Repository enrollment and hosted run identity | `EFFECT_CI_PUBLIC_URL`, `RECEIPT_SIGNING_KEY`, `EFFECT_CI_OIDC_OWNER_IDS` (approved numeric GitHub owner IDs), App installation, repository enrollment |
+| Short-lived Cloudflare deployment credentials | Also destination `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_TOKEN_ISSUER` authorized to issue account tokens, and approved policy JSON in `EFFECT_CI_OIDC_SCOPES` |
 
-Match the public hostname to your Worker. Set the project root to `apps/web`, for
-example, if that package owns the scripts and lockfile. Install your App only on
-repositories you intend to run. The remote API requires your private API token;
-the owned demo's Access identity is not inherited.
+Have the account administrator approve actual permission groups/resources. Do not
+copy personal-account policy IDs. The shared-host grant covers enrolled
+repositories under allowed owners across refs/workflows. Account-scoped Workers
+write permits creating Workers and is broader than updating one Worker. Stop if
+that scope is not approved; do not claim the legacy broker's tighter restrictions.
 
-For the CLI, configure your host origin as `EFFECT_CI_REMOTE_URL` (no `/demo`
-suffix) and keep the API token in a private user-owned remote profile, not a
-project env file. [CLI authentication](#cli-authentication) shows its format;
-[Access setup](#access) explains the separate authentication boundary.
-`effect-ci doctor --remote` is an optional preflight; normal commands perform their
-own authentication and capability checks.
+1. Store approved host values in its provider, redeploy, and enroll the new app.
+   Verify wrong owners, unenrolled repositories, and unapproved scopes are denied
+   without starting work or leaking credentials.
+2. In GitHub Actions, commit `permissions: id-token: write` with the required
+   checkout permission and install the CLI in the job. Keep the host in `.env`
+   and commit enrollment configuration. No operator Cloudflare token, Access
+   service token, or password-manager credential belongs in the application job.
+3. Use `effect-ci run --remote` for hosted execution. For deployment from an
+   authenticated workload, use the **currently implemented**
+   `effect-ci oidc -- cf deploy` in the application's configured directory. The
+   child receives a short-lived token; the wrapper revokes it on exit. Report
+   revocation failure; expiry is also limited to 15 minutes. Plain `cf deploy`
+   does not acquire an OIDC credential by itself.
+4. Prove a real deployment and served response in the new account, then verify
+   cleanup. Record local, remote, webhook, and OIDC deployment results separately.
+   Optional Slack, repair, and release integrations are not prerequisites.
 
-The [standalone workflow](./src/standalone-program.ts) installs with the project's
-detected package manager, then runs `effect-ci run --local` inside the workspace.
-It discovers the project's `.cloudflare/ci/workflow.ts` (including a configured
-nested root), or uses the CLI's package-script discovery when no workflow exists.
-The host does not import project code. `effect-ci run --remote` runs the whole workflow;
-`effect-ci run test build --remote` selects exported actions. The standalone host
-advertises project goal discovery, then validates the requested names through the
-real CLI inside the isolated workspace. Fixed-goal hosts keep their allowlists.
-The standalone image includes Node 24.22, pnpm 12.8.1 and the locked CLI/SDK
-runtime. Building the standalone profile packages its production dependencies;
-project manifests do not need a local SDK link.
-Project commands run as uid 1000 in a non-login shell; Node and pnpm stay
-root-owned. Add system tools when building your image, not from project scripts.
-Transport caches are isolated by the platform-resolved image and container policy.
-Rebuilding an image starts a new cache; an unresolved mutable image name runs
-fresh. A restored workspace is not, by itself, attestation or permission to skip
-an action.
+[CLI OIDC implementation](../../packages/cli/src/oidc.ts)
 
-Slack is optional. Configure your own `SLACK_BOT_TOKEN` / `SLACK_CHANNEL_ID`, or
-webhook destination. No channel or reviewer identity is copied from the demo.
+## Completion record
 
-## GitHub App
-
-Create an App in GitHub's **Settings → Developer settings → GitHub Apps**:
-
-- Homepage: your `EFFECT_CI_PUBLIC_URL` origin.
-- Webhook: that origin plus `/webhooks/github`, with SSL verification enabled.
-- Webhook secret: a new high-entropy value, saved privately.
-- Permissions: **Checks: read/write**, **Contents: read**.
-- Subscribe to **Check suite** events for ordinary CI and **Push** events when
-  the host enrolls branch-sensitive push routing such as preview → release.
-
-Record the App ID, generate its private PEM key, and install it on repositories
-you intend to run. `check_suite.requested` starts ordinary CI after a push and
-`check_suite.rerequested` supports GitHub's Re-run action. An explicitly enrolled
-signed Push event retains the exact branch ref even when the commit already has a
-check suite. The host rejects deleted, forced, tag and malformed push updates,
-then deduplicates the delivery ID before starting a Workflow.
-PR approvals and repair writers need separate capabilities; basic CI needs neither.
-
-## Secrets
-
-Add values from `secrets.example.env` to the ignored `.env.production`: `GITHUB_APP_ID`,
-`GITHUB_PRIVATE_KEY` (original multiline PEM), `GITHUB_WEBHOOK_SECRET`,
-`EFFECT_CI_API_TOKEN` and `EFFECT_CI_PUBLIC_URL`.
-Use an independently generated API token, not the webhook secret. Keep values out
-of shell history and checked-in example files. Deployment uploads only documented
-Worker secrets atomically; Access and operator credentials stay local. Build/dev
-do not upload secrets.
-
-## Access
-
-The deploy wrapper reconciles the checked-in `access.config.ts` before deploying:
-protect the hostname with your reviewer Allow policy and bypass only the exact
-`/webhooks/github` path. GitHub cannot perform an interactive Access login, but the
-Worker still requires its HMAC signature. Opting into Slack callbacks adds a narrow
-`/webhooks/slack` exception, not a general webhook bypass.
-
-Bare `cf deploy` does not configure Access. Use `pnpm run deploy:access` to reconcile
-only Access, or the setup deploy command to configure both. Normal monorepo CD
-preserves the existing Access configuration rather than reconciling it on every push.
-
-Verify that an unauthenticated visit to `/` redirects to Access, unsigned webhooks
-return `401`, and an unauthenticated `/runs` request cannot start work. A protected
-origin shows `{"service":"Effect CI","status":"ready"}` after login.
-The Worker API token remains a second boundary after Access succeeds.
-
-## CLI authentication
-
-For the generated host configuration, run from the repository root:
-
-The CLI automatically loads `.env` then `.env.local` from the Git root through
-the current directory. Shell values override automatic files; `--env-file`
-overrides both. For a laptop demo, put these client settings in the root's ignored
-`.env.local`, then run `effect-ci run build --remote` without an environment flag:
-
-```dotenv
-EFFECT_CI_REMOTE_URL=https://YOUR-WORKER.workers.dev
-EFFECT_CI_REMOTE_TOKEN=YOUR-EXISTING-WORKER-API-TOKEN
-CF_ACCESS_CLIENT_ID=YOUR-ACCESS-CLIENT-ID
-CF_ACCESS_CLIENT_SECRET=YOUR-ACCESS-CLIENT-SECRET
-```
-
-The deployment names `EFFECT_CI_PUBLIC_URL` and `EFFECT_CI_API_TOKEN` are also
-accepted as aliases. Keep this file uncommitted. The
-[standalone demo repository](https://github.com/ericclemmons/effect-ci-demo) puts
-the tutorial at its own Git root; the testbed fixture path is never sent remotely.
-An explicit deployment file remains supported:
-
-```sh
-pnpm exec effect-ci run --remote --env-file apps/effect-ci/.env.production
-```
-
-This starts a hosted CI run and streams its result. The explicit file option
-reads the host URL, API token, and Access service credentials without shell exports.
-
-Alternatively, use the existing human Access session, then retry the original CLI command:
-
-```sh
-cloudflared access login "$EFFECT_CI_PUBLIC_URL"
-```
-
-Without explicit Access headers, `effect-ci` reads the application-scoped session through
-`cloudflared` and keeps the JWT in memory. It does not initiate browser login.
-For unattended clients, add a Service Auth Access policy and provide its
-`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` pair privately instead.
-
-Standalone execution also needs the Worker's API token. Configure a user-owned
-`~/.config/effect-ci/remotes.json` (mode `600`, outside the checkout):
-
-```json
-{
-  "version": 1,
-  "remotes": [{
-    "repository": "https://github.com/OWNER/REPOSITORY.git",
-    "url": "https://ci.example.com",
-    "token": "YOUR-EXISTING-WORKER-API-TOKEN"
-  }]
-}
-```
-
-Use the standalone host origin without `/demo`. An explicit URL override does not
-inherit another endpoint's profile token. `EFFECT_CI_REMOTE_URL` and
-`EFFECT_CI_REMOTE_TOKEN` are supported alternatives. Never put App keys, Slack tokens
-or Access JWTs in the profile. The existing owned demo's separately enrolled
-Access-only identity is not inherited by a new host.
-
-## Run CI
-
-From a clean, committed and pushed project with the App installed:
-
-```sh
-effect-ci run --remote
-effect-ci run test build --remote
-```
-
-The CLI selects the host's advertised goals, streams native events and exits with
-the result. It does not upload dirty files or an arbitrary local workflow module.
-Push a commit to exercise the GitHub path: inspect the App's Recent deliveries,
-the queued/per-action GitHub checks and the native Workflow history.
-On a stream disconnect, inspect the returned run ID rather than starting another run.
-
-If no event arrives, check App installation, Checks permission and Check suite
-subscription. A webhook `401` usually means the webhook secrets differ; an API
-`401` after Access means the Worker API token differs. Private checkout requires
-Contents read and installation access to that repository. Git credentials stay
-host-only in the checkout proxy and are revoked before project commands.
-
-## Notifications
-
-For one updated Slack card, supply `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`, install
-the Slack app with `chat:write`, and invite it to the channel. Alternatively use
-`SLACK_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL`. Private confidence images additionally
-need `files:write`. No notification credential enters project containers.
-
-Interactive approvals additionally require the signing secret, App/team/channel
-IDs and reviewer IDs listed in `secrets.example.env`, plus the exact signed Slack
-callback route. Notifications do not grant approval authority or add a release gate
-to the root CI/CD workflow. See the [HITL example](../../examples/cloudflare-hitl-release/README.md).
-
-## What this deploys
-
-One Worker, one native CI Workflow and one workspace container. No preview-site,
-release-manager, repair-agent or GitHub Actions runner service binding is required.
-Standalone does not automatically publish or release your application.
-
-`demo` retains the existing owned integrations. For backwards compatibility,
-omitting `EFFECT_CI_PROFILE` also retains that configuration; new installations
-should keep the template's explicit `standalone` choice.
-
-## Proof boundary
-
-The standalone profile is built with a different Worker name and project root.
-Local workerd tests check its real entrypoint, API authentication and capabilities;
-graph tests execute root and nested authored workflows through the real CLI.
-The actual image runs a clean tracked pnpm fixture's install/test/build and custom
-root/nested workflows with networking disabled, uid 1000 and no host secrets.
-A separate CI job builds this profile without Cloudflare credentials or
-owned demo services. These are not a fresh-account live
-deployment. The existing live demo is a separate regression fixture.
-
-SDK hosts can [sign actual check/action results](../../packages/cloudflare/src/execution-receipt.md)
-and [keep a private commit journal](../../packages/cloudflare/src/execution-journal.md).
-This profile does not automatically enroll signing keys, verify complete inputs or
-restore reusable outputs. The demo's fixed signing/repair policy is not required
-to deploy a basic CI host.
-The outer host currently reports checkout/install/project-workflow boundaries,
-not individual authored actions. Authored execution is not yet connected to host
-approval, attestation or deployment capabilities; it does not restore the full
-conference demo by itself.
-GitHub event runs use the installed App's scoped checkout credential. Remote CLI
-runs resolve your App's installation for that repository and borrow a
-Contents-read token for checkout, then revoke it. Install the App on private
-repositories you intend to run; no installation ID or token belongs in CLI input.
-Repositories without an installation use anonymous checkout. Local Workflow tests
-exercise this path with fake GitHub responses; a fresh-account private checkout
-has not yet been live-verified.
+Return public host/repository links, commit/run IDs, verification results, deleted
+and remaining resource IDs, and separate billing status. List blocked/unverified
+steps. Never include credentials. This procedure is not evidence that a
+fresh-account cutover has passed.

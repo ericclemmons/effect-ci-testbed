@@ -53,7 +53,7 @@ export function sidebar() {
       { label: "CLI", slug: "packages/cli" },
       { label: "SDK", slug: "packages/ci" },
       { label: "Execution evidence", slug: "examples/coverage" },
-      { label: "Self-hosting", slug: "apps/effect-ci" },
+      { label: "Self-hosting", slug: "apps/effect-ci/self-host" },
       { label: "Repository wiring", slug: "apps/docs/laboratory" },
       { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
       { label: "Hosts and services", items: [{ autogenerate: { directory: "apps" } }] },
