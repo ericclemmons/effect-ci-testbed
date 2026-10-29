@@ -201,7 +201,9 @@ Use the [walkthrough](../../examples/demo/README.md) to create and run a new app
 locally. Before its **Run on a host** commands:
 
 1. From your app's clean, pushed checkout, put `EFFECT_CI_REMOTE_URL=https://<new-host>`
-   in its committed `.env`. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+   in its committed `.env`. In the GitHub App's **Install App → Configure**, add
+   this repository to **Repository access** and save. Install
+   [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
 2. Enroll the repository:
 
    ```sh
