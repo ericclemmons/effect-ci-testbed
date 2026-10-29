@@ -1,16 +1,17 @@
 # Self-host Effect CI
 
-Local runs need no Cloudflare account. These steps set up `--remote` and GitHub checks.
+This prototype runs locally without a Cloudflare account. To try `--remote` and
+GitHub checks, deploy a host in a Cloudflare account you control.
 
 ## Give this to your agent
 
 <textarea aria-label="Self-hosting agent prompt" rows="7" readonly spellcheck="false">
 Follow this guide: https://effect-ci-docs.ericclemmons.workers.dev/apps/effect-ci/self-host/
-Help me tear down my old host, then deploy a new host in my work Cloudflare account.
+Help me deploy an Effect CI host in my Cloudflare account.
 Use the guide's cf commands and configuration files, not custom setup/deploy scripts.
-Ask me for the source and destination account IDs, host name, and GitHub App owner.
+Ask me for the account ID, host name, and GitHub App owner.
 Use 1Password for credentials; never print secret values or put them in Git.
-Show me the resource IDs before deleting anything. Do not change paid plans without asking.
+Only tear down an existing host if I ask. Confirm resource IDs and paid-plan changes with me.
 Finish by following the linked walkthrough against the new host.
 </textarea>
 
@@ -23,7 +24,7 @@ Finish by following the linked walkthrough against the new host.
    cf --version
    ```
 
-2. On the work machine, clone this repository into your working directory and install its locked dependencies:
+2. Clone this repository into your working directory and install its locked dependencies:
 
    ```sh
    git clone https://github.com/ericclemmons/effect-ci-testbed.git
@@ -35,72 +36,19 @@ Finish by following the linked walkthrough against the new host.
    `1.0.0-beta.24` or later for environment expansion in the secrets manifest.
    Install and start [Docker](https://docs.docker.com/get-started/get-docker/) for container builds.
 
-## Old machine: tear down
+## Choose the account
 
-Deleting the host removes its stored state and stops remote CI. Local runs still work.
-
-1. In the old checkout, select your personal profile and old account:
+1. From the checkout root, create and select a profile:
 
    ```sh
-   cf auth list
-   cf auth activate personal
+   cf auth create effect-ci --no-browser
+   cf auth activate effect-ci
    cf auth whoami
-   export CLOUDFLARE_ACCOUNT_ID=<old-account-id>
-   ```
-
-   Use your existing profile name in place of `personal`. If `CLOUDFLARE_API_TOKEN`
-   is set, unset it before selecting a profile; API tokens override profiles.
-2. In [GitHub App settings](https://github.com/settings/apps), select the old App
-   and clear **Webhook → Active**. Keep its key and webhook secret in 1Password if reusing it.
-3. List the host's resources and active runs:
-
-   ```sh
-   cf workers list
-   cf workflows list
-   cf workflows instances list --workflow-name <workflow-name> --status running
-   cf workflows instances list --workflow-name <workflow-name> --status queued
-   cf containers applications list
-   cf containers images list
-   cf zero-trust access applications list
-   cf zero-trust access service-tokens list
-   ```
-
-4. Wait for active runs to finish, or terminate each unwanted run:
-
-   ```sh
-   cf workflows instances terminate <instance-id> --workflow-name <workflow-name> --status terminate
-   ```
-
-5. Confirm the IDs belong to this host. Delete its Workflow, container application,
-   Worker, unused container image tags, and Access applications. Repeat only for resources you own:
-
-   ```sh
-   cf workflows delete <workflow-name>
-   cf containers applications delete <container-application-id>
-   cf workers delete <worker-name>
-   cf containers images delete <image:tag>
-   cf zero-trust access applications delete <access-application-id>
-   cf zero-trust access service-tokens delete <unused-service-token-id>
-   ```
-
-   Do not add `--delete-with-references` to force Worker deletion.
-6. Run the list commands again. In Cloudflare **Billing → Subscriptions**, review
-   and [cancel unwanted subscriptions](https://developers.cloudflare.com/billing/manage/cancel-subscription/)
-   separately. Resource deletion does not cancel a paid plan.
-
-## Work machine: choose the account
-
-1. From the new checkout root, create and select a work profile:
-
-   ```sh
-   cf auth create work --no-browser
-   cf auth activate work
-   cf auth whoami
-   export CLOUDFLARE_ACCOUNT_ID=<destination-account-id>
+   export CLOUDFLARE_ACCOUNT_ID=<account-id>
    cd apps/effect-ci
    ```
 
-   If `work` already exists, skip `auth create`. Unset an inherited
+   Use an existing profile instead if you have one. Unset an inherited
    `CLOUDFLARE_API_TOKEN` first. Approve only the intended account's paid services.
 2. In Cloudflare **Workers & Pages**, find the account's `workers.dev` subdomain.
    Use `effect-ci.<subdomain>.workers.dev` as the new host.
@@ -132,13 +80,13 @@ Deleting the host removes its stored state and stops remote CI. Local runs still
 · [Private-key instructions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps)
 
 **Reusing the existing App instead:** keep its App ID, key, secret, and installations.
-Retrieve the key/secret from 1Password on the work machine. Change its homepage and webhook
+Retrieve the key/secret from 1Password. Change its homepage and webhook
 to the new host; enable **Active** after deployment. This moves all of that App's installations.
-Do not copy `~/.config/cloudflare` or personal Cloudflare tokens.
+If changing machines, authenticate with CF CLI rather than copying `~/.config/cloudflare` or Cloudflare tokens.
 
 ## Configure Access
 
-1. Open Cloudflare **Zero Trust** in the destination account. Complete organization
+1. Open Cloudflare **Zero Trust** in your account. Complete organization
    setup if prompted. Enable an [Access login method](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/)
    and copy the team domain into `.env.production` as `EFFECT_CI_ACCESS_ISSUER`, including `https://`.
 2. Copy the five Access request files:
@@ -220,7 +168,7 @@ locally. Before its **Run on a host** commands:
 
 Skip this section if the host will only run tests/builds, not deploy applications.
 
-1. In the destination Cloudflare account, open **Manage account → Account API tokens → Create Token**.
+1. In your Cloudflare account, open **Manage account → Account API tokens → Create Token**.
    Name it `Effect CI token issuer`; grant **Account → Account API Tokens → Edit** for this account only.
    Create the token and save it in 1Password as `CLOUDFLARE_TOKEN_ISSUER`.
    This requires Super Administrator or API Token Provisioning access.
@@ -233,7 +181,7 @@ Skip this section if the host will only run tests/builds, not deploy application
 
    Copy its selectable `id`. Replace both placeholders in
    [the scope policy](./oidc-scopes.example.json "source"). This policy permits
-   creating/updating Workers throughout the destination account, not just one Worker.
+   creating/updating Workers throughout the configured account, not just one Worker.
 3. In `.env.production`, add `CLOUDFLARE_TOKEN_ISSUER=op(op://effect-ci-production/host/CLOUDFLARE_TOKEN_ISSUER)`.
    Add `EFFECT_CI_OIDC_SCOPES='...'` with the completed policy JSON on one line.
    Run the deploy command again.
@@ -241,3 +189,60 @@ Skip this section if the host will only run tests/builds, not deploy application
    app directory. For GitHub Actions, give the job `id-token: write` and `contents: read`
    and install the CLI. The wrapper requests a 15-minute Cloudflare token and revokes
    it when the command exits. Keep the host URL in `.env`, not a CI secret.
+
+## Optional: tear down an existing host
+
+Skip this section for a first deployment. If replacing a host, you can run these
+steps before setting up its replacement. Neither setup nor teardown requires
+switching machines or accounts.
+
+Deleting the host removes its stored state and stops remote CI. Local runs still work.
+
+1. In the existing checkout, select the host's profile and account:
+
+   ```sh
+   cf auth list
+   cf auth activate <profile-name>
+   cf auth whoami
+   export CLOUDFLARE_ACCOUNT_ID=<existing-host-account-id>
+   ```
+
+   If `CLOUDFLARE_API_TOKEN` is set, unset it before selecting a profile;
+   API tokens override profiles.
+2. In [GitHub App settings](https://github.com/settings/apps), select the host's App
+   and clear **Webhook → Active**. Keep its key and webhook secret in 1Password if reusing it.
+3. List the host's resources and active runs:
+
+   ```sh
+   cf workers list
+   cf workflows list
+   cf workflows instances list --workflow-name <workflow-name> --status running
+   cf workflows instances list --workflow-name <workflow-name> --status queued
+   cf containers applications list
+   cf containers images list
+   cf zero-trust access applications list
+   cf zero-trust access service-tokens list
+   ```
+
+4. Wait for active runs to finish, or terminate each unwanted run:
+
+   ```sh
+   cf workflows instances terminate <instance-id> --workflow-name <workflow-name> --status terminate
+   ```
+
+5. Confirm the IDs belong to this host. Delete its Workflow, container application,
+   Worker, unused container image tags, and Access applications. Repeat only for resources you own:
+
+   ```sh
+   cf workflows delete <workflow-name>
+   cf containers applications delete <container-application-id>
+   cf workers delete <worker-name>
+   cf containers images delete <image:tag>
+   cf zero-trust access applications delete <access-application-id>
+   cf zero-trust access service-tokens delete <unused-service-token-id>
+   ```
+
+   Do not add `--delete-with-references` to force Worker deletion.
+6. Run the list commands again. In Cloudflare **Billing → Subscriptions**, review
+   and [cancel unwanted subscriptions](https://developers.cloudflare.com/billing/manage/cancel-subscription/)
+   separately. Resource deletion does not cancel a paid plan.
