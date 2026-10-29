@@ -153,7 +153,8 @@ and [settings changes](https://docs.github.com/en/apps/maintaining-github-apps/m
    Access issuer and audience; otherwise also inject its API token privately as
    `EFFECT_CI_REMOTE_TOKEN`. Enrollment does not read the private remote profile.
    Commit generated `.cloudflare/ci/oidc.json`; it contains no credentials.
-4. Run `effect-ci run test build --remote`. Human Access-only authentication needs
+4. Run `effect-ci doctor --remote`, then `effect-ci run build --remote`, matching
+   the tutorial's discovered build target. Human Access-only authentication needs
    host `EFFECT_CI_ACCESS_ISSUER` and `EFFECT_CI_ACCESS_AUD` configured. Otherwise,
    provide the host API token privately as well as Access authentication. Use
    provider injection or a private user-owned remote profile, never committed

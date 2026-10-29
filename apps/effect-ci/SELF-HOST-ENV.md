@@ -1,6 +1,6 @@
 # Self-host environment contract
 
-Companion to [SELF-HOST.md](./SELF-HOST.md). Source baseline: `adebaca`, reviewed 2026-10-28.
+Companion to [SELF-HOST.md](./SELF-HOST.md). Source baseline: `3546491`, reviewed 2026-10-29.
 This documents an adoption path, not installed integration or deployment proof.
 Schema, dependencies, package commands, and provisioning remain unchanged.
 
@@ -85,7 +85,7 @@ Access reconciliation happens before deployment; a later failure does not roll b
 
 [Standalone runtime preparation](./scripts/standalone-runtime.ts)
 
-Baseline: landed `adebaca`; no unlanded runtime changes are included here. This call diff shows the proposed resolve-first operator path using existing APIs, not new native hooks:
+Baseline: landed `3546491`; no unlanded runtime changes are included here. This call diff shows the proposed resolve-first operator path using existing APIs, not new native hooks:
 
 ```diff
 - package commands → node --env-file … scripts/deploy.ts
