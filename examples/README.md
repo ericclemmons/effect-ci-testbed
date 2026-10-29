@@ -18,6 +18,7 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 ## Write less CI
 
 - [Discover checks automatically](./zero-config)
+- [Use existing Turbo CI tags and dependencies](./turbo-ci)
 - [Run a single check](./exported-actions)
 - [Approve safe changes so authors can self-merge](./small-change)
 - [Deploy only when needed](./conditional-deploy)
