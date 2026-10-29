@@ -47,22 +47,24 @@ host-owned, boot-bound completion record. It never restores or starts that VM.
 After completion is committed in DO storage, the result remains available even
 without the original VM. Read-checkpoint ACK failures can be reconciled through
 another read of that same identity. Nonzero process exits retain their real
-diagnostics; missing results retain an unknown exit. Polling never extends the
-original durable deadline.
+diagnostics; missing results retain an unknown exit. Result polling runs inside
+a Workflow step with a fixed timeout. Workflows enforces that timeout; the runner
+does not save a wall-clock deadline or calculate a remaining budget.
 
 The root install action has one command and explicitly uses command-level
 checkpointing, with its existing ten-minute timeout and zero retries. Its final
-workspace publication is bounded by that same durable deadline; splitting the
-long outer action must not silently grant snapshotting another timeout window.
-An already journaled workspace commit still replays successfully after the
-deadline, without starting another snapshot or command.
+workspace publication has its own fixed ten-minute Workflow step timeout.
+Launch and result-read steps each use the command's configured timeout, defaulting
+to ten minutes. These are per-step timeouts, not one shared action deadline.
+An already journaled workspace commit replays without starting another snapshot
+or command. A resumed snapshot step does not inherit an expired command budget.
 
 For these recorded-command commits, the exact provider error “The container
 snapshot could not be completed due to an internal error” gets at most two
 additional snapshot attempts, after one and two seconds. Only the checkpoint RPC
-is repeated, on a fresh stub for the same workspace and action. The original
-Workflow step timeout and command deadline still bound the whole commit. The
-command is not launched again. Other errors and explicit non-retryable errors
+is repeated, on a fresh stub for the same workspace and action. The fixed
+Workflow step timeout bounds the whole commit. The command is not launched
+again. Other errors and explicit non-retryable errors
 are not retried; losing the live container still fails closed. This is bounded
 recovery, not a repair of the provider's internal snapshot failure.
 
