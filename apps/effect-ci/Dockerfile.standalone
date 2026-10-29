@@ -7,7 +7,7 @@ RUN apt-get update \
 
 RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
 
-# Prepared from locked production packages by scripts/standalone-runtime.ts.
+# Prepared from locked production packages by the Vite build.
 # Root-owned runtime is separate from the project-writable checkout.
 COPY .standalone-runtime /opt/effect-ci
 

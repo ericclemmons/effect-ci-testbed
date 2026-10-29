@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 /** Package only the CLI's production dependency closure, never a checkout/env
  * directory. No registry publication or deployment occurs here. */
 export function prepareStandaloneRuntime() {
-  const app = fileURLToPath(new URL("..", import.meta.url));
+  const app = fileURLToPath(new URL(".", import.meta.url));
   const temporary = mkdtempSync(join(app, ".standalone-runtime-build-"));
   const destination = join(app, ".standalone-runtime");
   try {
     const result = spawnSync("pnpm", ["--filter", "@effect-ci-testbed/cli", "deploy",
       "--prod", "--frozen-lockfile", "--ignore-scripts", "--os=linux", "--cpu=x64", join(temporary, "runtime")], {
-      cwd: fileURLToPath(new URL("../../..", import.meta.url)), stdio: "inherit",
+      cwd: fileURLToPath(new URL("../..", import.meta.url)), stdio: "inherit",
     });
     if (result.error) throw result.error;
     if (result.status !== 0) throw Error("Standalone CLI packaging failed");

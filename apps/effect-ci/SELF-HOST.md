@@ -1,207 +1,241 @@
 # Self-host Effect CI
 
-Give this guide to your agent on each machine. Retire the old host, deploy in the
-new Cloudflare account, then prove it with a new app. Self-hosting here means
-hosting in **your Cloudflare account**, not running a server on your laptop.
+Local runs need no Cloudflare account. These steps set up `--remote` and GitHub checks.
 
-Local execution needs no hosted account, GitHub App, Access login, or OIDC.
-`--remote`, GitHub-triggered runs, and cloud deployment need their respective setup.
-GitHub App ownership and Cloudflare hosting/billing are separate.
+## Give this to your agent
 
-## Instructions for the agent
+<textarea aria-label="Self-hosting agent prompt" rows="7" readonly spellcheck="false">
+Follow this guide: https://effect-ci-docs.ericclemmons.workers.dev/apps/effect-ci/self-host/
+Help me tear down my old host, then deploy a new host in my work Cloudflare account.
+Use the guide's cf commands and configuration files, not custom setup/deploy scripts.
+Ask me for the source and destination account IDs, host name, and GitHub App owner.
+Use 1Password for credentials; never print secret values or put them in Git.
+Show me the resource IDs before deleting anything. Do not change paid plans without asking.
+Finish by following the linked walkthrough against the new host.
+</textarea>
 
-- Confirm the source account, destination account, approved budget, host name,
-  GitHub App choice, and approved secret provider. Access is not spending authority
-  or permission to copy personal credentials into a work vault.
-- Check `cf --version`; discover resource commands with `cf cli search` and the
-  selected command's `--help`. Never include identifiers in discovery searches.
-- Never print secrets, credential files, private keys, or resolved environment
-  values. Record resource IDs and verification results instead.
-- Inventory is read-only. Ask before provisioning, changing App settings, deleting
-  an exact resource list, or changing subscriptions. Do not replace default logins.
+## Install the tools
 
-The order below supports **teardown first**, with downtime and no old-host
-rollback. For a no-downtime move, deploy and prove the replacement first, switch
-the webhook, then tear down. Preserve required credentials and history either way.
-
-## 1. Old machine: preserve what you need, then tear down
-
-1. Select a named `cf` profile for the old account; confirm identity and account
-   ID. Check whether inherited `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID`
-   overrides that selection. Report presence, not values. Do not log out globally.
-2. Inventory deployed Workers, Workflows/active runs, containers/images, Durable
-   Object storage, Access applications/service tokens, routes, DNS, and referenced
-   services/storage. Include separate docs/demo/runner services only when owned by
-   this teardown. A name prefix is not proof of ownership. Note state-loss risks.
-3. Save required history, the inventory, App ID/settings, and webhook URL privately.
-   Transfer necessary credentials through the approved password manager, never
-   chat, email, Git, or a copied credential directory. See the transfer table below.
-4. With approval, stop new dispatches and drain or explicitly cancel active runs.
-   Present the exact account/resource IDs, dependency order, and state loss; wait
-   for approval of that deletion list. Do not delete or recreate the GitHub App.
-5. Delete only approved resources with the installed `cf` commands. Stop on shared
-   bindings rather than forcing deletion. Re-list resources and report leftovers.
-6. Check subscriptions and outstanding usage separately. Deleting resources does
-   not cancel paid plans. Obtain separate approval for
-   [subscription cancellation](https://developers.cloudflare.com/billing/manage/cancel-subscription/).
-
-Use configuration to identify candidates, not as an automatic deletion list:
-
-[Host configuration](./cloudflare.config.ts)
-
-## 2. Work machine: deploy an independent host
-
-1. Confirm the approved destination account and spending limit. Use a separate
-   checkout/worktree with Node 24.11+, pnpm 12.8.1, and the container build
-   prerequisites required by `cf`. Run `pnpm install --frozen-lockfile`.
-2. Use the project's CLI, not an assumed global installation. From the checkout
-   root, enter the host project and bind the profile to the checkout root:
+1. Install Node 24.11+ and pnpm 12.8.1. Install [CF CLI globally](https://developers.cloudflare.com/cf/get-started/#install-cf):
 
    ```sh
+   npm install --global cf
+   cf --version
+   ```
+
+2. On the work machine, clone this repository into your working directory and install its locked dependencies:
+
+   ```sh
+   git clone https://github.com/ericclemmons/effect-ci-testbed.git
+   cd effect-ci-testbed
+   pnpm install --frozen-lockfile
+   ```
+
+   `cf` uses the project's pinned version when run inside it. This guide requires
+   `1.0.0-beta.24` or later for environment expansion in the secrets manifest.
+   Install and start [Docker](https://docs.docker.com/get-started/get-docker/) for container builds.
+
+## Old machine: tear down
+
+Deleting the host removes its stored state and stops remote CI. Local runs still work.
+
+1. In the old checkout, select your personal profile and old account:
+
+   ```sh
+   cf auth list
+   cf auth activate personal
+   cf auth whoami
+   export CLOUDFLARE_ACCOUNT_ID=<old-account-id>
+   ```
+
+   Use your existing profile name in place of `personal`. If `CLOUDFLARE_API_TOKEN`
+   is set, unset it before selecting a profile; API tokens override profiles.
+2. In [GitHub App settings](https://github.com/settings/apps), select the old App
+   and clear **Webhook → Active**. Keep its key and webhook secret in 1Password if reusing it.
+3. List the host's resources and active runs:
+
+   ```sh
+   cf workers list
+   cf workflows list
+   cf workflows instances list --workflow-name <workflow-name> --status running
+   cf workflows instances list --workflow-name <workflow-name> --status queued
+   cf containers applications list
+   cf containers images list
+   cf zero-trust access applications list
+   cf zero-trust access service-tokens list
+   ```
+
+4. Wait for active runs to finish, or terminate each unwanted run:
+
+   ```sh
+   cf workflows instances terminate <instance-id> --workflow-name <workflow-name> --status terminate
+   ```
+
+5. Confirm the IDs belong to this host. Delete its Workflow, container application,
+   Worker, unused container image tags, and Access applications. Repeat only for resources you own:
+
+   ```sh
+   cf workflows delete <workflow-name>
+   cf containers applications delete <container-application-id>
+   cf workers delete <worker-name>
+   cf containers images delete <image:tag>
+   cf zero-trust access applications delete <access-application-id>
+   cf zero-trust access service-tokens delete <unused-service-token-id>
+   ```
+
+   Do not add `--delete-with-references` to force Worker deletion.
+6. Run the list commands again. In Cloudflare **Billing → Subscriptions**, review
+   and [cancel unwanted subscriptions](https://developers.cloudflare.com/billing/manage/cancel-subscription/)
+   separately. Resource deletion does not cancel a paid plan.
+
+## Work machine: choose the account
+
+1. From the new checkout root, create and select a work profile:
+
+   ```sh
+   cf auth create work --no-browser
+   cf auth activate work
+   cf auth whoami
+   export CLOUDFLARE_ACCOUNT_ID=<destination-account-id>
    cd apps/effect-ci
-   pnpm exec cf --version
-   pnpm exec cf auth create effect-ci-work --no-browser
-   pnpm exec cf auth activate effect-ci-work ../..
-   pnpm exec cf auth whoami
    ```
 
-   Use the intended identity for authorization. Reuse an existing profile rather
-   than reauthenticating it without approval. Profiles do not pin the account:
-   verify the explicit destination account ID before every cloud write. If this
-   version lacks named profiles, stop and select an approved compatible CLI;
-   do not fall back to replacing the default login.
-3. Still in `apps/effect-ci`, run the existing one-time bootstrap:
+   If `work` already exists, skip `auth create`. Unset an inherited
+   `CLOUDFLARE_API_TOKEN` first. Approve only the intended account's paid services.
+2. In Cloudflare **Workers & Pages**, find the account's `workers.dev` subdomain.
+   Use `effect-ci.<subdomain>.workers.dev` as the new host.
+3. Copy the production settings file and replace every placeholder:
 
    ```sh
-   pnpm run setup --account <approved-account-id> --subdomain <workers-dev-subdomain>
+   cp .env.production.example .env.production
    ```
 
-   This writes ignored `.env.production`, generates an API token, and creates a
-   cloud Access service token. It is not a preview. An existing file for another
-   account requires a separate checkout, not overwriting. Keep
-   `EFFECT_CI_PROFILE=standalone`, an independent Worker name, and project root `.`
-   unless a nested project is intended. Do not use the backward-compatible `demo`
-   default.
-4. Follow [GitHub App and credential transfer](#github-app-and-credential-transfer)
-   and [environment and secret management](./SELF-HOST-ENV.md). Use
-   `.env.production`, not `.deploy.env`. Do not rerun bootstrap after replacing
-   values with provider references: bootstrap does not resolve those references.
-5. After installing/configuring Varlock and the selected provider as described in
-   the environment guide, resolve credentials before calling the deploy code:
+   [`.env.production` contents](./.env.production.example "source")
+
+## Create the GitHub App
+
+1. Open the owning account's **Settings → Developer settings → GitHub Apps → New GitHub App**.
+2. Enter a unique **GitHub App name** and **Homepage URL** `https://effect-ci.<subdomain>.workers.dev`.
+   Leave user callback and setup URLs empty.
+3. Under **Webhook**, enter `https://effect-ci.<subdomain>.workers.dev/webhooks/github`.
+   Generate a 64-character random secret in 1Password, save it as `GITHUB_WEBHOOK_SECRET`,
+   and paste it into **Secret**. Keep SSL verification enabled; leave **Active** off until deployment.
+4. Under **Repository permissions**, set **Checks: Read and write** and **Contents: Read-only**.
+   Under **Subscribe to events**, select **Check suite**. Leave other optional permissions/events off.
+   Select **Only on this account**, then **Create GitHub App**.
+5. Copy the numeric **App ID** into `.env.production` as `GITHUB_APP_ID`.
+   Open **Credentials → Key pairs → New key**. Store the downloaded PEM's complete
+   contents in 1Password as `GITHUB_PRIVATE_KEY`, including its header, footer, and newlines.
+6. Select **Install App → Install → Only select repositories** and choose the repositories this host will run.
+
+[GitHub registration instructions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
+· [Private-key instructions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps)
+
+**Reusing the existing App instead:** keep its App ID, key, secret, and installations.
+Retrieve the key/secret from 1Password on the work machine. Change its homepage and webhook
+to the new host; enable **Active** after deployment. This moves all of that App's installations.
+Do not copy `~/.config/cloudflare` or personal Cloudflare tokens.
+
+## Configure Access
+
+1. Open Cloudflare **Zero Trust** in the destination account. Complete organization
+   setup if prompted. Enable an [Access login method](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/)
+   and copy the team domain into `.env.production` as `EFFECT_CI_ACCESS_ISSUER`, including `https://`.
+2. Copy the five Access request files:
 
    ```sh
-   APP_ENV=production varlock run --inject vars -- pnpm exec node scripts/deploy.ts --dry-run
-   APP_ENV=production varlock run --inject vars -- pnpm exec node scripts/deploy.ts
+   cp access/service.example.json access/service.json
+   cp access/webhook.example.json access/webhook.json
+   cp access/token.example.json access/token.json
+   cp access/revoke.example.json access/revoke.json
+   cp access/api.example.json access/api.json
    ```
 
-   The dry run packages/builds local artifacts. Deployment configures Access
-   first, then uploads allowlisted secrets and deploys. Temporary secret files are
-   cleaned on exit, but failed deployments do not roll back Access changes.
-6. Confirm resources are in the new account. Anonymous `/` must redirect to
-   Access; unsigned `/webhooks/github` must return `401`; unauthenticated
-   `POST /runs` must start no work. Check readiness after authentication. With
-   approval, point the App webhook at the new origin plus `/webhooks/github`.
+   Replace `<workers-dev-subdomain>` in each file and `<your-email>` in `service.json`.
+   [Service request](./access/service.example.json "source")
+3. Create the path exceptions first, then protect the hostname:
 
-**Current command boundary:** bare `cf deploy` does not configure Access, package
-the standalone CLI runtime, or select/upload host secrets. Host bootstrap still
-uses the existing scripts above. Ordinary application projects can use `cf deploy`
-as described below. This documentation does not implement native host deployment
-or automatically install Varlock.
+   ```sh
+   cf zero-trust access applications create --body "$(cat access/webhook.json)"
+   cf zero-trust access applications create --body "$(cat access/token.json)"
+   cf zero-trust access applications create --body "$(cat access/revoke.json)"
+   cf zero-trust access applications create --body "$(cat access/api.json)"
+   cf zero-trust access applications create --body "$(cat access/service.json)"
+   ```
 
-## GitHub App and credential transfer
+   Save each returned `id`. Copy the last response's `aud` into `.env.production` as
+   `EFFECT_CI_ACCESS_AUD`. On later changes, use
+   `cf zero-trust access applications update <app-id> --body "$(cat access/service.json)"`
+   for the corresponding file, rather than creating duplicates.
 
-| Item | Existing App, new host | New App |
-| --- | --- | --- |
-| App ID | Keep | Record new ID |
-| Private PEM key | Retrieve securely, or generate another key for this App | Generate and store securely |
-| Webhook secret | Keep during host-only cutover; both ends must match | Generate a high-entropy secret |
-| Installations | Keep selected repositories | Install on selected repositories |
-| Webhook URL | Change at cutover | New origin plus `/webhooks/github` |
-| Host API token and Access credentials | Generate for new host/account | Generate for new host/account |
-| OIDC issuer credential and receipt key | Generate for destination; re-enroll repositories | Generate for destination |
+## Store credentials and deploy
 
-For a new App, use GitHub **Settings → Developer settings → GitHub Apps**. Set the
-homepage to the host origin and enable webhook SSL verification. Grant **Checks:
-read/write** and **Contents: read**; subscribe to **Check suite** events. Subscribe
-to **Push** only for deliberately enabled branch-sensitive routing. Basic CI
-needs no repair/write or approval capabilities.
+1. Follow [the file and 1Password setup](./SELF-HOST-ENV.md). Get your GitHub owner's
+   numeric ID from `https://api.github.com/users/<owner>` and put it in
+   `EFFECT_CI_OIDC_OWNER_IDS`. An organization also has a numeric `id` at that endpoint.
+2. Validate and preview the deployment:
 
-Store `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY` (original multiline PEM), and
-`GITHUB_WEBHOOK_SECRET` in the approved provider. `EFFECT_CI_API_TOKEN` is a separate
-secret. Never put App credentials in tutorial apps, GitHub Actions, or containers.
+   ```sh
+   pnpm exec varlock load --agent
+   pnpm exec varlock run --inject vars -- cf deploy --secrets-file secrets.env --dry-run
+   ```
 
-An App has one configured webhook URL; changing it affects all installations.
-Confirm which repositories move. Keep the old key/settings until the replacement
-is proven; revoke obsolete keys only with approval.
+3. Deploy:
 
-[GitHub App registration](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
-and [settings changes](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration).
+   ```sh
+   pnpm exec varlock run --inject vars -- cf deploy --secrets-file secrets.env
+   cf workers get effect-ci
+   cf workflows list
+   cf containers applications list
+   ```
 
-## 3. Prove it with a new app
+   Use your configured Worker name if you changed it. Vite packages the CLI runtime
+   during the build. No setup/deploy script or `APP_ENV` variable is needed.
+4. Open the host URL. Access must show its login screen; sign in with the email
+   in `access/service.json`. In the GitHub App settings, enable **Webhook → Active**.
+   Under **Advanced → Recent Deliveries**, open the `ping` delivery and check for a `2xx` response.
 
-1. Follow the [tutorial's local app and CLI setup](../../examples/demo/README.md)
-   in a new disposable repository. Run its normal local checks and
-   `effect-ci run --local` **before configuring a host**. Local execution must not
-   depend on cloud credentials or contact the hosted runner.
-2. Put public `EFFECT_CI_REMOTE_URL=https://<new-host>` in the app's committed
-   `.env`. It is configuration, not a secret. The CLI already loads `.env` and
-   ignored `.env.local`; no GitHub variable or secret is needed for the URL.
-3. With approval, create/push the GitHub repository and install the chosen App.
-   Configure the host's run identity as described below. From the clean, pushed
-   checkout, authenticate with `cloudflared access login https://<new-host>`, then
-   run `effect-ci oidc`. For Access-only enrollment, first configure the host's
-   Access issuer and audience; otherwise also inject its API token privately as
-   `EFFECT_CI_REMOTE_TOKEN`. Enrollment does not read the private remote profile.
-   Commit generated `.cloudflare/ci/oidc.json`; it contains no credentials.
-4. Run `effect-ci doctor --remote`, then `effect-ci run build --remote`, matching
-   the tutorial's discovered build target. Human Access-only authentication needs
-   host `EFFECT_CI_ACCESS_ISSUER` and `EFFECT_CI_ACCESS_AUD` configured. Otherwise,
-   provide the host API token privately as well as Access authentication. Use
-   provider injection or a private user-owned remote profile, never committed
-   configuration; see [environment management](./SELF-HOST-ENV.md).
-5. Push a harmless app change. Verify App delivery, GitHub checks, the Workflow
-   result, and the requested commit in the **new account**. Record run ID, commit
-   SHA, account ID, and pass/fail results. A ready page or dry run is not proof of
-   repository execution. Inspect an existing run ID after a stream disconnect
-   rather than dispatching another run.
+## Connect your app
 
-## 4. Enable OIDC for hosted runs and application deployment
+Use the [walkthrough](../../examples/demo/README.md) to create and run a new app
+locally. Before its **Run on a host** commands:
 
-Use the shared host's OIDC support, not the legacy separate runner broker.
+1. From your app's clean, pushed checkout, put `EFFECT_CI_REMOTE_URL=https://<new-host>`
+   in its committed `.env`. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+2. Enroll the repository:
 
-| Capability | Host configuration |
-| --- | --- |
-| Repository enrollment and hosted run identity | `EFFECT_CI_PUBLIC_URL`, `RECEIPT_SIGNING_KEY`, `EFFECT_CI_OIDC_OWNER_IDS` (approved numeric GitHub owner IDs), App installation, repository enrollment |
-| Short-lived Cloudflare deployment credentials | Also destination `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_TOKEN_ISSUER` authorized to issue account tokens, and approved policy JSON in `EFFECT_CI_OIDC_SCOPES` |
+   ```sh
+   cloudflared access login https://<new-host>
+   effect-ci oidc
+   git add .env .cloudflare/ci/oidc.json
+   git commit -m "Configure hosted CI"
+   git push
+   ```
 
-Have the account administrator approve actual permission groups/resources. Do not
-copy personal-account policy IDs. The shared-host grant covers enrolled
-repositories under allowed owners across refs/workflows. Account-scoped Workers
-write permits creating Workers and is broader than updating one Worker. Stop if
-that scope is not approved; do not claim the legacy broker's tighter restrictions.
+3. Resume **Run on a host** in the walkthrough.
 
-1. Store approved host values in its provider, redeploy, and enroll the new app.
-   Verify wrong owners, unenrolled repositories, and unapproved scopes are denied
-   without starting work or leaking credentials.
-2. In GitHub Actions, commit `permissions: id-token: write` with the required
-   checkout permission and install the CLI in the job. Keep the host in `.env`
-   and commit enrollment configuration. No operator Cloudflare token, Access
-   service token, or password-manager credential belongs in the application job.
-3. Use `effect-ci run --remote` for hosted execution. For deployment from an
-   authenticated workload, use the **currently implemented**
-   `effect-ci oidc -- cf deploy` in the application's configured directory. The
-   child receives a short-lived token; the wrapper revokes it on exit. Report
-   revocation failure; expiry is also limited to 15 minutes. Plain `cf deploy`
-   does not acquire an OIDC credential by itself.
-4. Prove a real deployment and served response in the new account, then verify
-   cleanup. Record local, remote, webhook, and OIDC deployment results separately.
-   Optional Slack, repair, and release integrations are not prerequisites.
+## Enable short-lived deployment credentials
 
-[CLI OIDC implementation](../../packages/cli/src/oidc.ts)
+Skip this section if the host will only run tests/builds, not deploy applications.
 
-## Completion record
+1. In the destination Cloudflare account, open **Manage account → Account API tokens → Create Token**.
+   Name it `Effect CI token issuer`; grant **Account → Account API Tokens → Edit** for this account only.
+   Create the token and save it in 1Password as `CLOUDFLARE_TOKEN_ISSUER`.
+   This requires Super Administrator or API Token Provisioning access.
+   [Cloudflare's token-issuer setup](https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/).
+2. Find the account's Workers permission group:
 
-Return public host/repository links, commit/run IDs, verification results, deleted
-and remaining resource IDs, and separate billing status. List blocked/unverified
-steps. Never include credentials. This procedure is not evidence that a
-fresh-account cutover has passed.
+   ```sh
+   cf accounts tokens permission-groups list --name Workers%20Scripts%20Write
+   ```
+
+   Copy its selectable `id`. Replace both placeholders in
+   [the scope policy](./oidc-scopes.example.json "source"). This policy permits
+   creating/updating Workers throughout the destination account, not just one Worker.
+3. In `.env.production`, add `CLOUDFLARE_TOKEN_ISSUER=op(op://effect-ci-production/host/CLOUDFLARE_TOKEN_ISSUER)`.
+   Add `EFFECT_CI_OIDC_SCOPES='...'` with the completed policy JSON on one line.
+   Run the deploy command again.
+4. For deployment from a hosted workflow, run `effect-ci oidc -- cf deploy` in the
+   app directory. For GitHub Actions, give the job `id-token: write` and `contents: read`
+   and install the CLI. The wrapper requests a 15-minute Cloudflare token and revokes
+   it when the command exits. Keep the host URL in `.env`, not a CI secret.
