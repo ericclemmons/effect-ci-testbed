@@ -2,6 +2,19 @@
 import Head from "@astrojs/starlight/components/Head.astro"
 ---
 <Head />
+<style is:global>
+  .sl-markdown-content textarea {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 0.5rem;
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-text);
+    font: inherit;
+    resize: vertical;
+  }
+</style>
 <script>
   async function diagrams() {
     const nodes = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])")
