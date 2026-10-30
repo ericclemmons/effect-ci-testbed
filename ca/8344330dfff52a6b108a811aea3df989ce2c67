@@ -1,0 +1,21 @@
+apps/docs/cloudflare.config.ts
+  s_aaeb7ec1bfcaee::t_249f3efc0a63bd 9
+apps/docs/scripts/build-output.mjs
+  s_aaeb7ec1bfcaee::t_8502720443c532 6,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ca8344330dfff52a6b108a811aea3df989ce2c67",
+  "prompts": {},
+  "sessions": {
+    "s_aaeb7ec1bfcaee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18db2-448f-7e51-ad77-56635f60e582",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
