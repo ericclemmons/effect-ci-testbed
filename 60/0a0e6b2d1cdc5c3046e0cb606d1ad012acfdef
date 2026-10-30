@@ -1,0 +1,29 @@
+apps/effect-ci/MIGRATE.md
+  s_69f697092d882c::t_305e98904361b4 254-260
+packages/github/src/public-proposal.test.ts
+  s_69f697092d882c::t_8e00db931094af 28-29
+packages/github/src/public-proposal.ts
+  s_69f697092d882c::t_2921ed817d3f38 43-44,47-48,50,62,93-94
+test/apps/repair-ai/src/budget.test.ts
+  s_69f697092d882c::t_3d0001e6e03175 42,48
+test/apps/repair-ai/src/budget.ts
+  s_69f697092d882c::t_0f08de20a05467 1,3
+test/apps/repair-incident/src/worker.ts
+  s_69f697092d882c::t_6e1e13ce269a6a 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "600a0e6b2d1cdc5c3046e0cb606d1ad012acfdef",
+  "prompts": {},
+  "sessions": {
+    "s_69f697092d882c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ade-c535-7273-92d8-2980c199780d",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
