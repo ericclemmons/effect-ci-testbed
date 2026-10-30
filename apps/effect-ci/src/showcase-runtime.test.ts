@@ -67,7 +67,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
         if(url.pathname.endsWith('/access_tokens'))return Response.json({token:'fake-github-token'});
         const body=JSON.parse(init.body);github.push(body);return Response.json({id:1000+github.length,html_url:'https://github.com/example/check'});
       }
-      if(url.hostname==='effect-ci-demo-site.ericclemmons.workers.dev'){
+      if(url.hostname==='effect-ci-demo-site.eclemmons.workers.dev'){
         const name=url.pathname.split('/').at(-1);
         return new Response(published.assets[name],{headers:{'x-site-revision':published.revision,'x-site-digest':published.digest}});
       }
@@ -76,7 +76,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
         const body=JSON.parse(init.body);messages.push({path:url.pathname,body});
         return Response.json({ok:true,ts:body.ts||(body.thread_ts?'123.'+String(++thread).padStart(6,'0'):'123.456')});
       }
-      if(url.hostname==='effect-ci-hmd-demo.ericclemmons.workers.dev'){
+      if(url.hostname==='effect-ci-hmd-demo.eclemmons.workers.dev'){
         const index=Number(url.searchParams.get('probe').split('-').at(-1));
         return Response.json({version:index<phase?version:previous,healthy:true});
       }
@@ -162,7 +162,7 @@ test("native showcase checkpoints authored actions, consumes the checked build a
       if (!targets) {
         assert.ok(state.reads.filter((r: any) => r.path.startsWith("dist/")).every((r: any) => r.snapshot === "snapshot-build-workspace"));
         assert.ok(state.messages.some((m: any) => JSON.stringify(m.body).includes("checked preview") &&
-          JSON.stringify(m.body).includes("https://effect-ci-demo-site.ericclemmons.workers.dev/r/")));
+          JSON.stringify(m.body).includes("https://effect-ci-demo-site.eclemmons.workers.dev/r/")));
       }
     }
     await call({op:"start",id:"release-reject",release:true});

@@ -14,7 +14,7 @@ const row = { timestamp: 150, scriptName: "effect-ci-hmd-demo", logType: "cf-wor
   rayId: ray, requestId: "native-event", sampleInterval: 1, attributes: {
     "$workers.eventType": "fetch", "$workers.executionModel": "stateless", "$workers.truncated": false,
     "$workers.scriptVersion.id": candidate, "$workers.outcome": "ok", "$workers.event.request.method": "GET",
-    "$workers.event.request.url": "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health",
+    "$workers.event.request.url": "https://effect-ci-hmd-demo.eclemmons.workers.dev/health",
     "$workers.event.response.status": 503,
   } }
 

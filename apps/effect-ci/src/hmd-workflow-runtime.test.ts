@@ -57,7 +57,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
         nativeRows.set(ray,{timestamp:Date.now(),scriptName:"effect-ci-hmd-demo",logType:"cf-worker-event",requestId:"event-"+ray,rayId:ray,sampleInterval:1,
           attributes:{"$workers.eventType":"fetch","$workers.executionModel":"stateless","$workers.truncated":false,
             "$workers.scriptVersion.id":version,"$workers.outcome":"ok","$workers.event.request.method":"GET",
-            "$workers.event.request.url":"https://effect-ci-hmd-demo.ericclemmons.workers.dev/health","$workers.event.response.status":healthy?200:503}});
+            "$workers.event.request.url":"https://effect-ci-hmd-demo.eclemmons.workers.dev/health","$workers.event.response.status":healthy?200:503}});
         return Response.json({version,healthy},{status:healthy?200:503,headers:{"cf-ray":ray+"-IAD"}});
       }
       if(target.startsWith("https://files.slack.com")) {

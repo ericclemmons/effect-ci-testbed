@@ -273,7 +273,7 @@ test("owned health probes reject redirects, oversized bodies, foreign versions a
     const result = await probeRelease("owned", [version], async (input, init) => {
       calls++;
       assert.ok(
-        String(input).startsWith("https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?"),
+        String(input).startsWith("https://effect-ci-hmd-demo.eclemmons.workers.dev/health?"),
       );
       assert.equal(init?.redirect, "manual");
       assert.equal(new Headers(init?.headers).get("authorization"), null);

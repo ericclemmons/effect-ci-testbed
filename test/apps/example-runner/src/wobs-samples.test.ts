@@ -7,7 +7,7 @@ const batch = { requested: 2, unknown: 0, receipts: [{ ray: old, version: "old" 
 const row = (ray: string, version: string, status = 200) => ({ timestamp: 150, scriptName: "effect-ci-hmd-demo", logType: "cf-worker-event",
   requestId: `native-${ray}`, rayId: ray, sampleInterval: 1, attributes: { "$workers.eventType": "fetch", "$workers.executionModel": "stateless",
     "$workers.truncated": false, "$workers.scriptVersion.id": version, "$workers.outcome": "ok", "$workers.event.request.method": "GET",
-    "$workers.event.request.url": "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health", "$workers.event.response.status": status } })
+    "$workers.event.request.url": "https://effect-ci-hmd-demo.eclemmons.workers.dev/health", "$workers.event.response.status": status } })
 const rows = [row(old, "old"), row(candidate, "new", 503)]
 
 test("mixed native version cohorts require independent receipts and every terminal event", async () => {

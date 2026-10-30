@@ -112,6 +112,21 @@ does not remove their resources or their charges from the source account.
    a verified destination Access session without printing the JWT, or from the
    destination Access user API after independently matching the intended human.
    Verify that identity can authenticate after deployment.
+
+   Run `cf zero-trust organization get` and inspect `deny_unmatched_requests`.
+   When true, even a deployed Worker with `workers.dev` enabled cannot receive
+   unmatched public requests. Keep that account guard enabled and create explicit
+   applications for the intended public endpoints: docs, immutable previews under
+   `/r`, the release demo, and the receiver's signed `/notifications` endpoint.
+   Replace `<work-subdomain>` in the request bodies below, then create each
+   application with `cf zero-trust access applications create --body '<request JSON>'`.
+   Give the command one object at a time, not the entire array. Check for existing
+   applications before creating them. The receiver still verifies its own secret;
+   private service bindings need no public bypass. Create an explicit application
+   for each public app deployed by the walkthrough or OIDC examples too. Configure the public incident
+   source's `/failure` path separately only after its readiness/enrollment checks.
+
+   [Public endpoint Access requests](./access-public.example.json "source")
 5. Update account-specific source settings before building:
 
    | Source | Required destination value |
