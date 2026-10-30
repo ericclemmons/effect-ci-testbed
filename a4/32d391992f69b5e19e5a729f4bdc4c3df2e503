@@ -1,0 +1,31 @@
+apps/docs/README.md
+  s_9a485c37f621b6::t_009472ecb0d219 8-20
+apps/docs/astro.config.mjs
+  s_9a485c37f621b6::t_74b082807e9ef4 14
+apps/docs/src/compatibility.mjs
+  s_9a485c37f621b6::t_dd0384d8e82f96 1-36
+apps/docs/src/components/MarkdownContent.astro
+  s_9a485c37f621b6::t_9f67aed05b3739 1-6
+apps/docs/src/components/ReadinessMatrix.astro
+  s_9a485c37f621b6::t_072ec0ea174e88 1-74
+apps/docs/src/readiness.ts
+  s_9a485c37f621b6::t_b7d2887e02eb8d 1-79
+apps/docs/src/readme-loader.ts
+  s_9a485c37f621b6::t_65fa568afa28a7 23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a432d391992f69b5e19e5a729f4bdc4c3df2e503",
+  "prompts": {},
+  "sessions": {
+    "s_9a485c37f621b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a189d9-a857-7631-8205-a74bc591618c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
