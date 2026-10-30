@@ -1,10 +1,12 @@
-import { defineConfig } from "cf/config"
+import { bindings, defineConfig } from "cf/config"
 
 export default defineConfig({
   worker: {
     name: "effect-ci-docs",
+    entrypoint: "./src/worker.mjs",
     compatibilityDate: "2026-10-24",
     workersDev: true,
-    assets: { htmlHandling: "auto-trailing-slash", notFoundHandling: "404-page" },
+    bindings: { ASSETS: bindings.assets() },
+    assets: { htmlHandling: "auto-trailing-slash", notFoundHandling: "404-page", runWorkerFirst: ["/api/readiness"] },
   },
 })

@@ -10,11 +10,17 @@ Markdown are committed.
 The homepage is a live feature compatibility matrix. Rows and applicability come
 from `examples/COVERAGE.md`; new example directories are included automatically.
 Colors come from public GitHub check results for one resolved `main` commit,
-loaded in the browser with no credentials. Green means the mapped check passed;
+loaded through the docs Worker's `/api/readiness` endpoint with no credentials.
+The Worker resolves one `main` commit and reads all check pages before caching
+the result for ten minutes at each Cloudflare location. Concurrent reads in one
+Worker isolate share a refresh. A failed refresh keeps the last successful result
+for up to 24 hours, labels it as cached with its timestamp, and retries after ten
+minutes. A cold cache with no successful read still reports checks unavailable.
+Green means the mapped check passed;
 amber hourglasses mean results are loading or the check is queued or running.
 Missing, skipped, cancelled, and failed checks stay red. Not-applicable
 cells do not count toward progress. Refresh reloads results; an API or rate-limit
-error is shown explicitly. Local Cloudflare runtime checks count as local, and
+error is shown explicitly when no cached result is available. Local Cloudflare runtime checks count as local, and
 only native `Cloudflare / <recipe>` checks from the Effect CI App count as hosted.
 The page does not infer current readiness from historical coverage ticks.
 
@@ -30,7 +36,8 @@ Recipes lists every remaining example alphabetically, including newly added
 examples. Self-hosting and environment evidence belong in the API section.
 
 From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
-build the static site. Output is in `apps/docs/dist/`.
+build the static site. Output is in `apps/docs/dist/`. Local dev and preview
+proxy readiness reads to the public docs API.
 
 Pushes to `main` build and publish this site through Cloudflare Workers Builds.
 PRs build the docs in GitHub Actions without deployment credentials.
@@ -39,7 +46,7 @@ PRs build the docs in GitHub Actions without deployment credentials.
 
 Publish manually with `pnpm docs:deploy` from an authenticated
 Cloudflare CLI session. This builds the site, then deploys the static
-assets as the separate `effect-ci-docs` Worker. It has no app bindings or secrets;
+assets and readiness API as the separate `effect-ci-docs` Worker. It has no app bindings or secrets;
 the app's Access policies remain on its own hostname.
 
 [Deployment configuration](./cloudflare.config.ts "source")
