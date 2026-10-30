@@ -141,6 +141,28 @@ Review their owning configuration before enabling them for another installation;
 do not copy historical run receipts as fresh enrollment. Other example/proof
 Workers are independent fixtures and are not prerequisites for the host.
 
+## Run project workflows
+
+One configured host runs ordinary project workflows; npm, pnpm, script discovery,
+and exported actions do not need separate recipe Workers or deployments. Select
+a nested project by changing into its directory or passing its workflow path:
+
+```sh
+effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts
+effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts
+effect-ci run lint test build --remote --workflow examples/zero-config
+```
+
+The CLI sends the selected project with the pushed commit. The host checks out
+that revision, installs the project, and discovers its workflow inside the
+isolated workspace. It does not import project modules into the host Worker.
+Projects with their own package-manager identity install in that directory.
+Workspace members without one install through the nearest ancestor workspace,
+then execute in the selected project. Projects without a package.json skip the
+JavaScript install step. Requests without a selection retain the configured root.
+Older hosts that cannot select projects fail before dispatch rather than running
+the wrong project. See [CLI selection](../../packages/cli/README.md#remote-project-selection).
+
 ## Store credentials
 
 1. Follow [the credential setup](./SELF-HOST-ENV.md). Keep each service's credentials

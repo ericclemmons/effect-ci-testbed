@@ -39,6 +39,29 @@ The package is unpublished. Install this repository's dependencies and add its
 
 [CLI entrypoint](./src/effect-ci.ts "source")
 
+## Remote project selection
+
+`effect-ci run --remote` runs the project in the current directory through your
+configured hosted service. For a nested project, change to its directory or pass
+`--workflow path/to/project/.cloudflare/ci/workflow.ts`. An explicit workflow
+filename is preserved too; `--workflow path/to/project` selects package-script
+discovery. Exported goals use the same service, for example
+`effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
+
+The CLI sends the repository-relative project directory and, when needed, the
+workflow filename with the pushed commit. The host installs the project and
+discovers its workflow inside the isolated workspace. No per-recipe Worker or
+deployment is needed. The CLI checks host support before dispatching a selected
+project. Older generic hosts reject selection
+without starting the wrong workflow. Legacy fixed-goal hosts retain their existing
+repository-root goal-dispatch behavior. Hosts reject absolute paths, traversal,
+and unsupported selection.
+Authentication, source authorization, and clean-worktree checks are unchanged.
+
+[Remote dispatch](./src/index.ts#symbol=builtInRemote "source")
+
+[Hosted project execution](../../apps/effect-ci/src/standalone-program.ts#symbol=standaloneProgram "source")
+
 ## OIDC deployment
 
 Run `effect-ci oidc --service https://your-hosted-ci-origin` once from a repository with

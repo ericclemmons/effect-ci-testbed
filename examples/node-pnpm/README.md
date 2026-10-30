@@ -16,3 +16,7 @@ Request test, build, or both: their shared install and checks run once. Only
 The [actions](./.cloudflare/ci/actions.ts) own these dependencies; the
 [workflow](./.cloudflare/ci/workflow.ts) selects the goal.
 Compare with [GitHub Actions YAML](./.github/workflows/github.yml).
+
+Run the same goals through your configured hosted service from the repository root:
+`effect-ci run test build --remote --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts`.
+No recipe-specific deployment is required; remote execution uses the pushed commit.
