@@ -1031,6 +1031,9 @@ importers:
       '@effect-ci-testbed/cloudflare':
         specifier: workspace:*
         version: link:../../packages/cloudflare
+      '@effect-ci-testbed/local-container':
+        specifier: workspace:*
+        version: link:../../packages/local-container
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1

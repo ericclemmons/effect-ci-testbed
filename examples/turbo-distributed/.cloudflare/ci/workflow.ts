@@ -1,6 +1,7 @@
 import * as CI from "@effect-ci-testbed/ci"
+import { makeSnapshotRunner } from "@effect-ci-testbed/local-container/snapshots"
 
-export { local } from "./local.ts"
+export const local = ({ root }: { readonly root: string }) => makeSnapshotRunner({ root, paths: ["app"] })
 
 const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source

@@ -2,8 +2,15 @@
   "name": "@turbo-ci/core",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "node ../../scripts/build.mjs",
-    "check": "node ../../scripts/check.mjs"
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
   }
 }

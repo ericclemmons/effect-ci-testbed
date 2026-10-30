@@ -1,136 +1,184 @@
 # Distribute a native Turbo task graph
 
-One action selects existing Turbo tags. The adapter turns Turbo's dependency graph
-into ordinary CI actions; users do not write per-package actions or parallel groups.
+Build a shared TypeScript library, a storefront, and an inventory dashboard.
+These are the same app sources, package scripts, lockfile, and Turbo configuration
+as [the single-machine Turbo recipe](../turbo-ci). There are no sleeps, synthetic
+CPU loops, or isolation-probe files in either project.
+
+The difference is orchestration: the single-machine workflow runs the existing
+`npm run ci` command once; this workflow asks Turbo for its native graph and turns
+its tasks into dependency-linked CI actions. Neither workflow lists packages or
+manually groups parallel actions.
 
 [Workflow](./.cloudflare/ci/workflow.ts "source")
 
-`PackageManager.JavaScript(workspace).install()` now freezes the lockfile by
-default, locally and in CI. Use `{ frozenLockfile: false }` only when intentionally
-updating dependencies. `Toolchain` already contains Node and Mise; Turbo joins
-that namespace rather than introducing another task API.
+## Real work, existing configuration
 
-`turbo.tags("ci")` selects tasks carrying `ci` without `!ci`, using Turbo's native
-resolved-tag query. Additional labels form a union; negated requested labels
-exclude entrypoints. Required dependencies remain, including core's `!ci` build.
-Legacy and core's unused check must never run.
+Core compiles JavaScript and type declarations with TypeScript. Web and admin
+each bundle a browser app with esbuild, copy their HTML entrypoint, and run a
+TypeScript check. Both apps import core through its normal package exports.
+
+[Shared catalog](./app/packages/core/src/index.ts "source")
+
+[Storefront](./app/packages/web/src/main.ts "source")
+
+[Inventory dashboard](./app/packages/admin/src/main.ts "source")
+
+[App commands](./app/packages/web/package.json#json=scripts "source")
 
 [Native task configuration](./app/turbo.json "source")
 
-## Run locally
+Both app builds and checks depend on `^build`. Turbo supplies five nodes:
+core's build, then each app's build and check. The adapter can dispatch those four
+ready app tasks independently, each from the same installed snapshot plus core's
+declared outputs and native cache. They do not share mutable working directories.
+The final workspace contains core's JavaScript/declarations and both apps'
+`dist/app.js` and `dist/index.html`.
+
+Existing tag rules still apply: `ci` includes entrypoints, `!ci` excludes them,
+and required dependencies remain. Core builds despite its `!ci` tag; core's
+unused check and the legacy package do not run. `turbo.tags(...labels)` selects
+a union of positive labels using Turbo's resolved-tag query.
+
+## Run it
+
+From the repository root, after `pnpm install`:
 
 ```sh
 effect-ci run --workflow examples/turbo-distributed/.cloudflare/ci/workflow.ts --format=json
 ```
 
-The recipe's local adapter installs into a disposable copy and makes immutable
-filesystem snapshots. Every action gets its own working copy. It runs trusted
-fixture commands on the host, not in a security sandbox or physical Container.
-The CLI removes the temporary copies after success or failure.
+The one-line `local` export selects the reusable file-snapshot runner. Snapshot
+storage, command execution, cancellation, and cleanup live in the runner package,
+not in example-specific infrastructure. It copies only the explicitly selected
+`app` directory, installs with a frozen lockfile, and gives each action its own
+working copy. The CLI disposes of those copies on success or failure.
 
-[Local snapshot runner](./.cloudflare/ci/local.ts "source")
+[Local runner configuration](./.cloudflare/ci/workflow.ts#symbol=local "source")
 
-The shared core builds once. Web and admin restore the same installed snapshot
-plus core's declared outputs and native cache concurrently. Both deliberately write `app/branch.txt`, pause, then
-check their own value. Shared mutable workspaces would fail this check. The final
-workspace contains all three build outputs but no branch's undeclared file.
-Build timestamps are fixture instrumentation for overlap, not reusable evidence.
+[Reusable snapshot runner](../../packages/local-container/README.md)
 
-[Build and isolation proof](./app/scripts/build.mjs "source")
+This local mode runs trusted commands on one host, not in physical Containers or
+a security sandbox. It demonstrates graph execution and output/cache transfer,
+not the capacity or performance of distributed infrastructure. Every new CLI run
+starts from clean source; warm caches require a workspace/cache carried between runs.
+
+To inspect or run the identical workload with ordinary single-machine Turbo:
+
+```sh
+npm --prefix examples/turbo-distributed/app ci
+npm --prefix examples/turbo-distributed/app run ci -- --plan
+npm --prefix examples/turbo-distributed/app run ci
+npm --prefix examples/turbo-distributed/app run ci
+```
+
+That path uses Turbo's own local parallel scheduling and cache. It is the useful
+baseline, not an artificially serialized executor. Small apps may be faster on
+one machine because graph discovery, snapshots, per-task Turbo invocations, and
+output joins have a cost. This example makes no distributed-speedup claim.
 
 ## Native graph to runner
 
-Baseline: landed `main` at `b39cd394` ([PR #424](https://github.com/ericclemmons/effect-ci-testbed/pull/424)).
-The `+` calls are this unlanded prototype; unchanged calls remain unprefixed.
-Task selection moves from that recipe's script into the SDK Turbo adapter.
+Baseline: landed `main` at `b39cd394`
+([PR #424](https://github.com/ericclemmons/effect-ci-testbed/pull/424)).
+The `+` calls are implemented but unlanded in
+[PR #427](https://github.com/ericclemmons/effect-ci-testbed/pull/427).
+Tag-to-task selection moves from the recipe bridge into the SDK adapter;
+local snapshot plumbing belongs to the reusable runner package.
 
 ```diff
  CI.workflow(id, body)
-   checkout() → install() → immutable installed Workspace
--  manager.run("check") → recipe bridge → one Turbo process
+   checkout() → PackageManager.JavaScript(workspace).install() → installed Workspace
+-  manager.run("check") → recipe tag-selection bridge → one Turbo process/workspace
 +  inline CI.action("Turbo CI", construction)()
 +    Toolchain.Turbo(workspace): Effect<TurboToolchain>
 +      tags(...labels): Effect<Workspace>
 +        discovery action → native query/dry-run → immutable planned Workspace
-+        create namespaced action factories from native task IDs and edges
-+        parallel terminal actions → memoized prerequisite actions
-+          each task → planned snapshot plus prerequisite output/cache manifests
-+          join → conflict-check parent file/cache manifests
-           runner.executor.execute(request)
-+            native hash/cache preflight → normal Turbo target → run summary
-+          success → publish bounded result manifest; commit Workspace
-+          required failure → block dependents; preserve error
-+        join terminal outputs onto planned snapshot → return Workspace
-+   local adapter finally → delete owned temporary workspaces
++        native IDs and dependency edges → namespaced memoized CI actions
++        parallel terminal actions → resolve prerequisite actions once
++          task workspace = planned snapshot + prerequisite output/cache manifests
++          reject conflicting manifests before executing
+           runner.executor.execute({ workspace, stepId, command, onOutput })
++            native hash/cache preflight → normal Turbo target → verify run summary
++          success → bounded result manifest → runner commits snapshot
++          required failure → preserve error; do not dispatch dependents
++        join terminal outputs/cache onto planned snapshot → return Workspace
++ CLI local configuration → makeSnapshotRunner({ root, paths }): RunConfiguration
++   per-action copies; command output → onOutput; abort → kill owned process group
++   finally → dispose(): stop processes, await exit, delete temporary copies
++ Cloudflare configuration → existing revision-aware runner
++   action-specific Container → snapshot restore/commit; release successful commit
 ```
 
-Turbo still owns hashes, strict environment filtering, cache restoration, and task
-execution. The adapter never executes an extracted task command or rewrites its
-dependencies. Each native invocation uses an explicit run-local cache directory;
-it does not access a linked worktree's shared cache or require a remote cache service.
+Turbo owns task commands, hashes, environment filtering, and cache restoration.
+The adapter never extracts commands or rewrites dependencies. Each invocation
+uses an explicit run-local cache directory; no remote cache service is required.
 
 [SDK adapter](../../packages/ci/src/turbo.ts "source")
 
 [Native execution bridge](../../packages/ci/src/turbo-bridge.ts "source")
 
-The execution report contains five native task actions. Ordinary `effect-ci plan`
-records the discovery action only: it does not run Turbo or claim to know the
-source-bound task graph before checkout and installation. Expansion happens during
-execution. Source-bound preflight expansion remains future work.
+Ordinary `effect-ci plan` records discovery only. Source-bound native graph
+expansion happens after checkout and installation during execution, not before.
 
-## Cloudflare path
+## Remote execution
 
-The worker uses the existing runner. Revision-bearing task actions select separate
-Containers; web and admin both restore the installed revision plus core's outputs
-and native cache. Undeclared parent mutations are not inherited. It releases each
-successfully committed Container with `reuseWorkspace: false`. This is not a claim
-of complete cleanup after failed commands or snapshot reads.
+The worker uses the existing Cloudflare runner. Revision-bearing task actions
+select separate Containers; ready tasks restore the same installed revision plus
+their prerequisites' declared outputs/cache. `reuseWorkspace: false` releases
+successfully committed Containers. Complete failure/read cleanup is not established.
 
 [Worker](./src/worker.ts "source")
 
 [Cloudflare configuration](./wrangler.jsonc "source")
 
-An enrolled host can run the same workflow through `--remote`. Deployment, host
-enrollment, credentials, account selection, and paid execution are separate steps;
-this recipe does not provision them. Physical linear-Container reuse is not added.
-No hosted execution, distributed speedup, or signed receipts are established here.
+An enrolled host can run this workflow through `--remote`. Deployment, host
+enrollment, credentials, account selection, and paid execution remain separate.
+This example has not established hosted execution, distributed speedup, or
+host-signed receipts.
 
-## Supported prototype boundary
+## Prototype limits
 
-- Turbo 2.11.10 only; finite cacheable tasks with stable native hashes, at most
-  256 task nodes. Persistent, interactive, companion, scriptless, and deferred-hash
-  tasks are rejected rather than approximated.
-- Only regular output files, native task logs, and opaque native cache bytes cross
-  branches. Native run summaries supply expanded paths; the adapter does not
-  implement Turbo glob matching. Symlinks, conflicting producers, and joins over
-  48 KiB of serialized manifest data fail. Empty directories and output deletions
-  are not transported; use disjoint, file-producing tasks on a clean installed base.
-- Before admitting a task, its native hash must match the original graph and every
-  prerequisite must report a local cache hit. After execution, the native summary
-  must confirm those hits. Missing or changed inputs fail the run.
-- This is not a native cache-only executor. Turbo may rerun a prerequisite if an
-  archive becomes unreadable after preflight; the summary detects that only after
-  execution. Use deterministic cacheable checks/builds, never deployments or other
-  side effects. Exactly-once execution needs a stronger native execution contract.
-- Result manifests are project-controlled transport, not host-signed attestations.
-  General artifact overlays, large-object transport, source-bound planning, robust
-  failure cleanup, and signing remain separate work.
+- Turbo 2.11.10 only, with at most 256 finite cacheable nodes and stable native
+  hashes. Persistent, interactive, companion, scriptless, and deferred-hash tasks
+  fail rather than receiving approximate behavior.
+- Only regular declared output files, native logs, and native cache bytes cross
+  branches. Native summaries supply expanded paths; the adapter does not match
+  globs itself. Symlinks, conflicting producers, and serialized joins over 48 KiB
+  fail. Empty directories and output deletions are not transported.
+- Before task admission, hashes must match the original graph and prerequisites
+  must report local cache hits. The native run summary must confirm those hits.
+  A corrupt archive discovered after preflight can still make Turbo rerun a
+  prerequisite; this is not an exactly-once executor. Use deterministic builds
+  and checks, not deployments or other side effects.
+- Source-bound preflight planning, large artifact transport, robust hosted failure
+  cleanup, and host signing remain future work.
 
-The installed Turbo documentation (`reference/query.mdx`, `reference/run.mdx`, and
-`crafting-your-repository/caching.mdx`) supplies the native contract. Existing
-`snapshot-fanout` and `turborepo-cache` recipes supply runner/configuration prior art;
+Installed Turbo docs define the native contract. Existing `snapshot-fanout`,
+`turborepo-cache`, and the local runner package supply implementation prior art;
 there is no repository SOP for distributed Turbo execution.
 
-## Recorded verification
+The earlier timeout-based fixture and its timing results are superseded by these
+real compiler/bundler apps. Local validation is not deployed execution.
 
-On October 29, 2026, the local snapshot runner executed five native task actions.
-Core executed once; both app invocations reported a native prerequisite cache hit,
-with hashes matching the original full graph. Web and admin overlapped for 721 ms.
-All three build outputs survived the join; the undeclared branch file did not.
-A warm run preserved the cached output. Injecting a required core failure dispatched
-neither dependent app build.
+## Recorded local verification
 
-The 44 existing SDK tests and 57 CLI/ergonomics tests passed. All example TypeScript
-checks, existing example-plan checks, the 99-page documentation build, and Wrangler's
-worker/Container-image dry run passed. No tests were added or changed. These are
-local proofs, not deployed Cloudflare execution or signed evidence.
+On October 29, 2026, ordinary Turbo and the graph adapter ran from the same
+installed snapshot. All six output files were byte-identical, and all five native
+task hashes matched between execution models. Core executed once in the cold
+graph run; the four dependent invocations restored its native cache.
+
+Deleting every output directory and rerunning from each completed workspace
+restored all outputs with native cache hits. Changing the shared catalog then
+invalidated core and all four app tasks; both bundles contained the changed
+product. The two execution models again produced identical files.
+
+Both documented workflows also completed through the real CLI. Injecting a core
+build failure dispatched none of the four dependent app tasks. The 44 existing
+SDK tests, 15 CLI/ergonomics tests, all example type/plan checks, documentation
+build, and Worker/Container-image dry run passed. No tests were added or changed;
+both Turbo examples remain visible in the homepage feature matrix.
+
+This small local workload was slower through the graph adapter, not faster.
+The verification establishes real builds, dependency order, cache restoration,
+invalidation, and output parity—not a performance advantage over native Turbo.

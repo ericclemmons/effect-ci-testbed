@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
-import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
+import { constants, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, isAbsolute, join, relative } from "node:path"
 import * as CI from "@effect-ci-testbed/ci"
@@ -8,9 +8,14 @@ import * as Effect from "effect/Effect"
 
 const attempt = <A>(operation: () => A) => Effect.try({ try: operation, catch: (error) => error })
 
-export const local = ({ root }: { readonly root: string }): CI.RunConfiguration => {
+export const makeSnapshotRunner = ({ root, paths }: {
+  readonly root: string
+  readonly paths: ReadonlyArray<string>
+}): CI.RunConfiguration => {
+  if (!paths.length || paths.some(path => !path || isAbsolute(path) || path.split(/[\\/]/).some(part => !part || part === "." || part === "..")))
+    throw Error("Snapshot paths must be explicit, relative project directories")
   const id = randomUUID()
-  const provider = "turbo-distributed-files"
+  const provider = "local-file-snapshots"
   const snapshots = new Map([["source", root]])
   const workspaces = new Map<string, string>()
   const processes = new Set<{ readonly stop: () => void; readonly closed: Promise<void> }>()
@@ -36,23 +41,32 @@ export const local = ({ root }: { readonly root: string }): CI.RunConfiguration 
   }
   const copy = (source: string) => {
     const target = allocate()
-    cpSync(join(source, "app"), join(target, "app"), {
-      recursive: true,
-      verbatimSymlinks: true,
-      filter: (path) => {
-        if (basename(path) === ".git") return false
-        if (source === root && ["node_modules", ".turbo", ".effect-ci", "dist", "branch.txt"].includes(basename(path))) return false
-        const info = lstatSync(path)
-        if (info.isSymbolicLink()) {
-          const resolved = relative(realpathSync(join(source, "app")), realpathSync(path))
-          if (isAbsolute(resolved) || resolved.split(/[\\/]/).includes("..")) throw Error(`Snapshot symlink escapes the fixture: ${path}`)
+    mkdirSync(target)
+    for (const selected of paths) {
+      if (!lstatSync(join(source, selected)).isDirectory()) throw Error("Snapshot paths must select real directories")
+      const boundary = realpathSync(join(source, selected))
+      const selectedPath = relative(realpathSync(source), boundary)
+      if (isAbsolute(selectedPath) || selectedPath.split(/[\\/]/).includes(".."))
+        throw Error("Snapshot directory escapes the project")
+      cpSync(join(source, selected), join(target, selected), {
+        recursive: true,
+        mode: constants.COPYFILE_FICLONE,
+        verbatimSymlinks: true,
+        filter: (path) => {
+          if (basename(path) === ".git") return false
+          if (source === root && ["node_modules", ".turbo", ".effect-ci", "dist"].includes(basename(path))) return false
+          const info = lstatSync(path)
+          if (info.isSymbolicLink()) {
+            const resolved = relative(boundary, realpathSync(path))
+            if (isAbsolute(resolved) || resolved.split(/[\\/]/).includes("..")) throw Error(`Snapshot symlink escapes the selected directory: ${path}`)
+            return true
+          }
+          if (!info.isDirectory() && !info.isFile())
+            throw Error("Snapshots require regular files and directories")
           return true
-        }
-        if (!info.isDirectory() && !info.isFile())
-          throw Error("Snapshot fixtures require regular files and directories")
-        return true
-      },
-    })
+        },
+      })
+    }
     return target
   }
   const materialize = (workspace: CI.Workspace, stepId: string) => {

@@ -4,12 +4,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/build.mjs"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/tsconfig.json"],
       "outputs": ["dist/**"],
       "tags": ["ci"]
     },
     "check": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/check.mjs"],
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/tsconfig.json"],
       "tags": ["ci"]
     }
   }

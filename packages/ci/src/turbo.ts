@@ -92,7 +92,7 @@ export const makeTurboToolchain = <Environment>(
       const planned = yield* discover()
       if ((yield* CI.executionMode) === "plan") return planned
       if (planned.kind !== "remote" || !planned.revision) {
-        return yield* Effect.fail(Error("Distributed Turbo requires a snapshot-backed runner; use the example's local adapter or Cloudflare"))
+        return yield* Effect.fail(Error("Distributed Turbo requires a snapshot-backed runner; use makeSnapshotRunner or Cloudflare"))
       }
       const body = yield* planned.readFile(planFile)
       if (!body) return yield* Effect.fail(Error("Native Turbo did not produce a task plan"))
