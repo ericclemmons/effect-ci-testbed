@@ -11,15 +11,16 @@ export function compatibility(coverage, readmes) {
     }
     if (!group || !line.startsWith("| ") || /^\| (Recipe|---)/.test(line)) continue
     const [feature, ...cells] = line.split("|").slice(1, -1).map(cell => cell.trim())
-    const link = feature.match(/\[([^\]]+)\]\(\.\/([^/#)]+)(?:#[^)]*)?\)/)
-    const [, title, recipe] = link ?? []
-    group.rows.push({ title: title ?? feature, recipe, cells: cells.map(cell => cell !== "—") })
+    const link = feature.match(/\[([^\]]+)\]\(([^)]+)\)/)
+    const [, title, target] = link ?? []
+    const recipe = target?.match(/^\.\/([^/#)]+)/)?.[1]
+    group.rows.push({ title: title ?? feature, recipe, link: target, cells: cells.map(cell => cell !== "—") })
   }
   const listed = new Set(groups.flatMap(group => group.rows.map(row => row.recipe)))
   const extra = Object.entries(readmes)
     .map(([path, body]) => {
       const [, recipe] = path.match(/examples\/([^/]+)\/README\.md$/)
-      return { recipe, title: body.match(/^# (.+)/m)?.[1] ?? recipe, cells: environments.map(() => true) }
+      return { recipe, link: `./${recipe}`, title: body.match(/^# (.+)/m)?.[1] ?? recipe, cells: environments.map(() => true) }
     })
     .filter(row => !listed.has(row.recipe))
     .sort((a, b) => a.recipe.localeCompare(b.recipe))

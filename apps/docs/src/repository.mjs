@@ -11,10 +11,12 @@ export const patterns = [
   "apps/repair-ai/scripts/README.md", "packages/*/*.md", "packages/cloudflare/src/*.md",
 ]
 
+export const documentationId = (path) => path === "examples/demo/README.md" ? "walkthrough" : path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
+
 export function pages() {
   return [...new Set(globSync(patterns, { cwd: root }))].filter(path => !path.endsWith("/AGENTS.md")).sort().map((path) => {
     const body = readFileSync(resolve(root, path), "utf8")
-    const id = path === "examples/demo/README.md" ? "walkthrough" : path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
+    const id = documentationId(path)
     return { path, id, body, title: body.match(/^# (.+)$/m)?.[1] ?? path }
   }).flatMap(page => page.id === "walkthrough" ? [{ ...page, id: "examples/demo" }, page] : [page])
 }
