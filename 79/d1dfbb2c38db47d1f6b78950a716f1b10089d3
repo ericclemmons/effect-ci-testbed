@@ -1,0 +1,19 @@
+apps/effect-ci/src/repair-verifier-runtime.test.ts
+  s_d7ce0be6d45bea::t_345ecc6b458483 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "79d1dfbb2c38db47d1f6b78950a716f1b10089d3",
+  "prompts": {},
+  "sessions": {
+    "s_d7ce0be6d45bea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ee4-9f3b-7ac3-a2e4-e76d76228f57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
