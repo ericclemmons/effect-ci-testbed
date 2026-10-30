@@ -1,0 +1,23 @@
+apps/effect-ci/PUBLIC-REPAIR.md
+  s_3279c24a76188a::t_3dea545d08c48e 3-80
+apps/effect-ci/SELF-HOST.md
+  s_3279c24a76188a::t_aa8061fd0a5ba6 136
+test/apps/repair-incident/README.md
+  s_3279c24a76188a::t_12007cc42239bc 3-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ffb7e72053cd08ef7fadc26696a0bd6f74911a8e",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
