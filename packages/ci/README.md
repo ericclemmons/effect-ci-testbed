@@ -5,6 +5,12 @@
 Actions own prerequisites. Workflows select goals and coordinate events, parallel
 work, decisions and recovery.
 
+[CI.action](./ACTION.md) · [CI.Approval](./APPROVAL.md) ·
+[CI.Artifact](./ARTIFACT.md) · [CI.check](./CHECK.md) ·
+[CI.PackageManager](./PACKAGE-MANAGER.md) · [CI.Secret](./SECRET.md) ·
+[CI.Source](./SOURCE.md) · [CI.Toolchain](./TOOLCHAIN.md) ·
+[CI.workflow](./WORKFLOW.md) · [CI.Workspace](./WORKSPACE.md)
+
 ```ts
 import * as CI from "@effect-ci-testbed/ci"
 import * as actions from "./actions.ts"

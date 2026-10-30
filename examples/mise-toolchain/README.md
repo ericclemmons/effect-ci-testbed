@@ -12,7 +12,8 @@ Tool downloads live under `.effect-ci/cache/mise`.
 With Docker running:
 
 ```sh
-pnpm exec effect-ci run --workflow examples/mise-toolchain/.cloudflare/ci/workflow.ts
+cd examples/mise-toolchain
+effect-ci run
 ```
 
 [Actions](./.cloudflare/ci/actions.ts) ·

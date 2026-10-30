@@ -12,7 +12,8 @@ does not need runner-specific branches.
 With Docker running:
 
 ```sh
-pnpm exec effect-ci run --workflow examples/system-package/.cloudflare/ci/workflow.ts
+cd examples/system-package
+effect-ci run
 ```
 
 The example installs ImageMagick and prints its version.

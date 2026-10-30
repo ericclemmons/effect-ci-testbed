@@ -21,8 +21,9 @@ Use an Artifacts repository name—not a GitHub URL—in `repository`. Omit
 `directory` when the example is at that repository's root. This small-file
 exporter supports at most 64 KiB of source, not a whole monorepo.
 
-For local files instead:
+From the repository root, use local files instead:
 
 ```sh
-pnpm exec effect-ci run --workflow examples/artifacts-source/.cloudflare/ci/workflow.ts
+cd examples/artifacts-source
+effect-ci run
 ```
