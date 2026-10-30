@@ -26,11 +26,16 @@ const reporter = new Reporter({
     : {}),
 })
 const runtime = fileURLToPath(new URL("../cli/src/effect-ci.ts", import.meta.url))
+const actions: unknown = JSON.parse(process.env.EFFECT_CI_ACTIONS ?? "[]")
+if (!Array.isArray(actions) || actions.some(name => typeof name !== "string" || !name || name.startsWith("-"))) {
+  throw new Error("EFFECT_CI_ACTIONS must be a JSON array of action names")
+}
 const child = spawn(process.execPath, [
   runtime,
   "--workflow",
   required("EFFECT_CI_WORKFLOW"),
   process.env.DRY_RUN ? "plan" : "run",
+  ...actions,
 ], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
   stdio: ["inherit", "inherit", "inherit", "pipe"],

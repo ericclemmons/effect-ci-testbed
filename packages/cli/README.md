@@ -17,9 +17,17 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 `AI_AGENT=demo` selects agent-friendly JSON. `--format=text|json` overrides detection;
 `plan` also supports `--format=mermaid`.
 
-Without a workflow, the CLI discovers conventional `package.json` scripts. The
-first local run creates an empty `.cloudflare/ci/ci.ts` marker; help, list, and
-plan do not write it. An authored workflow takes precedence. Export actions to
+Without a workflow, every `package.json` script is an action. In Vite+ projects,
+tasks under `run.tasks` in `vite.config.ts` are actions too. Install the project's
+dependencies first so the CLI can use its Vite+ config loader. Vite+ owns task
+dependencies and caching; Effect CI invokes config tasks with `vp run <name>`.
+A name cannot appear in both package scripts and Vite+ tasks.
+
+Auto-discovered projects require an action name: `effect-ci run build`.
+Bare `effect-ci run` fails before initialization or execution. `list` and `plan`
+work without a name. The first named local run creates an empty
+`.cloudflare/ci/ci.ts` marker; help, list, and plan do not write it. An authored
+workflow takes precedence and retains its default workflow. Export actions to
 make them CLI goals; keep private prerequisites unexported.
 
 The package is unpublished. Install this repository's dependencies and add its
@@ -65,7 +73,7 @@ requests are made, so reconnecting logs does not reuse an expired job token.
 
 In GitHub Actions, give the job `permissions: id-token: write` and configure the
 public `EFFECT_CI_REMOTE_URL`. Run `effect-ci oidc` once to enroll that repository, then
-`effect-ci run --remote`. CI enrollment never changes the checkout and never needs
+`effect-ci run build --remote`. CI enrollment never changes the checkout and never needs
 an Access secret or stored Effect CI API token. Local enrollment saves only the
 public origin and repository name in `.cloudflare/ci/oidc.json`, which subsequent
 remote commands discover automatically.

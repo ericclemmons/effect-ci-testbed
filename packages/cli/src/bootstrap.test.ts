@@ -72,7 +72,7 @@ test("explicit marker-free directory works for GitHub runners without generating
   })
   assert.equal(plan.status, 0, plan.stderr)
   assert.match(plan.stdout, /step_install --> step_lint/)
-  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "--agent"], {
+  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "lint", "--agent"], {
     cwd: tmpdir(), encoding: "utf8", timeout: 30_000,
   })
   assert.equal(run.status, 0, run.stderr)
@@ -81,11 +81,11 @@ test("explicit marker-free directory works for GitHub runners without generating
   assert.equal(existsSync(join(root, ".cloudflare")), false)
 }))
 
-test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
+test("unknown targets and packages with no actions fail before writing", () => fixture(root => {
   assert.throws(() => initializeJavaScriptProject(["run", "unknown"], root), /Unknown action target/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)
-  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { start: "do-not-run" } }))
-  assert.throws(() => initializeJavaScriptProject(["run"], root), /no format/)
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: {} }))
+  assert.throws(() => initializeJavaScriptProject(["run", "start"], root), /no package.json scripts/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)
 }))
 
@@ -101,7 +101,38 @@ test("symlinked configuration directories cannot redirect initialization", () =>
   const outside = mkdtempSync(join(tmpdir(), "ci-bootstrap-outside-"))
   try {
     symlinkSync(outside, join(root, ".cloudflare"))
-    assert.throws(() => initializeJavaScriptProject(["run"], root), /ordinary project-owned/)
+    assert.throws(() => initializeJavaScriptProject(["run", "lint"], root), /ordinary project-owned/)
     assert.equal(existsSync(join(outside, "ci")), false)
   } finally { rmSync(outside, { recursive: true, force: true }) }
+}))
+
+test("Vite+ config tasks and arbitrary scripts are actions without executing them during discovery", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
+  mkdirSync(join(root, "node_modules"))
+  symlinkSync(fileURLToPath(new URL("../../../examples/vite-plus-cache/app/node_modules/vite-plus", import.meta.url)),
+    join(root, "node_modules/vite-plus"), "dir")
+  writeFileSync(join(root, "package.json"), JSON.stringify({ name: "vite-actions", type: "module",
+    devDependencies: { "vite-plus": "1.0.0" }, scripts: { "custom-check": "do-not-run", dev: "do-not-run" } }))
+  writeFileSync(join(root, "vite.config.ts"), `
+    import { defineConfig, lazyPlugins } from "vite-plus"
+    export default defineConfig(() => ({
+      plugins: lazyPlugins(() => { throw new Error("discovery must not instantiate plugins") }),
+      run: { tasks: { build: { command: "do-not-run" }, "release:preview": { command: "do-not-run" } } }
+    }))
+  `)
+  const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.deepEqual(JSON.parse(listed.stdout).targets, ["build", "custom-check", "dev", "release:preview"])
+  assert.ok(!JSON.parse(listed.stdout).commands.includes("effect-ci run"))
+  const planned = spawnSync(process.execPath, [bin, "plan", "build", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(planned.status, 0, planned.stderr)
+  const unnamed = spawnSync(process.execPath, [bin, "run", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(unnamed.status, 2, unnamed.stderr)
+  assert.equal(JSON.parse(unnamed.stdout).error.code, "CI_ACTION_REQUIRED")
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+  writeFileSync(join(root, "vite.config.ts"), 'export default { tasks: { build: { command: "do-not-run" } } }')
+  const invalid = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(invalid.status, 2, invalid.stderr)
+  assert.equal(JSON.parse(invalid.stdout).error.code, "CI_VITE_PLUS_CONFIG_INVALID")
+  assert.match(JSON.parse(invalid.stdout).error.message, /run.tasks/)
 }))

@@ -15,6 +15,11 @@ This is a prototype. Test real-world examples end to end, not the implementation
 Don't write tests that lock a buggy prototype in place by asserting its internal
 details.
 
+Always update tests when user-facing behavior changes. Runnable user-facing
+examples are the acceptance criteria; keep tests aligned with those examples
+instead of preserving old implementation details. Test updates do not require
+separate permission.
+
 Keep moving. Stop and ask at one-way doors: irreversible changes, destructive
 operations, or decisions that need authority we do not have. Two-way doors swing
 freely. Walk through them: try reversible changes and learn from running them

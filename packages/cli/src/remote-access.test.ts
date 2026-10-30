@@ -51,13 +51,17 @@ test("Access-only CLI negotiates host enrollment before any default or selected 
     })
     const doctor = await run(["doctor"])
     assert.equal(doctor.code, 0, doctor.output); assert.equal(dispatches, 0)
-    for (const args of [["run"], ["run", "test", "build"]]) {
+    const unnamed = await run(["run"])
+    assert.equal(unnamed.code, 2, unnamed.output)
+    assert.equal(JSON.parse(unnamed.output).error.code, "CI_ACTION_REQUIRED")
+    assert.equal(dispatches, 0)
+    for (const args of [["run", "test"], ["run", "test", "build"]]) {
       const result = await run(args); assert.equal(result.code, 0, result.output)
       assert.doesNotMatch(result.output, /fixture-owner-access|fixture-service-secret/)
     }
     assert.equal(dispatches, 2); assert.equal(capabilityReads, 3)
     enrolled = false
-    for (const args of [["doctor"], ["run"], ["run", "test"]]) {
+    for (const args of [["doctor"], ["run", "build"], ["run", "test"]]) {
       const result = await run(args); assert.equal(result.code, 3, result.output)
       assert.equal(JSON.parse(result.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
     }
