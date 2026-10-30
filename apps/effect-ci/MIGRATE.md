@@ -251,3 +251,10 @@ If avoiding overlapping hosting cost requires teardown first, save the inventory
 and credentials first and accept remote-CI/demo downtime until all destination
 checks above pass. Never delete an unresolved active release or runner journal
 to force the cutover.
+
+The work-account migration has a separately approved $7 lifetime budget named
+`work-demo-repair-7-usd-20261030-v1`. Its ledger starts empty. The personal
+`friday-demo-repair-2-usd-v1` policy still requires its historical reservations.
+Keep the work ledger and per-run limits across deployments; another namespace
+or a renamed budget requires new authorization. Historical proposal/incident
+receipts remain evidence of their original account, not work-account executions.
