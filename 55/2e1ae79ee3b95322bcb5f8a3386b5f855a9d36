@@ -1,0 +1,33 @@
+examples/demo/tutorial/oidc.example.yml
+  s_c0b5e4108c4692::t_3f7cda42743c1a 21,23-27
+examples/GITHUB.md
+  s_4fb061b3c5d513::t_8988df40e536b2 34-36,40-42,48-50
+examples/demo/README.md
+  s_4fb061b3c5d513::t_be2a38cf4d16a6 309,312-314,316,323-324,332-351
+examples/demo/tutorial/cloudflare.config.ts
+  s_4fb061b3c5d513::t_2c9e830f7b6aa1 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "552e1ae79ee3b95322bcb5f8a3386b5f855a9d36",
+  "prompts": {},
+  "sessions": {
+    "s_4fb061b3c5d513": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc8-d3b7-7fb1-a280-e3b7e4f1d52e",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_c0b5e4108c4692": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc7-0b8b-74a3-bbb5-219357b3fdf1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
