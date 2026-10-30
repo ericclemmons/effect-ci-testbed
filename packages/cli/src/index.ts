@@ -955,7 +955,9 @@ export const main = async (
 
     if (invocation.command === "doctor") {
       const capabilities = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
-      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", ...capabilities, dispatched: false }
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets: capabilities.targets,
+        ...(capabilities.rerun ? { rerun: true } : {}),
+        ...(capabilities.targetDiscovery ? { targetDiscovery: capabilities.targetDiscovery } : {}), dispatched: false }
       if (format === "json") printJson(result)
       else console.log(capabilities.targetDiscovery === "project"
         ? "Remote access ready. Selected goals are discovered inside the project workspace. No workflow started."
