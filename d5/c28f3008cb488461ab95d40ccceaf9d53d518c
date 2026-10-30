@@ -1,0 +1,19 @@
+apps/docs/src/readiness.ts
+  s_456d620717b89d::t_a81d6e66614b39 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d5c28f3008cb488461ab95d40ccceaf9d53d518c",
+  "prompts": {},
+  "sessions": {
+    "s_456d620717b89d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18af3-7cd6-7f21-b737-1a6f4360a26f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
