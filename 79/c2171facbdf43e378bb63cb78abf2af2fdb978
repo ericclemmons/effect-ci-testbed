@@ -1,0 +1,19 @@
+apps/docs/src/components/ReadinessMatrix.astro
+  s_8c5c098d7028f1::t_f0037639e308ce 17,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "79c2171facbdf43e378bb63cb78abf2af2fdb978",
+  "prompts": {},
+  "sessions": {
+    "s_8c5c098d7028f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18d7a-3028-7012-b327-b3f32628813d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
