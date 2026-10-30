@@ -36,10 +36,10 @@ const targets = query.data.packages.items.flatMap(({ tasks }) =>
   tasks.items.map(({ fullName }) => fullName)).sort()
 if (!targets.length) throw Error("No Turbo tasks tagged ci were selected")
 
-const args = ["run", ...targets, "--cache=local:rw"]
+const args = ["run", ...targets, "--cache=local:rw", "--cache-dir=.effect-ci/turbo/cache"]
 if (process.argv.includes("--plan")) {
   process.stdout.write(execute([...args, "--dry=json"]))
 } else {
   console.log("Turbo CI entrypoints:", targets.join(", "))
-  process.stdout.write(execute(args))
+  process.stdout.write(execute([...args, "--summarize"]))
 }

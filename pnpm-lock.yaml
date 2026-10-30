@@ -1023,6 +1023,31 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  examples/turbo-distributed:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      '@effect-ci-testbed/local-container':
+        specifier: workspace:*
+        version: link:../../packages/local-container
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+
   examples/turborepo-cache:
     dependencies:
       '@effect-ci-testbed/ci':

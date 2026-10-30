@@ -50,6 +50,12 @@ request `effect-ci run test` directly. The test action must own its required val
 
 ## Keep the runner out of the program
 
+JavaScript package-manager installs freeze the lockfile by default, including
+local runs. Pass `{ frozenLockfile: false }` only to request a mutable install.
+The experimental [distributed Turbo recipe](../../examples/turbo-distributed)
+adds `Toolchain.Turbo(workspace).tags(...)` alongside the existing Node and Mise
+toolchains. It expands a native graph during execution, not ordinary planning.
+
 - `CI.Source` supplies checkout. It may come from Git, a local directory, R2,
   Artifacts or a stored revision; actions do not choose provider credentials.
 - An action returns a `CI.Workspace` by default. Use `CI.action<void>` for an

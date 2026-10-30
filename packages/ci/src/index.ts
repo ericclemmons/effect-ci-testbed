@@ -13,6 +13,7 @@ import type { RuntimeObservers } from "./observers.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./path-glob.ts"
+import { makeTurboToolchain } from "./turbo.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -994,7 +995,7 @@ export const JavaScript = (
       workspace,
       install: (options?: JavaScriptInstallOptions) => Effect.gen(function* () {
         const runtime = yield* Runtime
-        const frozenLockfile = options?.frozenLockfile ?? runtime.ci
+        const frozenLockfile = options?.frozenLockfile ?? true
 
         return yield* workspace.exec(command(
           "install",
@@ -1157,7 +1158,19 @@ const Mise = (
       : new ToolchainError(workspace.cwd, String(error))),
   )
 
-export const Toolchain = { Node, Mise } as const
+const Turbo = (workspace: Workspace) => Effect.gen(function* () {
+  const runtime = yield* Runtime
+  const owner = yield* CurrentStep
+  const dependencies = [...runtime.edges]
+    .filter(edge => edge.startsWith(`${owner}->`))
+    .map(edge => edge.slice(owner.length + 2))
+  return makeTurboToolchain(workspace, owner, Effect.gen(function* () {
+    const current = yield* CurrentStep
+    for (const dependency of dependencies) yield* runtime.addDependency(current, dependency)
+  }))
+})
+
+export const Toolchain = { Node, Mise, Turbo } as const
 
 export interface SourceService {
   /** Acquire the repository and immutable revision selected by the initiating event. */
