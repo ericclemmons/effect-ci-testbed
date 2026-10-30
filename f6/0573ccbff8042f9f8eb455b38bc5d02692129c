@@ -1,0 +1,23 @@
+apps/docs/README.md
+  s_27347b19cb5a98::t_f26efa2bad01d2 14-15
+apps/docs/src/components/ReadinessMatrix.astro
+  s_27347b19cb5a98::t_68ea9f3fe1915f 17,20,30,33,56,59,73
+apps/docs/src/readiness.ts
+  s_27347b19cb5a98::t_7e0105f338fb4d 35-36,62-64,78-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f60573ccbff8042f9f8eb455b38bc5d02692129c",
+  "prompts": {},
+  "sessions": {
+    "s_27347b19cb5a98": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18b20-b2bc-7171-8e5a-9e73499ccb7f",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
