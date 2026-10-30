@@ -189,7 +189,25 @@ transforming...
 
 ## 6. Run on a host
 
-Push the app and connect it to an Effect CI host. Then run the same build remotely:
+Use an existing Effect CI host, or [set one up](../../apps/effect-ci/SELF-HOST.md).
+Add your app's GitHub repository to that host's GitHub App installation and push
+it to GitHub. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+for local sign-in.
+
+From the app directory, replace `https://your-ci-host` with the host's origin:
+
+```sh
+cloudflared access login https://your-ci-host
+effect-ci oidc --service https://your-ci-host
+```
+
+Enrollment writes `.cloudflare/ci/oidc.json` with the public host origin and
+repository name. It contains no credentials. The CLI reads it to find the remote
+endpoint; without enrollment or `EFFECT_CI_REMOTE_URL`, `--remote` reports
+`CI_REMOTE_UNAVAILABLE`.
+
+Commit and push your app changes, including `.cloudflare/ci/oidc.json`. Then run
+the same build remotely:
 
 ```sh
 effect-ci doctor --remote
