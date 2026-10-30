@@ -26,38 +26,46 @@ export function sidebar() {
   const recipes = new Map(docs.filter((page) => /^examples\/[^/]+\/README\.md$/.test(page.path))
     .map((page) => [page.path.split("/")[1], page]))
   const groups = []
-  const ecosystem = ["node-npm", "node-pnpm", "vite-plus-cache", "turborepo-cache", "github-cloudflare-ci", "gitlab-source", "cloudflare-runner", "blacksmith"]
-  const used = new Set(["demo", ...ecosystem])
+  const byLabel = (a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })
+  const used = new Set(["demo"])
   for (const section of readFileSync(resolve(root, "examples/README.md"), "utf8").split(/^## /m).slice(1)) {
-    const items = []
-    for (const [, name] of section.matchAll(/\]\(\.\/([^/#)]+)/g)) {
+    const [label] = section.split("\n")
+    if (!label.startsWith("CI.")) continue
+    const api = docs.find(page => page.title === label)
+    if (!api) throw new Error(`Missing reference page for ${label}`)
+    const items = [
+      { label: "Usage", slug: api.id },
+      ...[...api.body.matchAll(/^## (\w+)$/gm)].map(([, method]) => ({
+        label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
+      })),
+    ]
+    for (const [, label, name] of section.matchAll(/\[([^\]]+)\]\(\.\/([^/#)]+)\)/g)) {
       if (!recipes.has(name) || used.has(name)) continue
       used.add(name)
-      items.push({ label: recipes.get(name).title, slug: recipes.get(name).id })
+      if (!items.some(item => item.label === label)) items.push({ label, slug: recipes.get(name).id })
     }
-    if (items.length) groups.push({ label: section.split("\n")[0], collapsed: true, items })
+    if (items.length) groups.push({ label, collapsed: true, items: items.sort(byLabel) })
   }
   const extra = [...recipes].filter(([name]) => !used.has(name))
     .map(([, page]) => ({ label: page.title, slug: page.id }))
-  if (extra.length) groups.push({ label: "More examples", collapsed: true, items: extra })
   return [
     { label: "Features", link: "/" },
     { label: "Walkthrough", slug: "walkthrough" },
-    { label: "Ecosystem", collapsed: true, items: [
-      { label: "Tools and cache ownership", slug: "examples/ecosystem" },
-      { label: "GitHub", slug: "examples/github" },
-      ...ecosystem.map(name => ({ label: recipes.get(name).title, slug: recipes.get(name).id })),
-    ] },
-    { label: "Recipes", collapsed: true, items: [{ label: "Find a recipe", slug: "examples" }, ...groups] },
-    { label: "Reference", collapsed: true, items: [
+    { label: "Reference", items: [
+      ...groups,
       { label: "CLI", slug: "packages/cli" },
-      { label: "SDK", slug: "packages/ci" },
+      { label: "Ecosystem", slug: "examples/ecosystem" },
       { label: "Execution evidence", slug: "examples/coverage" },
+      { label: "GitHub", slug: "examples/github" },
       { label: "Self-hosting", slug: "apps/effect-ci/self-host" },
       { label: "Repository wiring", slug: "apps/docs/laboratory" },
-      { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
-      { label: "Hosts and services", items: [{ autogenerate: { directory: "apps" } }] },
-    ] },
+      { label: "SDK", slug: "packages/ci" },
+      { label: "Packages", collapsed: true, items: docs
+        .filter(page => page.path.startsWith("packages/") && !page.title.startsWith("CI."))
+        .map(page => ({ label: page.title, slug: page.id })).sort(byLabel) },
+      { label: "Hosts and services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
+    ].sort(byLabel) },
+    { label: "Recipes", collapsed: true, items: extra.sort(byLabel) },
   ]
 }
 

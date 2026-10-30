@@ -1,13 +1,11 @@
-# Recipes
+# Examples
 
-Pick a problem. Read the code. Run it.
-
-New here? Start with [the walkthrough](./demo). Package managers, task runners,
-and source hosts live in [Ecosystem](./ECOSYSTEM.md).
+Start with [the walkthrough](./demo). Reference explains each API and links to
+solutions that use it. Recipes covers broader goals. Entries are alphabetical.
 
 Install dependencies once at the repository root with `pnpm install`. Commands
-in the recipes run from that root unless they say otherwise. Add the unpublished
-CLI to your shell once:
+run from that root unless they say otherwise. Add the unpublished CLI to your
+shell once:
 
 ```sh
 export PATH="$PWD/node_modules/.bin:$PATH"
@@ -15,65 +13,117 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 
 [Execution evidence](./COVERAGE.md) distinguishes local examples from verified hosted runs.
 
-## Write less CI
+## CI.action
 
-- [Discover checks automatically](./zero-config)
-- [Use existing Turbo CI tags and dependencies](./turbo-ci)
-- [Distribute a native Turbo task graph](./turbo-distributed)
-- [Run a single check](./exported-actions)
-- [Approve safe changes so authors can self-merge](./small-change)
-- [Deploy only when needed](./conditional-deploy)
-- [Deploy only changed build output](./deploy-changed-output)
+[API](../packages/ci/ACTION.md)
 
-## Run the same work elsewhere
+- [Exports](./exported-actions)
+- [Retries](./retry)
+- [Rollback](./rollback-compensation)
+- [Timeouts](./execution-policy)
 
-- [Local files or Git](./source-providers), [GitLab](./gitlab-source),
-  [R2](./r2-source), [Cloudflare Artifacts](./artifacts-source), or
-  [Durable Object storage](./durable-object-source)
-- [Local containers](./local-container), [Cloudflare](./cloudflare-runner),
-  [GitHub CI on Cloudflare](./github-cloudflare-ci), [runner selection](./runner-selection),
-  or [Blacksmith](./blacksmith)
-- [Format in an isolate](./dynamic-worker-checks) or
-  [test project HTTP behavior in an isolate](./dynamic-project-checks)
-- [Publish static assets](./static-assets-source) or
-  [build and serve a containerless site](./containerless-site)
+## CI.Approval
 
-## Prepare tools
+[API](../packages/ci/APPROVAL.md)
 
-- [Node version](./node-version), [Mise runtimes](./mise-toolchain),
-  [system packages](./system-package), or [Python on Cloudflare](./cloudflare-toolchain)
+- [GitHub](./hitl-deploy)
+- [Slack](./cloudflare-hitl-release)
+
+## CI.Artifact
+
+[API](../packages/ci/ARTIFACT.md)
+
+- [Between jobs](./portable-artifacts)
+
+## CI.check
+
+[API](../packages/ci/CHECK.md)
+
+- [Reuse](./verification-evidence)
+
+## CI.PackageManager
+
+[API](../packages/ci/PACKAGE-MANAGER.md)
+
+- [Apt](./system-package)
+- [npm](./node-npm)
+- [pnpm](./node-pnpm)
+- [Python](./cloudflare-toolchain)
+
+## CI.Secret
+
+[API](../packages/ci/SECRET.md)
+
+- [Redaction](./secure-secrets)
+
+## CI.Source
+
+[API](../packages/ci/SOURCE.md)
+
+- [Artifacts](./artifacts-source)
+- [changed](./conditional-deploy)
+- [Durable Objects](./durable-object-source)
+- [GitHub](./source-providers)
+- [GitLab](./gitlab-source)
+- [R2](./r2-source)
+
+## CI.Toolchain
+
+[API](../packages/ci/TOOLCHAIN.md)
+
+- [Mise](./mise-toolchain)
+- [Node](./node-version)
+- [Turbo](./turbo-distributed)
+
+## CI.workflow
+
+[API](../packages/ci/WORKFLOW.md)
+
+- [Matrix](./matrix)
+- [Optional checks](./optional-checks)
+- [Parallel checks](./snapshot-fanout)
+
+## CI.Workspace
+
+[API](../packages/ci/WORKSPACE.md)
+
+- [changed](./deploy-changed-output)
+- [checkpoint](./workspace)
+- [exec](./local-container)
+
+## Recipes
+
+- [Balance test shards](./timing-aware-splitting)
+- [Build a container image](./custom-container-image)
+- [Build a static site](./containerless-site)
+- [Cache package downloads](./package-manager-cache)
+- [Cache Turborepo tasks](./turborepo-cache)
+- [Cache Vite+ tasks](./vite-plus-cache)
+- [Call authenticated APIs](./secret-outbound)
+- [Choose a runner](./runner-selection)
+- [Customize caching](./cache-policy)
 - [Customize the runner image](./custom-runner-image)
-- [Build a project container image](./custom-container-image)
+- [Deploy in order](./ordered-deploy)
+- [Deploy with cf OIDC](./oidc-cf)
+- [Deploy with Wrangler OIDC](./oidc-wrangler)
+- [Format in an isolate](./dynamic-worker-checks)
+- [Keep previous attempts](./immutable-attempts)
+- [Migrate D1](./d1-migration)
+- [Propose a repair](./flue-repair)
+- [Publish static assets](./static-assets-source)
+- [Release from local checks](./release-flywheel)
+- [Rerun affected checks](./dependency-aware-reruns)
+- [Resume on Cloudflare](./cloudflare-runner)
+- [Review uncertain health](./health-mediated-approval)
+- [Roll out with health checks](./health-mediated-release)
 - [Run Docker inside CI](./docker-in-docker)
-
-## Save time
-
-- [Package downloads](./package-manager-cache), [Vite+ tasks](./vite-plus-cache),
-  [Turborepo tasks](./turborepo-cache), or [custom cache policy](./cache-policy)
-- [Reuse verified checks](./verification-evidence)
-- [Rerun affected checks](./dependency-aware-reruns) and
-  [keep previous attempts](./immutable-attempts)
-- [Run every matrix combination](./matrix), [split tests](./test-splitting), or
-  [balance shards using recorded timings](./timing-aware-splitting)
-- [Run isolated parallel checks](./snapshot-fanout)
-- [Share build artifacts](./portable-artifacts)
-
-## Control failures and releases
-
-- [Required and optional checks](./optional-checks)
-- [Retries](./retry), [timeouts](./execution-policy), and [rollback](./rollback-compensation)
-- [Deployment hooks](./deploy-hook), [ordered deployments](./ordered-deploy),
-  and [D1 migrations](./d1-migration)
-- [GitHub approval](./hitl-deploy) or [Slack approval](./cloudflare-hitl-release)
-- [Release from verified local checks](./release-flywheel)
-- [Health-gated rollout](./health-mediated-release) or
-  [human review of uncertain health](./health-mediated-approval)
-- [Model-assisted repair proposals](./flue-repair)
-
-## Keep credentials out of workloads
-
-- [Secret requirements and redaction](./secure-secrets)
-- [Host-authenticated outbound requests](./secret-outbound)
-- [Wrangler OIDC deployment](./oidc-wrangler) and [cf OIDC deployment](./oidc-cf)
+- [Run existing Turbo CI tasks](./turbo-ci)
+- [Run GitHub CI on Cloudflare](./github-cloudflare-ci)
+- [Run on Blacksmith](./blacksmith)
+- [Self-merge safe changes](./small-change)
+- [Split tests](./test-splitting)
+- [Test in an isolate](./dynamic-project-checks)
+- [Trigger a deployment hook](./deploy-hook)
+- [Use existing package scripts](./zero-config)
 
 Hosted credentials and service setup live in the [host guide](../apps/effect-ci/README.md).
