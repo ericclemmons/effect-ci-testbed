@@ -1,7 +1,7 @@
 import * as CI from "@effect-ci-testbed/ci";
 
-// App runtime deployments. Public docs use the separate main-branch Cloudflare
-// Builds trigger recorded in apps/docs/builds.json. Test hosts in test/apps and
+// App runtime deployments. Public docs publish completed main-check snapshots
+// through .github/workflows/docs.yml. Test hosts in test/apps and
 // the copy-out tutorial in examples/demo are not CD targets.
 export const platformApps = ["github-actions-runner", "effect-ci"] as const;
 

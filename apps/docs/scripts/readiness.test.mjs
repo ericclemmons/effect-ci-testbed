@@ -1,108 +1,71 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
-import { generateKeyPairSync } from "node:crypto"
-import { createRequire } from "node:module"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { spawnSync } from "node:child_process"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import test from "node:test"
+import { cellResult, complete, loadReadiness, readSnapshot, snapshotPath, validateSnapshot } from "../src/readiness.mjs"
 
-const require = createRequire(import.meta.resolve("cf/package.json"))
-const { Miniflare } = require("miniflare")
-const pluginRequire = createRequire(import.meta.resolve("../../effect-ci/node_modules/@cloudflare/vite-plugin/package.json"))
-const { build } = pluginRequire("esbuild")
+test("the built homepage contains the completed snapshot without browser requests", async () => {
+  const snapshot = await loadReadiness()
+  const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
+  assert.ok(html.includes(`/commit/${snapshot.sha}`))
+  assert.ok(html.includes(`${snapshot.total_count} completed checks`))
+  assert.ok(html.includes(`datetime="${snapshot.fetchedAt}"`))
+  assert.match(html, /aria-label="Run CI with npm · GitHub Actions: [^"]+">[✓×]<\/a>/)
+  assert.doesNotMatch(html, /⏳|data-pending|data-refresh|\/api\/readiness|Loading checks from main|Refreshes every/)
+})
 
-test("the docs API shares complete checks and keeps them when GitHub returns 403", { timeout: 30_000 }, async () => {
-  const sha = "a".repeat(40)
-  let calls = 0
-  let blocked = false
-  let status = "completed"
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } })
-  const bundled = await build({ entryPoints: [new URL("../../effect-ci/src/docs-readiness.ts", import.meta.url).pathname],
-    bundle: true, write: false, format: "esm", platform: "neutral", external: ["cloudflare:workers"] })
-  const [broker] = bundled.outputFiles
-  const runtime = new Miniflare({ workers: [{ config: {
-    name: "docs-readiness", compatibilityDate: "2026-10-07",
-    manifest: { mainModule: "driver.mjs", modules: {
-      "worker.mjs": { type: "esm", contents: await readFile(new URL("../src/worker.mjs", import.meta.url), "utf8") },
-      "driver.mjs": { type: "esm", contents: `
-        import worker from "./worker.mjs";
-        const now = Date.now;
-        export default {async fetch(request, env) {
-          Date.now = () => now() + Number(request.headers.get("x-test-age") || 0);
-          return worker.fetch(request, {GITHUB_READINESS: env.GITHUB_READINESS, ASSETS: {fetch: () => new Response("static guide")}});
-        }};
-      ` },
-    } },
-    env: { GITHUB_READINESS: { type: "worker", worker: "docs-reader", exportName: "DocsReadiness" } },
-  } }, { config: {
-    name: "docs-reader", compatibilityDate: "2026-10-07",
-    manifest: { mainModule: "reader.mjs", modules: { "reader.mjs": { type: "esm", contents: broker.text } } },
-    exports: { DocsReadiness: { type: "worker" } },
-    env: { GITHUB_APP_ID: { type: "text", value: "5089816" }, GITHUB_PRIVATE_KEY: { type: "text", value: privateKey } },
-  }, dev: { outboundService: { type: "fetcher", handler: async request => {
-    calls++
-    const url = new URL(request.url)
-    assert.equal(url.hostname, "api.github.com")
-    if (url.pathname.endsWith("/access_tokens")) {
-      assert.deepEqual(await request.json(), { repositories: ["effect-ci-testbed"], permissions: { contents: "read", checks: "read" } })
-      return Response.json({ token: "test-only-token", permissions: { contents: "read", checks: "read" } })
-    }
-    assert.equal(request.headers.get("authorization"), "Bearer test-only-token")
-    if (url.pathname === "/installation/token") {
-      assert.equal(request.method, "DELETE")
-      return new Response(null, { status: 204 })
-    }
-    if (blocked) return Response.json({ message: "API rate limit exceeded" }, { status: 403 })
-    if (url.pathname.endsWith("/commits/main")) return Response.json({ sha })
-    assert.ok(url.pathname.endsWith(`/commits/${sha}/check-runs`))
-    const id = Number(url.searchParams.get("page"))
-    return Response.json({ total_count: 2, check_runs: [{
-      id, name: `Check ${id}`, head_sha: sha, status, conclusion: status === "completed" ? "success" : null, app: { slug: "github-actions" },
-    }] })
-  } } } }] })
-  const request = (path = "/api/readiness", age = 0, host = "docs.invalid") => runtime.dispatchFetch(`https://${host}${path}`, {
-    headers: { "x-test-age": String(age) },
-  })
+test("a superseded commit or denied GitHub read cannot replace the saved snapshot", async () => {
+  const before = await readFile(snapshotPath, "utf8")
+  const temporary = await mkdtemp(join(tmpdir(), "docs-publication-"))
+  const stub = join(temporary, "github.mjs")
+  const output = join(temporary, "output")
+  const env = { ...process.env, DOCS_READINESS_SHA: "a".repeat(40), GITHUB_TOKEN: "test-only", GITHUB_OUTPUT: output }
+  const run = () => spawnSync(process.execPath, ["--import", stub, new URL("./snapshot.mjs", import.meta.url).pathname, "--wait"], { env, encoding: "utf8", timeout: 10_000 })
   try {
-    const responses = await Promise.all([request(), request()])
-    for (const response of responses) {
-      assert.equal(response.status, 200)
-      const data = await response.json()
-      assert.equal(data.sha, sha)
-      assert.equal(data.check_runs.length, 2)
-      assert.equal(data.stale, false)
-    }
-    assert.equal(calls, 5, "simultaneous visitors share one scoped token and the complete snapshot")
-    status = "in_progress"
-    const active = await request("/api/readiness", 0, "active.invalid")
-    assert.equal(active.headers.get("cache-control"), "no-store")
-    assert.equal((await active.json()).active, true)
-    const activeCalls = calls
-    await request("/api/readiness", 10_000, "active.invalid")
-    assert.equal(calls, activeCalls, "active visitors still share a short refresh window")
-    status = "completed"
-    const finished = await request("/api/readiness", 31_000, "active.invalid")
-    assert.equal((await finished.json()).active, false, "running checks can finish after 30 seconds, without waiting ten minutes")
-    assert.equal(calls, activeCalls + 5)
-    await request("/api/readiness", 61_000, "active.invalid")
-    assert.equal(calls, activeCalls + 5, "finished snapshots retain the longer cache window")
-    const beforeFailure = calls
-    blocked = true
-    assert.equal((await request("/api/readiness?refresh=1")).status, 200)
-    assert.equal(calls, beforeFailure, "query strings cannot bypass the shared cache")
-    const fallback = await request("/api/readiness", 660_000)
-    assert.equal(fallback.status, 200)
-    const data = await fallback.json()
-    assert.equal(data.sha, sha)
-    assert.equal(data.check_runs.length, 2)
-    assert.equal(data.stale, true, "GitHub's 403 keeps timestamped evidence visible")
-    await request("/api/readiness", 660_000)
-    assert.equal(calls, beforeFailure + 3, "failed refreshes back off instead of consuming more quota")
-    const expired = await request("/api/readiness", 86_500_000)
-    assert.equal(expired.status, 503, "evidence older than one day is not served")
-    const cold = await request("/api/readiness", 0, "cold.invalid")
-    assert.equal(cold.status, 503)
-    const failedCalls = calls
-    await request("/api/readiness", 0, "cold.invalid")
-    assert.equal(calls, failedCalls, "cold failures also back off")
-    assert.equal(await (await request("/walkthrough/")).text(), "static guide")
-  } finally { await runtime.dispose() }
+    await writeFile(stub, `globalThis.fetch = async () => Response.json({sha: "${"b".repeat(40)}"});`)
+    assert.equal(run().status, 0)
+    assert.equal(await readFile(output, "utf8"), "ready=false\n")
+    assert.equal(await readFile(snapshotPath, "utf8"), before)
+    await writeFile(stub, `globalThis.fetch = async url => String(url).endsWith("commits/main") ? Response.json({sha: "${"a".repeat(40)}"}) : Response.json({}, {status: 403});`)
+    const denied = run()
+    assert.notEqual(denied.status, 0)
+    assert.match(denied.stderr, /GitHub readiness read failed \(403\)/)
+    assert.equal(await readFile(snapshotPath, "utf8"), before)
+    assert.equal(await readFile(output, "utf8"), "ready=false\n")
+  } finally {
+    await rm(temporary, { recursive: true, force: true })
+  }
+})
+
+test("snapshot collection paginates, rejects pending latest checks and retains failures", async () => {
+  const sha = "a".repeat(40)
+  const check = (id, status, conclusion) => ({ id, name: "node-npm / github", head_sha: sha, status, conclusion, app: { slug: "github-actions" } })
+  const pages = [
+    [check(1, "completed", "success"), { ...check(2, "in_progress", null), name: "Publish documentation" }],
+    [check(3, "queued", null)],
+  ]
+  let page = 0
+  const read = async path => {
+    assert.equal(path, `commits/${sha}/check-runs?filter=latest&per_page=100&page=${page + 1}`)
+    return { check_runs: pages[page++], total_count: 3 }
+  }
+  const pending = await readSnapshot(sha, read)
+  assert.equal(page, 2)
+  assert.equal(complete(pending), false, "an older pass cannot replace a queued rerun")
+  assert.throws(() => validateSnapshot(pending), /complete snapshot/)
+  pages[1] = [check(3, "completed", "failure")]
+  page = 0
+  const finished = validateSnapshot(await readSnapshot(sha, read))
+  assert.equal(complete(finished), true, "publication does not require all green")
+  const cell = cellResult(finished, ["node-npm / github"], "github-actions")
+  assert.equal(cell.passing, false)
+  assert.equal(cell.state, "node-npm / github: failure")
+  assert.equal(cell.href, "https://github.com/ericclemmons/effect-ci-testbed/runs/3")
+  const missing = cellResult(finished, ["absent"], "effect-ci")
+  assert.equal(missing.passing, false)
+  assert.equal(missing.state, "missing check")
+  assert.throws(() => validateSnapshot({ ...finished, sha: "b".repeat(40) }), /complete snapshot/)
+  assert.equal(complete({ check_runs: [] }), false)
 })

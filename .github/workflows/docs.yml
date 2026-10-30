@@ -2,21 +2,24 @@ name: Documentation
 
 on:
   pull_request:
-  push:
+  workflow_run:
+    workflows: ["GitHub Actions / Recipe checks", "Effect CI / Monorepo", "GitHub runner OIDC", "Parallel recipes"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: docs-${{ github.ref }}
-  cancel-in-progress: true
+  checks: read
 
 jobs:
   build:
     name: Build documentation
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    concurrency:
+      group: docs-pr-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -26,3 +29,52 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:build
+
+  publish:
+    name: Publish documentation
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      checks: read
+      id-token: write
+    concurrency:
+      group: docs-publish
+      cancel-in-progress: false
+    env:
+      DOCS_READINESS_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      DOCS_READINESS_SNAPSHOT: .cloudflare/state/readiness.json
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      # Only same-repository main pushes reach this job; never execute PR artifacts.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DOCS_READINESS_SHA }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Collect completed checks for this main commit
+        id: snapshot
+        run: node apps/docs/scripts/snapshot.mjs --wait
+      - uses: pnpm/action-setup@v4
+        if: steps.snapshot.outputs.ready == 'true'
+      - run: pnpm install --frozen-lockfile
+        if: steps.snapshot.outputs.ready == 'true'
+      - run: pnpm docs:build
+        if: steps.snapshot.outputs.ready == 'true'
+      - name: Verify main has not advanced
+        if: steps.snapshot.outputs.ready == 'true'
+        run: node apps/docs/scripts/snapshot.mjs --verify-current
+      - uses: ./.github/actions/cloudflare-auth
+        if: steps.snapshot.outputs.ready == 'true'
+        with:
+          broker-url: ${{ vars.EFFECT_CI_REMOTE_URL }}
+          worker: effect-ci-docs
+      - name: Publish static documentation
+        if: steps.snapshot.outputs.ready == 'true'
+        run: pnpm --filter @effect-ci-testbed/docs exec cf deploy --prebuilt

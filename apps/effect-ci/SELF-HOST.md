@@ -134,7 +134,7 @@ same account so their service bindings resolve.
 | [Repair agent](../../test/apps/repair-agent/README.md) | Generated Flue exports and bindings to repair AI/events. |
 | [Repair events](../../test/apps/repair-events/README.md) | Shared notification secret; Notifications destination/policy, Issues automation and exact source/version enrollment. |
 | [Incident source](../../test/apps/repair-incident/README.md) | Readiness binding to the main host; fixed-service Issues configuration. [Arming prepares one later fixture test](./PUBLIC-REPAIR.md#what-arming-means); it does not emit an incident or call AI. The persistent arm has no reset API and needs explicit approval. |
-| [Documentation](../docs/README.md) | Public URL, its own Workers Builds trigger, and a `DocsReadiness` service binding to the main host for public check reads. Main CI does not deploy it. |
+| [Documentation](../docs/README.md) | Public static site. The Documentation GitHub workflow publishes a completed main-check snapshot using the existing OIDC broker. Disable any independent push-triggered docs deployment. |
 
 The current release/repair policies contain repository, identity and version pins.
 Review their owning configuration before enabling them for another installation;
@@ -186,8 +186,12 @@ Workers are independent fixtures and are not prerequisites for the host.
    using the receiver's [setup instructions](../../test/apps/repair-events/REPRODUCE.md).
    Restore its enrollment and redeploy after verifying those IDs. Keep the public
    incident trigger blocked until readiness and arming have been approved.
-5. Deploy docs and configure its Builds trigger separately. Replace existing
-   trigger IDs when changing accounts. Stored Workflow history, assets, release
+5. Deploy docs separately and enable its Documentation GitHub workflow after
+   configuring `EFFECT_CI_REMOTE_URL` and repository OIDC enrollment. Its publisher
+   waits for completed main checks, then uses the existing Cloudflare authentication
+   action. Disable any independent Workers Builds push trigger so it cannot publish
+   incomplete checks. When changing accounts, update the broker and deployment
+   account. Stored Workflow history, assets, release
    journals, cached checks and inference budgets do not move with source code.
 
 ## Connect and verify

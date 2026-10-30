@@ -1,4 +1,3 @@
-export { DocsReadiness } from "./docs-readiness.ts";
 import { accessIdentityVerifier } from "@effect-ci-testbed/github-cloudflare/access-identity";
 import { demoAccessIdentity } from "./demo-access-policy.ts";
 const verifyOperatorIdentity = accessIdentityVerifier(demoAccessIdentity);

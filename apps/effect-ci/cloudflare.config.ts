@@ -31,7 +31,6 @@ const demo = defineConfig({
       TokenLease: exports.durableObject({ storage: "sqlite" }),
       OidcRepositories: exports.durableObject({ storage: "sqlite" }),
       StaticAssetSourceReader: exports.worker(),
-      DocsReadiness: exports.worker(),
       DemoCIWorkflow: exports.workflow({ name: "effect-ci-demo" }),
       ShowcaseCIWorkflow: exports.workflow({ name: "effect-ci-showcase" }),
       RepositoryCIWorkflow: exports.workflow({ name: "effect-ci-repository" }),

@@ -3,8 +3,6 @@ import { unified } from "@astrojs/markdown-remark"
 import starlight from "@astrojs/starlight"
 import { repository, repositoryMarkdown, root, sidebar } from "./src/repository.mjs"
 
-const readinessProxy = { "/api/readiness": { target: "https://effect-ci-docs.eclemmons.workers.dev", changeOrigin: true } }
-
 export default defineConfig({
   site: "https://effect-ci-docs.eclemmons.workers.dev",
   markdown: { processor: unified({ remarkPlugins: [repositoryMarkdown] }) },
@@ -15,5 +13,5 @@ export default defineConfig({
     sidebar: sidebar(),
     components: { Head: "./src/components/Head.astro", MarkdownContent: "./src/components/MarkdownContent.astro" },
   })],
-  vite: { server: { fs: { allow: [root] }, proxy: readinessProxy }, preview: { proxy: readinessProxy } },
+  vite: { server: { fs: { allow: [root] } } },
 })
