@@ -20,8 +20,13 @@ The page does not infer current readiness from historical coverage ticks.
 
 The walkthrough comes from
 `examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
-Ecosystem pages link tools to their runnable examples. Other recipes follow the
-examples guide. Self-hosting and environment evidence belong in Reference.
+Reference groups solutions by API using the `CI.*` headings and link labels in
+`examples/README.md`. Each group has a matching API page beside the SDK under
+`packages/ci/`; its title matches the group and its method headings become links.
+API groups and their entries are alphabetical. Source examples are included from
+their runnable files, including the local workspace/checkpoint example.
+Recipes lists every remaining example alphabetically, including newly added
+examples. Self-hosting and environment evidence belong in Reference.
 
 From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
 build the static site. Output is in `apps/docs/dist/`.
