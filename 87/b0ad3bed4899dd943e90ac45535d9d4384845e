@@ -1,0 +1,23 @@
+apps/docs/README.md
+  s_8c5c098d7028f1::t_1558817efac25d 23,26-27,30
+apps/docs/src/repository.mjs
+  s_8c5c098d7028f1::t_be1696477350f8 35-39,43,45-49,56
+examples/README.md
+  s_8c5c098d7028f1::t_d640b761a75cac 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "87b0ad3bed4899dd943e90ac45535d9d4384845e",
+  "prompts": {},
+  "sessions": {
+    "s_8c5c098d7028f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18d7a-3028-7012-b327-b3f32628813d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
