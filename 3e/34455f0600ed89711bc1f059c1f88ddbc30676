@@ -1,0 +1,43 @@
+apps/docs/cloudflare.config.ts
+  s_aaeb7ec1bfcaee::t_089f4b672cd845 9-12
+apps/docs/scripts/readiness.test.mjs
+  s_aaeb7ec1bfcaee::t_ed7c917003d6a3 3,9-10,16-20,28,30,34-39,44-53,58,73-87,90,98
+apps/docs/src/readiness.ts
+  s_aaeb7ec1bfcaee::t_4e9d2d058a4e4d 19-29,32-33,35-44,49,52,64-66,79-80,82-85,94-97,100
+apps/docs/src/worker.mjs
+  s_aaeb7ec1bfcaee::t_1b5690f7730aab 9,17,20,34-35
+apps/effect-ci/cloudflare.config.ts
+  s_aaeb7ec1bfcaee::t_60d773f436ea2c 34
+apps/effect-ci/src/worker.ts
+  s_aaeb7ec1bfcaee::t_b199748a813215 1
+apps/docs/README.md
+  s_0d1f5b746f7716::t_5487c639b95bba 13-20,54-56
+apps/effect-ci/SELF-HOST.md
+  s_0d1f5b746f7716::t_8188ccab0a1934 137
+apps/effect-ci/src/docs-readiness.ts
+  s_0d1f5b746f7716::t_103765a1be870f 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3e34455f0600ed89711bc1f059c1f88ddbc30676",
+  "prompts": {},
+  "sessions": {
+    "s_0d1f5b746f7716": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc0-c3d5-7752-aa31-0ef68bdb139b",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_aaeb7ec1bfcaee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18db2-448f-7e51-ad77-56635f60e582",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
