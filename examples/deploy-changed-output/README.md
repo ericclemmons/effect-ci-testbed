@@ -8,8 +8,9 @@ Compare the rebuilt output, not just the app's source files.
 ## Try it
 
 ```sh
-pnpm exec effect-ci run --workflow examples/deploy-changed-output/.cloudflare/ci/workflow.ts
-pnpm exec effect-ci run --workflow examples/deploy-changed-output/.cloudflare/ci/workflow.ts
+cd examples/deploy-changed-output
+effect-ci run
+effect-ci run
 ```
 
 The first run publishes; the second skips deployment. Edit

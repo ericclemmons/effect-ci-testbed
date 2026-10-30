@@ -11,7 +11,8 @@ erase the original failure.
 ## Run it
 
 ```sh
-pnpm exec effect-ci run --workflow examples/rollback-compensation/.cloudflare/ci/workflow.ts
+cd examples/rollback-compensation
+effect-ci run
 ```
 
 The deployment and reversal print messages; they do not change a real release.

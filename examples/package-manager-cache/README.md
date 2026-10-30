@@ -10,8 +10,9 @@ npm still runs the locked install against the current checkout.
 ## Run it
 
 ```sh
-pnpm exec effect-ci run --workflow examples/package-manager-cache/.cloudflare/ci/workflow.ts
-pnpm exec effect-ci run --workflow examples/package-manager-cache/.cloudflare/ci/workflow.ts
+cd examples/package-manager-cache
+effect-ci run
+effect-ci run
 ```
 
 The second run can reuse downloads. This caches package bytes, not the result

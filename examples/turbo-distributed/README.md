@@ -45,7 +45,8 @@ a union of positive labels using Turbo's resolved-tag query.
 From the repository root, after `pnpm install`:
 
 ```sh
-effect-ci run --workflow examples/turbo-distributed/.cloudflare/ci/workflow.ts --format=json
+cd examples/turbo-distributed
+effect-ci run --format=json
 ```
 
 The one-line `local` export selects the reusable file-snapshot runner. Snapshot

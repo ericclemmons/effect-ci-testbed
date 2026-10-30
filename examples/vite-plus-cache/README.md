@@ -10,8 +10,9 @@ and skips the command. Effect CI only preserves the task cache between runs.
 ## Run it twice
 
 ```sh
-effect-ci run --workflow examples/vite-plus-cache/.cloudflare/ci/workflow.ts
-effect-ci run --workflow examples/vite-plus-cache/.cloudflare/ci/workflow.ts
+cd examples/vite-plus-cache
+effect-ci run
+effect-ci run
 ```
 
 The second run reports a cache hit. Change a file the build reads and it rebuilds.

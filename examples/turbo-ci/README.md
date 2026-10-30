@@ -80,8 +80,9 @@ a native run summary under `app/.turbo/runs` and stores its cache under
 To run the same command through Effect CI:
 
 ```sh
-effect-ci plan --workflow examples/turbo-ci/.cloudflare/ci/workflow.ts
-effect-ci run --workflow examples/turbo-ci/.cloudflare/ci/workflow.ts
+cd examples/turbo-ci
+effect-ci plan
+effect-ci run
 ```
 
 This recipe does not distribute tasks across Containers or sign execution.

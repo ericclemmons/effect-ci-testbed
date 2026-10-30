@@ -13,7 +13,8 @@ No container needs to stay alive while waiting.
 ## Try it locally
 
 ```sh
-pnpm exec effect-ci run --local --workflow examples/cloudflare-hitl-release/.cloudflare/ci/workflow.ts
+cd examples/cloudflare-hitl-release
+effect-ci run --local
 ```
 
 Local execution asks in the terminal. Release prints a message rather than

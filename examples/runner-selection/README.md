@@ -15,7 +15,8 @@ the portable workflow stays unchanged.
 ## Run locally
 
 ```sh
-pnpm exec effect-ci run --workflow examples/runner-selection/.cloudflare/ci/workflow.ts
+cd examples/runner-selection
+effect-ci run
 ```
 
 [Blacksmith](../blacksmith) shows the same pattern with a hosted runner provider.

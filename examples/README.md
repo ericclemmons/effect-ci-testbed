@@ -3,13 +3,14 @@
 Start with [the walkthrough](./demo). Reference explains each API and links to
 solutions that use it. Recipes covers broader goals. Entries are alphabetical.
 
-Install dependencies once at the repository root with `pnpm install`. Commands
-run from that root unless they say otherwise. Add the unpublished CLI to your
-shell once:
+Install dependencies once at the repository root with `pnpm install`. Add the
+unpublished CLI to your shell from that root:
 
 ```sh
 export PATH="$PWD/node_modules/.bin:$PATH"
 ```
+
+Each example starts with `cd examples/...`. The CLI discovers its workflow there.
 
 [Execution evidence](./COVERAGE.md) distinguishes local examples from verified hosted runs.
 

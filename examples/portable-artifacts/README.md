@@ -8,7 +8,8 @@ Publish build output when another workload needs to restore it.
 ## Run it
 
 ```sh
-pnpm exec effect-ci run --workflow examples/portable-artifacts/.cloudflare/ci/workflow.ts
+cd examples/portable-artifacts
+effect-ci run
 ```
 
 The example writes, publishes, and restores a small file. This adapter currently

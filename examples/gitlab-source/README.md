@@ -8,7 +8,8 @@ The workflow only uses `CI.Source`; no GitHub-specific action is needed.
 ## Try it
 
 ```sh
-effect-ci run --workflow examples/gitlab-source/.cloudflare/ci/workflow.ts
+cd examples/gitlab-source
+effect-ci run
 ```
 
 Locally, the example reads its included `VERSION` file. The

@@ -10,7 +10,8 @@ temporary edit. The source fixture stays unchanged.
 ## Run it
 
 ```sh
-pnpm exec effect-ci run --workflow examples/workspace/.cloudflare/ci/workflow.ts
+cd examples/workspace
+effect-ci run
 ```
 
 No Docker, network, or account credentials are needed. The local snapshot runner
