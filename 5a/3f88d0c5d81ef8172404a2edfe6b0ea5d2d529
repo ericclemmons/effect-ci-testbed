@@ -1,0 +1,55 @@
+apps/effect-ci/MIGRATE.md
+  s_3279c24a76188a::t_aecc91a4db8034 137
+apps/effect-ci/src/demo-routing-diagnostic-runtime.test.ts
+  s_3279c24a76188a::t_d93df34379836e 14
+apps/effect-ci/src/demo-routing-diagnostic.test.ts
+  s_3279c24a76188a::t_52314895ddecfa 15
+apps/effect-ci/src/demo-routing-diagnostic.ts
+  s_3279c24a76188a::t_fb2c019d4e4367 15
+apps/effect-ci/src/hmd-card.test.ts
+  s_3279c24a76188a::t_1f718bb68d7323 66-67,116-117
+apps/effect-ci/src/hmd-workflow-runtime.test.ts
+  s_3279c24a76188a::t_688e28bc85361d 27
+packages/cli/src/index.ts
+  s_3279c24a76188a::t_c904f634e52c97 1088
+test/apps/example-runner/src/hmd-controller.ts
+  s_3279c24a76188a::t_9047c0cd1043ba 10-12
+test/apps/example-runner/src/hmd-native-ingestion.test.ts
+  s_3279c24a76188a::t_9060413969d25b 8-9
+test/apps/example-runner/src/hmd-native-source.test.ts
+  s_3279c24a76188a::t_7ddcbaca49d7f1 9-10
+test/apps/example-runner/src/hmd-review-runner.test.ts
+  s_3279c24a76188a::t_e471c8e2ea32fb 7-8,20
+test/apps/example-runner/src/hmd-review-runner.ts
+  s_3279c24a76188a::t_fe8df482a18973 12-14
+test/apps/example-runner/src/release-broker-probe.ts
+  s_3279c24a76188a::t_d9c40b1ed60eb2 5-6
+test/apps/example-runner/src/wobs-batch-probe.ts
+  s_3279c24a76188a::t_f862ec9ac656ac 7
+test/apps/example-runner/src/wobs-healthy.ts
+  s_3279c24a76188a::t_d93a752ad23472 12-13
+test/apps/example-runner/src/wobs-probe.ts
+  s_3279c24a76188a::t_d487c8ad3bc1c0 5
+test/apps/example-runner/src/wobs-release.ts
+  s_3279c24a76188a::t_5e97d52a0c782d 10-11
+test/apps/example-runner/src/wobs-samples.test.ts
+  s_3279c24a76188a::t_78d441a883a366 88
+test/fixtures/demo/.env
+  s_3279c24a76188a::t_267b50f35f73a3 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5a3f88d0c5d81ef8172404a2edfe6b0ea5d2d529",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
