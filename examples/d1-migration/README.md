@@ -14,7 +14,8 @@ The [actions](./.cloudflare/ci/actions.ts) encode those dependencies. The
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/d1-migration/.cloudflare/ci/workflow.ts
+cd examples/d1-migration
+effect-ci run
 ```
 
 This applies the migration to local D1 and dry-runs deployment. No production
@@ -22,7 +23,11 @@ database changes. The current `cf d1 --local` command can hang on GitHub-hosted
 Ubuntu, so use the local recipe there with care.
 
 For production, supply the database ID and deployment credentials through the
-runner. Prefer compatible expand/contract migrations; a filesystem rollback
+runner.
+
+## Rollback is not filesystem rewind
+
+Prefer compatible expand/contract migrations; a filesystem rollback
 cannot reverse D1. Only attach a database reversal when the project defines it
 as safe.
 

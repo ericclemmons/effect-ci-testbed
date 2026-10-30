@@ -1,0 +1,9 @@
+{
+  "name": "@turbo-ci/legacy",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node -e \"throw Error('Excluded legacy build ran')\"",
+    "check": "node -e \"throw Error('Excluded legacy check ran')\""
+  }
+}

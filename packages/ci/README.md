@@ -5,6 +5,12 @@
 Actions own prerequisites. Workflows select goals and coordinate events, parallel
 work, decisions and recovery.
 
+[CI.action](./ACTION.md) · [CI.Approval](./APPROVAL.md) ·
+[CI.Artifact](./ARTIFACT.md) · [CI.check](./CHECK.md) ·
+[CI.PackageManager](./PACKAGE-MANAGER.md) · [CI.Secret](./SECRET.md) ·
+[CI.Source](./SOURCE.md) · [CI.Toolchain](./TOOLCHAIN.md) ·
+[CI.workflow](./WORKFLOW.md) · [CI.Workspace](./WORKSPACE.md)
+
 ```ts
 import * as CI from "@effect-ci-testbed/ci"
 import * as actions from "./actions.ts"
@@ -17,9 +23,9 @@ export default CI.workflow("project", function* () {
 ```
 
 ```sh
-cf-ci list
-cf-ci plan test build --format=mermaid
-cf-ci run test build
+effect-ci list
+effect-ci plan test build --format=mermaid
+effect-ci run test build
 ```
 
 Shared prerequisites run once. Parallelism is explicit; the runtime does not
@@ -46,9 +52,15 @@ workspace from the shared install action instead. See the complete
 [pnpm actions](../../examples/node-pnpm/.cloudflare/ci/actions.ts).
 
 Putting lint before test only in the default workflow is not enough: a caller can
-request `cf-ci run test` directly. The test action must own its required validation.
+request `effect-ci run test` directly. The test action must own its required validation.
 
 ## Keep the runner out of the program
+
+JavaScript package-manager installs freeze the lockfile by default, including
+local runs. Pass `{ frozenLockfile: false }` only to request a mutable install.
+The experimental [distributed Turbo recipe](../../examples/turbo-distributed)
+adds `Toolchain.Turbo(workspace).tags(...)` alongside the existing Node and Mise
+toolchains. It expands a native graph during execution, not ordinary planning.
 
 - `CI.Source` supplies checkout. It may come from Git, a local directory, R2,
   Artifacts or a stored revision; actions do not choose provider credentials.

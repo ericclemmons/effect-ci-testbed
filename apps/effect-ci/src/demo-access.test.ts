@@ -94,7 +94,7 @@ test("missing, rejected or conflicting credentials never gain an internal bearer
     assert.equal(await demoAccessRequest(original, "internal-host-key", async () => { throw Error("API client must not fall back"); }), original);
     assert.equal(original.headers.get("authorization"), authorization);
   }
-  for (const origin of ["http://effect-ci-github-cloudflare.ericclemmons.workers.dev", "https://preview.invalid", "https://attacker.invalid"]) {
+  for (const origin of ["http://effect-ci-github-cloudflare.eclemmons.workers.dev", "https://preview.invalid", "https://attacker.invalid"]) {
     const original = new Request(origin + "/demo/capabilities", { headers: { "cf-access-jwt-assertion": "signed-owner-fixture" } });
     assert.equal(demoRemoteAccessRoute(original), false);
     assert.equal(await demoAccessRequest(original, "internal-host-key", async () => { throw Error("Wrong origin"); }), original);

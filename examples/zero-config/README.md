@@ -1,19 +1,21 @@
-# Discover checks automatically
+# Discover actions automatically
 
 Already have package scripts? Run them without writing a workflow.
 
 From this example directory:
 
 ```sh
-pnpm exec cf-ci run
-pnpm exec cf-ci list
-pnpm exec cf-ci plan --format=mermaid
-pnpm exec cf-ci run lint
+effect-ci run test build
+effect-ci list
+effect-ci plan --format=mermaid
+effect-ci run lint
 ```
 
-The CLI detects the package manager and conventional format, lint, check,
-typecheck, test, and build scripts. Installation and script ordering appear in
-the plan.
+Every package script is an action. Vite+ tasks under `run.tasks` in
+`vite.config.ts` are actions too. The CLI detects the package manager and shares
+checkout and installation across the selected actions. Execution requires a name;
+bare `effect-ci run` reports how to choose one. `list` and `plan` can inspect all
+actions without executing them.
 
 The first local `run` creates an empty `.cloudflare/ci/ci.ts` marker when no
 workflow exists. `plan` and `list` do not create files.

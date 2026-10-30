@@ -7,7 +7,8 @@ Avoid repeating a check that already passed for the exact committed inputs.
 ## Try it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/verification-evidence/.cloudflare/ci/workflow.ts
+cd examples/verification-evidence
+effect-ci run
 ```
 
 Configure a `gitNotesCheckCache` writer after running the check on a clean commit.

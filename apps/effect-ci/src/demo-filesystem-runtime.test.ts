@@ -145,7 +145,7 @@ test(
         }
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
-      assert.equal(output?.workflowId, "cf-ci-demo");
+      assert.equal(output?.workflowId, "effect-ci-demo");
       const state = await (await runtime.dispatchFetch("https://probe.invalid/state")).json();
       assert.equal(
         state.cacheReads,

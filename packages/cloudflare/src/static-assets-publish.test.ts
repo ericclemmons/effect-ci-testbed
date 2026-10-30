@@ -24,11 +24,11 @@ async function harness(options: { lost?: string; corrupt?: boolean; foreignBucke
     const url = String(input), method = init.method ?? "GET"; calls.push({ url, method })
     const result = (value: object, status = 200) => Response.json({ success: true, result: value }, { status })
     if (!url.startsWith("https://api.cloudflare.com/")) {
-      assert.ok(url.startsWith("https://effect-ci-static-assets-demo.ericclemmons.workers.dev/")); assert.equal(new Headers(init.headers).has("authorization"), false)
+      assert.ok(url.startsWith("https://effect-ci-static-assets-demo.eclemmons.workers.dev/")); assert.equal(new Headers(init.headers).has("authorization"), false)
       if (url.endsWith("/__proof")) return Response.json({ revision, manifestDigest, assetDigest: prepared.assetDigest })
       return new Response(options.corrupt ? "corrupt" : url.slice(url.lastIndexOf("/") + 1), { headers: { "content-security-policy": staticAssetsCsp, "x-content-type-options": "nosniff" } })
     }
-    assert.ok(url.includes("/accounts/0db135ec469e2f216fcea26426f29755/workers/"))
+    assert.ok(url.includes("/accounts/da2f8f3e41d6b5018df12a58b417d918/workers/"))
     assert.equal(init.redirect, "manual")
     const auth = new Headers(init.headers).get("authorization")
     if (url.endsWith("/assets-upload-session")) {

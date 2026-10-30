@@ -20,7 +20,7 @@ const fixture = (body: (root: string) => void) => {
 }
 
 test("explicit local run creates one empty marker and actually executes the inferred check", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const result = spawnSync(process.execPath, [bin, "run", "lint", "--format=text"], {
     cwd: root, encoding: "utf8", timeout: 30_000,
   })
@@ -41,19 +41,19 @@ test("plan, list, remote and explicit paths never initialize", () => fixture(roo
 }))
 
 test("bare CLI and --help describe commands without initializing or executing an unconfigured package", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   for (const args of [[], ["--help"]]) {
     const result = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, /cf-ci plan --format=mermaid/)
-    assert.match(result.stdout, /cf-ci run lint/)
+    assert.match(result.stdout, /effect-ci plan --format=mermaid/)
+    assert.match(result.stdout, /effect-ci run lint/)
     assert.equal(existsSync(join(root, ".cloudflare")), false)
     assert.equal(existsSync(join(root, "checked.txt")), false)
   }
 }))
 
 test("marker-free package supports list and full Mermaid planning without writing or executing", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(listed.status, 0, listed.stderr)
   assert.deepEqual(JSON.parse(listed.stdout).targets, ["lint"])
@@ -66,13 +66,13 @@ test("marker-free package supports list and full Mermaid planning without writin
 }))
 
 test("explicit marker-free directory works for GitHub runners without generating CI config", () => fixture(root => {
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const plan = spawnSync(process.execPath, [bin, "--workflow", root, "plan", "--format=mermaid"], {
     cwd: tmpdir(), encoding: "utf8",
   })
   assert.equal(plan.status, 0, plan.stderr)
   assert.match(plan.stdout, /step_install --> step_lint/)
-  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "--agent"], {
+  const run = spawnSync(process.execPath, [bin, "--workflow", root, "run", "lint", "--agent"], {
     cwd: tmpdir(), encoding: "utf8", timeout: 30_000,
   })
   assert.equal(run.status, 0, run.stderr)
@@ -81,11 +81,11 @@ test("explicit marker-free directory works for GitHub runners without generating
   assert.equal(existsSync(join(root, ".cloudflare")), false)
 }))
 
-test("unknown targets and packages with no conventional tasks fail before writing", () => fixture(root => {
+test("unknown targets and packages with no actions fail before writing", () => fixture(root => {
   assert.throws(() => initializeJavaScriptProject(["run", "unknown"], root), /Unknown action target/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)
-  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { start: "do-not-run" } }))
-  assert.throws(() => initializeJavaScriptProject(["run"], root), /no format/)
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: {} }))
+  assert.throws(() => initializeJavaScriptProject(["run", "start"], root), /no package.json scripts/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)
 }))
 
@@ -101,7 +101,70 @@ test("symlinked configuration directories cannot redirect initialization", () =>
   const outside = mkdtempSync(join(tmpdir(), "ci-bootstrap-outside-"))
   try {
     symlinkSync(outside, join(root, ".cloudflare"))
-    assert.throws(() => initializeJavaScriptProject(["run"], root), /ordinary project-owned/)
+    assert.throws(() => initializeJavaScriptProject(["run", "lint"], root), /ordinary project-owned/)
     assert.equal(existsSync(join(outside, "ci")), false)
   } finally { rmSync(outside, { recursive: true, force: true }) }
+}))
+
+test("Vite+ config tasks and arbitrary scripts are actions without executing them during discovery", () => fixture(root => {
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
+  mkdirSync(join(root, "node_modules"))
+  symlinkSync(fileURLToPath(new URL("../../../examples/vite-plus-cache/app/node_modules/vite-plus", import.meta.url)),
+    join(root, "node_modules/vite-plus"), "dir")
+  writeFileSync(join(root, "package.json"), JSON.stringify({ name: "vite-actions", type: "module",
+    devDependencies: { "vite-plus": "1.0.0" }, scripts: { "custom-check": "do-not-run", dev: "do-not-run" } }))
+  writeFileSync(join(root, "vite.config.ts"), `
+    import { defineConfig, lazyPlugins } from "vite-plus"
+    export default defineConfig(() => ({
+      plugins: lazyPlugins(() => { throw new Error("discovery must not instantiate plugins") }),
+      run: { tasks: {
+        build: { command: "tsc -b && vp build" },
+        deploy: { command: "wrangler deploy", dependsOn: ["build", "lint"] },
+        lint: { command: "vp lint" },
+        "release:preview": { command: "do-not-run" }
+      } }
+    }))
+  `)
+  const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.deepEqual(JSON.parse(listed.stdout).targets, ["build", "custom-check", "deploy", "dev", "lint", "release:preview"])
+  assert.ok(!JSON.parse(listed.stdout).commands.includes("effect-ci run"))
+  const planned = spawnSync(process.execPath, [bin, "plan", "build", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(planned.status, 0, planned.stderr)
+  const graph = spawnSync(process.execPath, [bin, "plan", "deploy", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(graph.status, 0, graph.stderr)
+  assert.match(graph.stdout, /step_build --> step_deploy/)
+  assert.match(graph.stdout, /step_lint --> step_deploy/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    build: { command: "do-not-run", dependsOn: ["custom-check"] },
+    lint: "do-not-run",
+    deploy: { command: "do-not-run", dependsOn: ["vite-actions#build", "lint"] }
+  } } }`)
+  const transitive = spawnSync(process.execPath, [bin, "plan", "deploy", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(transitive.status, 0, transitive.stderr)
+  assert.match(transitive.stdout, /step_custom_check --> step_build/)
+  assert.match(transitive.stdout, /step_build --> step_deploy/)
+  assert.match(transitive.stdout, /step_lint --> step_deploy/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    deploy: { command: "do-not-run", dependencies: ["build", "lint"] }
+  } } }`)
+  const typo = spawnSync(process.execPath, [bin, "plan", "deploy", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(typo.status, 2, typo.stderr)
+  assert.match(JSON.parse(typo.stdout).error.message, /use dependsOn instead/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    build: { command: "do-not-run", dependsOn: ["deploy"] },
+    deploy: { command: "do-not-run", dependsOn: ["build"] }
+  } } }`)
+  const cycle = spawnSync(process.execPath, [bin, "plan", "deploy", "--agent"], { cwd: root, encoding: "utf8", timeout: 5000 })
+  assert.equal(cycle.status, 1, cycle.stderr)
+  assert.match(JSON.parse(cycle.stdout).error.message, /Circular Vite\+ task dependency/)
+  const unnamed = spawnSync(process.execPath, [bin, "run", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(unnamed.status, 2, unnamed.stderr)
+  assert.equal(JSON.parse(unnamed.stdout).error.code, "CI_ACTION_REQUIRED")
+  assert.equal(existsSync(join(root, ".cloudflare")), false)
+  writeFileSync(join(root, "vite.config.ts"), 'export default { tasks: { build: { command: "do-not-run" } } }')
+  const invalid = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(invalid.status, 2, invalid.stderr)
+  assert.equal(JSON.parse(invalid.stdout).error.code, "CI_VITE_PLUS_CONFIG_INVALID")
+  assert.match(JSON.parse(invalid.stdout).error.message, /run.tasks/)
 }))

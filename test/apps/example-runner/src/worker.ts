@@ -69,7 +69,10 @@ export const ArtifactPolicyProbeWorkflow = Cloudflare.workflowEntrypoint(artifac
 export const ZeroConfigWorkflow = Cloudflare.workflowEntrypoint(async (parameters, step) => {
   const manifest = await step.do("source:package-json", () =>
     readSourceManifest(parameters, "examples/zero-config"))
-  return CI.fromPackageJson(manifest).workflow
+  const inferred = CI.fromPackageJson(manifest)
+  return CI.workflow(manifest.name ?? "zero-config", function* () {
+    for (const name of ["format", "lint", "test", "build"]) yield* inferred.actions[name]!()
+  })
 }, {
   root: "examples/zero-config",
   reuseWorkspace: false,

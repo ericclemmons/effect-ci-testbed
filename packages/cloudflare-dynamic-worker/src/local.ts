@@ -22,7 +22,7 @@ const startBridge = async (): Promise<Bridge> => {
       // untrusted module logs into CLI JSON, host diagnostics or agent instructions.
       handleStructuredLogs: () => {},
       workers: [{ config: {
-      name: "cf-ci-local-project", compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
+      name: "effect-ci-local-project", compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"],
       env: { LOADER: { type: "worker-loader" } },
       manifest: { mainModule: "bridge.js", modules: { "bridge.js": { type: "esm", contents } } },
     } }] })

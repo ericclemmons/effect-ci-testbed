@@ -41,7 +41,7 @@ test("the CLI uses GitHub event metadata for a normal source.changed call", () =
   const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8",
     env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" } }).trim()
   const ci = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   try {
     git("init", "--quiet"); git("config", "user.email", "fixture@example.invalid"); git("config", "user.name", "Source fixture")
     writeFileSync(join(root, "workflow.ts"), `import * as CI from ${JSON.stringify(ci)};

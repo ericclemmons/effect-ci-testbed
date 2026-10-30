@@ -49,7 +49,7 @@ export const workloadRemote = async (request: Request, environment: OidcEnvironm
       !allowedOwner(environment, claims.repository_owner_id)) return new Response("Forbidden", { status: 403 })
   if (["pull_request", "pull_request_target"].includes(String(claims.event_name))) return new Response("Forbidden", { status: 403 })
   const registered = await registry.get(claims.repository_id)
-  if (!registered || registered.ownerId !== claims.repository_owner_id) return new Response("Enable this repository with cf-ci oidc", { status: 403 })
+  if (!registered || registered.ownerId !== claims.repository_owner_id) return new Response("Enable this repository with effect-ci oidc", { status: 403 })
   const id = path.match(/^\/runs\/([^/]+)/)?.[1]
   if (id && !await registry.ownsRun(claims.repository_id, id)) return new Response("Forbidden", { status: 403 })
   if (request.method === "POST") {

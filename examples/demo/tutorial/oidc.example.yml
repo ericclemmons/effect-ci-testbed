@@ -17,9 +17,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
       - run: pnpm build
-      # cf-ci must be installed alongside the project's CI dependencies.
-      - run: pnpm exec cf-ci oidc
+      # effect-ci must be installed alongside the project's CI dependencies.
+      - run: effect-ci oidc
         env:
           EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
-      - run: pnpm exec cf-ci oidc -- pnpm exec wrangler deploy
+      - run: effect-ci oidc -- wrangler deploy

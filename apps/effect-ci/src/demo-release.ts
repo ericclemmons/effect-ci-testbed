@@ -30,7 +30,7 @@ export async function finalizeDemoRelease(context: HostFinalization<unknown>, op
     images = host.PrivateSlackImages.getByName(owner);
   const renderer = host.HealthChartRenderer({});
   const showcase = options.destination === "showcase";
-  const workflowId = showcase ? "demo" : "cf-ci-demo";
+  const workflowId = showcase ? "demo" : "effect-ci-demo";
   const reviewed = new Set<string>();
   const timestamp = () => new Date().toISOString();
   const status = (phase: number, state: "running" | "complete") =>

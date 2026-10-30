@@ -4,11 +4,12 @@ Expose useful goals without exposing every setup step.
 
 [Source](./.cloudflare/ci/workflow.ts "source")
 
-From this example directory:
+From the repository root:
 
 ```sh
-pnpm exec cf-ci list
-pnpm exec cf-ci run check
+cd examples/exported-actions
+effect-ci list
+effect-ci run check
 ```
 
 `check` runs its checkout prerequisite automatically. Checkout remains private:

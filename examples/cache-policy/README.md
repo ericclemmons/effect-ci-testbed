@@ -10,8 +10,9 @@ to `actions/cache`; Cloudflare preserves the selected paths through snapshots.
 ## Run it twice
 
 ```sh
-pnpm exec cf-ci run --workflow examples/cache-policy/.cloudflare/ci/workflow.ts
-pnpm exec cf-ci run --workflow examples/cache-policy/.cloudflare/ci/workflow.ts
+cd examples/cache-policy
+effect-ci run
+effect-ci run
 ```
 
 The first build creates cached output. The next reports a hit. Change

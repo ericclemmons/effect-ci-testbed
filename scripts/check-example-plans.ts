@@ -10,7 +10,7 @@ const examples = readdirSync("examples", { withFileTypes: true })
 const failures: Array<string> = []
 
 // These are the recipes' documented default plans, not plans for the enclosing
-// repository's push/ref. In native CI the checker itself runs inside cf-ci.
+// repository's push/ref. In native CI the checker itself runs inside effect-ci.
 const recipeEnvironment = Object.fromEntries(Object.entries(process.env)
   .filter(([name]) => !name.startsWith("GITHUB_") && !name.startsWith("EFFECT_CI_")))
 
@@ -30,7 +30,7 @@ for (const example of examples) {
 
   const result = spawnSync(
     process.execPath,
-    ["packages/cli/src/bin.ts", "--workflow", workflow, "plan", "--format=mermaid"],
+    ["packages/cli/src/effect-ci.ts", "--workflow", workflow, "plan", "--format=mermaid"],
     { encoding: "utf8", env: recipeEnvironment },
   )
 

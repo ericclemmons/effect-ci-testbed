@@ -22,13 +22,13 @@ test("the real CLI fans out from one snapshot without modifying the checkout", (
     cpSync(join(recipe, "app"), join(directory, "app"), { recursive: true })
     writeFileSync(join(directory, "package.json"), '{"type":"module"}')
     symlinkSync(join(root, "node_modules"), join(directory, "node_modules"), "dir")
-    const planned = spawnSync(process.execPath, [join(root, "packages/cli/src/bin.ts"),
+    const planned = spawnSync(process.execPath, [join(root, "packages/cli/src/effect-ci.ts"),
       "--workflow", join(directory, ".cloudflare/ci/workflow.ts"), "plan", "--format=json"], {
       encoding: "utf8", timeout: 15000,
     })
     assert.equal(planned.status, 0, planned.stdout + planned.stderr)
     assert.equal(existsSync(join(directory, "app/prepared.txt")), false)
-    const result = spawnSync(process.execPath, [join(root, "packages/cli/src/bin.ts"),
+    const result = spawnSync(process.execPath, [join(root, "packages/cli/src/effect-ci.ts"),
       "--workflow", join(directory, ".cloudflare/ci/workflow.ts"), "run", "--format=json"], {
       encoding: "utf8", timeout: 15000,
     })

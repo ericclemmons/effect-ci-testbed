@@ -1,5 +1,5 @@
 /** Bounded, immutable public Vite demo assets; not a deployment credential or check proof. */
-export const demoSiteOrigin = "https://effect-ci-demo-site.ericclemmons.workers.dev";
+export const demoSiteOrigin = "https://effect-ci-demo-site.eclemmons.workers.dev";
 /** Owned host retention policy, not actor input. Old immutable revisions are never evicted. */
 export const demoSiteRevisionCapacity = 256;
 export const demoAssetNames = ["index.html", "app.js", "message.js"] as const;

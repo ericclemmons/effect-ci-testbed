@@ -42,9 +42,10 @@ matrix and the same standalone script. Reports upload even on test failure.
 From the repository root after `pnpm install`:
 
 ```sh
-pnpm cf-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts plan
-pnpm cf-ci --workflow examples/test-splitting/.cloudflare/ci/workflow.ts run --format=text
-node --test examples/test-splitting/.cloudflare/ci/tests/test-splitting.test.ts
+cd examples/test-splitting
+effect-ci plan
+effect-ci run --format=text
+node --test .cloudflare/ci/tests/test-splitting.test.ts
 ```
 
 Compare [plain GitHub Actions](./.github/workflows/github.yml) with the

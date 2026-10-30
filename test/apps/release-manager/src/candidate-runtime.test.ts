@@ -29,7 +29,7 @@ test(
  globalThis.fetch=async(raw,init)=>{
   const url=String(raw);
   if(url.startsWith('https://effect-ci-demo-site.'))return new Response(${JSON.stringify(assets)}[url.split('/').at(-1)],{headers:{'x-site-revision':'${revision}','x-site-digest':'${site.digest}'}});
-  if(!url.startsWith('https://api.cloudflare.com/client/v4/accounts/0db135ec469e2f216fcea26426f29755/workers/scripts/effect-ci-hmd-demo/'))throw Error('Foreign credential target');
+  if(!url.startsWith('https://api.cloudflare.com/client/v4/accounts/da2f8f3e41d6b5018df12a58b417d918/workers/scripts/effect-ci-hmd-demo/'))throw Error('Foreign credential target');
   if(new Headers(init.headers).get('authorization')!=='Bearer fake-token')throw Error('Wrong token');
   if(url.includes('/deployments')){if(init.method==='POST')throw Error('Must never deploy');return Response.json({success:true,result:{deployments:[{id:'22222222-2222-4222-8222-222222222222',versions:[{version_id:'33333333-3333-4333-8333-333333333333',percentage:100}]}]}});}
   if(init.method==='POST'){posts++;metadata=JSON.parse(await init.body.get('metadata').text());return Response.json({success:true,result:{id:'11111111-1111-4111-8111-111111111111'}});}

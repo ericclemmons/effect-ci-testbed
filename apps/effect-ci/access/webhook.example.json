@@ -1,0 +1,10 @@
+{
+  "name": "Effect CI GitHub webhook",
+  "type": "self_hosted",
+  "domain": "effect-ci.<workers-dev-subdomain>.workers.dev/webhooks/github",
+  "policies": [{
+    "name": "GitHub signature authentication",
+    "decision": "bypass",
+    "include": [{ "everyone": {} }]
+  }]
+}

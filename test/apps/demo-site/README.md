@@ -35,7 +35,7 @@ cd ../../../apps/effect-ci
 cf build
 cf deploy --prebuilt
 cd ../../fixtures/demo
-cf-ci run --remote
+effect-ci run --remote
 ```
 
 The final `publish site` action runs with zero retries and a one-minute timeout;

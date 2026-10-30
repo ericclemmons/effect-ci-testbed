@@ -8,7 +8,7 @@ import test from "node:test"
 
 const ci = fileURLToPath(new URL("../../../packages/ci/src/index.ts", import.meta.url))
 const provider = fileURLToPath(new URL("../../../packages/ci/src/directory-deployment.ts", import.meta.url))
-const bin = fileURLToPath(new URL("../../../packages/cli/src/bin.ts", import.meta.url))
+const bin = fileURLToPath(new URL("../../../packages/cli/src/effect-ci.ts", import.meta.url))
 
 test("real CLI builds shared input and deploys only changed output across separate processes", () => {
   const root = mkdtempSync(join(tmpdir(), "effect-ci-output-cli-"))

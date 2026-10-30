@@ -3,7 +3,7 @@
 Run GitHub CI as native Cloudflare Workflows. GitHub shows checks; Slack can show
 progress and review controls. Project commands run in containers, not in the host.
 
-- [Try the standalone Vite tutorial](../../examples/demo/README.md).
+- [Try the Vite walkthrough](../../examples/demo/README.md).
 - [Deploy your own host](./SELF-HOST.md).
 - [Keep GitHub Actions YAML with the optional runner](../github-actions-runner/README.md).
 
@@ -34,17 +34,18 @@ A failed or uncertain publication is inspected, not blindly replayed.
 The `standalone` profile checks out the caller's Git origin at the requested HEAD,
 installs dependencies, and runs the same CLI inside the container at the repository
 root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional package
-scripts there. `cf-ci run build --remote` selects the repository's build action;
+scripts there. `effect-ci run build --remote` selects the repository's build action;
 no target runs its whole workflow. The host never imports repository workflow code.
 
-The existing `demo` profile retains this account's integrations for compatibility.
+The `demo` profile is the complete current host, including its connected services.
+The self-hosting guide deploys this profile.
 Its root `/capabilities` and `/runs` API also runs arbitrary caller repositories
 through `RepositoryCIWorkflow`, using the existing host API token and Access
 application. These runs always start at the repository root in the unprivileged
 `repository` image. `/demo` and `/showcase` retain their separate policies and
 workflows. A new repository does not require a new hostname or new credentials.
 The [retained same-host proof](./verification/repository-head/2026-10-23.json)
-records a successful `cf-ci run build --remote` for the standalone demo's exact
+records a successful `effect-ci run build --remote` for the standalone demo's exact
 pushed HEAD and a real unknown-target failure. The client used automatic
 `.env.local` settings and the existing credentials. Live Access and legacy demo
 capabilities were checked separately; this is an execution receipt, not signed evidence.
@@ -53,7 +54,7 @@ signers, deployment credentials, repair authority or reusable-check policies for
 
 ### 5. Run the first Workflow
 
-After [setup](./SELF-HOST.md#run-ci), commit and push to an installed repository.
+After [setup](./SELF-HOST.md#connect-and-verify), commit and push to an installed repository.
 A signed `check_suite` event starts ordinary CI at the exact commit and reports
 per-action checks. Explicitly enrolled preview/release branches use the signed Push
 event so moving the same checked SHA between refs still creates the branch-owned
@@ -61,11 +62,11 @@ attempt. Redelivery of the same delivery ID does not create another run.
 For remote CLI execution, use a clean pushed commit and your configured host:
 
 ```sh
-cf-ci run --remote
+effect-ci run --remote
 ```
 
 Remote execution selects the host's advertised policy, not an uploaded local module.
-`cf-ci doctor --remote` is an optional, non-dispatching preflight; normal commands
+`effect-ci doctor --remote` is an optional, non-dispatching preflight; normal commands
 also negotiate authentication and capabilities.
 
 ## Trusted results and PR policy
@@ -81,7 +82,7 @@ journaled exact-head writer. This path does not merge a PR or bypass GitHub rule
 Inspect its plan without credentials or API writes:
 
 ```sh
-cf-ci --workflow apps/effect-ci/src/workflows/pull-request.ts plan approve
+effect-ci --workflow apps/effect-ci/src/workflows/pull-request.ts plan approve
 ```
 
 ### Enrolled demo syntax-check reuse
@@ -92,7 +93,7 @@ These are not automatic enrollment for a fresh copy of the tutorial.
 
 ## Discord / Slack notifications and HITL
 
-[Notification setup](./SELF-HOST.md#notifications) is optional and separate from
+[Notification setup](./SELF-HOST.md#store-credentials) is optional and separate from
 approval authority. Host policy selects which runs notify. The root CI/CD workflow
 has no human gate. The [HITL example](../../examples/cloudflare-hitl-release/README.md)
 shows an explicit approval action; [demo release evidence](./DEMO-RELEASE.md) retains
@@ -127,16 +128,16 @@ reads, and short-lived Cloudflare deployment credentials. It retains the existin
 monorepo, demo, showcase, repair, and repository workflow exports.
 
 Locally, authenticate with `cloudflared access login --quiet <service-origin>`, then
-run `cf-ci oidc --service <service-origin>` from the project. Commit the generated
+run `effect-ci oidc --service <service-origin>` from the project. Commit the generated
 `.cloudflare/ci/oidc.json`; it contains only the service origin and repository name.
-`cf-ci doctor --remote` and `cf-ci run --remote` then reuse the Access identity;
+`effect-ci doctor --remote` and `effect-ci run --remote` then reuse the Access identity;
 a separate Effect CI API token is no longer required for these operator routes.
 Existing private API profiles remain compatible.
 
 In GitHub Actions, grant the job `id-token: write` and set the public
-`EFFECT_CI_REMOTE_URL`. `cf-ci oidc` enrolls only the repository identified by the
+`EFFECT_CI_REMOTE_URL`. `effect-ci oidc` enrolls only the repository identified by the
 signed job token, after verifying its GitHub App installation and allowed numeric
-owner. CI enrollment does not modify the checkout. `cf-ci run --remote` automatically
+owner. CI enrollment does not modify the checkout. `effect-ci run --remote` automatically
 requests fresh identity tokens for dispatch, status, and log requests. It sends no
 Access credentials or stored Effect CI API token. Other repositories, mismatched
 commits, and cross-repository run reads are rejected. Workloads cannot approve
@@ -150,7 +151,7 @@ unrestricted token accepted everywhere.
 
 Hosted repository runs receive an internal five-minute identity through the
 host-owned process environment. It is not put into command text, snapshots, or
-durable Workflow checkpoint values. `cf-ci oidc -- pnpm exec cf deploy` (or Wrangler)
+durable Workflow checkpoint values. `effect-ci oidc -- pnpm exec cf deploy` (or Wrangler)
 exchanges it for a 15-minute Cloudflare credential and revokes that credential
 when the child exits, including on failure. This internal JWT is not a public
 third-party OIDC provider.

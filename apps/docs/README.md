@@ -1,22 +1,44 @@
 # Documentation
 
-Public site: https://effect-ci-docs.ericclemmons.workers.dev
+Public site: https://effect-ci-docs.eclemmons.workers.dev
 
 The Starlight site reads existing Markdown directly from the repository. Keep
 recipe documentation beside its code in `examples/<recipe>/README.md`; service
 documentation belongs in `apps/<service>/README.md`. No copied pages or generated
-Markdown are committed. Recipe navigation follows the existing examples guide.
+Markdown are committed.
+
+The homepage is a live feature compatibility matrix. Rows and applicability come
+from `examples/COVERAGE.md`; new example directories are included automatically.
+Colors come from public GitHub check results for one resolved `main` commit,
+loaded in the browser with no credentials. Green means the mapped check passed;
+amber hourglasses mean results are loading or the check is queued or running.
+Missing, skipped, cancelled, and failed checks stay red. Not-applicable
+cells do not count toward progress. Refresh reloads results; an API or rate-limit
+error is shown explicitly. Local Cloudflare runtime checks count as local, and
+only native `Cloudflare / <recipe>` checks from the Effect CI App count as hosted.
+The page does not infer current readiness from historical coverage ticks.
+
+The walkthrough comes from
+`examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
+The API section groups solutions by API using the `CI.*` headings and link labels in
+`examples/README.md`. Each group has a matching API page beside the SDK under
+`packages/ci/`; its title matches the group and its method headings become links.
+Each group starts with Usage, followed by Methods and Examples. Groups and entries
+within Methods and Examples are alphabetical. Source examples are included from
+their runnable files, including the local workspace/checkpoint example.
+Recipes lists every remaining example alphabetically, including newly added
+examples. Self-hosting and environment evidence belong in the API section.
 
 From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
 build the static site. Output is in `apps/docs/dist/`.
 
 Pushes to `main` build and publish this site through Cloudflare Workers Builds.
-PRs build and verify the docs in GitHub Actions without deployment credentials.
+PRs build the docs in GitHub Actions without deployment credentials.
 
 [Continuous deployment settings](./builds.json "source")
 
 Publish manually with `pnpm docs:deploy` from an authenticated
-Cloudflare CLI session. This builds and verifies the site, then deploys the static
+Cloudflare CLI session. This builds the site, then deploys the static
 assets as the separate `effect-ci-docs` Worker. It has no app bindings or secrets;
 the app's Access policies remain on its own hostname.
 

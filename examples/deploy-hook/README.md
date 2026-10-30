@@ -4,10 +4,11 @@ Send a deployment event through the same build/deploy workflow as other CI.
 
 ## Run it
 
-From this example directory:
+From the repository root:
 
 ```sh
-EFFECT_CI_EVENT=deploy_hook pnpm exec cf-ci run
+cd examples/deploy-hook
+EFFECT_CI_EVENT=deploy_hook effect-ci run
 ```
 
 Both `deploy_hook` and GitHub's `deployment` event select the deployment branch.

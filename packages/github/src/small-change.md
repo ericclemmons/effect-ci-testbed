@@ -3,7 +3,7 @@
 Reuse the work. Review the change.
 
 ```text
-agent: cf-ci run test build --remote
+agent: effect-ci run test build --remote
 PR:    verify receipts → small-change → approve or normal review
 merge: GitHub's existing rules + the user's auto-merge setting
 ```

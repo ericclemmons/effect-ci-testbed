@@ -38,7 +38,7 @@ test(
       const url=String(input);
       if(url.includes('/chat.getPermalink?')){const u=new URL(url),channel=u.searchParams.get('channel'),ts=u.searchParams.get('message_ts');return Response.json({ok:true,channel,permalink:'https://fixture.slack.com/archives/'+channel+'/p'+ts.replace('.','')});}
       if(url.startsWith('https://slack.com/api/')){if(failObservationNow){observationFailures++;failedObservationTargets.push({method:url.split('/').at(-1),ts:JSON.parse(init.body).ts});throw Error('private-presentation-token');}const body=JSON.parse(init.body),button=body.blocks?.find(b=>b.type==='actions')?.elements?.find(e=>e.action_id==='hmd_approve'),p=button?JSON.parse(button.value).phase:0,rejected=p&&!rejectedPhases.has(p);messages.push({url,body,accepted:!rejected});if(rejected){rejectedPhases.add(p);return Response.json({ok:false,error:'invalid_blocks'});}return Response.json({ok:true,ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});}
-      if(url.startsWith('https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
+      if(url.startsWith('https://effect-ci-hmd-demo.eclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
       throw Error('Unexpected outbound request');
     };
     const normalFetch=globalThis.fetch;globalThis.fetch=async(input,init)=>{
@@ -51,7 +51,7 @@ test(
     };
     const build=CI.action('build',()=>function*(){return receipt;});
     // TEST ONLY clock: keep the real Workflow/RPC/approval composition, skip elapsed settling time.
-    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('cf-ci-demo',function*(){return yield*build();}),{cache:false,slackLayout:'status-thread',finalize:ctx=>finalizeDemoRelease({...ctx,
+    export const DemoCIWorkflow=workflowEntrypoint(CI.workflow('effect-ci-demo',function*(){return yield*build();}),{cache:false,slackLayout:'status-thread',finalize:ctx=>finalizeDemoRelease({...ctx,
       observe:async(key,presentation,thread)=>{failObservationNow=failObservationCase&&key==='settled-100';try{return await ctx.observe(key,presentation,thread);}finally{failObservationNow=false;}},
       step:{do:(...args)=>ctx.step.do(...args),waitForEvent:(...args)=>{if(reviewFailureCase){deadlineWaits++;if(args[1].timeout!=='5 minutes')throw Error('Changed review deadline');throw Error('TEST ONLY simulated review deadline; no human decision');}return ctx.step.waitForEvent(...args);},sleep:async(name,duration)=>{if(!name.startsWith('vite-release:settle-')||duration!=='2 minutes')throw Error('Unexpected test clock sleep');}}})});
     export default{async fetch(request,env,ctx){const p=await request.json();
@@ -181,7 +181,7 @@ test(
         assert.equal(state.rejectedPhases.length, state.images, "each private image's definite validation rejection is bounded and recovered before review");
         assert.equal(state.requests, id !== "reject" ? 500 : 300);
         const roots = state.messages.filter((m: any) => !m.body.thread_ts && (!m.body.ts || m.body.ts === "123.456"));
-        assert.ok(roots.every((m: any) => m.body.blocks[0].type === "section" && /cf-ci-demo/.test(m.body.text)));
+        assert.ok(roots.every((m: any) => m.body.blocks[0].type === "section" && /effect-ci-demo/.test(m.body.text)));
         assert.ok(roots.every((m: any) => !/hmd_approve|1\\. |2\\. /.test(JSON.stringify(m.body.blocks))));
         assert.ok(roots.at(-1).body.blocks.some((b: any) => b.type === "image" && b.slack_file.id === "F123"), "terminal parent preserves latest graph");
         const replyUpdates = state.messages.filter((m: any) => m.body.ts && m.body.ts !== "123.456");

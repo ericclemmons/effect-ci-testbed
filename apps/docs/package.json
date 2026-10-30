@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
-    "build": "astro build && node scripts/verify.mjs && node scripts/build-output.mjs",
+    "build": "astro build && node --test scripts/feature-links.test.mjs && node scripts/build-output.mjs",
     "check": "pnpm run build",
     "preview": "astro preview --host 127.0.0.1",
     "deploy": "pnpm run build && cf deploy --prebuilt"

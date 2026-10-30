@@ -54,7 +54,7 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     delete env.EFFECT_CI_OIDC_TOKEN
     delete env.EFFECT_CI_REMOTE_URL
     const run = (args: string[]) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [fileURLToPath(new URL("./bin.ts", import.meta.url)), ...args, ...(args[0] === "oidc" ? [] : ["--remote", "--format=json"])], { cwd: directory, env })
+      const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), ...args, ...(args[0] === "oidc" ? [] : ["--remote", "--format=json"])], { cwd: directory, env })
       let output = ""
       child.stdout.on("data", chunk => { output += chunk })
       child.stderr.on("data", chunk => { output += chunk })
@@ -68,7 +68,7 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     const doctor = await run(["doctor"])
     assert.equal(doctor.code, 0, doctor.output)
     assert.equal(dispatches, 0)
-    const result = await run(["run"])
+    const result = await run(["run", "build"])
     assert.equal(result.code, 0, result.output)
     assert.equal(dispatches, 1)
     assert.ok(paths.includes("/api/runs/job-run/events"))

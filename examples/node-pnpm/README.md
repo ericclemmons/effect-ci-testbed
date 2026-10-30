@@ -6,7 +6,8 @@ formatting is advisory, and both run before test and build.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts test build
+cd examples/node-pnpm
+effect-ci run test build
 ```
 
 Request test, build, or both: their shared install and checks run once. Only

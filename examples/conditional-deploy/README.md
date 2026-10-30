@@ -11,7 +11,8 @@ Globs support `*`, `**`, `?`, and alternatives such as `**/*.(ts|tsx|json)`.
 Added, deleted, and renamed paths count. Unknown comparisons return `true`.
 
 ```sh
-pnpm exec cf-ci run --workflow examples/conditional-deploy/.cloudflare/ci/if-else.ts
+cd examples/conditional-deploy
+effect-ci run .cloudflare/ci/if-else.ts
 ```
 
 This deployment prints a message. Local comparisons use the remote default
@@ -24,8 +25,8 @@ A source change need not change what ships. Build first, then compare the result
 [Source](./.cloudflare/ci/output-changes.ts#symbol=default "source")
 
 ```sh
-pnpm ci:changed-outputs
-pnpm ci:changed-outputs
+effect-ci run .cloudflare/ci/output-changes.ts
+effect-ci run .cloudflare/ci/output-changes.ts
 ```
 
 The first run publishes a local directory; the second skips it. Edit

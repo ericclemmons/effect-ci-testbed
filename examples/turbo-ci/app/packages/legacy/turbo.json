@@ -1,0 +1,7 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": { "tags": ["ci", "!ci"] },
+    "check": { "tags": [] }
+  }
+}

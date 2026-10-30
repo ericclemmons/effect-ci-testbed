@@ -4,7 +4,7 @@ import { probeBatch, cohortSample } from "./hmd-cohort.ts"
 
 test("closed HTTP cohorts pin exact version and do not count unknown responses as success", async () => {
   let calls = 0
-  const batch = await probeBatch("https://effect-ci-hmd-demo.ericclemmons.workers.dev", "test", ["old", "new"], (async (_url, init) => {
+  const batch = await probeBatch("https://effect-ci-hmd-demo.eclemmons.workers.dev", "test", ["old", "new"], (async (_url, init) => {
     assert.equal(init?.redirect, "manual")
     calls++
     if (calls === 1) throw new Error("lost response")
@@ -21,7 +21,7 @@ test("closed HTTP cohorts pin exact version and do not count unknown responses a
 })
 
 test("complete version-specific batches close only the client-observed window", async () => {
-  const batch = await probeBatch("https://effect-ci-hmd-demo.ericclemmons.workers.dev", "test", ["old"], (async () => Response.json({ version: "old", healthy: true })) as typeof fetch)
+  const batch = await probeBatch("https://effect-ci-hmd-demo.eclemmons.workers.dev", "test", ["old"], (async () => Response.json({ version: "old", healthy: true })) as typeof fetch)
   assert.deepEqual(cohortSample([batch], "old", 1, 2), {
     version: "old", from: 1, to: 2, completeThrough: 2, trials: 100, failures: 0, sampling: "unsampled",
   })

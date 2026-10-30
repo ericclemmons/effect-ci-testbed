@@ -141,7 +141,7 @@ export async function probeRelease(
       Array.from({ length: 10 }, async (_, offset) => {
         try {
           const response = await transport(
-            `https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?probe=${encodeURIComponent(identity)}-${group * 10 + offset}`,
+            `https://effect-ci-hmd-demo.eclemmons.workers.dev/health?probe=${encodeURIComponent(identity)}-${group * 10 + offset}`,
             {
               redirect: "manual",
               signal: AbortSignal.timeout(10000),

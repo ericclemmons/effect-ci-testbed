@@ -37,7 +37,7 @@ const conditions = {
   artifactPresent: existsSync(resolve(root, "dist/message.js")),
   cacheHit: "not independently measured",
 };
-const cli = fileURLToPath(new URL("../../../../packages/cli/src/bin.ts", import.meta.url));
+const cli = fileURLToPath(new URL("../../../../packages/cli/src/effect-ci.ts", import.meta.url));
 const startedAt = new Date().toISOString();
 const result = JSON.parse(
   execFileSync(process.execPath, [cli, "run", "build", "--format=json"], {
@@ -95,7 +95,7 @@ const manifest = {
   environment: "Effect CI Local",
   sourceRevision,
   captureId,
-  command: "cf-ci run build --format=json",
+  command: "effect-ci run build --format=json",
   workflow: result.workflow,
   planMermaid,
   runtime: process.version,

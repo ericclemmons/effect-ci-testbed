@@ -18,7 +18,7 @@ test("public demo site identities bind exact UTF-8 bytes, ordered paths and immu
   assert.equal(first.files.length, 3);
   assert.match(
     demoSiteUrl(first),
-    /^https:\/\/effect-ci-demo-site\.ericclemmons\.workers\.dev\/r\/[a-f0-9]{40}\/[a-f0-9]{64}\/index.html$/,
+    /^https:\/\/effect-ci-demo-site\.eclemmons\.workers\.dev\/r\/[a-f0-9]{40}\/[a-f0-9]{64}\/index.html$/,
   );
   const response = await siteResponse(first, "app.js");
   assert.equal(await response.text(), assets["app.js"]);
