@@ -1,0 +1,25 @@
+examples/demo/README.md
+  s_4fb061b3c5d513::t_49d296e7e357b0 146-163,230-235,290-292
+examples/demo/tutorial/checks.example.yml
+  s_4fb061b3c5d513::t_d8a23e722e6a1a 25
+examples/demo/tutorial/oidc.example.yml
+  s_4fb061b3c5d513::t_7f5088f96a70da 21
+examples/demo/tutorial/verify-local.mjs
+  s_4fb061b3c5d513::t_2e85b8828318fe 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "432e10ef357b919d6242f00a21984ce99fe42833",
+  "prompts": {},
+  "sessions": {
+    "s_4fb061b3c5d513": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc8-d3b7-7fb1-a280-e3b7e4f1d52e",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
