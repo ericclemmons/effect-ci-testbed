@@ -1,0 +1,19 @@
+apps/effect-ci/MIGRATE.md
+  s_3279c24a76188a::t_4c30b0033f55fd 56,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "37d1b2b81141c8e5baf0d11fa8eb1163578d1ac1",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
