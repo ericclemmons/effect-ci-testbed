@@ -5,7 +5,19 @@ Public site: https://effect-ci-docs.ericclemmons.workers.dev
 The Starlight site reads existing Markdown directly from the repository. Keep
 recipe documentation beside its code in `examples/<recipe>/README.md`; service
 documentation belongs in `apps/<service>/README.md`. No copied pages or generated
-Markdown are committed. The homepage is a feature checklist. The walkthrough comes from
+Markdown are committed.
+
+The homepage is a live feature compatibility matrix. Rows and applicability come
+from `examples/COVERAGE.md`; new example directories are included automatically.
+Colors come from public GitHub check results for one resolved `main` commit,
+loaded in the browser with no credentials. Green means the mapped check passed;
+missing, pending, skipped, cancelled, and failed checks stay red. Not-applicable
+cells do not count toward progress. Refresh reloads results; an API or rate-limit
+error is shown explicitly. Local Cloudflare runtime checks count as local, and
+only native `Cloudflare / <recipe>` checks from the Effect CI App count as hosted.
+The page does not infer current readiness from historical coverage ticks.
+
+The walkthrough comes from
 `examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
 Ecosystem pages link tools to their runnable examples. Other recipes follow the
 examples guide. Self-hosting and environment evidence belong in Reference.

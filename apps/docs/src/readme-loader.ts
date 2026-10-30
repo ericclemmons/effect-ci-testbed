@@ -20,7 +20,8 @@ export function readmes(): Loader {
             ...(page.id === "index" ? {} : { banner: { content: "<strong>Prototype.</strong> CI experiments by Eric Clemmons." } }),
             editUrl: `${repository}/edit/main/${page.path}`,
           } })
-          const body = page.body.replace(/^# .+\r?\n/m, "")
+          let body = page.body.replace(/^# .+\r?\n/m, "")
+          if (page.id === "index") body = body.replace(/^## Features\n[\s\S]*?(?=^## )/m, "")
           const filePath = resolve(root, page.path)
           store.set({ id: page.id, data, body, filePath: relative(fileURLToPath(config.root), filePath),
             rendered: await renderMarkdown(body, { fileURL: pathToFileURL(filePath) }) })
