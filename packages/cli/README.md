@@ -21,6 +21,10 @@ Without a workflow, every `package.json` script is an action. In Vite+ projects,
 tasks under `run.tasks` in `vite.config.ts` are actions too. Install the project's
 dependencies first so the CLI can use its Vite+ config loader. Vite+ owns task
 dependencies and caching; Effect CI invokes config tasks with `vp run <name>`.
+Plans show same-package prerequisites declared with `dependsOn: ["build", "lint"]`,
+including transitive prerequisites and package scripts. Cross-package dependencies
+(`package#task` and `{ task, from }`) remain inside Vite+ and are not expanded in
+Effect CI plans.
 A name cannot appear in both package scripts and Vite+ tasks.
 
 Auto-discovered projects require an action name: `effect-ci run build`.

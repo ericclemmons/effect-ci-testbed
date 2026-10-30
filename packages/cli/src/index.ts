@@ -706,7 +706,7 @@ const inferJavaScriptProgram = (root: string): Program => {
     readonly dependencies?: Readonly<Record<string, string>>
     readonly devDependencies?: Readonly<Record<string, string>>
   }
-  let tasks: ReadonlyArray<string> = []
+  let tasks: ReturnType<typeof vitePlusTasks> = { names: [], dependencies: {} }
   if (manifest.dependencies?.["vite-plus"] || manifest.devDependencies?.["vite-plus"]) {
     try { tasks = vitePlusTasks(root) }
     catch (error) {
@@ -714,7 +714,7 @@ const inferJavaScriptProgram = (root: string): Program => {
         `Cannot discover Vite+ tasks. Install project dependencies and check vite.config.ts. ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  const names = [...Object.keys(manifest.scripts ?? {}), ...tasks]
+  const names = [...Object.keys(manifest.scripts ?? {}), ...tasks.names]
 
   if (names.length === 0) {
     throw new CliFailure(
@@ -724,7 +724,7 @@ const inferJavaScriptProgram = (root: string): Program => {
     )
   }
 
-  return CI.fromPackageJson(manifest, { tasks })
+  return CI.fromPackageJson(manifest, { tasks: tasks.names, taskDependencies: tasks.dependencies })
 }
 
 /** Explicit local execution opts this package into script discovery, never remote or plan. */

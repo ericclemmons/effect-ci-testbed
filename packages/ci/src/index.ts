@@ -2777,7 +2777,11 @@ export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOpti
 export const fromPackageJson = (manifest: {
   readonly name?: string
   readonly scripts?: Readonly<Record<string, string>>
-}, options: { readonly tasks?: ReadonlyArray<string> } = {}) => {
+}, options: {
+  readonly tasks?: ReadonlyArray<string>
+  /** Local Vite+ prerequisites, used only to describe the plan. Vite+ executes them. */
+  readonly taskDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
+} = {}) => {
   const tasks = new Set(options.tasks)
   const scripts = Object.keys(manifest.scripts ?? {})
   const duplicate = scripts.find(name => tasks.has(name))
@@ -2786,6 +2790,19 @@ export const fromPackageJson = (manifest: {
   if (names.length === 0) {
     throw new Error("Zero-config CI found no package.json scripts or Vite+ run.tasks")
   }
+
+  const visited = new Set<string>()
+  const visiting = new Set<string>()
+  const validateDependencies = (name: string): void => {
+    if (visiting.has(name)) throw new Error(`Circular Vite+ task dependency: ${name}`)
+    if (visited.has(name)) return
+    if (!names.includes(name)) throw new Error(`Unknown Vite+ task dependency: ${name}`)
+    visiting.add(name)
+    for (const dependency of options.taskDependencies?.[name] ?? []) validateDependencies(dependency)
+    visiting.delete(name)
+    visited.add(name)
+  }
+  for (const name of names) validateDependencies(name)
 
   const privateName = (name: string): string => names.includes(name) ? privateName(`$${name}`) : name
   const checkout = action(privateName("checkout"), function* () {
@@ -2797,8 +2814,11 @@ export const fromPackageJson = (manifest: {
     const packageManager = yield* PackageManager.JavaScript(workspace)
     return yield* packageManager.install()
   })
-  const actions = Object.fromEntries(names.map((name) => [name,
+  const actions: Record<string, () => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>> = Object.fromEntries(names.map((name) => [name,
     action(name, () => function* () {
+      if ((yield* executionMode) === "plan") {
+        for (const dependency of options.taskDependencies?.[name] ?? []) yield* actions[dependency]!()
+      }
       const workspace = yield* install()
       const packageManager = yield* PackageManager.JavaScript(workspace)
       return yield* tasks.has(name)
