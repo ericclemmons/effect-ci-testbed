@@ -1,0 +1,27 @@
+packages/ci/src/index.ts
+  s_08e85037490a9a::t_e709fcd845130e 2780-2784,2794-2806,2817,2819-2821
+packages/cli/README.md
+  s_08e85037490a9a::t_dae19f9a5c1eb5 24-27
+packages/cli/src/bootstrap.test.ts
+  s_08e85037490a9a::t_c6d8b941b89ce3 120-125,130,134-160
+packages/cli/src/index.ts
+  s_08e85037490a9a::t_daa03fec691f76 709,717,727
+packages/cli/src/vite-plus.ts
+  s_08e85037490a9a::t_4dd302762c9618 4-7,13-25,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9f64764b1f31939beed4649b37d592b88647c79c",
+  "prompts": {},
+  "sessions": {
+    "s_08e85037490a9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dae-c3c3-70f2-9dbe-157fe2c230c4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
