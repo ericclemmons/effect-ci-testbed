@@ -37,7 +37,7 @@ export function standaloneProgram(root: string, targets: ReadonlyArray<string> =
     const workspace = yield* install();
     // Explicit local execution cannot recurse into the host's remote endpoint.
     return yield* workspace.exec(["node /opt/effect-ci/src/hosted.ts run", ...targets,
-      "--local --format=json"].join(" "));
+      "--local --format=text"].join(" "));
   });
   return {
     workflow: CI.workflow("hosted-ci", () => run()),
