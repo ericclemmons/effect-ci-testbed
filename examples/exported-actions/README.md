@@ -16,9 +16,6 @@ only named `CI.action` exports become CLI targets.
 
 [Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)
 
-## Own the Cloudflare host
-
-The [standalone host](./hosted/README.md) runs this default workflow without the
-shared example app. It owns its config, Container binding and Dockerfile.
-It does not expose a remote target-discovery endpoint. Independent deployment
-and execution remain unverified.
+Use the same exported goal on your configured hosted service from the repository root:
+`effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
+No recipe-specific deployment is required; remote execution uses the pushed commit.

@@ -17,9 +17,7 @@ depends on test, which depends on lint. Shared installation runs once.
 Compare the [Effect workflow](./.cloudflare/ci/workflow.ts) with
 [GitHub Actions YAML](./.github/workflows/github.yml).
 
-## Own the Cloudflare host
-
-The [standalone host](./hosted/README.md) owns its config, Workflow, Container
-binding and Dockerfile. Its dependencies are separate from this npm fixture.
-It has not been deployed or run independently; the old shared-host run is not
-standalone evidence.
+Use the same workflow on your configured hosted runner with
+`effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`
+from the repository root. No recipe-specific deployment is required. Remote
+execution uses the clean, pushed commit, not local edits.

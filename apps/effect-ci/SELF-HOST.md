@@ -57,6 +57,18 @@ The host does not import project code. `cf-ci run --remote` runs the whole workf
 `cf-ci run test build --remote` selects exported actions. The standalone host
 advertises project goal discovery, then validates the requested names through the
 real CLI inside the isolated workspace. Fixed-goal hosts keep their allowlists.
+
+The same host can run nested projects without a new deployment. Change into the
+project directory, or select its workflow with
+`effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`.
+Remote project selection is relative to the checked-out repository; requests
+without a selection keep the host's configured project root. Project modules run
+inside the workspace, never in the host Worker. This requires an updated host;
+see [CLI selection](../../packages/cli/README.md#remote-project-selection).
+Projects with their own package-manager identity install in that directory.
+Workspace members without one install through the nearest ancestor workspace,
+then execute in the selected project. Projects without a package.json skip the
+JavaScript install step.
 The standalone image includes Node 24.22, pnpm 12.8.1 and the locked CLI/SDK
 runtime. Building the standalone profile packages its production dependencies;
 project manifests do not need a local SDK link.

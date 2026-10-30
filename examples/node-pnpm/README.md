@@ -16,9 +16,6 @@ The [actions](./.cloudflare/ci/actions.ts) own these dependencies; the
 [workflow](./.cloudflare/ci/workflow.ts) selects the goal.
 Compare with [GitHub Actions YAML](./.github/workflows/github.yml).
 
-## Own the Cloudflare host
-
-The [standalone host](./hosted/README.md) keeps hosting dependencies out of this
-fixture's frozen pnpm install. It owns its config, Workflow, Container binding
-and Dockerfile. Independent deployment and execution remain unverified; the
-old shared-host run remains separate.
+Run the same goals through your configured hosted service from the repository root:
+`effect-ci run test build --remote --workflow examples/node-pnpm/.cloudflare/ci/workflow.ts`.
+No recipe-specific deployment is required; remote execution uses the pushed commit.
