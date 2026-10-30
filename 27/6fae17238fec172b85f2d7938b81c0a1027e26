@@ -1,0 +1,21 @@
+test/apps/repair-events/src/public-enrollment.test.ts
+  s_3279c24a76188a::t_5599fdbceed9fc 35-38
+test/apps/repair-events/src/public-enrollment.ts
+  s_3279c24a76188a::t_0b4f060276eaa7 3-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "276fae17238fec172b85f2d7938b81c0a1027e26",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
