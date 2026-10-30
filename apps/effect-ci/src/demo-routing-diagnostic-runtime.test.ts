@@ -11,7 +11,7 @@ test("private diagnostic uses real local Workflow/RPC checkpoints, fixed cohorts
     import{WorkerEntrypoint}from'cloudflare:workers';
     import{DemoRoutingDiagnosticWorkflow as ActualWorkflow}from'./demo-routing-diagnostic-workflow.ts';
     import{routingDiagnosticCandidate as candidate}from'./demo-routing-diagnostic.ts';
-    const baseline='09593237-23b2-4873-bd04-88c8e8488840';let phase=0,calls=0,restores=0,requests=0,waits=[];
+    const baseline='f8526596-f9b8-4068-87c0-c517844488a8';let phase=0,calls=0,restores=0,requests=0,waits=[];
     function view(){return{candidate:candidate.version,status:'active',previous:[{version:baseline,percentage:100}],deployment:{id:'11111111-1111-4111-8111-111111111111',versions:phase?[{version:baseline,percentage:90},{version:candidate.version,percentage:10}]:[{version:baseline,percentage:100}]}};}
     export class Broker extends WorkerEntrypoint{prepareCandidate(){calls++;return candidate;}begin(){calls++;return view();}renew(){calls++;return view();}promote(owner,p){calls++;if(p!==10)throw Error('Forbidden phase');phase=p;return view();}rollback(){calls++;restores++;phase=0;return{...view(),status:'rolled-back'};}complete(){throw Error('Forbidden commit');}}
     // TEST ONLY elapsed-time substitute, with actual Workflow/RPC durability.

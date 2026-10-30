@@ -7,8 +7,8 @@ import { healthChart } from "../../../../packages/cloudflare/src/health-chart.ts
 import { collectReceipts, readReceiptSamples, combineSamples } from "./wobs-samples.ts"
 import { verifyLabRollback } from "./hmd-lab-result.ts"
 
-const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
-const CANDIDATE = "02de9b2e-95d0-49e6-b787-467e25c5a65c"
+const BASELINE = "f8526596-f9b8-4068-87c0-c517844488a8"
+const CANDIDATE = "6fc2cbb9-794c-47d5-989b-5c1a4af1342c"
 const ONCE = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Fixed-target bounded regression lab: only WOBS native terminal outcomes gate

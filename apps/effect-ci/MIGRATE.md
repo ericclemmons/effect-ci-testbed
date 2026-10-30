@@ -134,6 +134,7 @@ does not remove their resources or their charges from the source account.
    | `packages/cloudflare/src/demo-site.ts` | `demoSiteOrigin` for the work account. Publisher and consumers must agree. |
    | `test/apps/release-manager/src/release-manager.ts` | `RELEASE_ACCOUNT` for the work account. Keep `RELEASE_SCRIPT` aligned with the HMD demo Worker. |
    | `apps/effect-ci/src/demo-access-policy.ts` | Host origin and verified human Access identity, as above. |
+   | HMD controller/review/diagnostic runtime sources | Work-account healthy baseline and candidate version IDs. Upload healthy and regression candidates with `cf workers versions create`; do not deploy the regression candidate. Verify the baseline allocation remains 100% healthy. |
    | `apps/docs/astro.config.mjs`, `apps/docs/builds.json` | Docs URL and a newly configured destination Workers Builds trigger. Source-account trigger IDs cannot be reused. |
 
    Search the runtime sources for the old hostname and account ID and review

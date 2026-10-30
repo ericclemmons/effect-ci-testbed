@@ -1085,7 +1085,7 @@ export const runCli = async (
     }
     args = remaining.length ? remaining : ["--help"]
     if (args[0] === "oidc") {
-      await runOidc(args.slice(1), cwd, remoteHeaders(process.env.EFFECT_CI_REMOTE_URL ?? "https://effect-ci-github-cloudflare.ericclemmons.workers.dev"))
+      await runOidc(args.slice(1), cwd, remoteHeaders(process.env.EFFECT_CI_REMOTE_URL ?? "https://effect-ci-github-cloudflare.eclemmons.workers.dev"))
       return
     }
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.

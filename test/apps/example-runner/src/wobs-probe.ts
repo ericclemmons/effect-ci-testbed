@@ -2,7 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { reconcileTelemetry } from "../../../../packages/cloudflare/src/telemetry-cohort.ts"
 import { sqlFetchOutcome } from "./wobs-cohort.ts"
 
-const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
+const BASELINE = "f8526596-f9b8-4068-87c0-c517844488a8"
 const ONCE = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Authenticated, bounded read-only deployment lab. No broker mutations, credentials,

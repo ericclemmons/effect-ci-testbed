@@ -85,7 +85,7 @@ test("corrupt independent manifests reject before querying and duplicate deliver
 })
 
 test("large cohorts partition SQL without weakening cross-partition native identity checks", async () => {
-  const receipts = Array.from({ length: 5_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "09593237-23b2-4873-bd04-88c8e8488840" }))
+  const receipts = Array.from({ length: 5_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "f8526596-f9b8-4068-87c0-c517844488a8" }))
   const version = receipts[0]!.version
   let calls = 0
   const query = async (input: { query: string; params: Record<string, string> }) => {
