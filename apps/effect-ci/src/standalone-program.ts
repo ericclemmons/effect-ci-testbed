@@ -2,7 +2,6 @@ import * as CI from "@effect-ci-testbed/ci";
 
 export const standaloneContainerOptions = {
   image: "workspace",
-  instance: "standard-2",
   loginShell: false,
   readyCommand: "/usr/local/bin/node -e 'if(process.getuid()!==1000)process.exit(1)'",
 } as const;
