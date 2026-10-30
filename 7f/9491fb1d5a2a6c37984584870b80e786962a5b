@@ -1,0 +1,21 @@
+apps/effect-ci/src/standalone-program.ts
+  s_73b59af3fd8e1d::t_c7eb0b6b8008c9 5
+packages/cli/src/index.ts
+  s_73b59af3fd8e1d::t_5e777aed9df9b2 888-889
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7f9491fb1d5a2a6c37984584870b80e786962a5b",
+  "prompts": {},
+  "sessions": {
+    "s_73b59af3fd8e1d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dab-0c3d-7543-a0fb-4a4fcfa79d6a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
