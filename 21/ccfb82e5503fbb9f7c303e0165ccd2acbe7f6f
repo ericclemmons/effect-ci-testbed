@@ -1,0 +1,19 @@
+packages/cli/src/index.ts
+  s_817d10094530c4::t_e0cb5f51c21ada 958-960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "21ccfb82e5503fbb9f7c303e0165ccd2acbe7f6f",
+  "prompts": {},
+  "sessions": {
+    "s_817d10094530c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7b33-7103-8052-4e6f89248fae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
