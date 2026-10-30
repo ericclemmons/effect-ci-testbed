@@ -32,26 +32,28 @@ export function sidebar() {
     const [label] = section.split("\n")
     if (!label.startsWith("CI.")) continue
     const api = docs.find(page => page.title === label)
-    if (!api) throw new Error(`Missing reference page for ${label}`)
-    const items = [
-      { label: "Usage", slug: api.id },
-      ...[...api.body.matchAll(/^## (\w+)$/gm)].map(([, method]) => ({
-        label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
-      })),
-    ]
+    if (!api) throw new Error(`Missing API page for ${label}`)
+    const methods = [...api.body.matchAll(/^## (\w+)$/gm)].map(([, method]) => ({
+      label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
+    }))
+    const examples = []
     for (const [, label, name] of section.matchAll(/\[([^\]]+)\]\(\.\/([^/#)]+)\)/g)) {
       if (!recipes.has(name) || used.has(name)) continue
       used.add(name)
-      if (!items.some(item => item.label === label)) items.push({ label, slug: recipes.get(name).id })
+      if (!examples.some(item => item.label === label)) examples.push({ label, slug: recipes.get(name).id })
     }
-    if (items.length) groups.push({ label, collapsed: true, items: items.sort(byLabel) })
+    groups.push({ label, collapsed: true, items: [
+      { label: "Usage", slug: api.id },
+      ...(methods.length ? [{ label: "Methods", collapsed: true, items: methods.sort(byLabel) }] : []),
+      ...(examples.length ? [{ label: "Examples", collapsed: true, items: examples.sort(byLabel) }] : []),
+    ] })
   }
   const extra = [...recipes].filter(([name]) => !used.has(name))
     .map(([, page]) => ({ label: page.title, slug: page.id }))
   return [
     { label: "Features", link: "/" },
     { label: "Walkthrough", slug: "walkthrough" },
-    { label: "Reference", items: [
+    { label: "API", items: [
       ...groups,
       { label: "CLI", slug: "packages/cli" },
       { label: "Ecosystem", slug: "examples/ecosystem" },

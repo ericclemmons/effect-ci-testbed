@@ -1,6 +1,6 @@
 # Examples
 
-Start with [the walkthrough](./demo). Reference explains each API and links to
+Start with [the walkthrough](./demo). The API section explains each API and links to
 solutions that use it. Recipes covers broader goals. Entries are alphabetical.
 
 Install dependencies once at the repository root with `pnpm install`. Add the
