@@ -1,0 +1,35 @@
+apps/effect-ci/src/self-host-profile.test.ts
+  s_8c5c098d7028f1::t_dffa65fb03c034 122,142,152
+apps/effect-ci/src/standalone-program.ts
+  s_73b59af3fd8e1d::t_4d487703edd3f2 40
+packages/cli/README.md
+  s_73b59af3fd8e1d::t_f638d38d16db93 68-71
+packages/cli/src/index.ts
+  s_73b59af3fd8e1d::t_4a4d84e5881464 165-174,178,183,208-211
+packages/cli/src/remote-human.test.ts
+  s_8c5c098d7028f1::t_92734d78f2741d 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d935a0f54dad0108031f571dd572c796eafc1d2f",
+  "prompts": {},
+  "sessions": {
+    "s_73b59af3fd8e1d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dab-0c3d-7543-a0fb-4a4fcfa79d6a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_8c5c098d7028f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18d7a-3028-7012-b327-b3f32628813d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
