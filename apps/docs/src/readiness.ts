@@ -44,7 +44,7 @@ export function loadReadiness() {
       }
     }
     try {
-      const response = await fetch("/api/readiness", { signal: AbortSignal.timeout(25_000) })
+      const response = await fetch("/api/readiness", { cache: "no-store", signal: AbortSignal.timeout(25_000) })
       if (!response.ok) throw new Error("GitHub checks could not be loaded")
       const { sha, check_runs, total_count: count, fetchedAt, stale, active: running } = await response.json()
       if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error("GitHub did not return a commit")
