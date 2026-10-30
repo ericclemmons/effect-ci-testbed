@@ -1,0 +1,579 @@
+.github/workflows/docs.yml
+  s_817d10094530c4::t_b1cd509635297a 18
+.github/workflows/e2e.yml
+  s_817d10094530c4::t_57f8ff0e73579c 33,36,225,228,231,233,247,252,262,274,316,410,413,432,436,558,592,606,650,738,761,774,945
+.github/workflows/effect-ci.yml
+  s_817d10094530c4::t_196c8078d00eb9 10-14,105
+.github/workflows/oidc-live-proof.yml
+  s_817d10094530c4::t_ce75b09b2591c8 31,34
+.github/workflows/parallel-recipes.yml
+  s_817d10094530c4::t_75eb921b7e6b76 118
+AGENTS.md
+  s_817d10094530c4::t_d0dda142213e36 14-22,25-26
+README.md
+  s_817d10094530c4::t_bce66d920d6626 1,3,5-6,8,10-22,26,31,34,36,38-40
+apps/docs/LABORATORY.md
+  s_817d10094530c4::t_23a5fa51e2a9d9 1-128
+apps/docs/README.md
+  s_817d10094530c4::t_97780131f07dff 3,8-30,36,41
+apps/docs/astro.config.mjs
+  s_817d10094530c4::t_34b545834c97ce 7,11,14
+apps/docs/builds.json
+  s_817d10094530c4::t_91ef7d260552d7 4-5,10-13
+apps/docs/package.json
+  s_817d10094530c4::t_77d890b4129abc 7
+apps/docs/scripts/feature-links.test.mjs
+  s_817d10094530c4::t_e7918d1b8a4f21 2,4,6-9,11-17,19-26
+apps/docs/src/compatibility.mjs
+  s_817d10094530c4::t_65c5692e10d0b4 1-37
+apps/docs/src/components/Head.astro
+  s_817d10094530c4::t_25b32fee43901f 5-17
+apps/docs/src/components/MarkdownContent.astro
+  s_817d10094530c4::t_e70ba8292507d0 1-6
+apps/docs/src/components/ReadinessMatrix.astro
+  s_817d10094530c4::t_503190cdcaf072 1-86
+apps/docs/src/readiness.ts
+  s_817d10094530c4::t_6ec6ce57626306 1-90
+apps/docs/src/readme-loader.ts
+  s_817d10094530c4::t_2cbf8dae0d6a9d 19-20,23-24
+apps/docs/src/repository.mjs
+  s_817d10094530c4::t_d8550a5ac783e1 14-15,19,21,31-32,34-42,45,47-51,56-72
+apps/effect-ci/.env.production.example
+  s_817d10094530c4::t_e15bf568e5be3f 1-9
+apps/effect-ci/.env.schema
+  s_817d10094530c4::t_4568e0088e288f 1-81
+apps/effect-ci/.gitignore
+  s_817d10094530c4::t_59c27a2e04be16 5-7
+apps/effect-ci/Dockerfile.standalone
+  s_817d10094530c4::t_7beb741153cf85 10
+apps/effect-ci/PUBLIC-REPAIR.md
+  s_817d10094530c4::t_b41180b4c20bd9 3-80
+apps/effect-ci/README.md
+  s_817d10094530c4::t_4f1101590dc28e 6,37,40-41,48,57,65,69,85,96,131,133,138,140,154
+apps/effect-ci/SELF-HOST-ENV.md
+  s_817d10094530c4::t_943b96e89c2e85 1-81
+apps/effect-ci/access-public.example.json
+  s_817d10094530c4::t_cc0c899cc3e8d5 1-26
+apps/effect-ci/access/api.example.json
+  s_817d10094530c4::t_7897e0dda43f6b 1-10
+apps/effect-ci/access/revoke.example.json
+  s_817d10094530c4::t_35f21dc78bf45f 1-10
+apps/effect-ci/access/service.example.json
+  s_817d10094530c4::t_c04bebdcfd8129 1-11
+apps/effect-ci/access/token.example.json
+  s_817d10094530c4::t_29362afdd38561 1-10
+apps/effect-ci/access/webhook.example.json
+  s_817d10094530c4::t_93ddf567da549e 1-10
+apps/effect-ci/cloudflare.config.ts
+  s_817d10094530c4::t_9a8ac89d5c206a 4-5,9-10,89
+apps/effect-ci/host-profile.ts
+  s_817d10094530c4::t_02bb94ec53f79a 3-4
+apps/effect-ci/oidc-scopes.example.json
+  s_817d10094530c4::t_ee716a29f06b1c 1-7
+apps/effect-ci/package.json
+  s_817d10094530c4::t_02d4e007df71e4 8-10,15,18,24-25,27
+apps/effect-ci/secrets.env
+  s_817d10094530c4::t_b2f9363f7cf9ed 1-20
+apps/effect-ci/src/demo-access-policy.ts
+  s_817d10094530c4::t_80fb553381f4fc 3,5-7
+apps/effect-ci/src/demo-access.test.ts
+  s_817d10094530c4::t_89a151522be5b5 97
+apps/effect-ci/src/demo-check-cache.test.ts
+  s_817d10094530c4::t_8dd5bff2e78f41 72
+apps/effect-ci/src/demo-filesystem-runtime.test.ts
+  s_817d10094530c4::t_558b22c4750c32 148
+apps/effect-ci/src/demo-policy.ts
+  s_817d10094530c4::t_db36de071cb1cf 25
+apps/effect-ci/src/demo-program.test.ts
+  s_817d10094530c4::t_575ce453f86f3c 19
+apps/effect-ci/src/demo-program.ts
+  s_817d10094530c4::t_9df273f2bbb16c 135,137
+apps/effect-ci/src/demo-release-runtime.test.ts
+  s_817d10094530c4::t_eee70572c29fb5 41,54,184
+apps/effect-ci/src/demo-release.ts
+  s_817d10094530c4::t_816315be928db5 33
+apps/effect-ci/src/demo-routing-diagnostic-runtime.test.ts
+  s_817d10094530c4::t_df0dae25f3c7ed 14,19
+apps/effect-ci/src/demo-routing-diagnostic.test.ts
+  s_817d10094530c4::t_4c32bc5597f220 15
+apps/effect-ci/src/demo-routing-diagnostic.ts
+  s_817d10094530c4::t_566f24589f052f 15
+apps/effect-ci/src/demo-workflow.ts
+  s_817d10094530c4::t_157e2cb8d0d82b 70
+apps/effect-ci/src/hmd-card.test.ts
+  s_817d10094530c4::t_e40a80877bf6f5 66-67,116-117
+apps/effect-ci/src/hmd-workflow-runtime.test.ts
+  s_817d10094530c4::t_58b686e46265a4 27,60
+apps/effect-ci/src/live-demo-signed-check.test.ts
+  s_817d10094530c4::t_7c5abb884dcc86 70
+apps/effect-ci/src/live-demo.test.ts
+  s_817d10094530c4::t_deaeca82f6c659 29
+apps/effect-ci/src/oidc.ts
+  s_817d10094530c4::t_9ee6ca9b8144f5 47
+apps/effect-ci/src/remote-identity.ts
+  s_817d10094530c4::t_5943557903a55f 52
+apps/effect-ci/src/showcase-release.test.ts
+  s_817d10094530c4::t_c6248e46deeb25 13
+apps/effect-ci/src/showcase-runtime.test.ts
+  s_817d10094530c4::t_4e313ad708b0bc 70,79,165
+apps/effect-ci/src/standalone-image.test.ts
+  s_817d10094530c4::t_5088726db23f70 25-26
+apps/effect-ci/src/standalone-program.ts
+  s_817d10094530c4::t_1985c88995ac2d 5
+apps/effect-ci/standalone-runtime.ts
+  s_817d10094530c4::t_a16326fd8b5e51 9,15
+apps/effect-ci/verification/oidc-shared-app.json
+  s_817d10094530c4::t_3cb8cf9fc83e64 112,121,130
+apps/effect-ci/verification/repository-head/2026-10-23.json
+  s_817d10094530c4::t_8fccf1bdb609bd 3,9
+apps/effect-ci/vite.config.ts
+  s_817d10094530c4::t_d935d9d6bf5bc9 3,6-9
+apps/github-actions-runner/OIDC.md
+  s_817d10094530c4::t_42c6700d382034 4
+apps/github-actions-runner/README.md
+  s_817d10094530c4::t_31e69829d5deca 30
+examples/COVERAGE.md
+  s_817d10094530c4::t_31736804c7050a 1-178
+examples/ECOSYSTEM.md
+  s_817d10094530c4::t_2439e41fb0d03e 1-36
+examples/GITHUB.md
+  s_817d10094530c4::t_94a524dcdb4e7e 1-45
+examples/README.md
+  s_817d10094530c4::t_1c42fc00debc5d 3-105,107-119,121-128
+examples/artifacts-source/README.md
+  s_817d10094530c4::t_eafdb7e66650b7 24,27-28
+examples/blacksmith/README.md
+  s_817d10094530c4::t_1b34b71c87c73c 12-13
+examples/cache-policy/README.md
+  s_817d10094530c4::t_d9e3b49803e256 13-15
+examples/cloudflare-hitl-release/README.md
+  s_817d10094530c4::t_4c645a344b1a4a 16-17
+examples/cloudflare-runner/README.md
+  s_817d10094530c4::t_3ff100a62e2e9a 18-19
+examples/conditional-deploy/README.md
+  s_817d10094530c4::t_1b3fcec15fa1b4 14-15,28-29
+examples/conditional-deploy/verification/output-changes.test.ts
+  s_817d10094530c4::t_9c8914a5397f0d 11
+examples/custom-container-image/README.md
+  s_817d10094530c4::t_b725936aec8305 14-15
+examples/d1-migration/README.md
+  s_817d10094530c4::t_10fb100bdcb06e 17-18,26-30
+examples/demo/README.md
+  s_817d10094530c4::t_fc84bdafa7f646 1,3,5,7-8,10,14-15,18,20,22-23,25,28,31-33,36-37,40,42-43,46,48,51,54-60,62-65,67,70,73,76,79-88,90,93,96-112,114-115,117,119-120,122,124-129,131-142,144-146,148-151,153,155-157,159-164,166,168,170-175,177,179-181,183-186,188,190,192,194-197,199-200,202,204-210
+examples/demo/tutorial/oidc.example.yml
+  s_817d10094530c4::t_728766ac306ab0 20,22-23,26
+examples/dependency-aware-reruns/README.md
+  s_817d10094530c4::t_c5a6a25354cea7 14-15
+examples/deploy-changed-output/README.md
+  s_817d10094530c4::t_a23833f7c5ee1a 11-13
+examples/deploy-changed-output/workflow.test.ts
+  s_817d10094530c4::t_7ae8973e7b54cc 11
+examples/deploy-hook/README.md
+  s_817d10094530c4::t_8cb579430efca8 7,10-11
+examples/durable-object-source/README.md
+  s_817d10094530c4::t_69743106006bf9 13-14
+examples/dynamic-project-checks/README.md
+  s_817d10094530c4::t_edb951962f2264 13-14
+examples/dynamic-worker-checks/README.md
+  s_817d10094530c4::t_714c2f6da0cf2f 10-11
+examples/execution-policy/README.md
+  s_817d10094530c4::t_67bdfa2f84a0cd 13-14
+examples/exported-actions/README.md
+  s_817d10094530c4::t_869a18a9d3758c 7,10-12
+examples/github-cloudflare-ci/README.md
+  s_817d10094530c4::t_59ec89dccc0838 11-12
+examples/gitlab-source/README.md
+  s_817d10094530c4::t_2e8726735e17c9 11-12
+examples/immutable-attempts/README.md
+  s_817d10094530c4::t_3928cab75c453d 13-14
+examples/local-container/README.md
+  s_817d10094530c4::t_b19dc83157801d 14-15,21
+examples/matrix/README.md
+  s_817d10094530c4::t_0cc488743949d2 41-44
+examples/mise-toolchain/README.md
+  s_817d10094530c4::t_e8ead2b771cd63 15-16
+examples/node-npm/README.md
+  s_817d10094530c4::t_ece9ac26c54000 11-12
+examples/node-pnpm/README.md
+  s_817d10094530c4::t_50268aabc8b1ad 9-10
+examples/node-version/README.md
+  s_817d10094530c4::t_af4cd384ab36b9 16-17
+examples/oidc-cf/.github/workflows/deploy.yml
+  s_817d10094530c4::t_49b9926c4c78c2 18,21
+examples/oidc-cf/README.md
+  s_817d10094530c4::t_39132e469da4ac 5,10,19,26
+examples/oidc-wrangler/.github/workflows/deploy.yml
+  s_817d10094530c4::t_db1d53cb9f0406 18,21
+examples/oidc-wrangler/README.md
+  s_817d10094530c4::t_5887ebf7ecb3d7 5,10,19,26
+examples/optional-checks/README.md
+  s_817d10094530c4::t_96ae24a2571a09 10-11
+examples/ordered-deploy/README.md
+  s_817d10094530c4::t_71b7f94681a578 15-16
+examples/package-manager-cache/README.md
+  s_817d10094530c4::t_05065690428660 13-15
+examples/portable-artifacts/README.md
+  s_817d10094530c4::t_2036a11f3163ec 11-12
+examples/r2-source/README.md
+  s_817d10094530c4::t_26b9057ad2d492 13-14
+examples/retry/README.md
+  s_817d10094530c4::t_9a67b6ce3979b8 10-11
+examples/rollback-compensation/README.md
+  s_817d10094530c4::t_a53b28216e812e 14-15
+examples/runner-selection/README.md
+  s_817d10094530c4::t_a29f51d981fbe1 18-19
+examples/secure-secrets/README.md
+  s_817d10094530c4::t_77fb06942afe32 16-17
+examples/snapshot-fanout/.cloudflare/ci/tests/snapshot-fanout.test.ts
+  s_817d10094530c4::t_39f31cab28fb5b 25,31
+examples/snapshot-fanout/README.md
+  s_817d10094530c4::t_c45f34c27d33c9 14-15
+examples/system-package/README.md
+  s_817d10094530c4::t_cc1d154fe7be7b 15-16
+examples/test-splitting/README.md
+  s_817d10094530c4::t_393d0400cb3051 45-48
+examples/timing-aware-splitting/README.md
+  s_817d10094530c4::t_f270391acd2fcf 64-67
+examples/turbo-ci/.cloudflare/ci/workflow.ts
+  s_817d10094530c4::t_a45caca79aee22 1-22
+examples/turbo-ci/README.md
+  s_817d10094530c4::t_51bb7b9692a35e 1-91
+examples/turbo-ci/app/.gitignore
+  s_817d10094530c4::t_4e58578ad29f7d 1-4
+examples/turbo-ci/app/package-lock.json
+  s_817d10094530c4::t_507ee7e59d1c76 1-1019
+examples/turbo-ci/app/package.json
+  s_817d10094530c4::t_095d77c176c493 1-16
+examples/turbo-ci/app/packages/admin/index.html
+  s_817d10094530c4::t_936e4c20332b06 1-17
+examples/turbo-ci/app/packages/admin/package.json
+  s_817d10094530c4::t_2276208cb4bdfb 1-11
+examples/turbo-ci/app/packages/admin/src/main.ts
+  s_817d10094530c4::t_713cde543f94ef 1-17
+examples/turbo-ci/app/packages/admin/tsconfig.json
+  s_817d10094530c4::t_d145f31d3e4833 1-9
+examples/turbo-ci/app/packages/admin/turbo.json
+  s_817d10094530c4::t_87a48655c8c474 1-6
+examples/turbo-ci/app/packages/core/package.json
+  s_817d10094530c4::t_42f217ebca8e9c 1-16
+examples/turbo-ci/app/packages/core/src/index.ts
+  s_817d10094530c4::t_144dab8e257092 1-18
+examples/turbo-ci/app/packages/core/tsconfig.json
+  s_817d10094530c4::t_56f4a4987b33d0 1-10
+examples/turbo-ci/app/packages/core/turbo.json
+  s_817d10094530c4::t_4ddefde7e35276 1-7
+examples/turbo-ci/app/packages/legacy/package.json
+  s_817d10094530c4::t_d10c64a3dbfea3 1-9
+examples/turbo-ci/app/packages/legacy/turbo.json
+  s_817d10094530c4::t_170adcbbcc2cfa 1-7
+examples/turbo-ci/app/packages/web/index.html
+  s_817d10094530c4::t_3e5597257835cf 1-17
+examples/turbo-ci/app/packages/web/package.json
+  s_817d10094530c4::t_07343241aeca3d 1-11
+examples/turbo-ci/app/packages/web/src/main.ts
+  s_817d10094530c4::t_ea7ce1387813d8 1-24
+examples/turbo-ci/app/packages/web/tsconfig.json
+  s_817d10094530c4::t_32d400e7a0149b 1-9
+examples/turbo-ci/app/scripts/ci.mjs
+  s_817d10094530c4::t_318d3778122f49 2,4-8,10-11,15-17,19,22-28,31-44
+examples/turbo-ci/app/tsconfig.json
+  s_817d10094530c4::t_3c45a90e6b18ec 1-11
+examples/turbo-ci/app/turbo.json
+  s_817d10094530c4::t_8bd9ebb14d2137 1-17
+examples/turbo-ci/package.json
+  s_817d10094530c4::t_cd16e7e429b2b6 1-17
+examples/turbo-ci/tsconfig.json
+  s_817d10094530c4::t_736d0123da1b8a 1-5
+examples/turbo-distributed/.cloudflare/ci/workflow.ts
+  s_817d10094530c4::t_34c788517fac94 1-25
+examples/turbo-distributed/README.md
+  s_817d10094530c4::t_99c6b5176c6c9c 1-185
+examples/turbo-distributed/app/.gitignore
+  s_817d10094530c4::t_3646644a83b4a4 1-4
+examples/turbo-distributed/app/package-lock.json
+  s_817d10094530c4::t_32b0cce46192b3 1-1019
+examples/turbo-distributed/app/package.json
+  s_817d10094530c4::t_54fb1c0f9bb19d 1-16
+examples/turbo-distributed/app/packages/admin/index.html
+  s_817d10094530c4::t_68191a3a2730c7 1-17
+examples/turbo-distributed/app/packages/admin/package.json
+  s_817d10094530c4::t_05bc54f56c1f86 1-11
+examples/turbo-distributed/app/packages/admin/src/main.ts
+  s_817d10094530c4::t_9164e45dd52a47 1-17
+examples/turbo-distributed/app/packages/admin/tsconfig.json
+  s_817d10094530c4::t_bc4de77e58a51b 1-9
+examples/turbo-distributed/app/packages/admin/turbo.json
+  s_817d10094530c4::t_f0530208a23665 1-6
+examples/turbo-distributed/app/packages/core/package.json
+  s_817d10094530c4::t_f12910c1aa31f6 1-16
+examples/turbo-distributed/app/packages/core/src/index.ts
+  s_817d10094530c4::t_044c105d1a24d5 1-18
+examples/turbo-distributed/app/packages/core/tsconfig.json
+  s_817d10094530c4::t_4baaa40ff7292f 1-10
+examples/turbo-distributed/app/packages/core/turbo.json
+  s_817d10094530c4::t_e9327f72e467b9 1-7
+examples/turbo-distributed/app/packages/legacy/package.json
+  s_817d10094530c4::t_bd77553df534ac 1-9
+examples/turbo-distributed/app/packages/legacy/turbo.json
+  s_817d10094530c4::t_56e56435e09dbd 1-7
+examples/turbo-distributed/app/packages/web/index.html
+  s_817d10094530c4::t_439536f1ca3c44 1-17
+examples/turbo-distributed/app/packages/web/package.json
+  s_817d10094530c4::t_04d13b46729f58 1-11
+examples/turbo-distributed/app/packages/web/src/main.ts
+  s_817d10094530c4::t_b39ad821316338 1-24
+examples/turbo-distributed/app/packages/web/tsconfig.json
+  s_817d10094530c4::t_08ef3fae1d6b78 1-9
+examples/turbo-distributed/app/scripts/ci.mjs
+  s_817d10094530c4::t_bc097f0ae38d07 2,4-8,10-11,14-19,22-29,31-33,35-44
+examples/turbo-distributed/app/tsconfig.json
+  s_817d10094530c4::t_9f6df57024bb0c 1-11
+examples/turbo-distributed/app/turbo.json
+  s_817d10094530c4::t_3885b3954321f3 1-17
+examples/turbo-distributed/package.json
+  s_817d10094530c4::t_25d358e293d9b9 1-17
+examples/turbo-distributed/src/worker.ts
+  s_817d10094530c4::t_6f1c241f5ca300 1-16
+examples/turbo-distributed/tsconfig.json
+  s_817d10094530c4::t_f77fc455d9dc21 1-5
+examples/turbo-distributed/wrangler.jsonc
+  s_817d10094530c4::t_f84769c559b00e 1-39
+examples/verification-evidence/README.md
+  s_817d10094530c4::t_a7fcccdd4b7a0b 10-11
+examples/vite-plus-cache/README.md
+  s_817d10094530c4::t_8eff91d9e34f97 13-15,23-26
+examples/workspace/.cloudflare/ci/actions.ts
+  s_817d10094530c4::t_3920aeabc27a25 1-36
+examples/workspace/.cloudflare/ci/workflow.ts
+  s_817d10094530c4::t_f32e3f4c4a9c10 1-14
+examples/workspace/README.md
+  s_817d10094530c4::t_3927d2911146fe 1-23
+examples/workspace/app/input.txt
+  s_817d10094530c4::t_6d6a70147c322e 1
+examples/zero-config/README.md
+  s_817d10094530c4::t_012cb891413be1 1,8-11,14-18
+package.json
+  s_817d10094530c4::t_61652e6a241348 6,8-16
+packages/ci/ACTION.md
+  s_817d10094530c4::t_e6efeed5faac4c 1-25
+packages/ci/APPROVAL.md
+  s_817d10094530c4::t_08a37d67538a76 1-18
+packages/ci/ARTIFACT.md
+  s_817d10094530c4::t_88edc5c1e33d65 1-22
+packages/ci/CHECK.md
+  s_817d10094530c4::t_387d062cd527d5 1-18
+packages/ci/PACKAGE-MANAGER.md
+  s_817d10094530c4::t_9048988aa033b3 1-31
+packages/ci/README.md
+  s_817d10094530c4::t_8534322e82f946 8-13,26-28,55,59-64
+packages/ci/SECRET.md
+  s_817d10094530c4::t_86758d6ed27548 1-16
+packages/ci/SOURCE.md
+  s_817d10094530c4::t_7d6292b0fec852 1-39
+packages/ci/TOOLCHAIN.md
+  s_817d10094530c4::t_2d5bc34683a8c6 1-35
+packages/ci/WORKFLOW.md
+  s_817d10094530c4::t_1682b0483afb3b 1-35
+packages/ci/WORKSPACE.md
+  s_817d10094530c4::t_da7e597fe296e8 1-66
+packages/ci/src/failed-command-event.test.ts
+  s_817d10094530c4::t_919fe5dc51ba17 15
+packages/ci/src/index.ts
+  s_817d10094530c4::t_3ade1eb6b1862b 16,998,1161-1173,2776,2780-2789,2791-2803,2805,2807-2808,2812,2817,2819-2821,2824-2826,2831,2836-2839
+packages/ci/src/turbo-bridge.ts
+  s_817d10094530c4::t_d46b2fcaf0a923 1-191
+packages/ci/src/turbo.ts
+  s_817d10094530c4::t_bb894f4871953d 1-138
+packages/cli/README.md
+  s_817d10094530c4::t_a909ef9349c622 1-40,67,71,77-79,95,102-103
+packages/cli/package.json
+  s_817d10094530c4::t_fc1f9c03fb10bd 6-9,11
+packages/cli/src/bin.test.ts
+  s_817d10094530c4::t_79e6f9e9eebe91 6,17,22-24,75
+packages/cli/src/bootstrap.test.ts
+  s_817d10094530c4::t_234f4332f3176f 23,44,48-49,56,69,75,84,87-88,104,108-170
+packages/cli/src/command-failure.test.ts
+  s_817d10094530c4::t_ad248358f8419a 15
+packages/cli/src/hosted.ts
+  s_817d10094530c4::t_003e6056f4b404 31
+packages/cli/src/local-project.test.ts
+  s_817d10094530c4::t_f87ccbac34ae46 10,31
+packages/cli/src/nested-events.test.ts
+  s_817d10094530c4::t_2bd332630d698a 10
+packages/cli/src/oidc.test.ts
+  s_817d10094530c4::t_c3206f0a3e9f65 12,21,64-65,86-87,89
+packages/cli/src/oidc.ts
+  s_817d10094530c4::t_79e5b8fde14e31 24,31,58,69
+packages/cli/src/project-env.test.ts
+  s_817d10094530c4::t_e754ce579b8210 11,31
+packages/cli/src/remote-access.test.ts
+  s_817d10094530c4::t_fe87fad302d9a1 13,44-46,54-58,64
+packages/cli/src/remote-cli.test.ts
+  s_817d10094530c4::t_62cb92b9a3b6ff 15,111,260
+packages/cli/src/remote-rerun.test.ts
+  s_817d10094530c4::t_8054340abe4aa0 36
+packages/cli/src/source-comparison.test.ts
+  s_817d10094530c4::t_95946195363c58 44
+packages/cli/src/vite-plus.ts
+  s_817d10094530c4::t_d5b1a570720b72 1,3-37
+packages/cli/src/workload-auth.ts
+  s_817d10094530c4::t_98a51296e1ccc7 9
+packages/cli/src/workload-remote.test.ts
+  s_817d10094530c4::t_95d0f42cbcbf16 57,71
+packages/cloudflare-dynamic-worker/src/local.ts
+  s_817d10094530c4::t_97e0f10c6eeb91 25
+packages/cloudflare/src/action-checkpoints.md
+  s_817d10094530c4::t_491d5f6c7f0daf 50-52,56-69
+packages/cloudflare/src/demo-site.test.ts
+  s_817d10094530c4::t_267a8e1a6f8fcf 21
+packages/cloudflare/src/demo-site.ts
+  s_817d10094530c4::t_da5dfe38964b3d 2
+packages/cloudflare/src/demo-test-check.test.ts
+  s_817d10094530c4::t_b7080b15c9d595 70-72
+packages/cloudflare/src/demo-test-check.ts
+  s_817d10094530c4::t_6654f462aaea75 25-26
+packages/cloudflare/src/index.ts
+  s_817d10094530c4::t_dced3f30e0bc17 857,1004,1102-1121,1123,1125
+packages/cloudflare/src/node-syntax-check.ts
+  s_817d10094530c4::t_5c59b66c6455c2 4
+packages/cloudflare/src/recorded-command-step.ts
+  s_817d10094530c4::t_d3f817d5e89288 15,17,19,26-29,31-35,37-44,46-47
+packages/cloudflare/src/reviewed-release.test.ts
+  s_817d10094530c4::t_997449e0c9fbb5 276
+packages/cloudflare/src/reviewed-release.ts
+  s_817d10094530c4::t_309f4e1ee8c18f 144
+packages/cloudflare/src/static-assets-publish.test.ts
+  s_817d10094530c4::t_98f37afb4f0e79 27,31
+packages/cloudflare/src/static-assets-publish.ts
+  s_817d10094530c4::t_7a53d4642d8d7d 4,7
+packages/github-cloudflare/src/failed-command-runtime.test.ts
+  s_817d10094530c4::t_bdf4f228374754 36
+packages/github-cloudflare/src/run-card.test.ts
+  s_817d10094530c4::t_f6c23e9dc8c1c5 39,44,92,94
+packages/github/run.run.ts
+  s_817d10094530c4::t_4360ac6002fab9 28-32,38
+packages/github/src/check-create.test.ts
+  s_817d10094530c4::t_f1b280ddcecfa2 231-232,245
+packages/github/src/public-proposal.test.ts
+  s_817d10094530c4::t_4954ff60729645 28-29
+packages/github/src/public-proposal.ts
+  s_817d10094530c4::t_480d1037655866 43-44,47-48,50,62,93-94
+packages/github/src/small-change.md
+  s_817d10094530c4::t_ab56f289ef9a71 6
+packages/local-container/README.md
+  s_817d10094530c4::t_cb3fdd6f2f0621 1-35
+packages/local-container/package.json
+  s_817d10094530c4::t_63059a4058e973 7-8
+packages/local-container/src/snapshots.ts
+  s_817d10094530c4::t_8bbbab410d82f8 1-3,5-7,9,11-67,70-157,159
+pnpm-lock.yaml
+  s_817d10094530c4::t_e8e2d6c5f69329 226-228,232-234,245-247,249-250,254-256,1013-1050,2074-2076,2087-2089,2109-2111,2149-2154,2167-2172,2185-2190,2203-2208,2221-2226,2663-2668,2675-2680,2686-2690,2696-2700,2706-2710,2717-2722,2729-2734,2741-2746,2753-2758,2765-2770,2777-2782,2789-2794,2801-2806,2814-2820,2828-2834,2842-2848,2856-2862,2870-2876,2884-2890,2898-2904,2912-2918,2923-2926,2932-2936,2943-2948,2955-2960,2967-2972,4445-4468,4991-4995,6326-6333,6874-6882,7123-7126,7266-7270,7503-7507,7604-7606,8224-8227,8238-8241,8266-8274,8357-8359,8366-8368,8375-8377,8384-8386,8393-8395,8888-8892,8898-8902,8908-8912,8916-8918,8922-8924,8928-8930,8934-8936,8940-8942,8946-8948,8952-8954,8958-8960,8964-8966,8970-8972,8978-8982,8988-8992,8998-9002,9008-9012,9018-9022,9028-9032,9038-9042,9048-9052,9058-9062,9068-9072,9076-9078,9082-9084,9088-9090,9224,10142-10157,10254,10633-10644,12419-12444,13208-13240,13485-13486,13589-13595,13769-13776,13893-13894
+scripts/check-example-plans.ts
+  s_817d10094530c4::t_721b006df6a417 13,33
+scripts/demo-tutorial.test.ts
+  s_817d10094530c4::t_85c9fac65aa4f2 48
+scripts/example-ergonomics.test.ts
+  s_817d10094530c4::t_60eb70dd54e5df 11,30
+test/apps/demo-site/README.md
+  s_817d10094530c4::t_d41cf3a3ea03b5 38
+test/apps/example-runner/src/flywheel-workflow.ts
+  s_817d10094530c4::t_4248070827aed2 16
+test/apps/example-runner/src/hmd-cohort.test.ts
+  s_817d10094530c4::t_e0837c16002c33 7,24
+test/apps/example-runner/src/hmd-cohort.ts
+  s_817d10094530c4::t_da8373996700bb 8
+test/apps/example-runner/src/hmd-controller.ts
+  s_817d10094530c4::t_0664442fd6d33c 10-13
+test/apps/example-runner/src/hmd-native-ingestion.test.ts
+  s_817d10094530c4::t_08879d473bfd66 8-9
+test/apps/example-runner/src/hmd-native-source.test.ts
+  s_817d10094530c4::t_887321b3bb359f 9-10,17
+test/apps/example-runner/src/hmd-review-runner.test.ts
+  s_817d10094530c4::t_7af83308484367 7-8,20
+test/apps/example-runner/src/hmd-review-runner.ts
+  s_817d10094530c4::t_093a68b24e6f94 12-15
+test/apps/example-runner/src/release-broker-probe.ts
+  s_817d10094530c4::t_6ff65f724e6532 5-6
+test/apps/example-runner/src/source-manifest.test.ts
+  s_817d10094530c4::t_a7538607c1aed2 13,16-17,19,35,38
+test/apps/example-runner/src/wobs-batch-probe.ts
+  s_817d10094530c4::t_b7d37de9d5792f 7
+test/apps/example-runner/src/wobs-cohort.test.ts
+  s_817d10094530c4::t_2c026bb97111e4 7,54
+test/apps/example-runner/src/wobs-cohort.ts
+  s_817d10094530c4::t_00cb062702ef9b 1
+test/apps/example-runner/src/wobs-healthy.ts
+  s_817d10094530c4::t_b4e660e98837ab 12-13
+test/apps/example-runner/src/wobs-probe.ts
+  s_817d10094530c4::t_7cfe4ed466b6d0 5,24
+test/apps/example-runner/src/wobs-release.ts
+  s_817d10094530c4::t_db882c9d9c0236 10-11
+test/apps/example-runner/src/wobs-samples.test.ts
+  s_817d10094530c4::t_29230d8baaf2d8 10,88
+test/apps/example-runner/src/wobs-samples.ts
+  s_817d10094530c4::t_5ef0db228c369a 8
+test/apps/example-runner/src/worker.ts
+  s_817d10094530c4::t_01bacba460dcd0 72-75
+test/apps/release-manager/README.md
+  s_817d10094530c4::t_c7b9075c2d716d 202
+test/apps/release-manager/src/candidate-capacity-runtime.test.ts
+  s_817d10094530c4::t_ffbadbdb1f5b4e 32,34
+test/apps/release-manager/src/candidate-runtime.test.ts
+  s_817d10094530c4::t_f6653729bd6bf4 32
+test/apps/release-manager/src/release-manager.ts
+  s_817d10094530c4::t_9888db2933d88c 3
+test/apps/repair-ai/src/budget.test.ts
+  s_817d10094530c4::t_c0324a5b3b004b 42,48
+test/apps/repair-ai/src/budget.ts
+  s_817d10094530c4::t_d66fae0d246bfd 1,3
+test/apps/repair-events/src/public-enrollment.test.ts
+  s_817d10094530c4::t_5d5ec6dab8e45e 7-9,35-38
+test/apps/repair-events/src/public-enrollment.ts
+  s_817d10094530c4::t_170169b04b3ec1 3-4,8-9,13
+test/apps/repair-incident/README.md
+  s_817d10094530c4::t_777db33b8f16b6 3-10
+test/apps/repair-incident/src/worker.ts
+  s_817d10094530c4::t_d0507339c4593a 50
+test/fixtures/demo/.env
+  s_817d10094530c4::t_bbcff590a96c79 2
+test/fixtures/demo/.gitignore
+  s_817d10094530c4::t_770aa81fcd1d0c 8
+test/fixtures/demo/AGENTS.md
+  s_817d10094530c4::t_f8613615be7c3c 3-4,33
+test/fixtures/demo/package-lock.json
+  s_817d10094530c4::t_293aa1504e3194 2,8
+test/fixtures/demo/package.json
+  s_817d10094530c4::t_9d40f1a2f1a93f 2
+test/fixtures/demo/test/README.md
+  s_817d10094530c4::t_eabbbc21a1f05f 12,27,130
+test/fixtures/demo/test/page.mjs
+  s_817d10094530c4::t_00ecce3e9f808b 26
+test/fixtures/demo/test/proof.test.mjs
+  s_817d10094530c4::t_760622c59b67ce 78
+test/fixtures/demo/test/published-proof.mjs
+  s_817d10094530c4::t_186d83c0e6dc7d 82-86
+test/fixtures/demo/test/published/local-4ebc193.json
+  s_817d10094530c4::t_259ae8a6985604 3,10
+test/fixtures/demo/test/remote-output-20261016.md
+  s_817d10094530c4::t_aeb059cbb6bfc7 3-4,12,45-46
+test/fixtures/demo/test/run.mjs
+  s_817d10094530c4::t_cfed20132ae334 40,98
+test/fixtures/demo/test/trusted-runner-proof.test.ts
+  s_817d10094530c4::t_3489e4c97dd6a0 59,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c7cfee9d0804dad640707235756ef71ae863230",
+  "prompts": {},
+  "sessions": {
+    "s_817d10094530c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b28-7b33-7103-8052-4e6f89248fae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
