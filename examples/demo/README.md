@@ -22,15 +22,17 @@ Keep this shell open.
 Use [Cloudflare's React starter](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/)
 through `vp create`. This creates a React SPA and a Worker that serves `/api/`.
 
+Run this from the directory where you keep projects:
+
 ```sh
-cd "$(mktemp -d)"
-vp create cloudflare --no-interactive --no-git --no-hooks --package-manager pnpm -- walkthrough \
-  --framework react --platform workers --variant react-ts \
-  --no-deploy --no-git --accept-defaults
+vp create cloudflare
+```
+
+Follow the prompts: name the app `walkthrough`, choose React with TypeScript and
+pnpm, and enable Git and commit hooks. Skip deployment for now.
+
+```sh
 cd walkthrough
-git init
-git add .
-git commit -m "Start walkthrough"
 vp dev
 ```
 
