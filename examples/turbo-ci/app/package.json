@@ -1,0 +1,12 @@
+{
+  "name": "turbo-ci-app",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "ci": "node scripts/ci.mjs",
+    "check": "node scripts/ci.mjs"
+  },
+  "devDependencies": { "turbo": "2.11.10" }
+}
