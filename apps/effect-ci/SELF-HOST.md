@@ -1,26 +1,24 @@
 # Self-host Effect CI
 
-This prototype runs locally without a Cloudflare account. To try `--remote` and
-GitHub checks, deploy a host in a Cloudflare account you control.
+Deploy the current host, including its GitHub Actions runner, previews, Slack
+reviews and repair services. Repositories and the GitHub App can stay where they
+are; configure their callbacks to use your host.
 
-**Moving the existing hosted setup to another account?** Follow
-[Move the existing hosted apps](./MIGRATE.md). Your repositories stay on GitHub.
-That path preserves this repository's CI, hosted Actions runner, preview/release
-services and Slack integration. The new-host instructions below select
-`EFFECT_CI_PROFILE=standalone`: a smaller installation with a different CI
-entrypoint, not a copy of the existing hosted setup.
+The current configuration calls this complete setup `EFFECT_CI_PROFILE=demo`.
+Use it below. `standalone` is an earlier reduced entrypoint that omits these
+service connections; it is not the setup demonstrated by this repository.
 
 ## Give this to your agent
 
 <textarea aria-label="Self-hosting agent prompt" rows="7" readonly spellcheck="false">
-Follow this guide: https://effect-ci-docs.ericclemmons.workers.dev/apps/effect-ci/self-host/
-Help me deploy an Effect CI host in my Cloudflare account.
-If replacing the existing hosted setup, follow the linked migration guide and preserve its features.
-Use the guide's cf commands and configuration files, not custom setup/deploy scripts.
-Ask me for the account ID, host name, and GitHub App owner.
-Use 1Password for credentials; never print secret values or put them in Git.
-Only tear down an existing host if I ask. Confirm resource IDs and paid-plan changes with me.
-Finish by following the linked walkthrough against the new host.
+Follow this guide: https://effect-ci-docs.eclemmons.workers.dev/apps/effect-ci/self-host/
+Help me deploy the complete Effect CI host and its connected services in my Cloudflare account.
+Use the existing configuration files and cf commands; do not extract or replace the integrations.
+Ask me for the account ID, workers.dev subdomain, and GitHub App owner.
+Keep credentials in a secret manager or private local files, never Git or chat.
+Reuse my GitHub App and repositories when replacing a host. Verify each flow before switching callbacks.
+Only tear down an existing host if I ask. Confirm destructive changes and paid inference budgets.
+Finish by following the walkthrough against my host.
 </textarea>
 
 ## Install the tools
@@ -46,70 +44,53 @@ Finish by following the linked walkthrough against the new host.
 
 ## Choose the account
 
-1. From the checkout root, create and select a profile:
+1. Authenticate with a named profile and verify the account:
 
    ```sh
    cf auth create effect-ci --no-browser
-   cf auth activate effect-ci
-   cf auth whoami
+   cf auth whoami --profile effect-ci
    export CLOUDFLARE_ACCOUNT_ID=<account-id>
    cd apps/effect-ci
-   ```
-
-   Use an existing profile instead if you have one. Unset an inherited
-   `CLOUDFLARE_API_TOKEN` first. Approve only the intended account's paid services.
-2. In Cloudflare **Workers & Pages**, find the account's `workers.dev` subdomain.
-   Use `effect-ci.<subdomain>.workers.dev` as the new host.
-3. Copy the production settings file and replace every placeholder:
-
-   ```sh
    cp .env.production.example .env.production
    ```
 
-   [`.env.production` contents](./.env.production.example "source")
+   Unset an inherited `CLOUDFLARE_API_TOKEN` before authentication. Use the profile
+   explicitly on later `cf` commands, or activate it with `cf auth activate effect-ci`.
+2. Find the account's `workers.dev` subdomain in **Workers & Pages**. Fill in
+   `.env.production`, using
+   `https://effect-ci-github-cloudflare.<workers-dev-subdomain>.workers.dev` as the host.
+   Keep the existing Worker names: the connected services refer to them by name.
 
-## Create the GitHub App
+   [Production settings](./.env.production.example "source")
 
-1. Open the owning account's **Settings → Developer settings → GitHub Apps → New GitHub App**.
-2. Enter a unique **GitHub App name** and **Homepage URL** `https://effect-ci.<subdomain>.workers.dev`.
-   Leave user callback and setup URLs empty.
-3. Under **Webhook**, enter `https://effect-ci.<subdomain>.workers.dev/webhooks/github`.
-   Generate a 64-character random secret in 1Password, save it as `GITHUB_WEBHOOK_SECRET`,
-   and paste it into **Secret**. Keep SSL verification enabled; leave **Active** off until deployment.
-4. Under **Repository permissions**, set **Checks: Read and write** and **Contents: Read-only**.
-   Under **Subscribe to events**, select **Check suite**. Leave other optional permissions/events off.
-   Select **Only on this account**, then **Create GitHub App**.
-5. Copy the numeric **App ID** into `.env.production` as `GITHUB_APP_ID`.
-   Open **Credentials → Key pairs → New key**. Store the downloaded PEM's complete
-   contents in 1Password as `GITHUB_PRIVATE_KEY`, including its header, footer, and newlines.
-6. Select **Install App → Install → Only select repositories** and choose the repositories this host will run.
+## Configure the GitHub App
 
-[GitHub registration instructions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
-· [Private-key instructions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps)
+1. Open [GitHub App settings](https://github.com/settings/apps). Reuse your existing
+   App and installations when replacing a host. Preserve its permissions and event
+   subscriptions. If its key is unavailable, generate a new key on the same App;
+   keep the existing key valid until cutover.
+2. For a new App, use **New GitHub App**. Set the homepage to your host and webhook
+   to `<host>/webhooks/github`. Keep SSL verification enabled. Store a random
+   webhook secret securely. Leave **Active** off until the host is deployed.
+3. Grant **Contents: read**, **Checks: write**, **Administration: write** and
+   **Actions: read** for CI and the hosted runner. Subscribe to **Check suite**,
+   **Push** and **Workflow job**. Repair/PR-writing flows also need their owning
+   writer's documented permissions; review those before enabling writers.
+4. Save the App ID and downloaded PEM securely. Install the App on the repositories
+   it will run. Configure the runner's App, installation and repository IDs in
+   its [enrollment](../github-actions-runner/src/enrollment.ts "source").
+   An App installation alone does not enroll a runner or grant repair authority.
 
-**Reusing the existing App instead:** keep its App ID, key, secret, and installations.
-Retrieve the key/secret from 1Password. Change its homepage and webhook
-to the new host; enable **Active** after deployment. This moves all of that App's installations.
-If changing machines, authenticate with CF CLI rather than copying `~/.config/cloudflare` or Cloudflare tokens.
+[GitHub App registration](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
 
 ## Configure Access
 
-1. Open Cloudflare **Zero Trust** in your account. Complete organization
-   setup if prompted. Enable an [Access login method](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/)
-   and copy the team domain into `.env.production` as `EFFECT_CI_ACCESS_ISSUER`, including `https://`.
-2. Copy the five Access request files:
-
-   ```sh
-   cp access/service.example.json access/service.json
-   cp access/webhook.example.json access/webhook.json
-   cp access/token.example.json access/token.json
-   cp access/revoke.example.json access/revoke.json
-   cp access/api.example.json access/api.json
-   ```
-
-   Replace `<workers-dev-subdomain>` in each file and `<your-email>` in `service.json`.
-   [Service request](./access/service.example.json "source")
-3. Create the path exceptions first, then protect the hostname:
+1. Open **Cloudflare Zero Trust**, configure a login method and save the team URL
+   as `EFFECT_CI_ACCESS_ISSUER`.
+2. Copy `access/{service,webhook,token,revoke,api}.example.json` to the matching
+   `.json` files. Replace their hostname with your host and the service policy's
+   email with your operator email. Create the four path exceptions before the
+   hostname policy:
 
    ```sh
    cf zero-trust access applications create --body "$(cat access/webhook.json)"
@@ -119,37 +100,114 @@ If changing machines, authenticate with CF CLI rather than copying `~/.config/cl
    cf zero-trust access applications create --body "$(cat access/service.json)"
    ```
 
-   Save each returned `id`. Copy the last response's `aud` into `.env.production` as
-   `EFFECT_CI_ACCESS_AUD`. On later changes, use
-   `cf zero-trust access applications update <app-id> --body "$(cat access/service.json)"`
-   for the corresponding file, rather than creating duplicates.
+   Save the returned IDs and the service application's `aud`. Set
+   `EFFECT_CI_ACCESS_AUD`. Add a narrow bypass for `/webhooks/slack` too; Slack
+   requests still require signature verification. Update existing applications
+   by ID instead of creating duplicates.
+3. Update the host origin, issuer, audience and intended operator's Access subject
+   digest in the current [operator policy](./src/demo-access-policy.ts "source").
+   Match the subject to the intended human through an authenticated Access session
+   or the Access user API. Do not print the session JWT. These source-owned pins
+   currently need updating as well as the environment settings.
+4. Inspect `cf zero-trust organization get`. If `deny_unmatched_requests` is true,
+   preserve it and create explicit public applications for docs, previews,
+   the release target and the signed notification receiver. Replace the subdomain
+   in each request and create one application object at a time. Private service
+   bindings need no public bypass. Add applications for deployed walkthrough apps
+   too. Keep the incident trigger private until its readiness checks pass.
 
-## Store credentials and deploy
+   [Public endpoint Access requests](./access-public.example.json "source")
 
-1. Follow [the file and 1Password setup](./SELF-HOST-ENV.md). Get your GitHub owner's
-   numeric ID from `https://api.github.com/users/<owner>` and put it in
-   `EFFECT_CI_OIDC_OWNER_IDS`. An organization also has a numeric `id` at that endpoint.
-2. Validate and preview the deployment:
+## Configure the connected services
+
+These are parts of the current host. They have separate deployment directories
+because the implementation currently uses several Workers. Deploy them in the
+same account so their service bindings resolve.
+
+| Service | Setup and credentials |
+| --- | --- |
+| [Actions runner](../github-actions-runner/README.md) | Full runner mode; enrolled App/installation/repository; `RUNNER_APP_PRIVATE_KEY` and `RUNNER_WEBHOOK_SECRET`. |
+| [Preview publisher](../../test/apps/demo-site/README.md) | Immutable storage and `DemoSitePublisher` export. Set `demoSiteOrigin` in `packages/cloudflare/src/demo-site.ts` to its URL. |
+| [Release manager](../../test/apps/release-manager/README.md) | Set `RELEASE_ACCOUNT`; create `HMD_DEPLOY_TOKEN` scoped to the release target. |
+| [Release target](../../test/apps/hmd-demo/README.md) | Deploy a healthy baseline. Upload healthy/regression candidates; update HMD controller, review and diagnostic version pins. Keep baseline traffic at 100% during setup. |
+| [Repair AI](../../test/apps/repair-ai/README.md) | Workers AI binding and an explicitly approved inference budget. Preserve the budget ledger across deployments. |
+| [Repair agent](../../test/apps/repair-agent/README.md) | Generated Flue exports and bindings to repair AI/events. |
+| [Repair events](../../test/apps/repair-events/README.md) | Shared notification secret; Notifications destination/policy, Issues automation and exact source/version enrollment. |
+| [Incident source](../../test/apps/repair-incident/README.md) | Readiness binding to the main host; fixed-service Issues configuration. Arming is permanent and needs explicit approval. |
+| [Documentation](../docs/README.md) | Public URL and its own Workers Builds trigger. Main CI does not deploy it. |
+
+The current release/repair policies contain repository, identity and version pins.
+Review their owning configuration before enabling them for another installation;
+do not copy historical run receipts as fresh enrollment. Other example/proof
+Workers are independent fixtures and are not prerequisites for the host.
+
+## Store credentials
+
+1. Follow [the credential setup](./SELF-HOST-ENV.md). Keep each service's credentials
+   on its owning Worker. The main host needs the GitHub App credentials, API token,
+   signing key, Access settings and allowed numeric GitHub owner IDs.
+2. Configure Slack using the existing App: `SLACK_BOT_TOKEN`,
+   `SLACK_SIGNING_SECRET`, `SLACK_APP_ID`, `SLACK_TEAM_ID`, `SLACK_CHANNEL_ID` and
+   `SLACK_APPROVER_IDS`. Set `EFFECT_CI_DETAILS_URL` to this account's Workflow URL.
+   Add these values to the private environment file; the committed schema and
+   secret manifest list their bindings.
+3. For this repository's automatic main deployment, configure a deployment token
+   with the required Workers/container permissions as `CLOUDFLARE_API_TOKEN`.
+   It stays on the host; project containers receive the deployment proxy's dummy
+   credential. App deployment uses the separate short-lived issuer below.
+4. If a secret manager is unavailable, use an owner-only local secrets manifest
+   outside Git and pass it to `cf deploy --secrets-file <private-file>`.
+   Generate replacement credentials or use an encrypted transfer; do not use a
+   public paste service. Never print credential values in chat or command output.
+
+## Deploy
+
+1. Deploy the runner, preview publisher, healthy release target, release manager
+   and repair AI from their owning directories, following the linked instructions.
+   Supply only each service's credential manifest.
+2. Bootstrap the repair binding cycle with
+   `test/apps/repair-events/src/public-enrollment.ts` set to `undefined`, which
+   omits its bindings to the not-yet-created host and incident source. Deploy
+   the receiver with its secret, then generate/build and deploy the repair agent.
+3. From `apps/effect-ci`, validate and deploy the main host:
 
    ```sh
    pnpm exec varlock load --agent
    pnpm exec varlock run --inject vars -- cf deploy --secrets-file secrets.env --dry-run
-   ```
-
-3. Deploy:
-
-   ```sh
    pnpm exec varlock run --inject vars -- cf deploy --secrets-file secrets.env
-   cf workers get effect-ci
+   cf workers get effect-ci-github-cloudflare
    cf workflows list
    cf containers applications list
    ```
 
-   Use your configured Worker name if you changed it. Vite packages the CLI runtime
-   during the build. No setup/deploy script or `APP_ENV` variable is needed.
-4. Open the host URL. Access must show its login screen; sign in with the email
-   in `access/service.json`. In the GitHub App settings, enable **Webhook → Active**.
-   Under **Advanced → Recent Deliveries**, open the `ping` delivery and check for a `2xx` response.
+   Verify its declared service bindings, Workflows and containers. Then deploy
+   the incident source, whose readiness binding can now resolve the host.
+4. Configure Notifications/Issues and enroll the exact deployed source/version
+   using the receiver's [setup instructions](../../test/apps/repair-events/REPRODUCE.md).
+   Restore its enrollment and redeploy after verifying those IDs. Keep the public
+   incident trigger blocked until readiness and arming have been approved.
+5. Deploy docs and configure its Builds trigger separately. Replace existing
+   trigger IDs when changing accounts. Stored Workflow history, assets, release
+   journals, cached checks and inference budgets do not move with source code.
+
+## Connect and verify
+
+1. Open `<host>/capabilities` and sign in through Access. Verify operator access.
+2. Set the GitHub App's homepage and webhook to your host and enable deliveries.
+   Verify a signed `ping` returns `2xx`. In the [Slack App website](https://api.slack.com/apps),
+   open **Interactivity & Shortcuts**, set **Request URL** to
+   `<host>/webhooks/slack`, and save.
+3. Set the repository variable `EFFECT_CI_REMOTE_URL` to your host. Push a branch
+   change and verify native Workflow completion, per-action GitHub checks and
+   container cleanup. Run an enrolled runner smoke job and verify its native
+   GitHub logs and subsequent runner deregistration.
+4. Follow the walkthrough below. Verify an app deployment through OIDC, immutable
+   preview publication, a real Slack review button and staged-release restoration.
+   Verify repair capture/admission/proposal separately within the approved budget.
+   Record each result; a green CI push alone does not establish every integration.
+5. When replacing a host, put its updated account/origin settings on the deployment
+   branch before relying on automatic deployment. Verify main's self-deployment
+   and the separate docs build before removing the previous resources.
 
 ## Connect your app
 
@@ -204,10 +262,10 @@ Skip this section if the host will only run tests/builds, not deploy application
 ## Optional: tear down an existing host
 
 Skip this section for a first deployment. If replacing a host, you can run these
-steps after verifying its replacement. For a lower-cost migration with downtime,
-save the resource inventory, configuration and credential references from
-[the migration guide](./MIGRATE.md) before deleting anything. Remote CI will be
-unavailable until the replacement passes verification.
+steps after verifying its replacement. Save the resource inventory, configuration and credential references before
+deleting anything. Include supporting Workers, Notifications policies, Issues
+automations and Workers Builds triggers. Disable their triggers before removal.
+Remote CI is unavailable between teardown and replacement.
 
 Deleting the host removes its stored state and stops remote CI. Local runs still work.
 

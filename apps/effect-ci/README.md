@@ -3,7 +3,7 @@
 Run GitHub CI as native Cloudflare Workflows. GitHub shows checks; Slack can show
 progress and review controls. Project commands run in containers, not in the host.
 
-- [Try the standalone Vite tutorial](../../examples/demo/README.md).
+- [Try the Vite walkthrough](../../examples/demo/README.md).
 - [Deploy your own host](./SELF-HOST.md).
 - [Keep GitHub Actions YAML with the optional runner](../github-actions-runner/README.md).
 
@@ -37,7 +37,8 @@ root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional packa
 scripts there. `effect-ci run build --remote` selects the repository's build action;
 no target runs its whole workflow. The host never imports repository workflow code.
 
-The existing `demo` profile retains this account's integrations for compatibility.
+The `demo` profile is the complete current host, including its connected services.
+The self-hosting guide deploys this profile.
 Its root `/capabilities` and `/runs` API also runs arbitrary caller repositories
 through `RepositoryCIWorkflow`, using the existing host API token and Access
 application. These runs always start at the repository root in the unprivileged
@@ -53,7 +54,7 @@ signers, deployment credentials, repair authority or reusable-check policies for
 
 ### 5. Run the first Workflow
 
-After [setup](./SELF-HOST.md#run-ci), commit and push to an installed repository.
+After [setup](./SELF-HOST.md#connect-and-verify), commit and push to an installed repository.
 A signed `check_suite` event starts ordinary CI at the exact commit and reports
 per-action checks. Explicitly enrolled preview/release branches use the signed Push
 event so moving the same checked SHA between refs still creates the branch-owned
@@ -92,7 +93,7 @@ These are not automatic enrollment for a fresh copy of the tutorial.
 
 ## Discord / Slack notifications and HITL
 
-[Notification setup](./SELF-HOST.md#notifications) is optional and separate from
+[Notification setup](./SELF-HOST.md#store-credentials) is optional and separate from
 approval authority. Host policy selects which runs notify. The root CI/CD workflow
 has no human gate. The [HITL example](../../examples/cloudflare-hitl-release/README.md)
 shows an explicit approval action; [demo release evidence](./DEMO-RELEASE.md) retains

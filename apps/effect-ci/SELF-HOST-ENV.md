@@ -25,6 +25,14 @@ by `pnpm install`. CF CLI is [installed globally](https://developers.cloudflare.
    | `EFFECT_CI_API_TOKEN` | A new 64-character random password. This is a host API credential, not a Cloudflare API token. |
    | `RECEIPT_SIGNING_KEY` | Another new 64-character random password. |
    | `CLOUDFLARE_TOKEN_ISSUER` | Optional: the account token created in the guide's deployment-credentials section. |
+   | `CLOUDFLARE_API_TOKEN` | Host-only deployment credential for this repository's automatic main deployment. |
+   | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` | Credentials for the connected Slack App. |
+
+   In `.env.production`, use `op(op://effect-ci-production/host/<field>)` for these
+   additional secret fields. Fill in the Slack App/team/channel/approver IDs and
+   `EFFECT_CI_DETAILS_URL` there too. The schema marks these integration settings
+   optional so reduced installations remain compatible; configure them for the
+   complete host.
 
 3. Create a [1Password service account](https://www.1password.dev/service-accounts/get-started)
    with read access to this vault only. Put its token in `.env.production.local` as `OP_TOKEN`.
@@ -57,7 +65,9 @@ pnpm exec varlock run --inject vars -- cf deploy --secrets-file secrets.env
 ```
 
 Varlock resolves the provider references. CF uploads only the keys listed in
-`secrets.env`; it does not upload `OP_TOKEN` or the operator's `CLOUDFLARE_API_TOKEN`.
+`secrets.env`; it does not upload `OP_TOKEN`. `CLOUDFLARE_API_TOKEN` is now an
+explicit host binding for automatic main deployment: supply the intended
+host deployment token, never an inherited operator token.
 Keep `$NAME` references in this file, not `op(...)` expressions or resolved secrets.
 No generated secrets file or custom deployment script is needed.
 

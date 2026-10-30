@@ -2,25 +2,25 @@
   {
     "name": "Effect CI public docs",
     "type": "self_hosted",
-    "domain": "effect-ci-docs.<work-subdomain>.workers.dev",
+    "domain": "effect-ci-docs.<workers-dev-subdomain>.workers.dev",
     "policies": [{ "name": "Published documentation", "decision": "bypass", "include": [{ "everyone": {} }] }]
   },
   {
     "name": "Effect CI public previews",
     "type": "self_hosted",
-    "domain": "effect-ci-demo-site.<work-subdomain>.workers.dev/r",
+    "domain": "effect-ci-demo-site.<workers-dev-subdomain>.workers.dev/r",
     "policies": [{ "name": "Immutable published previews", "decision": "bypass", "include": [{ "everyone": {} }] }]
   },
   {
     "name": "Effect CI release demo",
     "type": "self_hosted",
-    "domain": "effect-ci-hmd-demo.<work-subdomain>.workers.dev",
+    "domain": "effect-ci-hmd-demo.<workers-dev-subdomain>.workers.dev",
     "policies": [{ "name": "Owned release demo", "decision": "bypass", "include": [{ "everyone": {} }] }]
   },
   {
     "name": "Effect CI signed notifications",
     "type": "self_hosted",
-    "domain": "effect-ci-repair-events.<work-subdomain>.workers.dev/notifications",
+    "domain": "effect-ci-repair-events.<workers-dev-subdomain>.workers.dev/notifications",
     "policies": [{ "name": "Receiver verifies shared secret", "decision": "bypass", "include": [{ "everyone": {} }] }]
   }
 ]
