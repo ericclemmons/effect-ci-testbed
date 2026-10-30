@@ -14,7 +14,7 @@ const total = groups.flatMap(group => group.rows).reduce((sum, row) => sum + row
   <p>Every example, across the places it should work.</p>
   <div class="summary" role="status" aria-live="polite" data-summary>Loading checks from main…</div>
   <progress max={total} value="0" aria-label="Passing feature and environment combinations" data-progress></progress>
-  <p class="legend"><span class="pass">✓</span> Passing <span class="pending">⏳</span> Loading or pending <span class="fail">×</span> Missing or unsuccessful <span>— Not applicable</span></p>
+  <p class="legend"><span class="pass">✓</span> Passing <span class="fail">×</span> Missing or unsuccessful <span>— Not applicable</span></p>
   <p class="note">Checks for one main commit. Local includes local Cloudflare runtime execution; hosted requires a native Cloudflare check. Click a square for its evidence.</p>
   <button type="button" data-refresh>Refresh checks</button>
   <noscript>Enable JavaScript to load current GitHub checks. Hourglasses mean checks have not loaded.</noscript>
@@ -53,7 +53,7 @@ const total = groups.flatMap(group => group.rows).reduce((sum, row) => sum + row
   progress::-webkit-progress-value { background: #15803d; }
   progress::-moz-progress-bar { background: #15803d; }
   .legend { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; font-size: .8rem; }
-  .legend .pass, .legend .pending, .legend .fail { display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 2px; color: white; }
+  .legend .pass, .legend .fail { display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 2px; color: white; }
   .pass { background: #15803d; }
   .fail { background: #b91c1c; }
   .pending { background: #854d0e; }
