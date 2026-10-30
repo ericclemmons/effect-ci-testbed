@@ -1,0 +1,115 @@
+examples/turbo-ci/README.md
+  s_3279c24a76188a::t_4d45e67557320a 3-5,7-26,30-35,38-39,41-45,64-66,68,71-72,75-78,80,82-84,87-90
+examples/turbo-ci/app/package-lock.json
+  s_3d0b9ece164d06::t_6364d73a19432f 12-456,561-942,961-995
+examples/turbo-distributed/app/package-lock.json
+  s_3d0b9ece164d06::t_296d39391fe8e7 12-456,561-942,961-995
+packages/local-container/README.md
+  s_3d0b9ece164d06::t_9e8287668c7171 1-35
+examples/turbo-ci/app/.gitignore
+  s_3d0b9ece164d06::t_c86f2243cc184c 4
+examples/turbo-ci/app/package.json
+  s_3d0b9ece164d06::t_c7398559edb03f 11-15
+examples/turbo-ci/app/packages/admin/index.html
+  s_3d0b9ece164d06::t_5e637c44d21734 1-17
+examples/turbo-ci/app/packages/admin/package.json
+  s_3d0b9ece164d06::t_5a0a864f197f5c 5,8-9
+examples/turbo-ci/app/packages/admin/src/main.ts
+  s_8de09ab5c7678f::t_8f5d3486dd7aff 1-17
+examples/turbo-ci/app/packages/admin/tsconfig.json
+  s_3d0b9ece164d06::t_075bcc9cad9e66 1-9
+examples/turbo-ci/app/packages/core/package.json
+  s_3d0b9ece164d06::t_9a4daeef3eb15a 5-11,13-14
+examples/turbo-ci/app/packages/core/src/index.ts
+  s_8de09ab5c7678f::t_29b950c4a2d88f 1-18
+examples/turbo-ci/app/packages/core/tsconfig.json
+  s_8de09ab5c7678f::t_01954b6492143e 1-10
+examples/turbo-ci/app/packages/web/index.html
+  s_3d0b9ece164d06::t_58ca2858e6af5c 1-17
+examples/turbo-ci/app/packages/web/package.json
+  s_3d0b9ece164d06::t_b47745a2ab25ed 5,8-9
+examples/turbo-ci/app/packages/web/src/main.ts
+  s_3279c24a76188a::t_7148a117d7a3e5 1-24
+examples/turbo-ci/app/packages/web/tsconfig.json
+  s_8de09ab5c7678f::t_fcf1758f212bbd 1-9
+examples/turbo-ci/app/scripts/ci.mjs
+  s_3d0b9ece164d06::t_acb6cadae89659 39,44
+examples/turbo-ci/app/tsconfig.json
+  s_8de09ab5c7678f::t_1c24f424780a2e 1-11
+examples/turbo-ci/app/turbo.json
+  s_3d0b9ece164d06::t_38dd6a697b6af0 7,12-13
+examples/turbo-distributed/.cloudflare/ci/workflow.ts
+  s_3d0b9ece164d06::t_d7a9c7f22a5321 2,4
+examples/turbo-distributed/app/package.json
+  s_3d0b9ece164d06::t_16cefb7ab5e3fa 7-15
+examples/turbo-distributed/app/packages/admin/index.html
+  s_3d0b9ece164d06::t_5c4fa41db54543 1-17
+examples/turbo-distributed/app/packages/admin/package.json
+  s_3d0b9ece164d06::t_6d10f87ed16f32 5,8-9
+examples/turbo-distributed/app/packages/admin/src/main.ts
+  s_3d0b9ece164d06::t_a5a2d9f52973f7 1-17
+examples/turbo-distributed/app/packages/admin/tsconfig.json
+  s_3d0b9ece164d06::t_b22256e6ec213b 1-9
+examples/turbo-distributed/app/packages/core/package.json
+  s_3d0b9ece164d06::t_cf040ac6728990 5-11,13-14
+examples/turbo-distributed/app/packages/core/src/index.ts
+  s_3d0b9ece164d06::t_b310de07233d21 1-18
+examples/turbo-distributed/app/packages/core/tsconfig.json
+  s_3d0b9ece164d06::t_57ed2213487c3e 1-10
+examples/turbo-distributed/app/packages/web/index.html
+  s_3d0b9ece164d06::t_fbb80a6e6b9b85 1-17
+examples/turbo-distributed/app/packages/web/package.json
+  s_3d0b9ece164d06::t_e77ff882afcfaa 5,8-9
+examples/turbo-distributed/app/packages/web/src/main.ts
+  s_3279c24a76188a::t_fc78be634ce12a 1-24
+examples/turbo-distributed/app/packages/web/tsconfig.json
+  s_3d0b9ece164d06::t_f5c136e5bbc1bd 1-9
+examples/turbo-distributed/app/scripts/ci.mjs
+  s_3d0b9ece164d06::t_8dc45d8feb0ce0 1-45
+examples/turbo-distributed/app/tsconfig.json
+  s_3d0b9ece164d06::t_28867ba5e9383c 1-11
+examples/turbo-distributed/app/turbo.json
+  s_3d0b9ece164d06::t_9e98265d6a9b98 7,12-13
+examples/turbo-distributed/package.json
+  s_3d0b9ece164d06::t_a14f9677acc3f3 8-9
+packages/ci/src/turbo.ts
+  s_3d0b9ece164d06::t_8c5c2268381b42 95
+packages/local-container/package.json
+  s_8de09ab5c7678f::t_ce56ca3d4228a5 7-8
+packages/local-container/src/snapshots.ts
+  s_3d0b9ece164d06::t_5d68e9ec37a14a 3,11-16,18,44-65,67-69
+pnpm-lock.yaml
+  s_3d0b9ece164d06::t_986a84f839bb20 1034-1036
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1a918896f59cebc7226dd0f7a20360abe22bba99",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_3d0b9ece164d06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18803-3ca9-7d82-8260-c59f94dc80e3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_8de09ab5c7678f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18aad-d188-7530-8b4d-4847ff2c92ad",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
