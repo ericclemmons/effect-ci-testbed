@@ -1,0 +1,55 @@
+apps/docs/astro.config.mjs
+  s_7093f54021410f::t_c8af3bfae36f76 7
+apps/effect-ci/src/demo-access-policy.ts
+  s_3279c24a76188a::t_84fb272ae3ae8c 3,5-7
+packages/cloudflare/src/demo-site.ts
+  s_3279c24a76188a::t_440b65379ccbe4 2
+packages/cloudflare/src/reviewed-release.ts
+  s_3279c24a76188a::t_97b42393590821 144
+packages/cloudflare/src/static-assets-publish.ts
+  s_3279c24a76188a::t_41f76108345188 4,7
+test/apps/example-runner/src/flywheel-workflow.ts
+  s_3279c24a76188a::t_17925ecf694425 16
+test/apps/example-runner/src/hmd-cohort.ts
+  s_3279c24a76188a::t_6c3582fdd4a9b5 8
+test/apps/example-runner/src/hmd-controller.ts
+  s_3279c24a76188a::t_e19fc049c758bd 13
+test/apps/example-runner/src/hmd-review-runner.ts
+  s_3279c24a76188a::t_f55db580f9cbef 15
+test/apps/example-runner/src/wobs-cohort.ts
+  s_3279c24a76188a::t_854febd615e619 1
+test/apps/example-runner/src/wobs-probe.ts
+  s_3279c24a76188a::t_dd6fb38768c610 24
+test/apps/example-runner/src/wobs-samples.ts
+  s_3279c24a76188a::t_be8ea9bf48421c 8
+test/apps/release-manager/src/release-manager.ts
+  s_3279c24a76188a::t_c28f6920162577 3
+test/apps/repair-events/src/public-enrollment.ts
+  s_3279c24a76188a::t_ab023d8d439eab 3-5
+apps/effect-ci/MIGRATE.md
+  s_3279c24a76188a::t_0af036e327632a 112-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b2837930a5a22d70aacb406508d97a7c65054e18",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_7093f54021410f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18a7f-f826-7670-b258-675fe7ff05e4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
