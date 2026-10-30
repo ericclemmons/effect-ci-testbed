@@ -1,6 +1,7 @@
 # Walkthrough
 
-Create a React app with a Worker API. Run its build with Effect CI. Then cache it.
+Create a React app with a Worker API. Run and cache its build locally, then run
+the same build on an Effect CI host.
 
 ## 1. Make the CLI available
 
@@ -189,12 +190,42 @@ transforming...
 
 ## 6. Run on a host
 
-Use an existing Effect CI host, or [set one up](../../apps/effect-ci/SELF-HOST.md).
-Add your app's GitHub repository to that host's GitHub App installation and push
-it to GitHub. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
-for local sign-in.
+Remote execution runs the same named action on a host, from your pushed GitHub
+commit. No custom CI workflow is needed.
 
-From the app directory, replace `https://your-ci-host` with the host's origin:
+### Push the app to GitHub
+
+Install the [GitHub CLI](https://cli.github.com/) and sign in with `gh auth login`.
+From the app directory, commit your changes and create its GitHub repository:
+
+```sh
+git add .
+git commit -m "Prepare walkthrough"
+gh repo create walkthrough --private --source=. --remote=origin --push
+git remote get-url origin
+```
+
+Choose another repository name if `walkthrough` is already taken. The command
+sets `origin` and pushes your commits. Enrollment reads `remote.origin.url` to
+identify your repository.
+
+If you already created the GitHub repository but have no `origin`, connect it
+instead. Replace the URL with your repository's URL:
+
+```sh
+git remote add origin https://github.com/YOUR-OWNER/YOUR-REPO.git
+git push -u origin HEAD
+```
+
+### Connect to a host
+
+Use an existing Effect CI host, or [set one up](../../apps/effect-ci/SELF-HOST.md).
+Ensure the host's GitHub App installation can access your new repository. If it
+uses **Only select repositories**, add the repository to **Repository access**.
+
+Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+for local sign-in. From the app directory, replace `https://your-ci-host` with
+the host's origin:
 
 ```sh
 cloudflared access login https://your-ci-host
@@ -206,8 +237,17 @@ repository name. It contains no credentials. The CLI reads it to find the remote
 endpoint; without enrollment or `EFFECT_CI_REMOTE_URL`, `--remote` reports
 `CI_REMOTE_UNAVAILABLE`.
 
-Commit and push your app changes, including `.cloudflare/ci/oidc.json`. Then run
-the same build remotely:
+Commit and push the enrollment file:
+
+```sh
+git add .cloudflare/ci/oidc.json
+git commit -m "Configure hosted CI"
+git push
+```
+
+### Run the build remotely
+
+Check access, then run the build:
 
 ```sh
 effect-ci doctor --remote
