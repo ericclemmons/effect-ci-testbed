@@ -1,0 +1,105 @@
+examples/README.md
+  s_e9a7a80b4bb8ad::t_e7a4354946e2a5 6-7,13-14
+examples/artifacts-source/README.md
+  s_e9a7a80b4bb8ad::t_ae52754de41d22 24,27-28
+examples/blacksmith/README.md
+  s_e9a7a80b4bb8ad::t_5ee07dff0ed25b 12-13
+examples/cache-policy/README.md
+  s_e9a7a80b4bb8ad::t_819f57fabbf6ed 13-15
+examples/cloudflare-hitl-release/README.md
+  s_e9a7a80b4bb8ad::t_5f16971dedee25 16-17
+examples/cloudflare-runner/README.md
+  s_e9a7a80b4bb8ad::t_71371f2c230c4b 18-19
+examples/conditional-deploy/README.md
+  s_e9a7a80b4bb8ad::t_05286e5b17f817 14-15,28-29
+examples/custom-container-image/README.md
+  s_e9a7a80b4bb8ad::t_321ca600f509e4 14-15
+examples/d1-migration/README.md
+  s_e9a7a80b4bb8ad::t_0dcaa84a7d9f69 17-18
+examples/dependency-aware-reruns/README.md
+  s_e9a7a80b4bb8ad::t_0999a78ba2e2d0 14-15
+examples/deploy-changed-output/README.md
+  s_e9a7a80b4bb8ad::t_26584f1db2d206 11-13
+examples/deploy-hook/README.md
+  s_e9a7a80b4bb8ad::t_b4ad94c00d2395 7,10-11
+examples/durable-object-source/README.md
+  s_e9a7a80b4bb8ad::t_92a93d768d00db 13-14
+examples/dynamic-project-checks/README.md
+  s_e9a7a80b4bb8ad::t_ba332d9ac8381b 13-14
+examples/dynamic-worker-checks/README.md
+  s_e9a7a80b4bb8ad::t_0c4ff9c170c406 10-11
+examples/execution-policy/README.md
+  s_e9a7a80b4bb8ad::t_5a399108f9abbf 13-14
+examples/exported-actions/README.md
+  s_e9a7a80b4bb8ad::t_bb747356bd2a7f 7,10-12
+examples/github-cloudflare-ci/README.md
+  s_e9a7a80b4bb8ad::t_26881e3d79ab30 11-12
+examples/gitlab-source/README.md
+  s_e9a7a80b4bb8ad::t_68b8b170a19788 11-12
+examples/immutable-attempts/README.md
+  s_e9a7a80b4bb8ad::t_dd38500b710e64 13-14
+examples/local-container/README.md
+  s_e9a7a80b4bb8ad::t_a4745d33dc66e0 14-15,21
+examples/matrix/README.md
+  s_e9a7a80b4bb8ad::t_c61178da09afbb 41-44
+examples/mise-toolchain/README.md
+  s_e9a7a80b4bb8ad::t_b2a9fb7624f60b 15-16
+examples/node-npm/README.md
+  s_e9a7a80b4bb8ad::t_815d9a8e86d496 11-12
+examples/node-pnpm/README.md
+  s_e9a7a80b4bb8ad::t_7ff1b675566f87 9-10
+examples/node-version/README.md
+  s_e9a7a80b4bb8ad::t_904743187a2551 16-17
+examples/optional-checks/README.md
+  s_e9a7a80b4bb8ad::t_b9f600369c82c1 10-11
+examples/ordered-deploy/README.md
+  s_e9a7a80b4bb8ad::t_b877375fb8c81e 15-16
+examples/package-manager-cache/README.md
+  s_e9a7a80b4bb8ad::t_d929c3585855d2 13-15
+examples/portable-artifacts/README.md
+  s_e9a7a80b4bb8ad::t_f48dc80c701a61 11-12
+examples/r2-source/README.md
+  s_e9a7a80b4bb8ad::t_85e3888d4fc353 13-14
+examples/retry/README.md
+  s_e9a7a80b4bb8ad::t_aba203350d1237 10-11
+examples/rollback-compensation/README.md
+  s_e9a7a80b4bb8ad::t_19fcfed30e729c 14-15
+examples/runner-selection/README.md
+  s_e9a7a80b4bb8ad::t_90303d057f0de7 18-19
+examples/secure-secrets/README.md
+  s_e9a7a80b4bb8ad::t_afa08d2dbe06e1 16-17
+examples/snapshot-fanout/README.md
+  s_e9a7a80b4bb8ad::t_b0c7c44e2c6bc0 14-15
+examples/system-package/README.md
+  s_e9a7a80b4bb8ad::t_b0ae758afb6f99 15-16
+examples/test-splitting/README.md
+  s_e9a7a80b4bb8ad::t_4a5d41e4e46142 45-48
+examples/timing-aware-splitting/README.md
+  s_e9a7a80b4bb8ad::t_a0ea8f9cf3d0ec 64-67
+examples/turbo-ci/README.md
+  s_e9a7a80b4bb8ad::t_cd0f1060022d0a 83-85
+examples/turbo-distributed/README.md
+  s_e9a7a80b4bb8ad::t_061ddb0e9664b0 48-49
+examples/verification-evidence/README.md
+  s_e9a7a80b4bb8ad::t_1e39818fb76e2f 10-11
+examples/vite-plus-cache/README.md
+  s_e9a7a80b4bb8ad::t_1dcf566029e6b1 13-15
+examples/workspace/README.md
+  s_e9a7a80b4bb8ad::t_42062ee07a88e2 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0b0f32303688a4f278decae87eda2fe528ba2e33",
+  "prompts": {},
+  "sessions": {
+    "s_e9a7a80b4bb8ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18b20-3057-71c2-a8c3-aa234465cf3b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
