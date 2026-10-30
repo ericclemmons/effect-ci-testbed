@@ -86,7 +86,11 @@ Optional check/result cache outages execute the work normally, including when an
 adapter throws. A failed cache write does not fail successful work. Cancellation
 still stops the run; required event/attempt persistence is not an optional cache.
 
-`CI.when` records inspectable conditions. Ordinary `if/else` works too:
+`CI.when` records an inspectable condition on one action. For complete ordered
+alternatives, use [`CI.branch`](../../examples/conditional-deploy#route-a-whole-action-subgraph):
+the workflow declares exclusive membership and shared prerequisites run before
+the branch. Both lists appear in the plan; execution runs only the selected list.
+Ordinary `if/else` works too, but does not serialize both alternatives:
 
 ```ts
 const source = yield* CI.Source
