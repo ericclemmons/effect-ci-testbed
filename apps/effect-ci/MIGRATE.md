@@ -53,6 +53,7 @@ back: recover them from their original credential store.
 ```sh
 cf auth whoami
 cf workers list
+cf workers scripts search --per-page 100
 cf workflows list
 cf containers applications list
 cf containers images list
@@ -60,7 +61,8 @@ cf zero-trust access applications list
 cf zero-trust access service-tokens list
 ```
 
-Record active runs, Notifications destinations/policies, Issues automations,
+Paginate the script search if needed: the newer Workers list does not include
+every legacy script. Record active runs, Notifications destinations/policies, Issues automations,
 Workers Builds triggers and any custom domains too. List commands alone do not
 capture those resources or their settings. This table is the source dependency
 map, not proof of what is currently deployed:
