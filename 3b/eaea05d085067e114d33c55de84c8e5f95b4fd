@@ -1,0 +1,35 @@
+apps/docs/README.md
+  s_3279c24a76188a::t_23874469f4174e 3
+apps/effect-ci/.env.production.example
+  s_3279c24a76188a::t_bd12a2f2ef993b 2-3,5
+apps/effect-ci/.env.schema
+  s_3279c24a76188a::t_9cc089dc4acaa6 16,19,56-81
+apps/effect-ci/README.md
+  s_3279c24a76188a::t_f54802ae1c5eba 6,40-41,57,96
+apps/effect-ci/SELF-HOST-ENV.md
+  s_3279c24a76188a::t_0959eb1bb976c4 28-35,68-70
+apps/effect-ci/SELF-HOST.md
+  s_3279c24a76188a::t_2608f2d17abd2c 3-5,7-9,14-21,47,51,57-84,88-93,103-172,178,183-210,265-268
+apps/effect-ci/access-public.example.json
+  s_3279c24a76188a::t_bfac80dde8c78d 5,11,17,23
+apps/effect-ci/host-profile.ts
+  s_3279c24a76188a::t_89db8a27fa0860 3-4
+apps/effect-ci/secrets.env
+  s_3279c24a76188a::t_fc3007fa5af985 13-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3beaea05d085067e114d33c55de84c8e5f95b4fd",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
