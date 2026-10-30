@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 12.8.1
@@ -16,11 +18,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-      - run: pnpm build
-      # effect-ci must be installed alongside the project's CI dependencies.
-      - run: effect-ci oidc
-        env:
-          EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
-      - run: effect-ci oidc -- wrangler deploy
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@95e9d2c4027b2d2fb8d88af1545442bef0677c4d
+        with:
+          enroll: "true"
+          worker: walkthrough
+      - run: pnpm exec cf deploy

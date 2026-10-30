@@ -2,8 +2,12 @@ name: Effect CI Cloudflare authentication
 description: Exchange GitHub OIDC for a temporary, scoped Cloudflare API token
 inputs:
   broker-url:
-    description: HTTPS origin of your Effect CI OIDC broker
-    required: true
+    description: HTTPS service origin; defaults to EFFECT_CI_REMOTE_URL in the environment or .env, then .cloudflare/ci/oidc.json
+    required: false
+  enroll:
+    description: Enroll this repository with the shared host using its signed GitHub identity
+    default: "false"
+    required: false
   worker:
     description: Exact Worker authorized in the broker grant
     required: true

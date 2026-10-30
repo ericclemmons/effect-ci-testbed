@@ -9,7 +9,8 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 | --- | --- |
 | `effect-ci list` | Runnable project goals. |
 | `effect-ci plan test build --format=mermaid` | Dependency graph; no execution. |
-| `effect-ci run test build` | Execute selected goals locally. |
+| `effect-ci run test build` | Execute remotely after OIDC enrollment, locally otherwise. |
+| `effect-ci run test build --local` | Execute working-tree edits locally. |
 | `effect-ci run test build --remote` | Dispatch advertised goals to an enrolled host. |
 | `effect-ci doctor --remote` | Check host access without starting a run. |
 | `effect-ci oidc -- <command>` | Run a child with temporary deployment credentials. |
@@ -50,6 +51,12 @@ files and aliases work as they do for `effect-ci run --remote`.
 The GitHub App must be installed on the repository. Successful enrollment writes
 `.cloudflare/ci/oidc.json` with the service origin and repository name. Commit that
 file; it contains no credentials. Repeating enrollment is safe.
+
+After enrollment, `effect-ci run build` defaults to remote execution. Use
+`effect-ci run build --local` for fast feedback on working-tree edits. `list` and
+`plan` stay local; `--remote` remains available explicitly. A host URL or private
+API profile alone does not change the default. Remote errors never silently run
+work locally.
 
 In CI, use `effect-ci oidc -- pnpm exec wrangler deploy` or
 `effect-ci oidc -- pnpm exec cf deploy`. The command uses GitHub Actions OIDC (with

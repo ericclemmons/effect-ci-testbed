@@ -10,7 +10,7 @@ const links = [...homepage.matchAll(/<th scope="row"[^>]*>\s*<a href="([^"]+)"[^
 
 test("feature links reach the relevant guides and sections", () => {
   for (const [title, href] of [
-    ["Run CI remotely from the CLI", "/walkthrough/#6-run-on-a-host"],
+    ["Run CI remotely from the CLI", "/walkthrough/#7-enroll-oidc-and-run-on-a-host"],
     ["Request release approval in Discord", "/apps/effect-ci/#discord--slack-notifications-and-hitl"],
     ["Recover from a deploy failure after migration", "/examples/d1-migration/#rollback-is-not-filesystem-rewind"],
   ]) assert.equal(links.find(link => link.title === title)?.href, href)

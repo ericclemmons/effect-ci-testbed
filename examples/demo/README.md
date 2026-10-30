@@ -1,210 +1,380 @@
 # Walkthrough
 
-Create a React app with a Worker API. Run its build with Effect CI. Then cache it.
+Create a React app with a Worker API, build it without a CI workflow, cache the
+build, and open a GitHub PR with checks. Run the same build on an enrolled Effect
+CI host using OIDC, deploy with temporary credentials, and send the result to Slack.
+
+An existing Node project can start at **Inspect before running**. Your
+`package.json` scripts are already CI actions. Vite+ is optional; this example
+uses it for task caching.
 
 ## 1. Make the CLI available
 
-Install [Vite+](https://viteplus.dev/guide/). You'll also need Node
-24.11+ or 26+, pnpm, and Git.
+Install [Vite+](https://viteplus.dev/guide/), Node 24.11+ or 26+, pnpm,
+[GitHub CLI](https://cli.github.com/), and Git. Remote execution also needs an
+Effect CI host, its GitHub App installed on your repository, and permission to
+sign in through its Cloudflare Access policy. Ask your operator for the service
+origin and App installation link. [Self-hosting](../../apps/effect-ci/SELF-HOST.md)
+is a separate operator task.
 
-From a clone of [Effect CI](https://github.com/ericclemmons/effect-ci-testbed):
+The prototype CLI is unpublished. Install it in a separate directory:
 
 ```sh
-pnpm install
-export PATH="$PWD/node_modules/.bin:$PATH"
+git clone https://github.com/ericclemmons/effect-ci-testbed.git
+cd effect-ci-testbed
+pnpm install --frozen-lockfile
+export EFFECT_CI_SOURCE="$PWD"
+export PATH="$EFFECT_CI_SOURCE/node_modules/.bin:$PATH"
 effect-ci --help
+gh auth login
 ```
 
-Keep this shell open.
+Keep this shell open. `EFFECT_CI_SOURCE` is used below to install the runnable
+GitHub Actions examples into your app.
 
 ## 2. Create a Cloudflare app
 
-Use [Cloudflare's React starter](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/)
-through `vp create`. This creates a React SPA and a Worker that serves `/api/`.
-
-Run this from the directory where you keep projects:
+From the directory where you keep projects:
 
 ```sh
 vp create cloudflare
 ```
 
-Follow the prompts: name the app `walkthrough`, choose **Framework Starter**, then
-**React** with TypeScript and pnpm, and enable Git and commit hooks. Skip deployment
-for now.
+Use [Cloudflare's React starter](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/):
+name the app `walkthrough`, choose **Framework Starter**, **React**, TypeScript,
+and pnpm. Enable Git and commit hooks. Skip deployment for now.
 
 ```sh
 cd walkthrough
 vp dev
 ```
 
-Open the printed URL. Click the **Name from API** button to call the Worker:
-
-```json
-{ "name": "Cloudflare" }
-```
-
-Stop the server with Ctrl-C. Nothing has been deployed.
+Open the printed URL. Click **Name from API** to call the Worker. It returns
+`{ "name": "Cloudflare" }`. Stop the server with Ctrl-C.
 
 ## 3. Inspect before running
 
 ```sh
 effect-ci list
+effect-ci plan build --format=mermaid
 ```
 
-```text
-Workflow: walkthrough
-Run commands:
-  effect-ci run build
-  effect-ci run lint
-  ...
-```
-
-Every `package.json` script is an action, including `dev`, `build`, and `lint`.
-Vite+ tasks in `vite.config.ts` under `run.tasks` are actions too.
-Use `effect-ci list` to see them. Execution requires an action name; bare
-`effect-ci run` reports how to choose one.
-
-Agents get JSON from the same command. Try it with `AI_AGENT=demo`:
-
-```sh
-AI_AGENT=demo effect-ci list
-```
-
-Inspect both goals without running them:
-
-```sh
-effect-ci plan lint build --format=mermaid
-```
+Every package script is an action, including `dev`, `build`, and `lint`.
+Vite+ tasks under `run.tasks` in `vite.config.ts` are actions too. Choose a finite
+task such as `build` for CI; `dev` stays running.
 
 ```mermaid
 flowchart LR
-  step_checkout["checkout"]
-  step_install["install"]
-  step_build["build"]
-  step_lint["lint"]
-  step_checkout --> step_install
-  step_install --> step_build
-  step_install --> step_lint
+  checkout --> install --> build
 ```
+
+Both commands inspect the project without running scripts or writing a CI file.
+Auto-discovered projects require an action name; bare `effect-ci run` explains
+how to choose one.
+
+### Give an agent the same interface
+
+```sh
+AI_AGENT=demo effect-ci list
+effect-ci plan build --format=json
+```
+
+The first command previews automatic agent detection. A typical discovery result
+looks like this; available targets depend on the starter version:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "list",
+  "workflow": "walkthrough",
+  "targets": ["build", "dev", "lint", "preview"],
+  "commands": ["effect-ci run build", "effect-ci run dev", "effect-ci run lint", "effect-ci run preview"]
+}
+```
+
+An agent discovers commands, inspects the plan, runs a selected goal, and reads
+the JSON result and process exit code. `--format=json` makes that contract
+explicit. No agent-specific workflow is needed.
 
 ## 4. Run the build
 
 ```sh
-effect-ci run build
+effect-ci run build --local
 ```
 
-Shortened output:
+The starter's build script checks TypeScript and bundles the SPA and Worker.
+The first local run creates an empty `.cloudflare/ci/ci.ts` discovery marker.
+You haven't authored a CI graph or deployed anything.
 
-```text
-$ tsc -b && vp build
-...
-dist/walkthrough/index.js
-...
-dist/client/index.html
-dist/client/assets/index-piJr7AhZ.js
-...
-CI execution summary: walkthrough/build
-Environment: development
+Before enrollment, `effect-ci run build` also runs locally. **After OIDC
+enrollment, it defaults to remote execution.** Keep `--local` for quick feedback
+on edits before committing. `list` and `plan` stay local throughout this guide.
 
-✓ checkout
-✓ install depends on checkout
-✓ build depends on install
-```
+## 5. Run again from cache
 
-The existing build script checks TypeScript and bundles the SPA and Worker.
-No CI workflow to write.
+Move the build command from `package.json` into Vite+'s `run.tasks` in
+`vite.config.ts`. Keep the starter's imports and plugins. Add `run: cachedBuild`
+to its existing `defineConfig({ ... })` object, using this value:
 
-## 5. Run again
+[Cached build task](./tutorial/cache-task.ts#symbol=cachedBuild "source")
 
-Move the build script into `run.tasks` in `vite.config.ts`. Vite+ caches config
-tasks by default. Effect CI discovers the task and runs it through `vp run`.
-
-In `package.json`:
-
-```diff
-   "scripts": {
--    "build": "tsc -b && vp build",
--    "preview": "pnpm run build && vp preview",
-+    "preview": "vp run build && vp preview",
-```
-
-In `vite.config.ts`, keep the existing plugins and add `run.tasks`:
-
-```diff
- export default defineConfig({
-+  run: {
-+    tasks: {
-+      build: {
-+        command: "tsc -b && vp build",
-+      },
-+    },
-+  },
-```
-
-A task name must be defined in one place: `package.json` scripts or Vite+
-`run.tasks`. Update any other scripts that call `pnpm run build` to use
-`vp run build`.
+Place the declaration above `defineConfig`, or inline its object as the `run`
+property. Remove `scripts.build` from `package.json`. Change any remaining
+`pnpm run build` callers, such as the preview script, to `vp run build`.
+A task name must exist in one place: package scripts or Vite+ tasks.
 
 ```sh
-effect-ci run build
-effect-ci run build
+effect-ci list
+effect-ci run build --local
+effect-ci run build --local
 ```
 
-The second run reuses the bundle:
-
-```text
-$ vp run build
-$ tsc -b
-
-$ vp build ◉ cache hit, replaying
-...
-vp run: 1/2 cache hit (50%)
-...
-✓ build depends on install
-```
-
-TypeScript still runs. Vite+ caches the bundle by tracking its inputs and outputs.
-
-In `worker/index.ts`:
-
-```diff
-       return Response.json({
--        name: "Cloudflare",
-+        name: "Effect CI",
-       });
-```
-
-Run again:
+Inspect the second run for Vite+'s cache-hit output. The unchanged bundle can be
+replayed; TypeScript may still run. Change `name: "Cloudflare"` to
+`name: "Effect CI"` in `worker/index.ts`, then run again:
 
 ```sh
-effect-ci run build
+effect-ci run build --local
 ```
 
-```text
-$ vp build ○ cache miss: 'worker/index.ts' modified, executing
-transforming...
-```
+The changed input should produce a bundle cache miss. Effect CI invokes the task
+through `vp run build`; Vite+ owns its cache.
+[Vite+ caching](../vite-plus-cache) explains inputs and outputs. A local cache hit
+does not prove a fresh hosted container has the same cache.
 
-[More on Vite+ caching](../vite-plus-cache).
+### Exercise the local journey
 
-## 6. Run on a host
-
-Push the app and connect it to an Effect CI host. Then run the same build remotely:
+From the installed Effect CI source clone:
 
 ```sh
+node examples/demo/tutorial/verify-local.mjs
+```
+
+This creates a fresh Vite+ project in a temporary directory, discovers its build
+script, runs it, moves it to the cached task above, and demonstrates a cache hit
+followed by a miss after a source edit. It also creates and locally verifies a
+commit using an ephemeral signing key. The printed directory retains the app
+and logs. It uses dependencies already cached by the source installation.
+It does not create a GitHub repository, deploy a Worker, or contact Slack; those
+parts of the journey use your enrolled resources below.
+
+[Executable local journey](./tutorial/verify-local.mjs)
+
+## 6. Create a GitHub repository with signed commits
+
+Use your existing signing setup if you have one. Otherwise, register an existing
+SSH public key as a **signing key** on GitHub and configure this repository:
+
+```sh
+gh ssh-key add "$HOME/.ssh/id_ed25519.pub" --type signing --title "Walkthrough signing"
+git config --local gpg.format ssh
+git config --local user.signingkey "$HOME/.ssh/id_ed25519.pub"
+git config --local commit.gpgsign true
+```
+
+This assumes the matching private key exists and is available for signing. If
+you need a key, follow [GitHub's signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key).
+Set `git config --local user.email` to an email verified on your GitHub account.
+Agents use this Git configuration too; an interactive signer may ask you to
+unlock the key. Keep the private key on your machine.
+
+```sh
+git branch -M main
+git add .
+git commit -S -m "feat: Build the walkthrough app"
+gh repo create walkthrough --private --source=. --remote=origin --push
+```
+
+The [repository command](https://cli.github.com/manual/gh_repo_create) creates a
+private repository in your account and pushes the current branch. Use an unused
+name if `walkthrough` already exists. The starter's earlier commit is unchanged;
+the commits made here are signed.
+
+<a id="6-run-on-a-host"></a>
+
+## 7. Enroll OIDC and run on a host
+
+Install your operator's GitHub App on the new repository. Its allowed-owner policy
+must include your GitHub account or organization. Install
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+for Access authentication. Set your actual service origin, then enroll:
+
+```sh
+export EFFECT_CI_REMOTE_URL=https://your-ci-host.workers.dev
+cloudflared access login --quiet "$EFFECT_CI_REMOTE_URL"
+effect-ci oidc --service "$EFFECT_CI_REMOTE_URL"
+git add .cloudflare/ci/oidc.json
+git commit -S -m "ci: Enroll hosted execution"
+git push
 effect-ci doctor --remote
+effect-ci run build --remote --format=text
+```
+
+Enrollment writes the public service origin and repository name to
+`.cloudflare/ci/oidc.json`. It contains no credential. `doctor` checks access and
+available goals without starting a Workflow. The host must report project
+discovery or advertise `build`.
+
+Remote execution checks out the **pushed commit**. Commit and push first; a dirty
+working tree is rejected. The CLI streams progress and returns a failing exit
+code when the run fails. A remote error never silently executes locally.
+
+After enrollment, these select the same remote execution path:
+
+```sh
+effect-ci run build
 effect-ci run build --remote
 ```
 
-Remote runs use the pushed commit. [Host setup](../../apps/effect-ci/SELF-HOST.md)
-and [GitHub integration](../GITHUB.md) are separate guides.
+Run the remote command twice at the same pushed commit and inspect the build
+output for a Vite+ cache hit on the second run. The host preserves
+`node_modules/.vite/task-cache`; Vite+ decides whether the task inputs match.
+A cold host or changed inputs can still produce a miss. Record the commit,
+remote Workflow IDs, and cache output before claiming remote cache reuse.
 
-## Add one thing
+For uncommitted edits and fast local feedback:
 
-| What next?                      | Guide                                         |
-| ------------------------------- | --------------------------------------------- |
-| Run from GitHub                 | [GitHub](../GITHUB.md)                        |
-| Use Turbo's task graph          | [Turborepo](../turborepo-cache)               |
-| Add custom CI logic             | [Exported actions](../exported-actions)       |
-| Approve a small safe change     | [Safe-change approval](../small-change)       |
-| Keep secrets out of the process | [Outbound authentication](../secret-outbound) |
+```sh
+effect-ci run build --local
+```
+
+OIDC enrollment enables repository identity. Deployment additionally needs the
+operator's Cloudflare account and approved deployment scope.
+
+## 8. Open a PR and see its check
+
+Install this complete GitHub Actions workflow into your app:
+
+```sh
+mkdir -p .github/workflows
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/checks.example.yml" .github/workflows/checks.yml
+```
+
+[GitHub checks and Slack update](./tutorial/checks.example.yml "source")
+
+The job installs the unpublished CLI outside your app checkout and dispatches
+`build` to the enrolled host. `id-token: write` lets GitHub supply a short-lived
+identity. No stored Effect CI API token or Cloudflare deployment token is needed.
+The toolchain revision is pinned; update it deliberately when upgrading the CLI.
+
+```sh
+git switch -c feat/github-checks
+git add .github/workflows/checks.yml
+git commit -S -m "ci: Run the build on Cloudflare"
+git push -u origin feat/github-checks
+gh pr create --title "ci: Run the build on Cloudflare"
+gh pr checks
+gh pr view --json headRefOid,statusCheckRollup
+```
+
+GitHub prompts for the PR description. In the PR, **Checks** shows the `build` job
+from **Effect CI**; its log contains the remote Workflow ID and execution output.
+`gh pr checks` takes a snapshot; run it again when you want another status.
+
+This workflow runs on **push**, including pushes to your PR branch. Its check
+belongs to that branch's head commit. The host currently rejects workload
+identities from `pull_request` and `pull_request_target` events, so this does not
+dispatch fork PR code. GitHub Actions reports the job check; it is separate from
+the native App checks used by this repository's own hosted recipes.
+
+Confirm GitHub verified the signed head commit:
+
+```sh
+gh api "repos/{owner}/{repo}/commits/$(git rev-parse HEAD)" --jq '.commit.verification | {verified, reason}'
+```
+
+Expect `verified: true`. Otherwise, check the key registration and committer
+email. A commit signature identifies its signer; signed CI receipts are a
+separate host capability that this setup does not grant automatically.
+The [trusted remote guide](../../apps/effect-ci/TRUSTED-REMOTE.md) records signed
+check and build receipts for specifically enrolled demos. An ordinary GitHub
+check or Vite+ cache hit is not that attestation.
+
+### Give your agent this working loop
+
+```text
+Use effect-ci list --format=json to discover the project's goals.
+Inspect effect-ci plan build --format=json before running work.
+Run effect-ci run build --local --format=json while editing.
+Create a signed commit and push the branch before remote execution.
+Run effect-ci run build --remote --format=json; inspect its exit code and result.
+Open a PR and inspect gh pr checks and the head commit's signature verification.
+Do not treat a local cache hit as proof that a remote run passed.
+```
+
+## 9. Deploy with short-lived credentials
+
+If your operator has enabled Cloudflare deployment scopes, install the optional
+manual deployment job and the ordinary Cloudflare CLI:
+
+```sh
+pnpm add --save-dev cf@1.0.0-beta.12 @cloudflare/vite-plugin@2.0.0-beta.v.7
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/cloudflare.config.ts" cloudflare.config.ts
+pnpm exec cf build
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/oidc.example.yml" .github/workflows/deploy.yml
+git add .
+git commit -S -m "ci: Deploy with OIDC credentials"
+git push
+```
+
+[OIDC deployment job](./tutorial/oidc.example.yml "source")
+
+[Worker and SPA configuration](./tutorial/cloudflare.config.ts "source")
+
+After this file reaches your default branch, start **Deploy the app with
+short-lived credentials** from GitHub's **Actions** tab, or run:
+
+```sh
+gh workflow run deploy.yml --ref main
+```
+
+The configuration preserves the starter's `worker/index.ts` API alongside the
+SPA. Without that entrypoint, Vite autoconfiguration can produce an assets-only
+app. `cf build` prepares the app locally without deploying it. Commit any
+configuration it creates along with the lockfile. If you chose another app name,
+update `name` in this configuration and `worker` in the workflow to match.
+
+The deployment job checks out the app at the workspace root. The
+[authentication action](../../.github/actions/cloudflare-auth/README.md)
+discovers the committed host from `.cloudflare/ci/oidc.json`, enrolls the signed
+GitHub repository identity, and exports temporary Cloudflare credentials to later
+steps. It uses the same host-owned enrollment and token endpoints as the CLI.
+No CI CLI installation, authentication wrapper, or separate GitHub host variable
+is needed for deployment.
+
+The final command stays `pnpm exec cf deploy`. It builds the app and deploys it.
+The action's post hook revokes the 15-minute credential when the job ends,
+including after deployment failure. An interrupted job that cannot run cleanup
+relies on token expiry. Use a host and Cloudflare account where you intend to
+create this Worker. The operator's account-scoped Workers policy can create new
+Workers; the `worker` input does not turn it into a single-Worker permission.
+
+## 10. Send the result to Slack
+
+Create an [incoming webhook](https://api.slack.com/messaging/webhooks) for your
+Slack channel, then store its URL in the app repository:
+
+```sh
+gh secret set SLACK_WEBHOOK_URL
+```
+
+Enter the URL at the prompt. The checks workflow's final **Update Slack** step
+posts the build status, exact commit, and GitHub run link. It runs after success
+or failure and skips posting until the secret exists. The secret is scoped to
+that step. Trigger another signed push to see the update:
+
+```sh
+git commit --allow-empty -S -m "ci: Exercise Slack notification"
+git push
+gh pr checks
+```
+
+The Slack message links to the run for this new commit. Check that link and the
+PR's head SHA before treating an earlier green check as the current result.
+
+For a human approval gate, use the [Slack release recipe](../cloudflare-hitl-release).
+It calls `CI.Approval.request` before release and requires a host adapter with an
+authorized reviewer list and verified Slack callbacks. A webhook status message
+does not grant approval authority. Generic repository runs on the shared host do
+not automatically inherit that adapter.

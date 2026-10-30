@@ -15,15 +15,9 @@ export const readProjectRemote = (root: string): { url?: string } => {
     return values
   }
   const shared = read(".env"), local = read(".env.local")
-  const oidcPath = join(root, ".cloudflare/ci/oidc.json")
-  let oidc: { issuer?: unknown } = {}
-  if (existsSync(oidcPath)) {
-    const file = lstatSync(oidcPath)
-    if (!file.isFile() || file.isSymbolicLink() || file.size > 8192) throw new Error("Invalid OIDC configuration file")
-    oidc = JSON.parse(readFileSync(oidcPath, "utf8"))
-  }
+  const oidc = readProjectOidc(root)
   const url = local.EFFECT_CI_REMOTE_URL || shared.EFFECT_CI_REMOTE_URL ||
-    (typeof oidc.issuer === "string" ? oidc.issuer : undefined)
+    (typeof oidc?.issuer === "string" ? oidc.issuer : undefined)
   return { ...(url ? { url: remoteOrigin(url) } : {}) }
 }
 
@@ -38,4 +32,13 @@ export const resolveRemote = (
   const token = environment.EFFECT_CI_REMOTE_TOKEN ||
     (url && profile && remoteOrigin(profile.url) === url ? profile.token : undefined)
   return { url, token }
+}
+
+/** Public enrollment metadata; sharing a host URL alone does not opt into remote execution. */
+export const readProjectOidc = (root: string): { issuer?: unknown; repository?: unknown } | undefined => {
+  const path = join(root, ".cloudflare/ci/oidc.json")
+  if (!existsSync(path)) return undefined
+  const file = lstatSync(path)
+  if (!file.isFile() || file.isSymbolicLink() || file.size > 8192) throw new Error("Invalid OIDC configuration file")
+  return JSON.parse(readFileSync(path, "utf8"))
 }
