@@ -885,7 +885,8 @@ const selectedWorkflow = (
   const actions = targets.map(target => {
     const action = available[target]
     if (!action) throw new CliFailure(
-      "CI_UNKNOWN_TARGET", ExitCode.usage, `Unknown action target: ${target}`,
+      "CI_UNKNOWN_TARGET", ExitCode.usage, `Unknown action target: ${target}${Object.keys(available).length === 0
+        ? ". No exported actions were found; export CI actions from your workflow to select them by name." : ""}`,
       { available: Object.keys(available).sort() },
     )
     return action
