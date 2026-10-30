@@ -7,19 +7,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: project
     steps:
       - uses: actions/checkout@v7
         with:
-          path: project
-          persist-credentials: false
-      - uses: actions/checkout@v7
-        with:
-          repository: ericclemmons/effect-ci-testbed
-          ref: f762c781cc0920732774f8d862cc4ac7d0f0a143
-          path: effect-ci
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -28,9 +18,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: project/pnpm-lock.yaml
-      - run: pnpm --dir ../effect-ci install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: echo "$GITHUB_WORKSPACE/effect-ci/node_modules/.bin" >> "$GITHUB_PATH"
-      - run: pnpm exec vp run build
-      - run: effect-ci oidc -- pnpm exec wrangler deploy
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@95e9d2c4027b2d2fb8d88af1545442bef0677c4d
+        with:
+          enroll: "true"
+          worker: walkthrough
+      - run: pnpm exec cf deploy

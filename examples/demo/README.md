@@ -306,16 +306,21 @@ Do not treat a local cache hit as proof that a remote run passed.
 ## 9. Deploy with short-lived credentials
 
 If your operator has enabled Cloudflare deployment scopes, install the optional
-manual deployment job:
+manual deployment job and the ordinary Cloudflare CLI:
 
 ```sh
+pnpm add --save-dev cf@1.0.0-beta.12 @cloudflare/vite-plugin@2.0.0-beta.v.7
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/cloudflare.config.ts" cloudflare.config.ts
+pnpm exec cf build
 cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/oidc.example.yml" .github/workflows/deploy.yml
-git add .github/workflows/deploy.yml
+git add .
 git commit -S -m "ci: Deploy with OIDC credentials"
 git push
 ```
 
 [OIDC deployment job](./tutorial/oidc.example.yml "source")
+
+[Worker and SPA configuration](./tutorial/cloudflare.config.ts "source")
 
 After this file reaches your default branch, start **Deploy the app with
 short-lived credentials** from GitHub's **Actions** tab, or run:
@@ -324,11 +329,26 @@ short-lived credentials** from GitHub's **Actions** tab, or run:
 gh workflow run deploy.yml --ref main
 ```
 
-The job builds the app, then runs `effect-ci oidc -- pnpm exec wrangler deploy`.
-The wrapper exchanges job identity for a 15-minute Cloudflare credential,
-passes it only to the deployment child, and revokes it on exit, including failure.
-Your local Access login alone is not a deployment workload identity.
-Use a host and Cloudflare account where you intend to create this Worker.
+The configuration preserves the starter's `worker/index.ts` API alongside the
+SPA. Without that entrypoint, Vite autoconfiguration can produce an assets-only
+app. `cf build` prepares the app locally without deploying it. Commit any
+configuration it creates along with the lockfile. If you chose another app name,
+update `name` in this configuration and `worker` in the workflow to match.
+
+The deployment job checks out the app at the workspace root. The
+[authentication action](../../.github/actions/cloudflare-auth/README.md)
+discovers the committed host from `.cloudflare/ci/oidc.json`, enrolls the signed
+GitHub repository identity, and exports temporary Cloudflare credentials to later
+steps. It uses the same host-owned enrollment and token endpoints as the CLI.
+No CI CLI installation, authentication wrapper, or separate GitHub host variable
+is needed for deployment.
+
+The final command stays `pnpm exec cf deploy`. It builds the app and deploys it.
+The action's post hook revokes the 15-minute credential when the job ends,
+including after deployment failure. An interrupted job that cannot run cleanup
+relies on token expiry. Use a host and Cloudflare account where you intend to
+create this Worker. The operator's account-scoped Workers policy can create new
+Workers; the `worker` input does not turn it into a single-Worker permission.
 
 ## 10. Send the result to Slack
 

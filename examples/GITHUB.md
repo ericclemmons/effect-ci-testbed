@@ -31,17 +31,20 @@ its program. [Host setup](../apps/effect-ci/SELF-HOST.md).
 
 ## Deployment credentials only
 
-The walkthrough includes a complete GitHub Actions deployment example, including
-installation of the unpublished CLI. Complete repository enrollment and enable
-the operator's deployment scopes first. From your app, using the source clone
-path set in the walkthrough:
+The walkthrough includes a complete GitHub Actions deployment example using the
+authentication action and ordinary `cf deploy`. Enable the operator's deployment
+scopes first. From your app, using the source clone path set in the walkthrough:
 
 ```sh
 mkdir -p .github/workflows
+pnpm add --save-dev cf@1.0.0-beta.12 @cloudflare/vite-plugin@2.0.0-beta.v.7
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/cloudflare.config.ts" cloudflare.config.ts
+pnpm exec cf build
 cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/oidc.example.yml" .github/workflows/deploy.yml
 ```
 
 [Deployment workflow](./demo/tutorial/oidc.example.yml "source")
 
-Copying this file does not grant deployment permissions. The OIDC wrapper revokes the child command's
-token on exit and preserves a deployment failure's exit code.
+Copying this file does not grant deployment permissions. The action discovers
+the committed host from the root checkout, enrolls with GitHub OIDC, and revokes
+the temporary token in its post hook, including after deployment failure.
