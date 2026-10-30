@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ericclemmons/effect-ci-testbed
-          ref: 8e7e3a13fa25f1846ecd9a356376e3f88632601a
+          ref: f762c781cc0920732774f8d862cc4ac7d0f0a143
           path: effect-ci
           persist-credentials: false
       - uses: pnpm/action-setup@v4

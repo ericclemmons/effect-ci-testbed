@@ -143,6 +143,24 @@ through `vp run build`; Vite+ owns its cache.
 [Vite+ caching](../vite-plus-cache) explains inputs and outputs. A local cache hit
 does not prove a fresh hosted container has the same cache.
 
+### Exercise the local journey
+
+From the installed Effect CI source clone:
+
+```sh
+node examples/demo/tutorial/verify-local.mjs
+```
+
+This creates a fresh Vite+ project in a temporary directory, discovers its build
+script, runs it, moves it to the cached task above, and demonstrates a cache hit
+followed by a miss after a source edit. It also creates and locally verifies a
+commit using an ephemeral signing key. The printed directory retains the app
+and logs. It uses dependencies already cached by the source installation.
+It does not create a GitHub repository, deploy a Worker, or contact Slack; those
+parts of the journey use your enrolled resources below.
+
+[Executable local journey](./tutorial/verify-local.mjs)
+
 ## 6. Create a GitHub repository with signed commits
 
 Use your existing signing setup if you have one. Otherwise, register an existing
@@ -209,6 +227,12 @@ effect-ci run build
 effect-ci run build --remote
 ```
 
+Run the remote command twice at the same pushed commit and inspect the build
+output for a Vite+ cache hit on the second run. The host preserves
+`node_modules/.vite/task-cache`; Vite+ decides whether the task inputs match.
+A cold host or changed inputs can still produce a miss. Record the commit,
+remote Workflow IDs, and cache output before claiming remote cache reuse.
+
 For uncommitted edits and fast local feedback:
 
 ```sh
@@ -263,6 +287,9 @@ gh api "repos/{owner}/{repo}/commits/$(git rev-parse HEAD)" --jq '.commit.verifi
 Expect `verified: true`. Otherwise, check the key registration and committer
 email. A commit signature identifies its signer; signed CI receipts are a
 separate host capability that this setup does not grant automatically.
+The [trusted remote guide](../../apps/effect-ci/TRUSTED-REMOTE.md) records signed
+check and build receipts for specifically enrolled demos. An ordinary GitHub
+check or Vite+ cache hit is not that attestation.
 
 ### Give your agent this working loop
 
