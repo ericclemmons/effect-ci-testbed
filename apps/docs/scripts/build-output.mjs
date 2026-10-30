@@ -3,6 +3,7 @@ import { copyFile, mkdir } from "node:fs/promises"
 import {
   cleanBuildOutputDir,
   getWorkerBundleDir,
+  readBuildOutput,
   writeAssets,
   writeRootConfig,
   writeWorkerConfig,
@@ -19,3 +20,4 @@ await writeWorkerConfig({ root, config: config.worker, manifest: {
   type: "complete", mainModule: "worker.mjs", modules: { "worker.mjs": { type: "esm" } },
 } })
 await writeAssets({ root, sourceDirectory: resolve(root, "dist") })
+await readBuildOutput(root)

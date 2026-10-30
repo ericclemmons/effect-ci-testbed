@@ -6,7 +6,7 @@ export default defineConfig({
     entrypoint: "./src/worker.mjs",
     compatibilityDate: "2026-10-24",
     workersDev: true,
-    bindings: { ASSETS: bindings.assets() },
+    env: { ASSETS: bindings.assets() },
     assets: { htmlHandling: "auto-trailing-slash", notFoundHandling: "404-page", runWorkerFirst: ["/api/readiness"] },
   },
 })
