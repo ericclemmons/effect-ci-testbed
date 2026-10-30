@@ -8,6 +8,7 @@ Keep the tools you already use. Start with [the walkthrough](./demo/README.md).
 | [pnpm](./node-pnpm) | Existing scripts and lockfile | pnpm installs; Effect CI invokes scripts. |
 | [Vite+](./vite-plus-cache) | Automatic task input/output tracking | Vite+ decides cache hits. Effect CI runs it and the host preserves its cache. |
 | [Turborepo](./turborepo-cache) | Existing task graph and cache | Turbo owns dependencies and cache keys. No second graph to configure inside those commands. |
+| [Distributed Turbo](./turbo-distributed) | Existing CI tags, isolated task snapshots | Experimental adapter maps the native graph to CI actions; Turbo keeps hashing and cache execution. |
 | [GitHub](./GITHUB.md) | Actions, native checks, deployment identity | Choose an entrypoint; keep the same project commands. |
 | [GitLab](./gitlab-source) | Source checkout | Public pinned commits in the fixture; not a GitLab webhook/check integration. |
 | [Cloudflare](./cloudflare-runner) | Remote runner | The host owns compute, identity, and persistent cache policy. |
@@ -30,5 +31,6 @@ commands still need explicit environment-variable tracking when it affects resul
 
 [Vercel CI](https://vercel.com/blog/introducing-vercel-ci) uses Turbo's task graph
 and cache, then schedules uncached tasks on separate machines. Turbo's graph and
-cache are not the hosted scheduler. Effect CI does not claim that scheduling or
-Vercel's reported speedups.
+cache are not the hosted scheduler. The [distributed Turbo prototype](./turbo-distributed)
+proves local graph-driven fan-out with filesystem snapshots, not hosted scheduling
+or Vercel's reported speedups.

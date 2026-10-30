@@ -87,6 +87,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
+| [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | 🔜 | 🔜 |
 | [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ |
 | [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ |

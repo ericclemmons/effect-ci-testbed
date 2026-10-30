@@ -1,0 +1,8 @@
+{
+  "name": "turbo-ci-app",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "workspaces": ["packages/*"],
+  "devDependencies": { "turbo": "2.11.10" }
+}
