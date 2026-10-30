@@ -1,0 +1,63 @@
+apps/docs/astro.config.mjs
+  s_c0b5e4108c4692::t_a8b59de6f078e1 16
+apps/docs/cloudflare.config.ts
+  s_aaeb7ec1bfcaee::t_2f3366cbd1b565 1,8
+apps/docs/package.json
+  s_c0b5e4108c4692::t_6dfcd86f1f6a54 6-7
+apps/docs/scripts/build-output.mjs
+  s_c0b5e4108c4692::t_9549c7c1ed941b 2-3,14,17
+apps/docs/scripts/snapshot.mjs
+  s_c0b5e4108c4692::t_bf092c325394bd 1-4,6-10,12-20,23-27,29-37,39-44,46-47
+apps/docs/src/components/ReadinessMatrix.astro
+  s_ee0ff5418ebae4::t_aa3d12080a5cfe 7-8,19-25,30,33-34,36,41,45-48
+apps/docs/src/readiness.mjs
+  s_c0b5e4108c4692::t_71f58d509cf17a 1,3-29,33,35-36,45,47,50-62
+apps/effect-ci/SELF-HOST.md
+  s_aaeb7ec1bfcaee::t_477ea2d5d1a770 137,189-194
+.cloudflare/ci/workflow.ts
+  s_aaeb7ec1bfcaee::t_ed60e64097982c 3-4
+.github/workflows/docs.yml
+  s_0d1f5b746f7716::t_0f139eeaeb8050 5-7,13,18,20-22,32-80
+apps/docs/scripts/readiness.test.mjs
+  s_0d1f5b746f7716::t_02e9e3b0b1468b 2-5,7,9-17,19-25,27-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "457854476825dd308334e01cf893bc2927497b9f",
+  "prompts": {},
+  "sessions": {
+    "s_0d1f5b746f7716": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc0-c3d5-7752-aa31-0ef68bdb139b",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_aaeb7ec1bfcaee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18db2-448f-7e51-ad77-56635f60e582",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_c0b5e4108c4692": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc7-0b8b-74a3-bbb5-219357b3fdf1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_ee0ff5418ebae4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18941-5cb2-79d0-afae-09c54a6dc79d",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
