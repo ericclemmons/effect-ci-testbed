@@ -1,0 +1,21 @@
+apps/effect-ci/MIGRATE.md
+  s_3279c24a76188a::t_bd078a37f24311 1-234
+apps/effect-ci/SELF-HOST.md
+  s_3279c24a76188a::t_3042a8dddb9896 6-12,18,163-166,207-210,225-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "533f860b257ec314de6d21144dd2e04a497055b8",
+  "prompts": {},
+  "sessions": {
+    "s_3279c24a76188a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab3-c025-7a72-9ab8-b63033c2383c",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
