@@ -27,7 +27,7 @@ Start with a conventional pipeline, then choose explicit actions or task discove
 | --- | :---: | :---: | :---: | :---: |
 | [Run CI with npm](./node-npm) | ✅ | ✅ | ✅ | ✅ |
 | [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ |
-| [Discover checks automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ |
+| [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Run a single check from the CLI](./exported-actions) | ✅ | ✅ | ✅ | ✅ |
 | [Check changes before pushing](./demo) | ✅ | ✅ | ✅ | ✅ |
 
@@ -80,7 +80,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | [Self-merge safe changes](./small-change) | — | ✅ | 🔜 | 🔜 |
 | [Deploy only changed build output](./deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
-| Run a group of actions only when a condition matches | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Run a group of actions only when a condition matches](../packages/ci/WORKFLOW.md#when) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ |
 | [Run every combination in a matrix](./matrix) | ✅ | ✅ | ✅ | ✅ |
@@ -124,11 +124,11 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run GitHub CI on Cloudflare](./github-cloudflare-ci) ([deploy service](../apps/effect-ci)) | — | — | — | ✅ |
-| [Run CI remotely from the CLI](./cloudflare-hitl-release) | — | — | — | ✅ |
+| [Run CI remotely from the CLI](./demo#6-run-on-a-host) | — | — | — | ✅ |
 | [Release from verified local checks](./release-flywheel) | — | ✅ | — | ✅ |
 | [Approve a deployment in GitHub](./hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Approve a release in Slack](./cloudflare-hitl-release) | — | — | — | ✅ |
-| [Request release approval in Discord](./cloudflare-hitl-release) | — | — | — | 🔜 |
+| [Request release approval in Discord](../apps/effect-ci/README.md#discord--slack-notifications-and-hitl) | — | — | — | 🔜 |
 
 ### Deployment and progressive release
 
