@@ -3,11 +3,19 @@
 This prototype runs locally without a Cloudflare account. To try `--remote` and
 GitHub checks, deploy a host in a Cloudflare account you control.
 
+**Moving the existing hosted setup to another account?** Follow
+[Move the existing hosted apps](./MIGRATE.md). Your repositories stay on GitHub.
+That path preserves this repository's CI, hosted Actions runner, preview/release
+services and Slack integration. The new-host instructions below select
+`EFFECT_CI_PROFILE=standalone`: a smaller installation with a different CI
+entrypoint, not a copy of the existing hosted setup.
+
 ## Give this to your agent
 
 <textarea aria-label="Self-hosting agent prompt" rows="7" readonly spellcheck="false">
 Follow this guide: https://effect-ci-docs.ericclemmons.workers.dev/apps/effect-ci/self-host/
 Help me deploy an Effect CI host in my Cloudflare account.
+If replacing the existing hosted setup, follow the linked migration guide and preserve its features.
 Use the guide's cf commands and configuration files, not custom setup/deploy scripts.
 Ask me for the account ID, host name, and GitHub App owner.
 Use 1Password for credentials; never print secret values or put them in Git.
@@ -152,7 +160,10 @@ locally. Before its **Run on a host** commands:
    in its committed `.env`. In the GitHub App's **Install App → Configure**, add
    this repository to **Repository access** and save. Install
    [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
-2. Enroll the repository:
+2. Register the repository with this host (called enrollment). This lets the host
+   authenticate remote CLI and deployment requests. It does not move the GitHub
+   repository. A new host has its own registration records, so repeat this even
+   when the old host already knew the repository:
 
    ```sh
    cloudflared access login https://<new-host>
@@ -193,8 +204,10 @@ Skip this section if the host will only run tests/builds, not deploy application
 ## Optional: tear down an existing host
 
 Skip this section for a first deployment. If replacing a host, you can run these
-steps before setting up its replacement. Neither setup nor teardown requires
-switching machines or accounts.
+steps after verifying its replacement. For a lower-cost migration with downtime,
+save the resource inventory, configuration and credential references from
+[the migration guide](./MIGRATE.md) before deleting anything. Remote CI will be
+unavailable until the replacement passes verification.
 
 Deleting the host removes its stored state and stops remote CI. Local runs still work.
 
@@ -209,8 +222,10 @@ Deleting the host removes its stored state and stops remote CI. Local runs still
 
    If `CLOUDFLARE_API_TOKEN` is set, unset it before selecting a profile;
    API tokens override profiles.
-2. In [GitHub App settings](https://github.com/settings/apps), select the host's App
-   and clear **Webhook → Active**. Keep its key and webhook secret in 1Password if reusing it.
+2. If the App still points at the old host, clear **Webhook → Active** in
+   [GitHub App settings](https://github.com/settings/apps). If it already points
+   at the verified replacement, leave it active. Keep its key and webhook secret
+   in 1Password if reusing it.
 3. List the host's resources and active runs:
 
    ```sh
