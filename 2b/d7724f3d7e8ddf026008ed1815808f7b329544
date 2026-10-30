@@ -1,0 +1,93 @@
+examples/README.md
+  s_3d0b9ece164d06::t_836315c4e5a5ae 22
+examples/turbo-distributed/.cloudflare/ci/local.ts
+  s_7093f54021410f::t_d2e193b3f30219 1-145
+examples/turbo-distributed/.cloudflare/ci/workflow.ts
+  s_3d0b9ece164d06::t_2c6a1288a95ac5 1-24
+examples/turbo-distributed/app/.gitignore
+  s_3d0b9ece164d06::t_f4bee27c95c591 1-5
+examples/turbo-distributed/app/package-lock.json
+  s_494532c0a8f70c::t_1cf76e904d18a7 1-158
+examples/turbo-distributed/app/package.json
+  s_3d0b9ece164d06::t_3c286910cc1683 1-8
+examples/turbo-distributed/app/packages/admin/package.json
+  s_494532c0a8f70c::t_4ae7b2f6e222cd 1-10
+examples/turbo-distributed/app/packages/admin/turbo.json
+  s_494532c0a8f70c::t_7496bcd4e0b2c4 1-6
+examples/turbo-distributed/app/packages/core/message.txt
+  s_494532c0a8f70c::t_8ecc35ba40755f 1
+examples/turbo-distributed/app/packages/core/package.json
+  s_494532c0a8f70c::t_f2a3bc25c95815 1-9
+examples/turbo-distributed/app/packages/core/turbo.json
+  s_494532c0a8f70c::t_ebf6dcf0d91097 1-7
+examples/turbo-distributed/app/packages/legacy/package.json
+  s_494532c0a8f70c::t_f0b8b5a4e7ae95 1-9
+examples/turbo-distributed/app/packages/legacy/turbo.json
+  s_494532c0a8f70c::t_b7b56094720277 1-7
+examples/turbo-distributed/app/packages/web/package.json
+  s_494532c0a8f70c::t_c1d23cddba1351 1-10
+examples/turbo-distributed/app/scripts/build.mjs
+  s_3d0b9ece164d06::t_13caefaf29f3db 1-16
+examples/turbo-distributed/app/scripts/check.mjs
+  s_494532c0a8f70c::t_5aa70b30e8ca61 1-5
+examples/turbo-distributed/app/turbo.json
+  s_494532c0a8f70c::t_7bf66bf5c8681a 1-16
+examples/turbo-distributed/package.json
+  s_3d0b9ece164d06::t_5e998edf68181b 1-16
+examples/turbo-distributed/src/worker.ts
+  s_3d0b9ece164d06::t_f395c64c79e505 1-16
+examples/turbo-distributed/tsconfig.json
+  s_3d0b9ece164d06::t_b22b7b08da69c7 1-5
+examples/turbo-distributed/wrangler.jsonc
+  s_3d0b9ece164d06::t_ef67287d5fe981 1-39
+packages/ci/README.md
+  s_3d0b9ece164d06::t_019712a32fff97 53-58
+packages/ci/src/index.ts
+  s_3d0b9ece164d06::t_5e4a3cd60be4eb 16,998,1161-1173
+packages/ci/src/turbo.ts
+  s_3d0b9ece164d06::t_3fcbe913235a3d 1-138
+pnpm-lock.yaml
+  s_494532c0a8f70c::t_693b8b8abb13a5 1026-1047
+examples/COVERAGE.md
+  s_1c6c59b6f26f9c::t_63e97a108ca1fc 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2bd7724f3d7e8ddf026008ed1815808f7b329544",
+  "prompts": {},
+  "sessions": {
+    "s_1c6c59b6f26f9c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a189d8-c3e9-7482-a7f1-03c75634859a",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_3d0b9ece164d06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18803-3ca9-7d82-8260-c59f94dc80e3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_494532c0a8f70c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18a92-d775-7df0-9cc0-5b9d12e39a0c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_7093f54021410f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18a7f-f826-7670-b258-675fe7ff05e4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
