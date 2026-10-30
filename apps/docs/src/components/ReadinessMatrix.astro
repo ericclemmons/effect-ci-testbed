@@ -1,0 +1,74 @@
+---
+import { compatibility, environments, checkNames } from "../compatibility.mjs"
+import { repository } from "../repository.mjs"
+import coverage from "../../../../examples/COVERAGE.md?raw"
+const readmes = import.meta.glob("../../../../examples/*/README.md", { query: "?raw", import: "default", eager: true })
+const groups = compatibility(coverage, readmes)
+const total = groups.flatMap(group => group.rows).reduce((sum, row) => sum + row.cells.filter(Boolean).length, 0)
+---
+<section class="readiness" aria-labelledby="readiness-title" data-readiness>
+  <div class="heading">
+    <h2 id="readiness-title">Is Effect CI ready yet?</h2>
+    <a data-revision href={`${repository}/commits/main`}>main</a>
+  </div>
+  <p>Every example, across the places it should work.</p>
+  <div class="summary" role="status" aria-live="polite" data-summary>Loading checks from main…</div>
+  <progress max={total} value="0" aria-label="Passing feature and environment combinations" data-progress></progress>
+  <p class="legend"><span class="pass">✓</span> Passing <span class="fail">×</span> Missing or unsuccessful <span>— Not applicable</span></p>
+  <p class="note">Checks for one main commit. Local includes local Cloudflare runtime execution; hosted requires a native Cloudflare check. Click a square for its evidence.</p>
+  <button type="button" data-refresh>Refresh checks</button>
+  <noscript>Enable JavaScript to load current GitHub checks. Squares stay red until verified.</noscript>
+  <div class="matrix-scroll" tabindex="0" role="region" aria-label="Feature compatibility matrix">
+    <table>
+      <caption class="sr-only">Feature compatibility on main, grouped by recipe</caption>
+      <thead><tr><th scope="col">Feature</th>{environments.map(environment => <th scope="col">{environment}</th>)}</tr></thead>
+      {groups.map(group => <tbody>
+        <tr class="group"><th scope="rowgroup" colspan="5">{group.title}</th></tr>
+        {group.rows.map(row => <tr>
+          <th scope="row">{row.recipe ? <a href={`/examples/${row.recipe}/`}>{row.title}</a> : row.title}</th>
+          {row.cells.map((applicable, index) => <td>
+            {applicable ? <a class="square" data-cell data-names={JSON.stringify(checkNames(row.recipe, environments[index]))}
+              data-app={index === 3 ? "effect-ci" : "github-actions"} data-feature={row.title} data-environment={environments[index]}
+              href={`${repository}/actions?query=branch%3Amain`} title={`${row.title} · ${environments[index]}: checks not loaded`}
+              aria-label={`${row.title} · ${environments[index]}: checks not loaded`}>×</a> : <span aria-label="Not applicable">—</span>}
+          </td>)}
+        </tr>)}
+      </tbody>)}
+    </table>
+  </div>
+</section>
+<script>
+  import { loadReadiness } from "../readiness"
+  loadReadiness()
+  document.addEventListener("astro:page-load", loadReadiness)
+</script>
+<style>
+  .readiness { margin-bottom: 2.5rem; }
+  .heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  h2 { font-size: 1.7rem; color: var(--sl-color-white); line-height: 1.2; }
+  p { margin: .6rem 0; }
+  .summary { font-weight: 600; margin-top: 1.4rem; }
+  progress { display: block; width: 100%; height: 1rem; margin: .6rem 0; accent-color: #15803d; border: 0; border-radius: .25rem; overflow: hidden; background: var(--sl-color-gray-5); }
+  progress::-webkit-progress-bar { background: var(--sl-color-gray-5); }
+  progress::-webkit-progress-value { background: #15803d; }
+  progress::-moz-progress-bar { background: #15803d; }
+  .legend { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; font-size: .8rem; }
+  .legend .pass, .legend .fail { display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 2px; color: white; }
+  .pass { background: #15803d; }
+  .fail { background: #b91c1c; }
+  .note { color: var(--sl-color-gray-2); font-size: .8rem; }
+  button { margin: .5rem 0 1rem; padding: .35rem .65rem; border: 1px solid var(--sl-color-gray-4); border-radius: .25rem; color: var(--sl-color-text); background: var(--sl-color-gray-6); cursor: pointer; }
+  .matrix-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { padding: .55rem .3rem; border-bottom: 1px solid var(--sl-color-gray-5); }
+  thead th { font-size: .7rem; vertical-align: bottom; min-width: 4.5rem; }
+  th { text-align: left; font-weight: 500; }
+  th:first-child { min-width: 13rem; }
+  td, thead th:not(:first-child) { text-align: center; }
+  .group th { padding-top: 1.5rem; padding-bottom: .6rem; font-weight: 700; color: var(--sl-color-white); }
+  a { color: var(--sl-color-text-accent); }
+  .square { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: #b91c1c; border-radius: 3px; color: white; text-decoration: none; font-weight: 700; }
+  .square[data-passing] { background: #15803d; }
+  .square:hover, .square:focus-visible { outline: 2px solid var(--sl-color-text); outline-offset: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>

@@ -1,0 +1,6 @@
+---
+import MarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro"
+import ReadinessMatrix from "./ReadinessMatrix.astro"
+---
+{Astro.locals.starlightRoute.entry.id === "" && <ReadinessMatrix />}
+<MarkdownContent><slot /></MarkdownContent>

@@ -11,7 +11,7 @@ export default defineConfig({
     description: "CI experiments by Eric Clemmons.",
     social: [{ icon: "github", label: "GitHub", href: repository }],
     sidebar: sidebar(),
-    components: { Head: "./src/components/Head.astro" },
+    components: { Head: "./src/components/Head.astro", MarkdownContent: "./src/components/MarkdownContent.astro" },
   })],
   vite: { server: { fs: { allow: [root] } } },
 })
