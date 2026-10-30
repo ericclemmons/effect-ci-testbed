@@ -1,0 +1,41 @@
+apps/effect-ci/README.md
+  s_d7ce0be6d45bea::t_22b8bba3c654b8 31-38
+apps/github-actions-runner/src/worker.ts
+  s_d7ce0be6d45bea::t_78734c72574dc7 39
+apps/effect-ci/src/demo-workflow.ts
+  s_d7ce0be6d45bea::t_6e362ed431a9e0 66
+apps/effect-ci/src/monorepo-workflow.ts
+  s_d7ce0be6d45bea::t_d1f15666dae59a 16
+apps/effect-ci/src/repair-verifier.ts
+  s_d7ce0be6d45bea::t_661085a61f09da 31
+apps/effect-ci/src/showcase-workflow.ts
+  s_d7ce0be6d45bea::t_997d3aefcf019b 41
+apps/github-actions-runner/README.md
+  s_e50438f1c2f6aa::t_21d583f8544f69 132-135
+packages/cloudflare/src/index.ts
+  s_e50438f1c2f6aa::t_17bf6ea2e7e316 133-135,305,321,386,768
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f0abd1290834df9291cb7a977cb63aa96bdf691e",
+  "prompts": {},
+  "sessions": {
+    "s_d7ce0be6d45bea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ee4-9f3b-7ac3-a2e4-e76d76228f57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_e50438f1c2f6aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ee7-a817-7112-bb21-c930a4f2b2e9",
+        "model": "unknown"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
