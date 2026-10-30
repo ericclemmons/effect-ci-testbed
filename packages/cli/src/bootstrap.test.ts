@@ -117,15 +117,47 @@ test("Vite+ config tasks and arbitrary scripts are actions without executing the
     import { defineConfig, lazyPlugins } from "vite-plus"
     export default defineConfig(() => ({
       plugins: lazyPlugins(() => { throw new Error("discovery must not instantiate plugins") }),
-      run: { tasks: { build: { command: "do-not-run" }, "release:preview": { command: "do-not-run" } } }
+      run: { tasks: {
+        build: { command: "tsc -b && vp build" },
+        deploy: { command: "wrangler deploy", dependsOn: ["build", "lint"] },
+        lint: { command: "vp lint" },
+        "release:preview": { command: "do-not-run" }
+      } }
     }))
   `)
   const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(listed.status, 0, listed.stderr)
-  assert.deepEqual(JSON.parse(listed.stdout).targets, ["build", "custom-check", "dev", "release:preview"])
+  assert.deepEqual(JSON.parse(listed.stdout).targets, ["build", "custom-check", "deploy", "dev", "lint", "release:preview"])
   assert.ok(!JSON.parse(listed.stdout).commands.includes("effect-ci run"))
   const planned = spawnSync(process.execPath, [bin, "plan", "build", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(planned.status, 0, planned.stderr)
+  const graph = spawnSync(process.execPath, [bin, "plan", "deploy", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(graph.status, 0, graph.stderr)
+  assert.match(graph.stdout, /step_build --> step_deploy/)
+  assert.match(graph.stdout, /step_lint --> step_deploy/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    build: { command: "do-not-run", dependsOn: ["custom-check"] },
+    lint: "do-not-run",
+    deploy: { command: "do-not-run", dependsOn: ["vite-actions#build", "lint"] }
+  } } }`)
+  const transitive = spawnSync(process.execPath, [bin, "plan", "deploy", "--format=mermaid"], { cwd: root, encoding: "utf8" })
+  assert.equal(transitive.status, 0, transitive.stderr)
+  assert.match(transitive.stdout, /step_custom_check --> step_build/)
+  assert.match(transitive.stdout, /step_build --> step_deploy/)
+  assert.match(transitive.stdout, /step_lint --> step_deploy/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    deploy: { command: "do-not-run", dependencies: ["build", "lint"] }
+  } } }`)
+  const typo = spawnSync(process.execPath, [bin, "plan", "deploy", "--agent"], { cwd: root, encoding: "utf8" })
+  assert.equal(typo.status, 2, typo.stderr)
+  assert.match(JSON.parse(typo.stdout).error.message, /use dependsOn instead/)
+  writeFileSync(join(root, "vite.config.ts"), `export default { run: { tasks: {
+    build: { command: "do-not-run", dependsOn: ["deploy"] },
+    deploy: { command: "do-not-run", dependsOn: ["build"] }
+  } } }`)
+  const cycle = spawnSync(process.execPath, [bin, "plan", "deploy", "--agent"], { cwd: root, encoding: "utf8", timeout: 5000 })
+  assert.equal(cycle.status, 1, cycle.stderr)
+  assert.match(JSON.parse(cycle.stdout).error.message, /Circular Vite\+ task dependency/)
   const unnamed = spawnSync(process.execPath, [bin, "run", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(unnamed.status, 2, unnamed.stderr)
   assert.equal(JSON.parse(unnamed.stdout).error.code, "CI_ACTION_REQUIRED")
