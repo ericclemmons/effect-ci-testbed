@@ -65,6 +65,10 @@ in the shared app. Project enrollment cannot grant itself arbitrary permissions.
 
 ## Identity for remote execution
 
+Human remote runs show command output and the same CI summary as local runs.
+Hosted command output arrives when each command finishes. Cloudflare's internal
+step and attempt records remain available in JSON output.
+
 `effect-ci doctor --remote` and `effect-ci run --remote` automatically choose identity:
 local users reuse their enrolled Cloudflare Access session; GitHub Actions and
 hosted CI use their execution-platform identity. Dispatch, status, and logs all
