@@ -1,4 +1,4 @@
-const ORIGIN = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const ORIGIN = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 
 /** Normalize native terminal fetch events, NOT console logs or reset/retry lines.
  * The caller must supply the actual row's sampling interval; absent sampling is

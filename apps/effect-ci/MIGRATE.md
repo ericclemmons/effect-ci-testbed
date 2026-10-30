@@ -109,7 +109,9 @@ does not remove their resources or their charges from the source account.
    and SHA-256 of the intended human's new Access subject. The integrated host
    verifies this source-owned identity in addition to the environment settings;
    changing environment values alone does not update it. Derive the subject from
-   a verified destination Access session without printing the JWT.
+   a verified destination Access session without printing the JWT, or from the
+   destination Access user API after independently matching the intended human.
+   Verify that identity can authenticate after deployment.
 5. Update account-specific source settings before building:
 
    | Source | Required destination value |

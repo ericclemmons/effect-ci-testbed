@@ -12,7 +12,7 @@ import { hmdFailureReason } from "./hmd-failure.ts"
 const baselineVersion = "09593237-23b2-4873-bd04-88c8e8488840"
 const healthyCandidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
 const failingCandidate = "02de9b2e-95d0-49e6-b787-467e25c5a65c"
-const origin = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const origin = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 const margins = { maxErrorRate: 0.1, maxIncrease: 0.05, errorGuardBand: 0.02, increaseGuardBand: 0.01 }
 

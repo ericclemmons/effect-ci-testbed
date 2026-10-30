@@ -10,7 +10,7 @@ import { assertHmdBudget, HMD_SUBREQUEST_LIMIT, hmdPhases, observationCount, bas
 const baselineVersion = "09593237-23b2-4873-bd04-88c8e8488840"
 const regressionVersion = "02de9b2e-95d0-49e6-b787-467e25c5a65c"
 const healthyVersion = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
-const origin = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const origin = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 const noRetry = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Trusted dedicated-lab controller. No repo-defined code, token, URL or policy. */
