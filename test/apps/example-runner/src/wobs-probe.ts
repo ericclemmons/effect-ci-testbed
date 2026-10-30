@@ -2,7 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { reconcileTelemetry } from "../../../../packages/cloudflare/src/telemetry-cohort.ts"
 import { sqlFetchOutcome } from "./wobs-cohort.ts"
 
-const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
+const BASELINE = "f8526596-f9b8-4068-87c0-c517844488a8"
 const ONCE = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Authenticated, bounded read-only deployment lab. No broker mutations, credentials,
@@ -21,7 +21,7 @@ export class WobsCohortProbeWorkflow extends WorkflowEntrypoint<{ ANALYTICS_SQL:
       for (let index = 0; index < manifest.expected; index += 5) {
         await Promise.all(Array.from({ length: 5 }, async () => {
           try {
-            const response = await fetch("https://effect-ci-hmd-demo.ericclemmons.workers.dev/health", { redirect: "manual", signal: AbortSignal.timeout(10_000), headers: { "cache-control": "no-cache" } })
+            const response = await fetch("https://effect-ci-hmd-demo.eclemmons.workers.dev/health", { redirect: "manual", signal: AbortSignal.timeout(10_000), headers: { "cache-control": "no-cache" } })
             const body = await response.json() as { version?: string; healthy?: boolean }
             if (body.version !== BASELINE || response.status !== 200 || body.healthy !== true) throw new Error("Unexpected baseline")
             const ray = response.headers.get("cf-ray")?.split("-")[0]

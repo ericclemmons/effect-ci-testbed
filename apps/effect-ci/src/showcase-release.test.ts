@@ -10,7 +10,7 @@ test("checked previews require a consumed human decision before any candidate or
     let prepared = 0, closed = 0;
     const posts: string[] = [];
     const revision = "a".repeat(40), digest = "b".repeat(64), snapshot = digest;
-    const receipt = { revision, digest, url: `https://effect-ci-demo-site.ericclemmons.workers.dev/r/${revision}/${digest}/index.html` };
+    const receipt = { revision, digest, url: `https://effect-ci-demo-site.eclemmons.workers.dev/r/${revision}/${digest}/index.html` };
     const review = {
       registerShowcaseStart: async () => ({ owner: "owned", phase: 0, snapshot, token: "d".repeat(64) }),
       readShowcaseDecision: async () => {

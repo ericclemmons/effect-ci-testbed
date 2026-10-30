@@ -25,6 +25,8 @@ test("fresh public proposal binds immutable admission, original new reply and sa
 });
 test("empty/renamed/reset/corrupted ledger and exhausted host reject BEFORE inference", async () => {
   const f = await publicProposalFixture();
+  assert.equal(publicBudget({ budget: "work-demo-repair-7-usd-20261030-v1",
+    reservedCents: 0, remainingCents: 700, reservations: [] }, true).size, 0);
   for (const bad of [
     { ...f.before, budget: "new-budget" },
     { ...f.before, reservedCents: 0, remainingCents: 700, reservations: [] },

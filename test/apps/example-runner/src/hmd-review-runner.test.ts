@@ -4,8 +4,8 @@ import type { WorkflowStep } from "cloudflare:workers"
 import type { ReleaseManager, ReleaseJournal } from "../../release-manager/src/release-manager.ts"
 import { runHumanReviewedHmd, type HmdReviewObserver, type HmdReviewUpdate } from "./hmd-review-runner.ts"
 
-const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
-const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+const baseline = "f8526596-f9b8-4068-87c0-c517844488a8"
+const candidate = "27fca944-c549-433e-a1d4-15684b1c6cd9"
 
 test("candidate profiles are fixed and validated before release authority", async () => {
   const selected: string[] = []
@@ -17,7 +17,7 @@ test("candidate profiles are fixed and validated before release authority", asyn
   await assert.rejects(runHumanReviewedHmd("profile-fixture", step, broker, undefined, undefined, undefined, undefined, "arbitrary" as "healthy"), /Invalid fixed-target/)
   assert.deepEqual(selected, [])
   await assert.rejects(runHumanReviewedHmd("profile-fixture", step, broker, undefined, undefined, undefined, undefined, "regression"), /Fixture stops/)
-  assert.deepEqual(selected, ["02de9b2e-95d0-49e6-b787-467e25c5a65c"])
+  assert.deepEqual(selected, ["6fc2cbb9-794c-47d5-989b-5c1a4af1342c"])
 })
 
 async function lab(mode: "approve" | "reject" | "timeout" | "stale" | "drift" | "regression" | "unknown" | "observer-failure", observer?: HmdReviewObserver) {

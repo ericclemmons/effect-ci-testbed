@@ -12,7 +12,7 @@ test("diagnostic input cannot choose source, version, target or invoke accessors
 
 test("fixed 0/30/120-second comparison uses the same prepared candidate, never approves/commits, and always restores", async () => {
   for (const failure of [false, true]) {
-    const baseline = "09593237-23b2-4873-bd04-88c8e8488840", names: string[] = [], waits: string[] = [];
+    const baseline = "f8526596-f9b8-4068-87c0-c517844488a8", names: string[] = [], waits: string[] = [];
     let phase = 0, calls = 0, restores = 0;
     const view = () => ({ candidate: routingDiagnosticCandidate.version, status: "active", previous: [{ version: baseline, percentage: 100 }], deployment: { id: "11111111-1111-4111-8111-111111111111", versions: phase ? [{ version: baseline, percentage: 90 }, { version: routingDiagnosticCandidate.version, percentage: 10 }] : [{ version: baseline, percentage: 100 }] } });
     const broker: any = {

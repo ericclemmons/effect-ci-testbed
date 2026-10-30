@@ -38,7 +38,7 @@ test(
       const url=String(input);
       if(url.includes('/chat.getPermalink?')){const u=new URL(url),channel=u.searchParams.get('channel'),ts=u.searchParams.get('message_ts');return Response.json({ok:true,channel,permalink:'https://fixture.slack.com/archives/'+channel+'/p'+ts.replace('.','')});}
       if(url.startsWith('https://slack.com/api/')){if(failObservationNow){observationFailures++;failedObservationTargets.push({method:url.split('/').at(-1),ts:JSON.parse(init.body).ts});throw Error('private-presentation-token');}const body=JSON.parse(init.body),button=body.blocks?.find(b=>b.type==='actions')?.elements?.find(e=>e.action_id==='hmd_approve'),p=button?JSON.parse(button.value).phase:0,rejected=p&&!rejectedPhases.has(p);messages.push({url,body,accepted:!rejected});if(rejected){rejectedPhases.add(p);return Response.json({ok:false,error:'invalid_blocks'});}return Response.json({ok:true,ts:body.ts||(body.thread_ts?'123.'+String(++threadCount).padStart(6,'0'):'123.456')});}
-      if(url.startsWith('https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
+      if(url.startsWith('https://effect-ci-hmd-demo.eclemmons.workers.dev/health?')){requests++;const i=Number(new URL(url).searchParams.get('probe').split('-').at(-1));return Response.json({version:i<phase?version:previous,healthy:true});}
       throw Error('Unexpected outbound request');
     };
     const normalFetch=globalThis.fetch;globalThis.fetch=async(input,init)=>{

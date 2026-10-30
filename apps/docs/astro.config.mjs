@@ -4,7 +4,7 @@ import starlight from "@astrojs/starlight"
 import { repository, repositoryMarkdown, root, sidebar } from "./src/repository.mjs"
 
 export default defineConfig({
-  site: "https://effect-ci-docs.ericclemmons.workers.dev",
+  site: "https://effect-ci-docs.eclemmons.workers.dev",
   markdown: { processor: unified({ remarkPlugins: [repositoryMarkdown] }) },
   integrations: [starlight({
     title: "Effect CI",

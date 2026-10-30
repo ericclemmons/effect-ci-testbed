@@ -47,7 +47,7 @@ export class PublicFailureClaim extends DurableObject<PublicEnvironment> {
     const r = await this.env.PUBLIC_READINESS.checkPublicPipeline(version);
     if (r.ready !== true || r.version !== version || r.service !== "effect-ci-repair-incident" ||
         r.policy !== "owned-public-http-repair-v1" || r.fixtureDigest !== PUBLIC_FIXTURE_DIGEST ||
-        r.budgetGuarded !== true || !Number.isSafeInteger(r.reservedCents) || r.reservedCents < 50 || r.reservedCents >= 700 ||
+        r.budgetGuarded !== true || !Number.isSafeInteger(r.reservedCents) || r.reservedCents < 0 || r.reservedCents >= 700 ||
         typeof r.source !== "string" || !/^[a-f0-9]{40}$/.test(r.source)) throw new Error("Public pipeline not ready");
     return this.ctx.storage.transaction(async storage => {
       const previous = await storage.get<PublicArmRecord>(armKey);

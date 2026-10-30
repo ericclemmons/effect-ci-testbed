@@ -2,8 +2,8 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import type { ReleaseManager } from "../../release-manager/src/release-manager.ts"
 
 // Fixed lab fixture, not arbitrary repository code or a user-selected deployment target.
-const candidate = "02de9b2e-95d0-49e6-b787-467e25c5a65c"
-const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
+const candidate = "6fc2cbb9-794c-47d5-989b-5c1a4af1342c"
+const baseline = "f8526596-f9b8-4068-87c0-c517844488a8"
 
 /** Authenticated Cloudflare Workflow API only. No credential or container in the caller. */
 export class ReleaseBrokerProbeWorkflow extends WorkflowEntrypoint<{ RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "promote" | "rollback" | "reconcile"> }> {

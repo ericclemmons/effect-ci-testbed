@@ -24,7 +24,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
     export class HmdApprovals extends ActualHmdApprovals {
       async expire(...args){await super.expire(...args);deadlineExpirations++}
     }
-    const baseline="09593237-23b2-4873-bd04-88c8e8488840",candidate="c94cee12-0bf4-48fb-bb42-9235f7ab7a3c";
+    const baseline="f8526596-f9b8-4068-87c0-c517844488a8",candidate="27fca944-c549-433e-a1d4-15684b1c6cd9";
     let phase=0,files=0,posts=0,updates=0,threadPosts=0,restores=0,modal=null,validationRejects=0,nativeQueries=0,nativeRequests=0,deadlineExpirations=0;
     const promotions=[],frames=[],threadFrames=[],replyIds=new Set();
     const nativeRows=new Map();
@@ -57,7 +57,7 @@ test(`native hosted HMD composition keeps one card: ${scenario}`, { timeout: 90_
         nativeRows.set(ray,{timestamp:Date.now(),scriptName:"effect-ci-hmd-demo",logType:"cf-worker-event",requestId:"event-"+ray,rayId:ray,sampleInterval:1,
           attributes:{"$workers.eventType":"fetch","$workers.executionModel":"stateless","$workers.truncated":false,
             "$workers.scriptVersion.id":version,"$workers.outcome":"ok","$workers.event.request.method":"GET",
-            "$workers.event.request.url":"https://effect-ci-hmd-demo.ericclemmons.workers.dev/health","$workers.event.response.status":healthy?200:503}});
+            "$workers.event.request.url":"https://effect-ci-hmd-demo.eclemmons.workers.dev/health","$workers.event.response.status":healthy?200:503}});
         return Response.json({version,healthy},{status:healthy?200:503,headers:{"cf-ray":ray+"-IAD"}});
       }
       if(target.startsWith("https://files.slack.com")) {

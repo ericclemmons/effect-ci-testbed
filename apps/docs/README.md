@@ -1,6 +1,6 @@
 # Documentation
 
-Public site: https://effect-ci-docs.ericclemmons.workers.dev
+Public site: https://effect-ci-docs.eclemmons.workers.dev
 
 The Starlight site reads existing Markdown directly from the repository. Keep
 recipe documentation beside its code in `examples/<recipe>/README.md`; service
