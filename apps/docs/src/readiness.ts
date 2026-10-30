@@ -32,7 +32,8 @@ export function loadReadiness() {
     progress.value = 0
     for (const cell of cells) {
       delete cell.dataset.passing
-      cell.textContent = "×"
+      cell.dataset.pending = "true"
+      cell.textContent = "⏳"
       cell.title = `${cell.dataset.feature} · ${cell.dataset.environment}: checks not loaded`
       cell.setAttribute("aria-label", cell.title)
     }
@@ -58,6 +59,9 @@ export function loadReadiness() {
         const names: string[] = JSON.parse(cell.dataset.names!)
         const check = names.map(name => checks.get(`${cell.dataset.app}:${name}`)).find(Boolean)
         const passing = check?.status === "completed" && check.conclusion === "success"
+        const pending = check && check.status !== "completed"
+        if (!pending) delete cell.dataset.pending
+        cell.textContent = pending ? "⏳" : "×"
         if (passing) { cell.dataset.passing = "true"; cell.textContent = "✓"; passed++ }
         const state = check ? `${check.name}: ${check.status === "completed" ? check.conclusion : check.status}` : "missing check"
         cell.title = `${cell.dataset.feature} · ${cell.dataset.environment}: ${state}`
@@ -71,6 +75,13 @@ export function loadReadiness() {
       revision.href = `https://github.com/ericclemmons/effect-ci-testbed/commit/${sha}`
       summary.textContent = `${passed} / ${cells.length} passing · ${Math.round(passed / cells.length * 100)}% · ${count} GitHub checks`
     } catch (error) {
+      for (const cell of cells) {
+        delete cell.dataset.passing
+        delete cell.dataset.pending
+        cell.textContent = "×"
+        cell.title = `${cell.dataset.feature} · ${cell.dataset.environment}: checks unavailable`
+        cell.setAttribute("aria-label", cell.title)
+      }
       summary.textContent = `Checks unavailable. ${error instanceof Error ? error.message : "Could not reach GitHub"}. Red squares are unverified; refresh to retry.`
     } finally { refresh.disabled = false }
   }
