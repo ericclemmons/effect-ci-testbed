@@ -1,6 +1,8 @@
 # GitHub
 
-Choose the part you want. GitHub is optional for the local walkthrough.
+The [walkthrough](./demo) creates a GitHub repository, enrolls OIDC, opens a PR
+with a remote build check, and sends the result to Slack. For an existing project,
+choose the integration you need:
 
 | Problem | Use |
 | --- | --- |
@@ -29,17 +31,17 @@ its program. [Host setup](../apps/effect-ci/SELF-HOST.md).
 
 ## Deployment credentials only
 
-The walkthrough app includes an optional GitHub Actions deployment example.
-Bootstrap the Worker and complete [issuer enrollment](../apps/github-actions-runner/OIDC.md)
-first. Then install the workflow in the copied app:
+The walkthrough includes a complete GitHub Actions deployment example, including
+installation of the unpublished CLI. Complete repository enrollment and enable
+the operator's deployment scopes first. From your app, using the source clone
+path set in the walkthrough:
 
 ```sh
 mkdir -p .github/workflows
-cp tutorial/oidc.example.yml .github/workflows/deploy.yml
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/oidc.example.yml" .github/workflows/deploy.yml
 ```
 
 [Deployment workflow](./demo/tutorial/oidc.example.yml "source")
 
-The unpublished CLI must be installed in the job; copying this file does not
-install it or grant permissions. The OIDC wrapper revokes the child command's
+Copying this file does not grant deployment permissions. The OIDC wrapper revokes the child command's
 token on exit and preserves a deployment failure's exit code.

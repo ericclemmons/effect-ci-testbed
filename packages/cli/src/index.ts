@@ -15,7 +15,7 @@ import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/proj
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
-import { readProjectRemote, resolveRemote } from "./remote-config.ts"
+import { readProjectOidc, readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 import { githubSourceComparison } from "./source-comparison.ts"
 
@@ -428,6 +428,7 @@ interface ParsedInvocation {
 const parseInvocation = (
   args: ReadonlyArray<string>,
   onFormat?: (format: OutputFormat) => void,
+  root?: string,
 ): ParsedInvocation => {
   let parsed: ReturnType<typeof parseArgs>
 
@@ -503,11 +504,16 @@ const parseInvocation = (
     )
   }
 
+  const enrollment = command === "run" && !parsed.values.help && !parsed.values.local && !parsed.values.remote && root
+    ? readProjectOidc(root) : undefined
+  const location = parsed.values.remote || (typeof enrollment?.issuer === "string" && typeof enrollment.repository === "string")
+    ? "remote" : "local"
+
   return {
     command,
     format,
     help: parsed.values.help === true,
-    location: parsed.values.remote ? "remote" : "local",
+    location,
     targets,
     ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
@@ -548,6 +554,8 @@ Without an explicit path, effect-ci discovers .cloudflare/ci/workflow.ts or an e
 ci.ts marker from the current directory or one of its parents. Help never initializes
 a project. Auto-discovered scripts and Vite+ tasks require an explicit action name.
 A named local run can initialize the CI marker.
+Run defaults to remote after OIDC enrollment; --local runs working-tree edits.
+List and plan stay local. Remote failures never fall back to local execution.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 Detection uses @vercel/detect-agent, including AI_AGENT and tool-specific signals.
 No agent flag is needed. An explicit --format always wins.`
@@ -735,7 +743,7 @@ export const initializeJavaScriptProject = (
   if (findWorkflow(cwd) || args.some((arg) =>
     arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg)
   )) return undefined
-  const invocation = parseInvocation(args)
+  const invocation = parseInvocation(args, undefined, cwd)
   if (invocation.help || invocation.command !== "run" || invocation.location !== "local") return undefined
   // Validate the explicit selection before loading config or writing a marker.
   requireAction(invocation.targets)
@@ -923,7 +931,7 @@ export const main = async (
   let format: OutputFormat = detectedFormat()
 
   try {
-    const invocation = parseInvocation(args, value => { format = value })
+    const invocation = parseInvocation(args, value => { format = value }, projectRoot(workflowPath))
     format = invocation.format
 
     if (invocation.help) {
@@ -1105,7 +1113,7 @@ export const runCli = async (
     // Readiness must not import project modules, initialize markers, inspect a
     // dirty tree as execution input, or create a remote workflow.
     if (!explicit) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
       if (invocation.command === "doctor") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
@@ -1115,7 +1123,7 @@ export const runCli = async (
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "doctor checks the current project's remote configuration; do not pass a workflow path")
     }
     if (!explicit) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
       if (!invocation.help && invocation.command === "run" && !invocation.targets.length) {
         const path = findWorkflow(cwd)
         if (!path || (basename(path).startsWith("ci.") && readFileSync(path, "utf8").trim() === "")) {
@@ -1129,7 +1137,7 @@ export const runCli = async (
       }
     }
     if (!explicit && !findWorkflow(cwd)) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
       if (invocation.location === "local" && (invocation.help || invocation.command !== "run")) {
         let program: Program
         try { program = inferJavaScriptProgram(resolve(cwd)) }
