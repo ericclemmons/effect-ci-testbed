@@ -1,8 +1,13 @@
 {
-  "provider": "Cloudflare Workers Builds",
+  "provider": "GitHub Actions",
+  "workflow": ".github/workflows/docs.yml",
   "worker": "effect-ci-docs",
   "url": "https://effect-ci-docs.eclemmons.workers.dev",
-  "triggerId": "5fb6ee0f-146b-47bd-b360-a5357934c0f7",
+  "legacyWorkersBuilds": {
+    "triggerId": "5fb6ee0f-146b-47bd-b360-a5357934c0f7",
+    "branch_includes": ["codex/docs-builds-disabled"],
+    "branch_excludes": []
+  },
   "branch": "main",
   "rootDirectory": "/",
   "buildCommand": "pnpm docs:build",
