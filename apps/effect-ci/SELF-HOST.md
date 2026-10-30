@@ -134,7 +134,7 @@ same account so their service bindings resolve.
 | [Repair agent](../../test/apps/repair-agent/README.md) | Generated Flue exports and bindings to repair AI/events. |
 | [Repair events](../../test/apps/repair-events/README.md) | Shared notification secret; Notifications destination/policy, Issues automation and exact source/version enrollment. |
 | [Incident source](../../test/apps/repair-incident/README.md) | Readiness binding to the main host; fixed-service Issues configuration. [Arming prepares one later fixture test](./PUBLIC-REPAIR.md#what-arming-means); it does not emit an incident or call AI. The persistent arm has no reset API and needs explicit approval. |
-| [Documentation](../docs/README.md) | Public URL and its own Workers Builds trigger. Main CI does not deploy it. |
+| [Documentation](../docs/README.md) | Public URL, its own Workers Builds trigger, and a `DocsReadiness` service binding to the main host for public check reads. Main CI does not deploy it. |
 
 The current release/repair policies contain repository, identity and version pins.
 Review their owning configuration before enabling them for another installation;

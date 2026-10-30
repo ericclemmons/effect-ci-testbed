@@ -10,9 +10,14 @@ Markdown are committed.
 The homepage is a live feature compatibility matrix. Rows and applicability come
 from `examples/COVERAGE.md`; new example directories are included automatically.
 Colors come from public GitHub check results for one resolved `main` commit,
-loaded through the docs Worker's `/api/readiness` endpoint with no credentials.
-The Worker resolves one `main` commit and reads all check pages before caching
-the result for ten minutes at each Cloudflare location. Concurrent reads in one
+loaded through the public docs Worker's `/api/readiness` endpoint. Its service
+binding calls the existing CI host, which uses a short-lived GitHub App token
+limited to reading this repository's contents and checks, then revokes it.
+The host resolves one `main` commit and reads all check pages. The docs Worker
+caches active runs for 30 seconds and completed runs for ten minutes at each
+Cloudflare location. An empty check list also uses the active window. Active
+results refresh automatically every 30 seconds while the page is visible;
+refreshing keeps the current results visible. Concurrent reads in one
 Worker isolate share a refresh. A failed refresh keeps the last successful result
 for up to 24 hours, labels it as cached with its timestamp, and retries after ten
 minutes. A cold cache with no successful read still reports checks unavailable.
@@ -46,8 +51,9 @@ PRs build the docs in GitHub Actions without deployment credentials.
 
 Publish manually with `pnpm docs:deploy` from an authenticated
 Cloudflare CLI session. This builds the site, then deploys the static
-assets and readiness API as the separate `effect-ci-docs` Worker. It has no app bindings or secrets;
-the app's Access policies remain on its own hostname.
+assets and readiness API as the separate `effect-ci-docs` Worker. Deploy the CI
+host's `DocsReadiness` export before deploying docs. The docs Worker has one
+service binding and no secrets; the app's Access policies remain on its own hostname.
 
 [Deployment configuration](./cloudflare.config.ts "source")
 
