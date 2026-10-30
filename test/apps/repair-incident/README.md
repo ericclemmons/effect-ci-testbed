@@ -1,6 +1,13 @@
 # Owned failure signal
 
-Current v2 claim is consumed. One genuine public GET on version
+This Worker deliberately emits one test incident after private preparation.
+[What arming does, the one-shot lifecycle, and current preparation](../../../apps/effect-ci/PUBLIC-REPAIR.md#what-arming-means)
+explain the distinction between preparing the fixture and actually triggering it.
+Arming alone does not consume the claim or call AI.
+
+## Historical executions
+
+The earlier deployment’s v2 claim is consumed. One genuine public GET on version
 `9c829b54-985d-4811-b806-690f93338284` automatically led to fresh Flue, a native
 exact-commit check and unmerged PR4. Its final renamed-bot acknowledgement failed;
 separate read-only reconciliation confirmed the existing PR and updated the same
