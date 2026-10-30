@@ -32,6 +32,8 @@ test("host title matches observed WOBS token masking literally, never as a wildc
   assert.throws(() => admitPublicIncident(JSON.stringify(event), { ...claim, claimedAt: observedAt + 1 }, p, observedAt + 1000));
 });
 
-test("destination bootstrap keeps public incident activation disabled until enrollment is verified", () => {
-  assert.equal(publicIncidentEnrollment, undefined);
+test("work enrollment pins the independently deployed source version and destination policy", () => {
+  assert.equal(publicIncidentEnrollment?.source, "600a0e6b2d1cdc5c3046e0cb606d1ad012acfdef");
+  assert.equal(publicIncidentEnrollment?.version, "b0ef08f6-7f42-4928-b35d-da5d0d770c0e");
+  assert.equal(publicIncidentEnrollment?.notificationPolicy, "f1f5f1a16aea488999a43099cc75ed03");
 });
