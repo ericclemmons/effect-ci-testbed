@@ -1,9 +1,27 @@
 import { DurableObject } from "cloudflare:workers"
+import type { RunSnapshot } from "../../../packages/github-cloudflare/src/run-card.ts"
+import { publishHmdGitHub, type HmdGitHubEnvironment, type HmdGitHubReceipt, type HmdGitHubTarget } from "./hmd-github.ts"
 import { publishOwnedSlackCard, ownedCardDestination, type OwnedCardEnvironment, type OwnedCardFrame, type OwnedCardReceipt, type OwnedCardStore, type OwnedCardResult } from
   "../../../packages/github-cloudflare/src/owned-slack-card.ts"
 
 /** One object per run. Binding and notification credentials stay outside containers. */
-export class PrivateSlackCards extends DurableObject<OwnedCardEnvironment> {
+export class PrivateSlackCards extends DurableObject<OwnedCardEnvironment & HmdGitHubEnvironment> {
+  #githubQueue: Promise<unknown> = Promise.resolve()
+  publishGitHub(owner: string, sequence: number, run: RunSnapshot, target: HmdGitHubTarget) {
+    const delivery = this.#githubQueue.then(async () => {
+      if (run.identity.instanceId !== owner) throw new Error("Invalid HMD GitHub owner")
+      const current = await this.ctx.storage.get<string>("hmd-github-owner")
+      const identity = JSON.stringify([owner, run.identity, target])
+      if (current && current !== identity) throw new Error("HMD GitHub destination changed")
+      await this.ctx.storage.put("hmd-github-owner", identity)
+      return publishHmdGitHub(this.env, target, run, sequence, {
+        get: provider => this.ctx.storage.get<HmdGitHubReceipt>(`hmd:${provider}`),
+        put: (provider, receipt) => this.ctx.storage.put(`hmd:${provider}`, receipt),
+      })
+    })
+    this.#githubQueue = delivery.catch(() => undefined)
+    return delivery
+  }
   #storeFor(key: string): OwnedCardStore { return {
     reserve: (intent) => this.ctx.storage.transaction(async (tx) => {
       const previous = await tx.get<OwnedCardReceipt>(key)

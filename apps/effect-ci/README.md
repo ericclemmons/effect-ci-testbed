@@ -28,6 +28,63 @@ The container's outbound HTTPS proxy authenticates only the authorized main depl
 commands; Node and Docker receive dummy login values and trust the runtime proxy CA.
 A failed or uncertain publication is inspected, not blindly replayed.
 
+## Intentional HMD GitHub fixture
+
+The administrative `HmdReviewWorkflow` can opt into GitHub reporting by supplying
+`github: { installationId, pullRequest }` alongside its existing intent and exact
+revision. This is an external-delivery switch: obtain explicit fixture-delivery
+approval before using it. Ordinary CI and existing HMD callers do not opt in.
+There is no new resource, permission grant, webhook route or automatic dispatch.
+
+[HMD workflow parameters](./src/hmd-workflow.ts#symbol=HmdParameters "source")
+
+The host verifies its App and installation, the bot identity, and an open same-repo
+PR whose head matches the requested revision. A separate repository-restricted
+installation token requests only Contents read, Checks write and Pull requests
+write. Ordinary CI token issuance is unchanged. Existing App permissions must
+already allow this subset; missing permissions fail reporting, not the release.
+
+Every observation, including a sample that changes metrics without changing its
+decision, publishes the provider-neutral snapshot to one run-owned check and one
+run-owned comment. GitHub gets version/window identities, observed counts,
+confidence bounds and uncertainty—not Slack image files or approval capabilities.
+Progress records its health/risk-acceptance basis without rewriting the original
+decision. Successful restoration is reported only after the broker restores the
+previous allocation. A completed successful lab check is neutral, not a claim of
+production health or independent human approval.
+
+[Owned GitHub delivery](./src/hmd-github.ts#symbol=publishHmdGitHub "source")
+
+The existing per-run card object persists each provider's intent and receipt
+separately. GitHub calls are serialized across snapshots; sequences and a pinned
+destination reject stale updates and ownership changes. Different runs never
+adopt one another's check or comment. An uncertain create is discovery-only on
+the next sample: adopt one matching App/bot/run/revision resource, or remain
+unavailable. Never create a replacement after an uncertain allocation. Ambiguous,
+overflowed or unavailable history fails closed. A known resource can be updated
+again after a lost update acknowledgement. Unchanged acknowledged snapshots do
+not send another update. A pending final update with no later sample still needs
+operator reconciliation; there is no background retry or exactly-once claim.
+
+Slack keeps its existing root, phase replies and signed Progress/Reject controls.
+GitHub failure cannot block Slack delivery, promotion, the review deadline or
+rollback; check and comment failures are isolated from one another. The GitHub
+Workflow checkpoint contains only bounded status/receipt metadata, not tokens or
+private callback capabilities. This integration does not change ordinary CI's
+existing notification policy.
+
+This implementation is not hosted acceptance evidence for
+[#140](https://github.com/ericclemmons/effect-ci-testbed/issues/140). No fixture was
+dispatched and no App check/comment was posted to validate this change. Approved
+live evidence must retain exact commit, environment/run, check/comment IDs,
+metric-only updates, lost-ack recovery and the same Slack card. Native telemetry
+completeness remains [#138](https://github.com/ericclemmons/effect-ci-testbed/issues/138);
+logical Workflow outcomes remain
+[#139](https://github.com/ericclemmons/effect-ci-testbed/issues/139). Neither is
+manufactured or inferred from this reporting path. Disabling the `github`
+parameter restores the existing Slack-only lab path without deleting receipts or
+external history. Access and approval authentication are unchanged.
+
 ## Host configuration
 
 [SELF-HOST.md](./SELF-HOST.md) covers the App, secrets, Access and CLI setup.

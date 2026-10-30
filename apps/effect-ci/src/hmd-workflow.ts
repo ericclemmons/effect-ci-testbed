@@ -12,8 +12,9 @@ import type { WorkerEnvironment } from "../../../packages/github-cloudflare/src/
 import { nativeHmdSource } from "../../../test/apps/example-runner/src/hmd-native-source.ts"
 import { hmdFailureReason } from "../../../test/apps/example-runner/src/hmd-failure.ts"
 import type { OwnedCardResult } from "../../../packages/github-cloudflare/src/owned-slack-card.ts"
+import { validHmdGitHubTarget, type HmdGitHubTarget } from "./hmd-github.ts"
 
-export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string; readonly profile?: "healthy" | "regression"; readonly telemetry?: "experimental-native-wobs" }
+export interface HmdParameters { readonly intent: "hmd-review-lab"; readonly revision: string; readonly profile?: "healthy" | "regression"; readonly telemetry?: "experimental-native-wobs"; readonly github?: HmdGitHubTarget }
 interface Environment extends WorkerEnvironment { RELEASE_MANAGER: Pick<ReleaseManager, "begin" | "renew" | "promote" | "rollback">; ANALYTICS_SQL?: AnalyticsSQLBinding; HMD_REQUIRE_RATIONALE?: string; HMD_AUTO_PROGRESS_MINUTES?: string }
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 
@@ -23,6 +24,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
     if (event.payload?.intent !== "hmd-review-lab" || !/^[a-f0-9]{40}$/.test(event.payload.revision) ||
       (event.payload.profile !== undefined && !["healthy", "regression"].includes(event.payload.profile)) ||
       (event.payload.telemetry !== undefined && event.payload.telemetry !== "experimental-native-wobs") ||
+      (event.payload.github !== undefined && !validHmdGitHubTarget(event.payload.github)) ||
       (event.payload.telemetry && !this.env.ANALYTICS_SQL) ||
       !this.env.SLACK_BOT_TOKEN || !this.env.SLACK_APP_ID || !this.env.SLACK_TEAM_ID || !this.env.SLACK_CHANNEL_ID ||
       !this.env.SLACK_SIGNING_SECRET || !this.env.SLACK_APPROVER_IDS || !this.env.RELEASE_MANAGER) throw new NonRetryableError("HMD lab is not configured")
@@ -57,7 +59,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
       // not presentation availability. Unknown RPC/checkpoint errors also escape.
       throw new NonRetryableError(`HMD card validation failed (${receipt.failure})`)
     }
-    const publish = async (_card: RunCard, checkpoint: string) => {
+    const publishSlack = async (_card: RunCard, checkpoint: string, currentSequence: number) => {
       // Keep the full semantic history, but reverted releases need only the
       // executed stages and restoration in their operator-facing checklist.
       const renderOptions = { hideSkipped: restored, ...(restored ? { rollbackStep: "Restore previous version" } : {}) }
@@ -68,7 +70,6 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
           { type: "button", action_id: "hmd_approve", text: { type: "plain_text", text: "Progress" }, style: "primary", value: JSON.stringify(capability) },
           { type: "button", action_id: "hmd_reject", text: { type: "plain_text", text: "Reject" }, style: "danger", value: JSON.stringify(capability) },
         ] }] : [])]
-      const currentSequence = sequence++
       await step.do(checkpoint, once, async () => {
         const receipt = await cards.publish(owner, currentSequence, { text: frame.text, blocks })
         return deliveryReceipt(receipt, currentSequence)
@@ -89,6 +90,16 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
                 `${native ? "Native outcomes demo (experimental)" : "HTTP demo"} · Progress accepts risk · restores afterward` }] }] })
           return deliveryReceipt(receipt, currentSequence)
       })
+    }
+    const publish = async (currentCard: RunCard, checkpoint: string) => {
+      const currentSequence = sequence++
+      const snapshot = currentCard.snapshot()
+      await Promise.all([
+        publishSlack(currentCard, checkpoint, currentSequence),
+        event.payload.github ? step.do(`${checkpoint}:github`, once, () =>
+          cards.publishGitHub(owner, currentSequence, snapshot, event.payload.github!))
+          .catch(() => ({ status: "failed", reconciliationRequired: true })) : Promise.resolve(),
+      ])
     }
     const graph = hmdCardObserver(owner, step, card, {
       render: (points, options) => host.HealthChartRenderer.render(points, options),
@@ -122,6 +133,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         }
         await graph(update)
       } else if (update.type === "settled") {
+        card.setHealthProvenance({ decisionBasis: update.basis })
         capability = undefined
         await step.do(`review:slack-close-${update.observation.phase}`, once, () => reviews.close(owner))
         card.update({ type: "approval.resolved", workflowId, stepId: `${update.observation.phase}%`, requestId: update.observation.snapshot,
@@ -130,6 +142,7 @@ export class HmdReviewWorkflow extends WorkflowEntrypoint<Environment, HmdParame
         await publish(card, `notification:hmd-settled-${update.observation.phase}`)
       } else {
         restored = true
+        card.setHealthProvenance({ restored: true })
         capability = undefined
         await step.do("review:slack-terminal", once, () => reviews.close(owner))
         status("Prepare release", "complete")
