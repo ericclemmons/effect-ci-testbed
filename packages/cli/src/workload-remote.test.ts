@@ -68,7 +68,7 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     const doctor = await run(["doctor"])
     assert.equal(doctor.code, 0, doctor.output)
     assert.equal(dispatches, 0)
-    const result = await run(["run"])
+    const result = await run(["run", "build"])
     assert.equal(result.code, 0, result.output)
     assert.equal(dispatches, 1)
     assert.ok(paths.includes("/api/runs/job-run/events"))

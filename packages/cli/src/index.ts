@@ -1,5 +1,6 @@
 import { hasWorkloadIdentity, workloadHeaders } from "./workload-auth.ts"
 import { runOidc } from "./oidc.ts"
+import { vitePlusTasks } from "./vite-plus.ts"
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
@@ -34,6 +35,7 @@ export interface Invocation {
 }
 
 export interface Program {
+  readonly requiresTarget?: boolean
   readonly actions?: Readonly<Record<string, unknown>>
   readonly local?: CI.RunConfiguration | ((context: LocalContext) => CI.RunConfiguration)
   readonly remote?: (invocation: Invocation) => Promise<unknown>
@@ -544,7 +546,8 @@ Examples:
 
 Without an explicit path, effect-ci discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
-a project; an explicit local run can initialize supported package scripts.
+a project. Auto-discovered scripts and Vite+ tasks require an explicit action name.
+A named local run can initialize the CI marker.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 Detection uses @vercel/detect-agent, including AI_AGENT and tool-specific signals.
 No agent flag is needed. An explicit --format always wins.`
@@ -686,15 +689,6 @@ export const loadProgram = async (
   }
 }
 
-const inferredScriptOrder = [
-  "format",
-  "lint",
-  "check",
-  "typecheck",
-  "test",
-  "build",
-] as const
-
 const inferJavaScriptProgram = (root: string): Program => {
   const manifestPath = join(root, "package.json")
 
@@ -709,18 +703,28 @@ const inferJavaScriptProgram = (root: string): Program => {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
     readonly name?: string
     readonly scripts?: Readonly<Record<string, string>>
+    readonly dependencies?: Readonly<Record<string, string>>
+    readonly devDependencies?: Readonly<Record<string, string>>
   }
-  const names = inferredScriptOrder.filter((name) => manifest.scripts?.[name])
+  let tasks: ReadonlyArray<string> = []
+  if (manifest.dependencies?.["vite-plus"] || manifest.devDependencies?.["vite-plus"]) {
+    try { tasks = vitePlusTasks(root) }
+    catch (error) {
+      throw new CliFailure("CI_VITE_PLUS_CONFIG_INVALID", ExitCode.usage,
+        `Cannot discover Vite+ tasks. Install project dependencies and check vite.config.ts. ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  const names = [...Object.keys(manifest.scripts ?? {}), ...tasks]
 
   if (names.length === 0) {
     throw new CliFailure(
       "CI_ZERO_CONFIG_NO_TASKS",
       ExitCode.usage,
-      "Zero-config CI found no format, lint, check, typecheck, test, or build scripts",
+      "Zero-config CI found no package.json scripts or Vite+ run.tasks",
     )
   }
 
-  return CI.fromPackageJson(manifest)
+  return CI.fromPackageJson(manifest, { tasks })
 }
 
 /** Explicit local execution opts this package into script discovery, never remote or plan. */
@@ -733,7 +737,8 @@ export const initializeJavaScriptProject = (
   )) return undefined
   const invocation = parseInvocation(args)
   if (invocation.help || invocation.command !== "run" || invocation.location !== "local") return undefined
-  // Validate scripts and the requested target before writing anything or running scripts.
+  // Validate the explicit selection before loading config or writing a marker.
+  requireAction(invocation.targets)
   const program = inferJavaScriptProgram(resolve(cwd))
   selectedWorkflow(program, invocation.targets)
   for (const directory of [join(cwd, ".cloudflare"), join(cwd, ".cloudflare", "ci")]) {
@@ -865,6 +870,11 @@ const classifyFailure = (error: unknown): CliFailure => {
   )
 }
 
+const requireAction = (targets: ReadonlyArray<string>): void => {
+  if (!targets.length) throw new CliFailure("CI_ACTION_REQUIRED", ExitCode.usage,
+    "Choose an action: effect-ci run <action>. Use effect-ci list to see available actions.")
+}
+
 const selectedWorkflow = (
   program: Program,
   targets: ReadonlyArray<string>,
@@ -894,14 +904,14 @@ const list = (program: Program, format: OutputFormat): void => {
       command: "list",
       workflow: program.workflow.id,
       targets,
-      commands: [`effect-ci run`, ...targets.map((target) => `effect-ci run ${target}`)],
+      commands: [...(program.requiresTarget ? [] : ["effect-ci run"]), ...targets.map((target) => `effect-ci run ${target}`)],
     })
     return
   }
 
   console.log(`Workflow: ${program.workflow.id}`)
   console.log("Run commands:")
-  console.log(`  effect-ci run  (whole workflow)`)
+  if (!program.requiresTarget) console.log(`  effect-ci run  (whole workflow)`)
   for (const target of targets) console.log(`  effect-ci run ${target}`)
 }
 
@@ -947,6 +957,7 @@ export const main = async (
 
     // A built-in hosted invocation selects from the host's enrolled goals, not
     // an absent/stale local module. Custom remote handlers retain local validation.
+    if (invocation.command === "run" && program.requiresTarget) requireAction(invocation.targets)
     const workflow = invocation.location === "remote" && !program.remote
       ? program.workflow : selectedWorkflow(program, invocation.targets)
     const request: Invocation = {
@@ -1105,6 +1116,12 @@ export const runCli = async (
     }
     if (!explicit) {
       const invocation = parseInvocation(args, value => { format = value })
+      if (!invocation.help && invocation.command === "run" && !invocation.targets.length) {
+        const path = findWorkflow(cwd)
+        if (!path || (basename(path).startsWith("ci.") && readFileSync(path, "utf8").trim() === "")) {
+          requireAction(invocation.targets)
+        }
+      }
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))

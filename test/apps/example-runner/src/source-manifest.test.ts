@@ -10,12 +10,13 @@ test("hosted inference pins discovery to the requested source and shares the CLI
   const manifest = await readSourceManifest({ repository, revision }, "examples/zero-config", async (url, options) => {
     assert.equal(url, `https://raw.githubusercontent.com/ericclemmons/effect-ci-testbed/${revision}/examples/zero-config/package.json`)
     assert.equal(options?.redirect, "manual")
-    return Response.json({ name: "fixture", scripts: { lint: "node --check src.js", build: "node build.js", deploy: "not-inferred" } })
+    return Response.json({ name: "fixture", scripts: { lint: "node --check src.js", build: "node build.js", deploy: "node deploy.js" } })
   })
   const inferred = CI.fromPackageJson(manifest)
-  assert.deepEqual(Object.keys(inferred.actions), ["lint", "build"])
+  assert.deepEqual(Object.keys(inferred.actions), ["lint", "build", "deploy"])
+  await assert.rejects(CI.runPromise(inferred.workflow, { output: "silent" }), /require an explicit action/)
   const result = await CI.runPromise(inferred.workflow, { mode: "plan", output: "silent" })
-  assert.deepEqual(result.plan.nodes.map((node) => node.id), ["checkout", "install", "lint", "build"])
+  assert.deepEqual(result.plan.nodes.map((node) => node.id), ["checkout", "install", "lint", "build", "deploy"])
   assert.ok(result.plan.nodes.find((node) => node.id === "build")?.dependencies.includes("lint"))
 })
 
@@ -31,10 +32,10 @@ test("hosted manifest discovery rejects mutable revisions and unsafe sources bef
   await assert.rejects(readSourceManifest({ repository, revision }, "../outside", neverFetch), /Hosted discovery requires/)
 })
 
-test("invalid manifests and missing conventional tasks fail explicitly", async () => {
+test("invalid manifests and missing actions fail explicitly", async () => {
   await assert.rejects(readSourceManifest({ repository, revision }, "examples/zero-config", async () =>
     Response.json({ scripts: { lint: false } })), /Invalid package scripts/)
-  assert.throws(() => CI.fromPackageJson({ scripts: { deploy: "deploy" } }), /no format, lint/)
+  assert.throws(() => CI.fromPackageJson({ scripts: {} }), /no package.json scripts/)
 })
 
 test("Workers-compatible fetch rejects redirects without following them", async () => {

@@ -22,15 +22,18 @@ Keep this shell open.
 Use [Cloudflare's React starter](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/)
 through `vp create`. This creates a React SPA and a Worker that serves `/api/`.
 
+Run this from the directory where you keep projects:
+
 ```sh
-cd "$(mktemp -d)"
-vp create cloudflare --no-interactive --no-git --no-hooks --package-manager pnpm -- walkthrough \
-  --framework react --platform workers --variant react-ts \
-  --no-deploy --no-git --accept-defaults
+vp create cloudflare
+```
+
+Follow the prompts: name the app `walkthrough`, choose **Framework Starter**, then
+**React** with TypeScript and pnpm, and enable Git and commit hooks. Skip deployment
+for now.
+
+```sh
 cd walkthrough
-git init
-git add .
-git commit -m "Start walkthrough"
 vp dev
 ```
 
@@ -45,34 +48,26 @@ Stop the server with Ctrl-C. Nothing has been deployed.
 ## 3. Inspect before running
 
 ```sh
-effect-ci list --format=text
+effect-ci list
 ```
 
 ```text
 Workflow: walkthrough
 Run commands:
-  effect-ci run  (whole workflow)
   effect-ci run build
   effect-ci run lint
+  ...
 ```
 
-The starter has `build` and `lint` scripts. Effect CI discovers them.
+Every `package.json` script is an action, including `dev`, `build`, and `lint`.
+Vite+ tasks in `vite.config.ts` under `run.tasks` are actions too.
+Use `effect-ci list` to see them. Execution requires an action name; bare
+`effect-ci run` reports how to choose one.
 
 Agents get JSON from the same command. Try it with `AI_AGENT=demo`:
 
 ```sh
 AI_AGENT=demo effect-ci list
-```
-
-```json
-{
-  "schemaVersion": 1,
-  "ok": true,
-  "command": "list",
-  "workflow": "walkthrough",
-  "targets": ["build", "lint"],
-  "commands": ["effect-ci run", "effect-ci run build", "effect-ci run lint"]
-}
 ```
 
 Inspect both goals without running them:
@@ -95,7 +90,7 @@ flowchart LR
 ## 4. Run the build
 
 ```sh
-effect-ci run build --format=text
+effect-ci run build
 ```
 
 Shortened output:
@@ -121,19 +116,44 @@ No CI workflow to write.
 
 ## 5. Run again
 
-The starter doesn't enable task caching. Route its build through Vite+:
+Move the build script into `run.tasks` in `vite.config.ts`. Vite+ caches config
+tasks by default. Effect CI discovers the task and runs it through `vp run`.
+
+In `package.json`:
+
+```diff
+   "scripts": {
+-    "build": "tsc -b && vp build",
+-    "preview": "pnpm run build && vp preview",
++    "preview": "vp run build && vp preview",
+```
+
+In `vite.config.ts`, keep the existing plugins and add `run.tasks`:
+
+```diff
+ export default defineConfig({
++  run: {
++    tasks: {
++      build: {
++        command: "tsc -b && vp build",
++      },
++    },
++  },
+```
+
+A task name must be defined in one place: `package.json` scripts or Vite+
+`run.tasks`. Update any other scripts that call `pnpm run build` to use
+`vp run build`.
 
 ```sh
-npm pkg set 'scripts.build=vp run --cache build:app' \
-  'scripts.build:app=tsc -b && vp build'
-effect-ci run build --format=text
-effect-ci run build --format=text
+effect-ci run build
+effect-ci run build
 ```
 
 The second run reuses the bundle:
 
 ```text
-$ vp run --cache build:app
+$ vp run build
 $ tsc -b
 
 $ vp build ◉ cache hit, replaying
@@ -145,10 +165,19 @@ vp run: 1/2 cache hit (50%)
 
 TypeScript still runs. Vite+ caches the bundle by tracking its inputs and outputs.
 
-In `worker/index.ts`, change `name: "Cloudflare"` to `name: "Effect CI"`. Run again:
+In `worker/index.ts`:
+
+```diff
+       return Response.json({
+-        name: "Cloudflare",
++        name: "Effect CI",
+       });
+```
+
+Run again:
 
 ```sh
-effect-ci run build --format=text
+effect-ci run build
 ```
 
 ```text

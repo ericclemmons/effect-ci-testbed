@@ -2773,22 +2773,26 @@ export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>
   Effect.runPromise(run(workflowDefinition, options))
 
-/** Infer the same conventional task graph from a local or immutable source manifest. */
+/** Expose package scripts and discovered Vite+ tasks as explicitly selectable actions. */
 export const fromPackageJson = (manifest: {
   readonly name?: string
   readonly scripts?: Readonly<Record<string, string>>
-}) => {
-  const names = ["format", "lint", "check", "typecheck", "test", "build"]
-    .filter((name) => manifest.scripts?.[name])
+}, options: { readonly tasks?: ReadonlyArray<string> } = {}) => {
+  const tasks = new Set(options.tasks)
+  const scripts = Object.keys(manifest.scripts ?? {})
+  const duplicate = scripts.find(name => tasks.has(name))
+  if (duplicate) throw new Error(`Task ${duplicate} is defined in both package.json and Vite+ run.tasks`)
+  const names = [...scripts, ...tasks]
   if (names.length === 0) {
-    throw new Error("Zero-config CI found no format, lint, check, typecheck, test, or build scripts")
+    throw new Error("Zero-config CI found no package.json scripts or Vite+ run.tasks")
   }
 
-  const checkout = action("checkout", function* () {
+  const privateName = (name: string): string => names.includes(name) ? privateName(`$${name}`) : name
+  const checkout = action(privateName("checkout"), function* () {
     const source = yield* Source
     return () => source.checkout()
   })
-  const install = action("install", () => function* () {
+  const install = action(privateName("install"), () => function* () {
     const workspace = yield* checkout()
     const packageManager = yield* PackageManager.JavaScript(workspace)
     return yield* packageManager.install()
@@ -2797,15 +2801,22 @@ export const fromPackageJson = (manifest: {
     action(name, () => function* () {
       const workspace = yield* install()
       const packageManager = yield* PackageManager.JavaScript(workspace)
-      return yield* packageManager.run(name)
+      return yield* tasks.has(name)
+        ? packageManager.exec(`vp run '${name.replaceAll("'", "'\\''")}'`)
+        : packageManager.run(name)
     }),
   ]))
 
   return {
+    requiresTarget: true,
     actions,
     /** Shared preparation for trusted runner-added checks; not a CLI target. */
     checkout,
     workflow: workflow(manifest.name ?? "ci", function* () {
+      const runtime = yield* Runtime
+      if (runtime.mode === "execute") return yield* Effect.fail(
+        new Error("Auto-discovered projects require an explicit action; choose from the discovered actions"),
+      )
       let workspace: Workspace | undefined
       for (const name of names) workspace = yield* actions[name]!()
       return workspace
