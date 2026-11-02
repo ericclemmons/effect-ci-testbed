@@ -89,7 +89,12 @@ looks like this; available targets depend on the starter version:
   "command": "list",
   "workflow": "walkthrough",
   "targets": ["build", "dev", "lint", "preview"],
-  "commands": ["effect-ci run build", "effect-ci run dev", "effect-ci run lint", "effect-ci run preview"]
+  "commands": [
+    "effect-ci run build",
+    "effect-ci run dev",
+    "effect-ci run lint",
+    "effect-ci run preview"
+  ]
 }
 ```
 
