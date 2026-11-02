@@ -36,7 +36,7 @@ export class ActionsRunner extends DurableObject<Environment> {
         if (!container || container.running) throw new Error("container-unavailable");
         // Existing native Containers approach; no imported runner control plane.
         // No image, command, credentials or instance size from the event.
-        container.start({ image: container.images.runner!, enableInternet: true, instance: "standard-2",
+        container.start({ image: container.images.runner!, enableInternet: true, instance: "standard-4",
           env: { ACTIONS_RUNNER_INPUT_JITCONFIG: config, RUNNER_LIFETIME_SECONDS: String(lifetimeSeconds) } });
       },
       destroy: async () => { await this.ctx.container?.destroy(); },

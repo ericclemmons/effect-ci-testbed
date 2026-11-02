@@ -28,7 +28,7 @@ export class RepairVerifier extends WorkerEntrypoint<Environment> {
       // Commit/run pinning happens before this callback. No repo checkout, token,
       // inherited application secrets, install scripts or model-produced command.
       const container = namespace.getByName(`owned-native-verifier:${commit}`);
-      const options = { image: "workspace", instance: "standard-1" } as const;
+      const options = { image: "workspace" } as const;
       await container.materializeSource(files, options);
       return container.execute(
         command,

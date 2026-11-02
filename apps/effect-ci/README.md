@@ -28,6 +28,14 @@ The container's outbound HTTPS proxy authenticates only the authorized main depl
 commands; Node and Docker receive dummy login values and trust the runtime proxy CA.
 A failed or uncertain publication is inspected, not blindly replayed.
 
+## Container capacity
+
+Fresh and restored CI workspaces default to `standard-4`: 4 vCPU, 12 GiB RAM
+and 20 GB disk. Hosts can override `instance` with a smaller named size.
+This matches standard public GitHub Linux runner CPU capacity, with less RAM
+(GitHub provides 16 GB) and more disk (GitHub provides 14 GB).
+Hardware sizing does not imply the same preinstalled tools or performance.
+
 ## Host configuration
 
 [SELF-HOST.md](./SELF-HOST.md) covers the App, secrets, Access and CLI setup.
