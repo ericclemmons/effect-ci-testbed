@@ -1,0 +1,29 @@
+examples/demo/README.md
+  s_c0b5e4108c4692::t_9e47a4e4ccd373 92-97
+examples/demo/tutorial/verify-local.mjs
+  s_456d620717b89d::t_0da0fd74cac4a5 3,7-8,15-20,27-29,34-35,38-41,43-50,59-64,87-92,94-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1f81a1abc40cfd55547fd17e97c819128270e8e7",
+  "prompts": {},
+  "sessions": {
+    "s_456d620717b89d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18af3-7cd6-7f21-b737-1a6f4360a26f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    },
+    "s_c0b5e4108c4692": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18dc7-0b8b-74a3-bbb5-219357b3fdf1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eric Clemmons <eclemmons@cloudflare.com>"
+    }
+  }
+}
