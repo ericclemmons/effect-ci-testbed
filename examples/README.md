@@ -1,7 +1,8 @@
 # Examples
 
-Start with [the walkthrough](./demo). The API section explains each API and links to
-solutions that use it. Recipes covers broader goals. Entries are alphabetical.
+Start with [the walkthrough](./demo). Reference explains the SDK and CLI. Guides
+cover setup and hosting; Examples lists runnable recipes. The API groups below
+link to solutions that use each API. Entries within each group are alphabetical.
 
 Install dependencies once at the repository root with `pnpm install`. Add the
 unpublished CLI to your shell from that root:
