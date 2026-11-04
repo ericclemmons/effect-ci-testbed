@@ -79,6 +79,10 @@ jobs:
           assert local["location"] == "local"
           failure = run("failed", ["run", "missing-walkthrough-proof-goal"], 1)
           assert failure["error"]["code"] == "CI_WORKFLOW_FAILED"
+          assert any(
+              diagnostic["exitCode"] == 2 and "CI_UNKNOWN_TARGET" in diagnostic["output"]["stderr"]
+              for diagnostic in failure["error"]["details"]["diagnostics"]
+          )
           print(json.dumps({"ordinary": first["result"]["instanceId"], "explicit": second["result"]["instanceId"], "failed": failure["error"]["details"]["instanceId"], "local": local["location"]}))
           PY
       - uses: actions/upload-artifact@v7
