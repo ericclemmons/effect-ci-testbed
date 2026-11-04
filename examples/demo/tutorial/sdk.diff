@@ -1,0 +1,19 @@
+--- a/.cloudflare/ci/ci.ts
++++ b/.cloudflare/ci/ci.ts
+@@ -7,12 +7,14 @@
+ 
+ const install = CI.action("install", function* () {
+   const workspace = yield* checkout();
+-  return () => workspace.exec("pnpm install --frozen-lockfile");
++  const pm = yield* CI.PackageManager.JavaScript(workspace);
++  return () => pm.install();
+ });
+ 
+ export const build = CI.action("build", function* () {
+   const workspace = yield* install();
+-  return () => workspace.exec("pnpm exec vp run build");
++  const pm = yield* CI.PackageManager.JavaScript(workspace);
++  return () => pm.exec("vp run build");
+ });
+ 
+ export default CI.workflow("walkthrough", function* () {

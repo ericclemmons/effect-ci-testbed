@@ -1,0 +1,11 @@
+--- a/worker/index.ts
++++ b/worker/index.ts
+@@ -4,7 +4,7 @@
+ 
+     if (url.pathname.startsWith("/api/")) {
+       return Response.json({
+-        name: "Cloudflare",
++        name: "Effect CI",
+       });
+     }
+     return new Response(null, { status: 404 });

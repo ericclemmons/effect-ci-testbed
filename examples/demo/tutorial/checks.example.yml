@@ -22,12 +22,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ericclemmons/effect-ci-testbed
-          ref: f762c781cc0920732774f8d862cc4ac7d0f0a143
+          ref: main
           path: effect-ci
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
-          version: 12.8.1
+          version: latest
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -36,27 +36,4 @@ jobs:
       - run: pnpm --dir ../effect-ci install --frozen-lockfile
       - run: echo "$GITHUB_WORKSPACE/effect-ci/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Build on the enrolled host
-        run: effect-ci run build --remote --format=text
-      - name: Update Slack
-        if: always()
-        working-directory: ${{ github.workspace }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          BUILD_STATUS: ${{ job.status }}
-        run: |
-          node --input-type=module <<'JS'
-          if (!process.env.SLACK_WEBHOOK_URL) {
-            console.log('Set SLACK_WEBHOOK_URL to enable Slack updates.');
-            process.exit(0);
-          }
-          const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_SHA, BUILD_STATUS } = process.env;
-          const response = await fetch(process.env.SLACK_WEBHOOK_URL, {
-            method: 'POST',
-            signal: AbortSignal.timeout(15000),
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              text: `${GITHUB_REPOSITORY} build: ${BUILD_STATUS}\nCommit: ${GITHUB_SHA}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`,
-            }),
-          });
-          if (!response.ok) throw new Error(`Slack update failed (${response.status})`);
-          JS
+        run: effect-ci run build

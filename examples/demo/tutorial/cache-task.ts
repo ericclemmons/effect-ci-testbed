@@ -3,7 +3,7 @@ export const cachedBuild = {
   tasks: {
     build: {
       command: "tsc -b && vp build",
-      cache: true,
+      cache: { input: [{ auto: true }, "!.cloudflare/output/**"] },
     },
   },
 };

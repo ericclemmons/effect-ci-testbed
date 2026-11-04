@@ -1,0 +1,16 @@
+--- a/.github/workflows/checks.yml
++++ b/.github/workflows/checks.yml
+@@ -1,6 +1,7 @@
+ name: Effect CI
+ on:
+   push:
++    paths-ignore: ["**/*.md"]
+   workflow_dispatch:
+ 
+ permissions:
+@@ -36,4 +37,4 @@
+       - run: pnpm --dir ../effect-ci install --frozen-lockfile
+       - run: echo "$GITHUB_WORKSPACE/effect-ci/node_modules/.bin" >> "$GITHUB_PATH"
+       - name: Build on the enrolled host
+-        run: effect-ci run build
++        run: effect-ci run

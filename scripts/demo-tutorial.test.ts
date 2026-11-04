@@ -7,7 +7,7 @@ import test from "node:test";
 
 const template = resolve("examples/demo");
 
-test("outside the monorepo: README skips lint/publication, shared TS changes publish once, failed build keeps baseline", { timeout: 120_000 }, () => {
+test("outside the monorepo: README skips CI, shared TS changes publish once, failed build keeps baseline", { timeout: 120_000 }, () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "effect-ci-tutorial-test-")));
   cpSync(template, root, { recursive: true, filter: path => !/(?:^|\/)(?:node_modules|dist|\.vite|\.effect-ci|\.wrangler)(?:\/|$)/.test(path) });
   // Install into this copy's own real node_modules. pnpm deliberately refuses
@@ -63,7 +63,8 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   run("git", ["commit", "-m", "README only"]);
   const readme = parsed();
   assert.ok(!hasPublish(readme));
-  assert.ok(readme.plan.nodes.flatMap((node: any) => node.commands).every((command: any) => command.command !== "pnpm lint"));
+  assert.deepEqual(readme.plan.nodes, [], "Markdown-only changes skip checkout, checks, build, and publication");
+  assert.equal(readFileSync(pointer, "utf8"), first);
   const appSource = readFileSync(join(root, "src/app.ts"), "utf8");
   writeFileSync(join(root, "packages/greeting/message.ts"), 'export const greeting = "Shared code ships too.";\n');
   run("git", ["add", "packages/greeting/message.ts"]);

@@ -13,21 +13,25 @@ Colors come from public GitHub check results for one resolved `main` commit,
 loaded in the browser with no credentials. Green means the mapped check passed;
 amber hourglasses mean results are loading or the check is queued or running.
 Missing, skipped, cancelled, and failed checks stay red. Not-applicable
-cells do not count toward progress. Refresh reloads results; an API or rate-limit
-error is shown explicitly. Local Cloudflare runtime checks count as local, and
+cells do not count toward progress. Reloading the page reloads results; an API or
+rate-limit error is shown explicitly. Local Cloudflare runtime checks count as local, and
 only native `Cloudflare / <recipe>` checks from the Effect CI App count as hosted.
 The page does not infer current readiness from historical coverage ticks.
 
 The walkthrough comes from
 `examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
-The API section groups solutions by API using the `CI.*` headings and link labels in
-`examples/README.md`. Each group has a matching API page beside the SDK under
-`packages/ci/`; its title matches the group and its method headings become links.
-Each group starts with Usage, followed by Methods and Examples. Groups and entries
-within Methods and Examples are alphabetical. Source examples are included from
-their runnable files, including the local workspace/checkpoint example.
-Recipes lists every remaining example alphabetically, including newly added
-examples. Self-hosting and environment evidence belong in the API section.
+Navigation separates Getting started, Guides, Examples, Reference, and Development.
+Guides covers GitHub, self-hosting, the ecosystem, and execution evidence. Examples
+lists all recipes alphabetically, including newly added examples; the walkthrough
+stays under Getting started.
+
+Reference contains the SDK overview, CLI, and `CI.*` APIs. API groups come from the
+`CI.*` headings in `examples/README.md`. Each group has a matching page beside the
+SDK under `packages/ci/`; its title matches the group and its method headings
+become direct links after Overview. APIs without methods link straight to their
+page. API groups and methods are alphabetical.
+Development contains repository wiring, package internals, and host services.
+Source examples are included from their runnable files.
 
 From the repository root, run `pnpm docs:dev` to preview or `pnpm docs:build` to
 build the static site. Output is in `apps/docs/dist/`.
@@ -54,6 +58,11 @@ Paths are relative to the README. For example, the actual site configuration is:
 
 In a recipe README, write `[Workflow](./.cloudflare/ci/workflow.ts "source")` to
 include that recipe's workflow.
+
+Use an inline-code filename as the link label to show only the snippet on the
+site, with that filename as its caption:
+``[`vite.config.ts`](./path/to/cache.diff "source")``.
+Diff files use highlighted `diff` syntax. GitHub still shows a source link.
 
 To show one TypeScript declaration, append `#symbol=name` (or `#symbol=outer.inner`
 for a nested declaration) to its path. To show one
