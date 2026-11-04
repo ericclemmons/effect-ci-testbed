@@ -5,7 +5,7 @@ on:
       example:
         description: Deployment CLI to try
         type: choice
-        options: [both, wrangler, cf]
+        options: [both, wrangler, cf, walkthrough]
         default: both
   push:
     branches: [codex/oidc-runner-integration]
@@ -15,6 +15,7 @@ permissions:
   id-token: write
 jobs:
   deploy:
+    if: inputs.example != 'walkthrough'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -35,3 +36,54 @@ jobs:
       - run: node examples/oidc-${{ matrix.tool }}/verify.mjs
         env:
           EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
+  walkthrough:
+    if: inputs.example == 'walkthrough'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EFFECT_CI_REMOTE_URL: ${{ vars.EFFECT_CI_REMOTE_URL }}
+      AI_AGENT: walkthrough-proof
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Enroll the existing repository using GitHub OIDC
+        run: pnpm exec effect-ci oidc
+      - name: Run the walkthrough with workload identity
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess, time
+          for name in ["EFFECT_CI_REMOTE_TOKEN", "EFFECT_CI_OIDC_TOKEN", "CF_ACCESS_TOKEN", "CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"]:
+              assert not os.environ.get(name), f"Unexpected stored credential: {name}"
+          assert os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+          assert os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          output = pathlib.Path(".effect-ci/cache/walkthrough-proof")
+          output.mkdir(parents=True, exist_ok=True)
+          def run(name, arguments, expected):
+              started = time.time()
+              result = subprocess.run(["node", "packages/cli/src/effect-ci.ts", *arguments], text=True, capture_output=True)
+              (output / f"{name}.json").write_text(result.stdout)
+              (output / f"{name}.stderr").write_text(result.stderr)
+              (output / f"{name}.meta.json").write_text(json.dumps({"arguments": arguments, "exitCode": result.returncode, "elapsedSeconds": time.time() - started}))
+              assert result.returncode == expected, (name, result.returncode, result.stderr)
+              return json.loads(result.stdout)
+          first = run("ordinary", ["run", "tutorial"], 0)
+          second = run("explicit", ["run", "tutorial", "--remote"], 0)
+          assert first["location"] == second["location"] == "remote"
+          assert first["result"]["instanceId"] != second["result"]["instanceId"]
+          local = run("local", ["run", "tutorial", "--local"], 0)
+          assert local["location"] == "local"
+          failure = run("failed", ["run", "missing-walkthrough-proof-goal"], 1)
+          assert failure["error"]["code"] == "CI_WORKFLOW_FAILED"
+          print(json.dumps({"ordinary": first["result"]["instanceId"], "explicit": second["result"]["instanceId"], "failed": failure["error"]["details"]["instanceId"], "local": local["location"]}))
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: walkthrough-oidc-${{ github.run_id }}
+          path: .effect-ci/cache/walkthrough-proof
+          include-hidden-files: true
