@@ -154,7 +154,6 @@ const cloneUrl = (value: string): string => {
 const describeEvent = (event: WorkflowInstanceEvent): string => {
   const errorMessage = remoteErrorMessage(event.error?.message)
   switch (event.type) {
-    case "step_started": return `→ ${event.stepName}`
     case "step_completed": {
       let value = event.output
       if (typeof value === "string") {
@@ -163,19 +162,25 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
       const output = value && typeof value === "object"
         ? value as Record<string, unknown>
         : undefined
-      const stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
+      let stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
+      // Older hosts ran the project CLI in JSON mode. Use its existing summary
+      // formatter while keeping ordinary command output unchanged.
+      if (stdout) {
+        try {
+          const result = JSON.parse(stdout)
+          if (result?.schemaVersion === 1 && result.ok === true && result.plan)
+            stdout = CI.formatPlan(result.plan)
+        } catch { /* Ordinary command output is text, not a CLI result. */ }
+      }
       const stderr = typeof output?.stderr === "string" ? output.stderr.trimEnd() : ""
       const logs = [stdout, stderr].filter(Boolean).join("\n")
 
-      return `✓ ${event.stepName}${logs ? `\n${logs}` : ""}`
+      return logs
     }
-    case "step_errored": return `✗ ${event.stepName}`
-    case "attempt_errored": return `↻ ${event.stepName} attempt ${event.attempt} failed${errorMessage ? `: ${errorMessage}` : ""}`
-    case "wait_started": return `… ${event.stepName}`
     case "workflow_completed": return "✓ Workflow completed"
     case "workflow_errored": return `✗ Workflow failed${errorMessage ? `: ${errorMessage}` : ""}`
     case "workflow_terminated": return "✗ Workflow terminated"
-    default: return event.type
+    default: return ""
   }
 }
 
@@ -200,7 +205,10 @@ const streamRemoteEvents = async (
       cursor.value = event.eventId
     }
     events.push(event)
-    if (format === "text") console.log(describeEvent(event))
+    if (format === "text") {
+      const text = describeEvent(event)
+      if (text) console.log(text)
+    }
     if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(event.type)) break
   }
 
