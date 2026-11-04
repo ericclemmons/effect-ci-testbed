@@ -94,8 +94,8 @@ Eric then confirmed readiness for diagnostic run
 `human-progress-reject-20261103-5`. Its real Progress callback reached diagnostic
 version `a87979b1-985d-4812-8a6e-88a19f3633f2` with HTTP 403. The recorded flags
 were `appMatches: true`, `teamMatches: true`, `reviewerAllowed: false`.
-Eric confirmed he uses two Slack accounts and authorized adding work member
-`U0C7VTU3H38` while preserving existing reviewers. The current reviewer list is
+Eric confirmed he uses two Slack accounts and authorized adding his work member
+ID while preserving existing reviewers. The current reviewer list is
 stored as a Workers secret and its value is not exposed by version readback;
 do not replace unknown existing reviewers with only the new ID.
 Run 5 expired without an accepted decision; native restoration and independent
@@ -112,6 +112,19 @@ blocked. The temporary diagnostic logs are removed from source. Existing callbac
 and card fixtures reproduce the missing feedback before the change; all 58
 affected existing tests pass after it. This local proof is not live delivery
 acceptance, and does not itself change the reviewer allowlist.
+
+After Eric authorized sharing the recorded existing reviewer IDs between chats,
+the cutover configuration and both intervening deploy owners confirmed that one
+existing reviewer had been preserved. The single `SLACK_APPROVER_IDS` update
+appended Eric's expressly approved work account, retained that existing reviewer,
+and changed no other secret. The API accepted the update and activated version
+`8ea109f6-f7f8-43a9-b05a-80d5fbb758bc` at 100%, deployment
+`54417eae-902d-419e-91fe-b1210c9339db`. This is a configuration receipt, not yet
+proof of an accepted human decision from the work account.
+
+The feedback/card PR was then synced with merged main. All 58 affected existing
+tests, the github-cloudflare/app type checks and the complete host build passed.
+The temporary diagnostic statements are absent from the ready source.
 
 ## Historical reconciliation — October 26, 2026
 
