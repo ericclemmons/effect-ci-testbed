@@ -15,7 +15,7 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    ```sh
    git clone https://github.com/ericclemmons/effect-ci-testbed.git
    cd effect-ci-testbed
-   pnpm install --frozen-lockfile
+   pnpm install
    export PATH="$PWD/node_modules/.bin:$PATH"
    gh auth login
    ```
