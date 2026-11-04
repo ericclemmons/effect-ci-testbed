@@ -1,0 +1,161 @@
+{
+  "recordedDate": "2026-11-03",
+  "service": "https://effect-ci-github-cloudflare.eclemmons.workers.dev",
+  "github": {
+    "runId": 41765167042,
+    "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/41765167042",
+    "jobId": 126361714118,
+    "checkUrl": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/41765167042/job/126361714118",
+    "checkConclusion": "success",
+    "headSha": "f0fcf62e53a713e713026804e4ffc2019e8a0947",
+    "workflow": ".github/workflows/oidc-live-proof.yml",
+    "input": {
+      "example": "walkthrough"
+    },
+    "deploymentJobConclusion": "skipped",
+    "runConclusion": "success"
+  },
+  "authentication": {
+    "provider": "fresh GitHub Actions OIDC workload tokens",
+    "permissions": {
+      "contents": "read",
+      "id-token": "write"
+    },
+    "existingRepositoryEnrollment": "successful",
+    "storedCredentialsAbsent": [
+      "EFFECT_CI_REMOTE_TOKEN",
+      "EFFECT_CI_OIDC_TOKEN",
+      "CF_ACCESS_TOKEN",
+      "CF_ACCESS_CLIENT_ID",
+      "CF_ACCESS_CLIENT_SECRET"
+    ],
+    "agentJson": "AI_AGENT=walkthrough-proof; no explicit format argument"
+  },
+  "cases": [
+    {
+      "name": "ordinary",
+      "command": "effect-ci run tutorial",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "6c2212ff-9508-4a4a-ae09-d68120c3a161",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "f0fcf62e53a713e713026804e4ffc2019e8a0947",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "tutorial"
+        ]
+      },
+      "nativeWorkflowVersion": "b1403f80-4e88-419b-a927-d52432c49721",
+      "lastEventType": "workflow_completed",
+      "confirmedNativeSuccess": true,
+      "timingSeconds": {
+        "clientWall": 122.703,
+        "nativeWorkflow": 119.742,
+        "hostInstall": 16.705,
+        "projectCommand": 32.37
+      },
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:13) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n? Verifying lockfile against supply-chain policies (325 entries)...\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: /home/node/.local/share/pnpm/store/v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 190, reused 186, downloaded 3, added 186\n\u2713 Lockfile passes supply-chain policies (325 entries in 1.8s)\nLockfile is up to date, resolution step is skipped\nPackages: +190\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 190, reused 186, downloaded 4, added 190, done\n\ndependencies:\n+ @cloudflare/kumo 2.14.0\n+ @phosphor-icons/react 2.1.10\n+ react 19.3.0\n+ react-dom 19.3.0\n\ndevDependencies:\n+ @types/react 19.3.0\n+ @types/react-dom 19.3.0\n+ vite-plus 1.0.0\n+ wrangler 4.145.0\n\nDone in 1.9s using pnpm v12.8.1\n$ vpr test:source\n$ pnpm typecheck\n$ vpr typecheck:source\n$ vpr build:source\n",
+        "stdout": "Scope: all 73 workspace projects\n[WARN] The settings in examples/demo/pnpm-workspace.yaml do not apply, because examples/demo is a project of this workspace. pnpm reads settings only from the pnpm-workspace.yaml at the workspace root. Move the settings there, or add \"!examples/demo\" to the root's \"packages\" to keep that project a separate workspace.\n\u2713 Lockfile passes supply-chain policies (verified 38s ago)\nLockfile is up to date, resolution step is skipped\nDownloading @cloudflare/workerd-linux-64@1.20261023.1: 0.00 B/42.46 MB\nDownloading miniflare@5.20260930.0-alpha: 0.00 B/5.30 MB\nDownloading mermaid@11.17.2: 0.00 B/17.79 MB\nDownloading @oxlint/binding-linux-x64-gnu@1.85.0: 0.00 B/6.53 MB\nDownloading @pagefind/linux-x64@1.5.2: 0.00 B/52.77 MB\nDownloading @voidzero-dev/vite-plus-linux-x64-gnu@1.0.0: 0.00 B/13.40 MB\nDownloading @cloudflare/worker-bundler@0.2.4: 0.00 B/6.54 MB\nDownloading effect@4.0.0-beta.19: 0.00 B/7.38 MB\nDownloading @cloudflare/workerd-linux-64@1.20261001.1: 0.00 B/39.83 MB\nDownloading @cloudflare/workerd-linux-64@1.20260930.2: 0.00 B/39.83 MB\nDownloading @typescript/typescript-linux-x64@7.0.2: 0.00 B/9.66 MB\nDownloading @img/sharp-libvips-linux-x64@1.3.3: 0.00 B/8.17 MB\nDownloading @rolldown/binding-linux-x64-gnu@1.1.5: 0.00 B/7.79 MB\nDownloading @phosphor-icons/react@2.1.10: 0.00 B/5.30 MB\nDownloading @img/sharp-libvips-linux-x64@1.3.4: 0.00 B/8.21 MB\nDownloading cytoscape-fcose@2.2.0: 0.00 B/7.60 MB\nDownloading miniflare@5.20261001.0-alpha: 0.00 B/5.31 MB\nDownloading @rolldown/binding-linux-x64-gnu@1.2.15: 0.00 B/8.30 MB\nDownloading @oxlint-tsgolint/linux-x64@7.0.2003: 0.00 B/7.77 MB\nDownloading @pagefind/linux-x64@1.5.2: 16.79 MB/52.77 MB\nProgress: resolved 947, reused 0, downloaded 252, added 253\nDownloading @cloudflare/workerd-linux-64@1.20260930.2: 30.55 MB/39.83 MB\nProgress: resolved 947, reused 0, downloaded 435, added 416\nProgress: resolved 947, reused 0, downloaded 568, added 571\nProgress: resolved 947, reused 0, downloaded 631, added 640\nProgress: resolved 947, reused 0, downloaded 726, added 733\nProgress: resolved 947, reused 0, downloaded 903, added 896\nProgress: resolved 947, reused 0, downloaded 910, added 896\nProgress: resolved 947, reused 0, downloaded 917, added 923\nProgress: resolved 947, reused 0, downloaded 933, added 928\nPackages: +947\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 947, reused 0, downloaded 935, added 947, done\n.../node_modules/workerd postinstall$ node install.js\n.../node_modules/workerd postinstall$ node install.js\n.../node_modules/workerd postinstall$ node install.js\n.../esbuild@0.28.2/node_modules/esbuild postinstall$ node install.js\n.../node_modules/workerd postinstall: Done\n.../esbuild@0.28.2/node_modules/esbuild postinstall: Done\n.../node_modules/workerd postinstall: Done\n.../node_modules/workerd postinstall: Done\n.../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js\n.../esbuild@0.28.1/node_modules/esbuild postinstall: Done\n\ndevDependencies:\n+ @effect-ci-testbed/ci link:packages/ci\n+ @effect-ci-testbed/cli link:packages/cli\n+ @effect-ci-testbed/cloudflare link:packages/cloudflare\n+ @effect-ci-testbed/local-container link:packages/local-container\n+ @types/node 26.6.3\n+ effect 4.0.0-beta.19\n+ typescript 7.0.2\n\nDone in 20s using pnpm v12.8.1\n$ vp test\n\n RUN  v5.0.1 /workspace/repository/examples/demo\n\n \u2713 src/message.test.ts (1 test) 3ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  03:25:48\n   Duration  150ms (transform 55%, import 29%, worker 9%, tests 7%)\n\n\n$ vp lint --type-aware --type-check --allow all src\nFound 0 warnings and 0 errors.\nFinished in 2.3s on 3 files with 0 rules using 4 threads.\n\n$ vp build\ntransforming...\n\u2713 7 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html  137.89 kB \u2502 gzip: 22.74 kB\ndist/message.js    0.05 kB \u2502 gzip:  0.07 kB\ndist/app.js        0.98 kB \u2502 gzip:  0.54 kB\n\n\u2713 built in 57ms\n\n\nCI execution summary: monorepo/tutorial\nEnvironment: development\n\n\u2713 checkout\n\n\u2713 install depends on checkout\n\n\u2713 test and build tutorial depends on install\n"
+      }
+    },
+    {
+      "name": "explicit",
+      "command": "effect-ci run tutorial --remote",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "868ea289-9571-4e7f-a099-aa7b3f361bbf",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "f0fcf62e53a713e713026804e4ffc2019e8a0947",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "tutorial"
+        ]
+      },
+      "nativeWorkflowVersion": "b1403f80-4e88-419b-a927-d52432c49721",
+      "lastEventType": "attempt_started",
+      "confirmedNativeSuccess": true,
+      "timingSeconds": {
+        "clientWall": 316.621,
+        "nativeWorkflow": 280.816,
+        "hostInstall": 16.003,
+        "projectCommand": 27.565
+      },
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:13) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n\u2713 Lockfile passes supply-chain policies (verified 4m ago)\nLockfile is up to date, resolution step is skipped\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: /home/node/.local/share/pnpm/store/v11\n  Virtual store is at:             node_modules/.pnpm\nPackages: +190\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 190, reused 190, downloaded 0, added 190, done\n\ndependencies:\n+ @cloudflare/kumo 2.14.0\n+ @phosphor-icons/react 2.1.10\n+ react 19.3.0\n+ react-dom 19.3.0\n\ndevDependencies:\n+ @types/react 19.3.0\n+ @types/react-dom 19.3.0\n+ vite-plus 1.0.0\n+ wrangler 4.145.0\n\nDone in 955ms using pnpm v12.8.1\n$ vpr test:source\n$ pnpm typecheck\n$ vpr typecheck:source\n$ vpr build:source\n",
+        "stdout": "Scope: all 73 workspace projects\n[WARN] The settings in examples/demo/pnpm-workspace.yaml do not apply, because examples/demo is a project of this workspace. pnpm reads settings only from the pnpm-workspace.yaml at the workspace root. Move the settings there, or add \"!examples/demo\" to the root's \"packages\" to keep that project a separate workspace.\n\u2713 Lockfile passes supply-chain policies (verified 5m ago)\nLockfile is up to date, resolution step is skipped\nProgress: resolved 1, reused 0, downloaded 0, added 0\nProgress: resolved 522, reused 522, downloaded 0, added 515\nProgress: resolved 755, reused 755, downloaded 0, added 748\nPackages: +947\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 947, reused 947, downloaded 0, added 947, done\n\ndevDependencies:\n+ @effect-ci-testbed/ci link:packages/ci\n+ @effect-ci-testbed/cli link:packages/cli\n+ @effect-ci-testbed/cloudflare link:packages/cloudflare\n+ @effect-ci-testbed/local-container link:packages/local-container\n+ @types/node 26.6.3\n+ effect 4.0.0-beta.19\n+ typescript 7.0.2\n\nDone in 12.7s using pnpm v12.8.1\n$ vp test\n\n RUN  v5.0.1 /workspace/repository/examples/demo\n\n \u2713 src/message.test.ts (1 test) 3ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  03:30:37\n   Duration  212ms (transform 58%, import 27%, worker 9%, tests 6%)\n\n\n$ vp lint --type-aware --type-check --allow all src\nFound 0 warnings and 0 errors.\nFinished in 2.8s on 3 files with 0 rules using 4 threads.\n\n$ vp build\ntransforming...\n\u2713 7 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html  137.89 kB \u2502 gzip: 22.74 kB\ndist/message.js    0.05 kB \u2502 gzip:  0.07 kB\ndist/app.js        0.98 kB \u2502 gzip:  0.54 kB\n\n\u2713 built in 80ms\n\n\nCI execution summary: monorepo/tutorial\nEnvironment: development\n\n\u2713 checkout\n\n\u2713 install depends on checkout\n\n\u2713 test and build tutorial depends on install\n"
+      }
+    },
+    {
+      "name": "local",
+      "command": "effect-ci run tutorial --local",
+      "exitCode": 0,
+      "ok": true,
+      "location": "local",
+      "timingSeconds": {
+        "clientWall": 9.435
+      }
+    },
+    {
+      "name": "failed",
+      "command": "effect-ci run missing-walkthrough-proof-goal",
+      "exitCode": 1,
+      "ok": false,
+      "instanceId": "3a35d7aa-375b-4eb9-8e19-7feefa3587c0",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-testbed",
+        "revision": "f0fcf62e53a713e713026804e4ffc2019e8a0947",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "missing-walkthrough-proof-goal"
+        ]
+      },
+      "nativeWorkflowVersion": "b1403f80-4e88-419b-a927-d52432c49721",
+      "lastEventType": "workflow_errored",
+      "confirmedNativeSuccess": false,
+      "error": {
+        "code": "CI_WORKFLOW_FAILED",
+        "message": "\u2717 Workflow failed: Command failed (2): node /opt/effect-ci/src/hosted.ts run missing-walkthrough-proof-goal --local --format=text\n(node:13) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nError [CI_UNKNOWN_TARGET]: Unknown action target: missing-walkthrough-proof-goal\n",
+        "diagnostics": [
+          {
+            "stepId": "project workflow",
+            "command": "node /opt/effect-ci/src/hosted.ts run missing-walkthrough-proof-goal --local --format=text",
+            "cwd": "/workspace/repository",
+            "exitCode": 2,
+            "output": {
+              "stdout": "",
+              "stderr": "(node:13) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nError [CI_UNKNOWN_TARGET]: Unknown action target: missing-walkthrough-proof-goal\n",
+              "truncated": false
+            }
+          }
+        ]
+      },
+      "timingSeconds": {
+        "clientWall": 402.349,
+        "nativeWorkflow": 399.954,
+        "hostInstall": 20.548,
+        "projectCommand": 102.68
+      },
+      "projectOutput": null
+    }
+  ],
+  "boundary": "This is a GitHub Actions check for workload-authenticated generic remote execution. Standalone pnpm task-cache hits are recorded separately; generic remote runs do not publish native per-action GitHub checks.",
+  "previousAttempt": {
+    "runId": 41763133100,
+    "url": "https://github.com/ericclemmons/effect-ci-testbed/actions/runs/41763133100",
+    "conclusion": "cancelled",
+    "reason": "Three modes passed; final CLI remained subscribed after native unknown-goal failure omitted terminal workflow event"
+  },
+  "eventEvidenceBoundary": "Explicit remote success was confirmed through native complete status with an incomplete received event list. Retry failure included workflow_errored; earlier hosted missing-event failure and existing CLI test establish the failure-reconciliation case.",
+  "mainAtCompletion": "d0aa80fa5929b695b5ad98fe18dc78da761a5f3e",
+  "sharedHostDeployment": "No additional deployment or merge performed by this follow-up."
+}
