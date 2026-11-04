@@ -1,5 +1,7 @@
 # Selected remote goals and failed-command output — October 16, 2026
 
+Command spelling below is normalized to `effect-ci`. These historical runs were not repeated.
+
 PR #322 merged as `c9339951930a3c22ab4a28abc8f79819ebfbaad2`.
 The existing CI host was updated to version
 `a0bcff58-3115-42b7-a7b7-b42413392ba8`, without changing its Container image,
@@ -7,7 +9,7 @@ bindings, secrets, Access policy or account permissions.
 
 ## Actual native execution
 
-`cf-ci run test build --remote` completed in native instance
+`effect-ci run test build --remote` completed in native instance
 `e8db2618-fed0-4681-93fd-64908593f427`, using exact source
 `c9db039ed4850eabbc7862304adf30db6c0c7829`.
 Independent history readback confirmed one installation, one test command and
@@ -40,8 +42,8 @@ The source repository's npm lock remains unchanged. In the new empty copy:
 pnpm install
 pnpm build
 pnpm test
-cf-ci plan test build --format=json
-cf-ci run test build --format=json
+effect-ci plan test build --format=json
+effect-ci run test build --format=json
 ```
 
 All passed: one app test, 32 verification tests, then both inferred CLI goals

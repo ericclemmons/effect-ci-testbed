@@ -7,7 +7,8 @@ Give a transient failure another chance, with a bounded delay.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/retry/.cloudflare/ci/workflow.ts
+cd examples/retry
+effect-ci run
 ```
 
 The check deliberately fails on `CI.Attempt` 1 and passes on attempt 2.

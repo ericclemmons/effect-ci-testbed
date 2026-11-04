@@ -5,7 +5,7 @@ import { sqlFetchOutcome } from "./wobs-cohort.ts"
 export interface NativeReceipt { readonly ray: string; readonly version: string }
 export interface ReceiptBatch { readonly receipts: ReadonlyArray<NativeReceipt>; readonly requested: number; readonly unknown: number }
 type Query = (input: { query: string; params: Record<string, string> }) => Promise<{ data: ReadonlyArray<Record<string, unknown>> }>
-const ORIGIN = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const ORIGIN = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 export const MAX_RECEIPTS = 5_000
 export const SQL_PARTITION_SIZE = 250
 export const COHORT_DEADLINE_MS = 90_000

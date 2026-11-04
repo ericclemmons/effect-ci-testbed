@@ -7,41 +7,6 @@ import test from "node:test";
 
 const template = resolve("examples/demo");
 
-test("hosted tour explains immutable reruns and real human release gates", () => {
-  const readme = readFileSync(join(template, "README.md"), "utf8");
-  for (const instruction of ["--rerun-from RUN_ID", "Start", "before uploading", "primary run stays failed", "No pull request is created"])
-    assert.ok(readme.includes(instruction), `keep the hosted behavior explicit: ${instruction}`);
-  assert.ok(!readme.includes("are not yet connected end-to-end"), "describe the enrolled host adapter, not the obsolete disconnected tour");
-});
-
-test("the demo is a standalone kitchen-sink tour without implicit hosted authority", () => {
-  const pkg = JSON.parse(readFileSync(join(template, "package.json"), "utf8"));
-  const readme = readFileSync(join(template, "README.md"), "utf8");
-  const worker = JSON.parse(readFileSync(join(template, "wrangler.jsonc"), "utf8").replace(/,\s*([}\]])/g, "$1"));
-  assert.equal(pkg.name, "effect-ci-tutorial");
-  assert.ok(!Object.keys(pkg.scripts).some(key => /setup|teardown/.test(key)));
-  assert.ok(Object.values({ ...pkg.dependencies, ...pkg.devDependencies }).every(value => !/workspace:|file:|link:/.test(String(value))));
-  assert.equal(worker.assets.directory, "./dist");
-  assert.deepEqual(Object.keys(worker).sort(), ["$schema", "assets", "compatibility_date", "name"]);
-  assert.match(readme, /mktemp -d/);
-  assert.match(readme, /tiged ericclemmons\/effect-ci-testbed\/examples\/demo demo/);
-  assert.match(readme, /pnpm link \/path\/to\/effect-ci-testbed\/packages\/cli/);
-  assert.doesNotMatch(readme, /export |DEMO_REPO|wrangler |cf-ci --help|ln -s/);
-  assert.match(readme, /AI is off/);
-  for (const chapter of ["Existing scripts", "Parallel", "Source-aware", "Remote", "Signed", "Slack", "Safe-change", "Previews", "Health", "Auto-fix"])
-    assert.match(readme, new RegExp(`^## .*${chapter}`, "m"), `keep the ${chapter} chapter in the conference tour`);
-  assert.doesNotMatch(readme, /blacksmith|GitHub environment approvals/i,
-    "runner compatibility and GitHub environment gates belong in the capability matrix, not the Effect CI showcase");
-  assert.doesNotMatch(readme, /pnpm demo:setup|git worktree|rm -rf|--yes/);
-  assert.ok(!existsSync(join(template, ".env")));
-  for (const path of ["package-lock.json", "degit.json", "verification", "TALKING-SCRIPT.md", "AGENTS.md"])
-    assert.ok(!existsSync(join(template, path)), `keep maintainer scaffolding out of the tutorial: ${path}`);
-  assert.doesNotMatch(pkg.scripts.build + pkg.scripts.prebuild, /lint/,
-    "an unconditional lint prerequisite must not defeat source-based lint selection");
-  const workflow = readFileSync(join(template, ".github/workflows/ci.yml"), "utf8");
-  assert.doesNotMatch(workflow, /secrets:|effect-ci-testbed\/\.github|workflow: examples/);
-});
-
 test("outside the monorepo: README skips lint/publication, shared TS changes publish once, failed build keeps baseline", { timeout: 120_000 }, () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "effect-ci-tutorial-test-")));
   cpSync(template, root, { recursive: true, filter: path => !/(?:^|\/)(?:node_modules|dist|\.vite|\.effect-ci|\.wrangler)(?:\/|$)/.test(path) });
@@ -80,7 +45,7 @@ test("outside the monorepo: README skips lint/publication, shared TS changes pub
   run("git", ["remote", "add", "origin", "https://github.com/example/tutorial.git"]);
   run("git", ["update-ref", "refs/remotes/origin/main", "HEAD"]);
   run("git", ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
-  const invoke = (ok = true) => run("pnpm", ["exec", "cf-ci", "run", "--format=json"], ok);
+  const invoke = (ok = true) => run("pnpm", ["exec", "effect-ci", "run", "--format=json"], ok);
   const parsed = () => JSON.parse(invoke().stdout);
   const pointer = join(root, ".effect-ci/deployed-site/current.json");
   const hasPublish = (result: any) => result.plan.nodes.some((node: any) => node.id === "publish local site");

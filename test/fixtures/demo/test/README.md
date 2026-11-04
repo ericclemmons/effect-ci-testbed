@@ -9,7 +9,7 @@ Maintainer-only documentation, recording, relay and artifact tests run separatel
 pnpm test:integration
 ```
 
-The app's `pnpm test` / `cf-ci run test` runs its Vitest suite, not these maintainer
+The app's `pnpm test` / `effect-ci run test` runs its Vitest suite, not these maintainer
 checks. The adoption regression in `scripts/demo-adoption.test.ts` changes the
 workflow YAML and message in a temporary app, then executes its actual test task.
 The guide's pre-adoption YAML is a stable fixture, not the user's editable workflow.
@@ -24,7 +24,7 @@ npm run verify:browser -- --negative
 ```
 
 The recipe owns its preview, browser config and test fixtures. The first command
-runs the real `cf-ci run build`, opens its built application in a fresh local
+runs the real `effect-ci run build`, opens its built application in a fresh local
 Chromium context, checks the visible release message, clicks **Test JavaScript**,
 and asserts the explicit browser-code success result. Historical captures below
 retain the original **Show message** interaction; they are not footage of this UI.
@@ -127,7 +127,7 @@ not promoted to structured command evidence. Output is descriptive untrusted dat
 not a command to execute, check-cache proof, retry permission or release approval.
 
 Actual native/remote JSON transport was then verified on October15 with one
-normal `AI_AGENT=true cf-ci run --remote` from a clean managed checkout. Exact
+normal `AI_AGENT=true effect-ci run --remote` from a clean managed checkout. Exact
 host `c57576e09e319b0da5fb611a9e17c0b395ef0957` was built179modules and deployed
 once as Worker `478e387d-3973-4108-bb4f-d5e9f0d9db43`, preserving23exports,
 19bindings, secret names, Docker image and the committed release.

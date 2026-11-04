@@ -4,7 +4,7 @@ import { NonRetryableError } from "cloudflare:workflows"
 import { canRetryNativeQuery, nativeSqlPolicy } from "./wobs-sql-policy.ts"
 import { nativeDiagnostics } from "./wobs-diagnostics.ts"
 
-const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
+const BASELINE = "f8526596-f9b8-4068-87c0-c517844488a8"
 const ONCE = { retries: { limit: 0, delay: "1 second" } } as const
 
 /** Bounded fixed-target larger cohort proof. No broker, deployment or notification. */

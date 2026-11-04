@@ -8,8 +8,11 @@ export function brokerOrigin(value) {
   return url.origin;
 }
 
-export async function exchange({ broker, worker, scopes, requestUrl, requestToken }, fetcher = fetch) {
+export async function exchange({ broker, repository, worker, scopes, requestUrl, requestToken }, fetcher = fetch) {
   const origin = brokerOrigin(broker);
+  if (repository !== undefined && (typeof repository !== "string" || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))) {
+    throw new AuthenticationError("Shared-host enrollment requires GITHUB_REPOSITORY");
+  }
   if (!requestUrl || !requestToken) throw new AuthenticationError("Grant this job permissions: id-token: write");
   const oidcUrl = new URL(requestUrl);
   oidcUrl.searchParams.set("audience", origin);
@@ -19,6 +22,17 @@ export async function exchange({ broker, worker, scopes, requestUrl, requestToke
   if (!identityResponse.ok) throw new AuthenticationError("GitHub OIDC request failed");
   const { value } = await identityResponse.json();
   if (typeof value !== "string" || !value) throw new AuthenticationError("GitHub OIDC token missing");
+  if (repository !== undefined) {
+    const enrollment = await fetcher(`${origin}/api/oidc/repositories`, {
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(30_000),
+      headers: { authorization: `Bearer ${value}`, "content-type": "application/json" },
+      body: JSON.stringify({ repository }),
+    });
+    if (!enrollment.ok) throw new AuthenticationError(`Effect CI enrollment failed (${enrollment.status}); check the GitHub App installation and allowed owner`);
+    const result = await enrollment.json();
+    if (result.enabled !== true || result.issuer !== origin || typeof result.repository !== "string"
+      || result.repository.toLowerCase() !== repository.toLowerCase()) throw new AuthenticationError("Invalid enrollment response");
+  }
   const response = await fetcher(`${origin}/token`, {
     method: "POST", redirect: "error", signal: AbortSignal.timeout(30_000),
     headers: { authorization: `Bearer ${value}`, "content-type": "application/json" },

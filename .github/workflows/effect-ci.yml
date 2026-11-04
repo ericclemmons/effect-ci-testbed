@@ -7,6 +7,11 @@ on:
         description: Path to an Effect CI entry point or marker-free package directory
         required: true
         type: string
+      actions:
+        description: JSON array of action names; required for auto-discovered projects
+        required: false
+        type: string
+        default: "[]"
       runs-on:
         description: JSON array of labels selecting the GitHub runner
         required: false
@@ -97,6 +102,7 @@ jobs:
           EFFECT_CI_EVENT: ${{ inputs.event || github.event_name }}
           EFFECT_CI_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_WORKFLOW: ${{ inputs.workflow }}
+          EFFECT_CI_ACTIONS: ${{ inputs.actions }}
           DRY_RUN: ${{ matrix.mode == 'plan' && '1' || '' }}
           EFFECT_CI_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           EFFECT_CI_EXTERNAL_ID: github-actions:${{ github.run_id }}:${{ github.run_attempt }}:${{ inputs.workflow }}:${{ matrix.mode }}

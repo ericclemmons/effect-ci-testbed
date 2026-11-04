@@ -1,5 +1,6 @@
+// Separate work-account $7 authorization approved for migration/demo on 2026-10-30.
 // Fixed lifetime authorization. Never include a caller-selected budget name or date.
-export const BUDGET_NAME = "friday-demo-repair-2-usd-v1";
+export const BUDGET_NAME = "work-demo-repair-7-usd-20261030-v1";
 export {
   MODEL,
   LIMIT_CENTS,

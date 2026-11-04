@@ -109,7 +109,7 @@
     "revision": "a229977cba76468ae9bc7159fae7b84f4a60244b",
     "temporaryBranch": "codex/local-access-proof-1792888710695",
     "enrollment": {
-      "command": "cf-ci oidc",
+      "command": "effect-ci oidc",
       "success": true,
       "savedFields": [
         "issuer",
@@ -118,6 +118,7 @@
     },
     "doctor": {
       "schemaVersion": 1,
+      "commandSpelling": "Normalized to the current executable name; this historical run was not repeated.",
       "ok": true,
       "command": "doctor",
       "location": "remote",
@@ -126,7 +127,7 @@
       "dispatched": false
     },
     "remote": {
-      "command": "cf-ci run --remote",
+      "command": "effect-ci run --remote",
       "instanceId": "c973babc-d5ce-48b3-be41-be7da565d29d",
       "status": "complete",
       "exitCode": 0,

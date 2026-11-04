@@ -22,7 +22,7 @@ export const demoGitHubAllowed = (input: {
   input.ref.length <= 1024 && !/[\x00-\x20\x7f]/.test(input.ref);
 
 /**
- * Automatic SCM execution of the legacy hosted demo is retired. Root cf-ci
+ * Automatic SCM execution of the legacy hosted demo is retired. Root effect-ci
  * owns this monorepo's CI; tutorial CD belongs to the copied app repository.
  * Return false (not undefined) to prevent fallback to the example pipeline.
  * Explicit, enrolled /demo computation-only remote goals remain available.

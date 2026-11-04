@@ -132,9 +132,9 @@ export function makeDemoProgram(
         );
       }
       yield* syntax();
-      for (const [name, action] of Object.entries(inferred.actions)) {
+      for (const name of ["lint", "check", "typecheck", "test", "build"]) {
         if (name === "test") yield* testSuite();
-        else yield* action();
+        else yield* inferred.actions[name]!();
       }
       return publisher?.prepare
         ? yield* prepare()

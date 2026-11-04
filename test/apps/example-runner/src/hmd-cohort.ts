@@ -5,7 +5,7 @@ export interface ProbeBatch { readonly outcomes: ReadonlyArray<ProbeOutcome>; re
 
 /** Closed client-observed HTTP cohort, NOT WOBS ingestion completeness. No retries. */
 export async function probeBatch(origin: string, identity: string, allowed: ReadonlyArray<string>, transport: typeof fetch = fetch): Promise<ProbeBatch> {
-  if (origin !== "https://effect-ci-hmd-demo.ericclemmons.workers.dev") throw new Error("Invalid probe target")
+  if (origin !== "https://effect-ci-hmd-demo.eclemmons.workers.dev") throw new Error("Invalid probe target")
   const outcomes: ProbeOutcome[] = []
   let unknown = 0
   const unknownReasons: Record<string, number> = {}

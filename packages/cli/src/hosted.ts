@@ -28,4 +28,4 @@ registerHooks({
   },
 })
 
-await import("./bin.ts")
+await import("./effect-ci.ts")

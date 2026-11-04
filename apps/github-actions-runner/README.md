@@ -27,7 +27,7 @@ your existing job; do not rewrite its steps or Effect CI's execution model.
        - run: pnpm build
 ```
 
-Each YAML step has normal GitHub Actions logs and status. `cf-ci run test build`
+Each YAML step has normal GitHub Actions logs and status. `effect-ci run test build`
 can replace commands later, but remains **one GitHub step**: its action graph does
 not become dynamic YAML steps. Existing native Cloudflare Workflows, event
 routing, Slack, attestation and dependency semantics are unchanged.
@@ -129,8 +129,10 @@ If using this repo's reusable workflow, its existing input already accepts
 
 This uses the account's paid Workers, Durable Objects, container registry and
 Containers allowances. No container is started while enrollment is disabled.
-When enabled, capacity is one `standard-2` container with the configured lifetime;
-GitHub jobs may still consume GitHub's storage and other account allowances.
+When enabled, capacity is one `standard-4` container (4 vCPU, 12 GiB RAM, 20 GB disk)
+with the configured lifetime. GitHub jobs may still consume GitHub's storage and other account allowances.
+This matches standard public GitHub Linux runner CPU capacity, with less RAM
+(GitHub provides 16 GB) and more disk (GitHub provides 14 GB).
 The lifetime limits each runner, not the total number of future pushes. Disable
 enrollment to stop admitting more work; do not treat it as an account spend cap.
 

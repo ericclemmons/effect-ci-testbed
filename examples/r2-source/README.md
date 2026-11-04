@@ -10,7 +10,8 @@ reads `source.txt`.
 ## Try the local files
 
 ```sh
-pnpm exec cf-ci run --workflow examples/r2-source/.cloudflare/ci/workflow.ts
+cd examples/r2-source
+effect-ci run
 ```
 
 ## Use the R2 provider

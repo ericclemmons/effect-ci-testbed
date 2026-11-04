@@ -4,14 +4,19 @@ Expose useful goals without exposing every setup step.
 
 [Source](./.cloudflare/ci/workflow.ts "source")
 
-From this example directory:
+From the repository root:
 
 ```sh
-pnpm exec cf-ci list
-pnpm exec cf-ci run check
+cd examples/exported-actions
+effect-ci list
+effect-ci run check
 ```
 
 `check` runs its checkout prerequisite automatically. Checkout remains private:
 only named `CI.action` exports become CLI targets.
 
 [Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)
+
+Use the same exported goal on your configured hosted service from the repository root:
+`effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
+No recipe-specific deployment is required; remote execution uses the pushed commit.

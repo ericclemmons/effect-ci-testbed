@@ -40,13 +40,14 @@ export async function assertPublicAdmission(instance: string, value: unknown) {
       identity.admission.fixtureDigest !== PUBLIC_FIXTURE_DIGEST) throw rejected();
   return { instance, admission: identity.admission };
 }
-/** Preserve the existing lifetime ledger AND historical reservations. This
- * explicitly rejects an empty/reset/renamed/new pool before inference.
+/** Preserve the personal ledger and its historical reservations. The separately
+ * approved work-account lifetime budget starts empty and never resets.
  */
 export function publicBudget(value: unknown, beforeInference = false) {
-  if (field(value, "budget") !== "friday-demo-repair-2-usd-v1") throw rejected();
+  const workBudget = field(value, "budget") === "work-demo-repair-7-usd-20261030-v1";
+  if (!workBudget && field(value, "budget") !== "friday-demo-repair-2-usd-v1") throw rejected();
   const entries = field(value, "reservations");
-  if (!Array.isArray(entries) || entries.length < 5 || entries.length > 70 ||
+  if (!Array.isArray(entries) || entries.length < (workBudget ? 0 : 5) || entries.length > 70 ||
       field(value, "reservedCents") !== entries.length * 10 ||
       field(value, "remainingCents") !== 700 - entries.length * 10) throw rejected();
   const ids = new Map<string, string>();
@@ -58,7 +59,7 @@ export function publicBudget(value: unknown, beforeInference = false) {
         typeof run !== "string" || !/^[a-zA-Z0-9_-]{1,96}$/.test(run)) throw rejected();
     ids.set(id, run);
   }
-  for (const [id, run] of PUBLIC_REQUIRED_RESERVATIONS) if (ids.get(id) !== run) throw rejected();
+  if (!workBudget) for (const [id, run] of PUBLIC_REQUIRED_RESERVATIONS) if (ids.get(id) !== run) throw rejected();
   const hostCalls = [...ids.values()].filter(run => run === PUBLIC_MODEL_RUN).length;
   if (hostCalls > 4 || (beforeInference && (hostCalls >= 4 || ids.size >= 70))) throw rejected();
   return ids;
@@ -89,6 +90,8 @@ export async function publicProposalFromHistory(
       field(output, "githubWritePerformed") !== false || field(output, "repairVerified") !== false)
     throw rejected();
   const proposal = field(output, "proposal");
+  if (field(field(proposal, "before"), "budget") !== field(field(proposal, "after"), "budget") ||
+      field(field(proposal, "after"), "budget") !== field(currentLedger, "budget")) throw rejected();
   const before = publicBudget(field(proposal, "before"), true);
   const after = publicBudget(field(proposal, "after"));
   const current = publicBudget(currentLedger);

@@ -26,7 +26,7 @@ test(
       repository: "https://github.com/ericclemmons/effect-ci-testbed.git",
       revision: "2c8a27600b168655c2fd989e4abb200d60f3ffb8",
     });
-    assert.equal(history.output.workflowId, "cf-ci-demo");
+    assert.equal(history.output.workflowId, "effect-ci-demo");
     assert.equal(history.output.environment, "cloudflare");
     assert.deepEqual(
       history.output.nodes.map((node: any) => node.id),

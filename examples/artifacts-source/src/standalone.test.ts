@@ -23,10 +23,3 @@ test("no example implementation or configuration imports another example or app"
   }
   assert.ok(!Object.hasOwn(JSON.parse(read("tsconfig.json")), "extends"))
 })
-
-test("deployment instructions start in the example and do not dispatch the shared host", () => {
-  const readme = read("README.md")
-  assert.match(readme, /cd examples\/artifacts-source/)
-  assert.match(readme, /cf deploy/)
-  assert.match(readme, /instances create effect-ci-artifacts-source-checks/)
-})

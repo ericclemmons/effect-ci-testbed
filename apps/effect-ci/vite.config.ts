@@ -1,8 +1,12 @@
 import { cloudflare } from "@cloudflare/vite-plugin"
 import { defineConfig } from "vite"
+import { prepareStandaloneRuntime } from "./standalone-runtime.ts"
 
 export default defineConfig({
-  plugins: [cloudflare(), {
+  plugins: [{
+    name: "effect-ci-standalone-runtime",
+    configResolved() { prepareStandaloneRuntime() },
+  }, cloudflare(), {
     name: "effect-ci-workflow-source",
     enforce: "post",
     config(config) {

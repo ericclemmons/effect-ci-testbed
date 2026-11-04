@@ -8,7 +8,8 @@ the [portable actions](./.cloudflare/ci/actions.ts) and reports progress to GitH
 ## Run locally
 
 ```sh
-pnpm exec cf-ci run --workflow examples/github-cloudflare-ci/.cloudflare/ci/workflow.ts
+cd examples/github-cloudflare-ci
+effect-ci run
 ```
 
 For hosted execution, configure the GitHub App and service using the

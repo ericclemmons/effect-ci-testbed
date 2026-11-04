@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { existsSync, readFileSync, writeSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, relative } from "node:path"
+import picomatch from "picomatch"
 import * as Cache from "effect/Cache"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
@@ -13,6 +14,7 @@ import type { RuntimeObservers } from "./observers.ts"
 import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnostics.ts"
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./path-glob.ts"
+import { makeTurboToolchain } from "./turbo.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -918,9 +920,53 @@ export const JavaScript = (
       ))
     }
 
+    const declaredManager = yield* Effect.try({
+      try: () => fromPackageManagerField(packageJson),
+      catch: error => new PackageManagerError(workspace.cwd, String(error)),
+    })
+    if (!declaredManager && names.length === 0) {
+      // A member inherits its nearest workspace's manager and install root.
+      // Stop at the checkout boundary; script execution stays in the member.
+      let ancestor = workspace
+      while (!(yield* ancestor.exists(".git")) && dirname(ancestor.cwd) !== ancestor.cwd) {
+        ancestor = workspace.kind === "local" ? Workspace.local(dirname(ancestor.cwd))
+          : Workspace.remote(workspace.id!, dirname(ancestor.cwd), workspace.revision)
+        const ancestorManifest = yield* ancestor.readFile("package.json")
+        const workspaceYaml = yield* ancestor.readFile("pnpm-workspace.yaml")
+        const member = yield* Effect.tryPromise({
+          try: async () => {
+            const manifest = JSON.parse(ancestorManifest ?? "{}")
+            const patterns = workspaceYaml !== undefined ? (await import("yaml")).parse(workspaceYaml)?.packages ?? []
+              : Array.isArray(manifest.workspaces) ? manifest.workspaces : manifest.workspaces?.packages
+            if (patterns === undefined) return undefined
+            if (!Array.isArray(patterns) || patterns.some(pattern => typeof pattern !== "string"))
+              throw new Error("Workspace packages must be an array of globs")
+            const path = relative(ancestor.cwd, workspace.cwd).split("\\").join("/")
+            const included = patterns.filter(pattern => !pattern.startsWith("!"))
+            const excluded = patterns.filter(pattern => pattern.startsWith("!")).map(pattern => pattern.slice(1))
+            return patterns.length > 0 && picomatch(included.length ? included : ["**"])(path) &&
+              !picomatch([...excluded, "**/node_modules/**", "**/bower_components/**"])(path)
+          },
+          catch: error => new PackageManagerError(ancestor.cwd, String(error)),
+        })
+        if (member === false) break
+        if (member) {
+          const owner = yield* JavaScript(ancestor)
+          return {
+            ...owner,
+            workspace,
+            install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
+            run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
+            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : `${owner.name} exec`} ${command}`),
+          }
+        }
+      }
+    }
+
     const name = yield* Effect.try({
       try: () => {
-        const detected = fromPackageManagerField(packageJson) ?? names[0]
+        const [lockfileManager] = names
+        const detected = declaredManager ?? lockfileManager
 
         if (!detected) {
           throw new PackageManagerError(
@@ -994,7 +1040,7 @@ export const JavaScript = (
       workspace,
       install: (options?: JavaScriptInstallOptions) => Effect.gen(function* () {
         const runtime = yield* Runtime
-        const frozenLockfile = options?.frozenLockfile ?? runtime.ci
+        const frozenLockfile = options?.frozenLockfile ?? true
 
         return yield* workspace.exec(command(
           "install",
@@ -1157,7 +1203,19 @@ const Mise = (
       : new ToolchainError(workspace.cwd, String(error))),
   )
 
-export const Toolchain = { Node, Mise } as const
+const Turbo = (workspace: Workspace) => Effect.gen(function* () {
+  const runtime = yield* Runtime
+  const owner = yield* CurrentStep
+  const dependencies = [...runtime.edges]
+    .filter(edge => edge.startsWith(`${owner}->`))
+    .map(edge => edge.slice(owner.length + 2))
+  return makeTurboToolchain(workspace, owner, Effect.gen(function* () {
+    const current = yield* CurrentStep
+    for (const dependency of dependencies) yield* runtime.addDependency(current, dependency)
+  }))
+})
+
+export const Toolchain = { Node, Mise, Turbo } as const
 
 export interface SourceService {
   /** Acquire the repository and immutable revision selected by the initiating event. */
@@ -2760,39 +2818,70 @@ export const run = <A>(workflowDefinition: Workflow<A>, options: RunOptions = {}
 export const runPromise = <A>(workflowDefinition: Workflow<A>, options?: RunOptions) =>
   Effect.runPromise(run(workflowDefinition, options))
 
-/** Infer the same conventional task graph from a local or immutable source manifest. */
+/** Expose package scripts and discovered Vite+ tasks as explicitly selectable actions. */
 export const fromPackageJson = (manifest: {
   readonly name?: string
   readonly scripts?: Readonly<Record<string, string>>
-}) => {
-  const names = ["format", "lint", "check", "typecheck", "test", "build"]
-    .filter((name) => manifest.scripts?.[name])
+}, options: {
+  readonly tasks?: ReadonlyArray<string>
+  /** Local Vite+ prerequisites, used only to describe the plan. Vite+ executes them. */
+  readonly taskDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
+} = {}) => {
+  const tasks = new Set(options.tasks)
+  const scripts = Object.keys(manifest.scripts ?? {})
+  const duplicate = scripts.find(name => tasks.has(name))
+  if (duplicate) throw new Error(`Task ${duplicate} is defined in both package.json and Vite+ run.tasks`)
+  const names = [...scripts, ...tasks]
   if (names.length === 0) {
-    throw new Error("Zero-config CI found no format, lint, check, typecheck, test, or build scripts")
+    throw new Error("Zero-config CI found no package.json scripts or Vite+ run.tasks")
   }
 
-  const checkout = action("checkout", function* () {
+  const visited = new Set<string>()
+  const visiting = new Set<string>()
+  const validateDependencies = (name: string): void => {
+    if (visiting.has(name)) throw new Error(`Circular Vite+ task dependency: ${name}`)
+    if (visited.has(name)) return
+    if (!names.includes(name)) throw new Error(`Unknown Vite+ task dependency: ${name}`)
+    visiting.add(name)
+    for (const dependency of options.taskDependencies?.[name] ?? []) validateDependencies(dependency)
+    visiting.delete(name)
+    visited.add(name)
+  }
+  for (const name of names) validateDependencies(name)
+
+  const privateName = (name: string): string => names.includes(name) ? privateName(`$${name}`) : name
+  const checkout = action(privateName("checkout"), function* () {
     const source = yield* Source
     return () => source.checkout()
   })
-  const install = action("install", () => function* () {
+  const install = action(privateName("install"), () => function* () {
     const workspace = yield* checkout()
     const packageManager = yield* PackageManager.JavaScript(workspace)
     return yield* packageManager.install()
   })
-  const actions = Object.fromEntries(names.map((name) => [name,
+  const actions: Record<string, () => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>> = Object.fromEntries(names.map((name) => [name,
     action(name, () => function* () {
+      if ((yield* executionMode) === "plan") {
+        for (const dependency of options.taskDependencies?.[name] ?? []) yield* actions[dependency]!()
+      }
       const workspace = yield* install()
       const packageManager = yield* PackageManager.JavaScript(workspace)
-      return yield* packageManager.run(name)
+      return yield* tasks.has(name)
+        ? packageManager.exec(`vp run '${name.replaceAll("'", "'\\''")}'`)
+        : packageManager.run(name)
     }),
   ]))
 
   return {
+    requiresTarget: true,
     actions,
     /** Shared preparation for trusted runner-added checks; not a CLI target. */
     checkout,
     workflow: workflow(manifest.name ?? "ci", function* () {
+      const runtime = yield* Runtime
+      if (runtime.mode === "execute") return yield* Effect.fail(
+        new Error("Auto-discovered projects require an explicit action; choose from the discovered actions"),
+      )
       let workspace: Workspace | undefined
       for (const name of names) workspace = yield* actions[name]!()
       return workspace

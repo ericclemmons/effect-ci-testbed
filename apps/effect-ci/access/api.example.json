@@ -1,0 +1,10 @@
+{
+  "name": "Effect CI workload API",
+  "type": "self_hosted",
+  "domain": "effect-ci.<workers-dev-subdomain>.workers.dev/api",
+  "policies": [{
+    "name": "Signed workload identity",
+    "decision": "bypass",
+    "include": [{ "everyone": {} }]
+  }]
+}

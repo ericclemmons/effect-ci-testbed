@@ -1,10 +1,10 @@
 import { prepareStaticAssets, staticAssetsTarget } from "./static-assets-source.ts"
 import type { StaticAssetReceipt, StaticAssetRevisions } from "./static-assets-journal.ts"
 
-const account = "0db135ec469e2f216fcea26426f29755"
+const account = "da2f8f3e41d6b5018df12a58b417d918"
 const apiRoot = `https://api.cloudflare.com/client/v4/accounts/${account}/workers`
 const script = `${apiRoot}/scripts/${staticAssetsTarget}`
-const origin = `https://${staticAssetsTarget}.ericclemmons.workers.dev`
+const origin = `https://${staticAssetsTarget}.eclemmons.workers.dev`
 export const staticAssetsCsp = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value)
 const sha = async (value: string | Uint8Array) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value))), b => b.toString(16).padStart(2, "0")).join("")

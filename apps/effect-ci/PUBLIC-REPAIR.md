@@ -1,6 +1,83 @@
 # Owned public failure to proposed repair
 
-## Current result: repair verified; final bot-identity check failed
+## What “arming” means
+
+Arming prepares the deliberately broken incident fixture for **one later test**.
+It does not break the running CI host. It does not emit an incident, call a model,
+reserve inference budget, or create a repair PR.
+
+Arming writes a persistent permission record for the fixture's exact deployed
+version. A later request consumes the fixture's separate one-shot claim.
+
+This is a restriction of the current test fixture, not a rule that Effect CI can
+repair only one incident. The fixture deliberately limits this demonstration so
+refreshes, concurrent requests and uncertain acknowledgements cannot keep
+manufacturing incidents that could start paid repairs. General repeatable
+incident handling has not replaced this fixture yet.
+
+| State or action | What happens |
+| --- | --- |
+| Deployed, unarmed | A request that reaches `/failure` returns 409. No claim or incident is created. |
+| Arm | A private Workflow checks enrollment, available admission/writer slots, credential configuration and the approved budget ledger. It then stores an arm tied to the exact source version. |
+| Armed, trigger still blocked by Access | The arm remains stored; public callers cannot reach the fixture. No test has run. |
+| First eligible GET reaching `/failure` | The source stores its one-shot claim **before** throwing the deliberate uncaught exception. This can produce an Issue and start the enrolled repair chain. |
+| Later eligible GETs | Return 410. The source does not replay the exception. |
+| Storage or acknowledgement uncertainty | Return 409; do not retry the emission. A stored claim alone does not prove an exception or notification occurred. |
+| Source version changes | The old arm does not authorize the new version. Re-arming does not replace an existing arm for a different version. |
+
+There is no disarm/reset API. Repeating arming for the same enrolled version is
+idempotent, but it still performs readiness checks. Keeping the Access route
+blocked prevents public activation; it does not erase the arm. Do not delete
+state or rename the fixture to manufacture another test attempt.
+
+The incident source owns the arm and claim. The main host supplies read-only
+readiness; it cannot use arming to dispatch a repair. After a real exception,
+Cloudflare Issues and the authenticated receiver supply the event. The host then
+checks admission before starting the repair Workflow. Its verifier/writer may
+propose an unmerged PR; this flow does not merge or deploy the repair.
+
+Baseline: incident source at `600a0e6`, host readiness at `5a3f88d`, deployed
+during [PR #428](https://github.com/ericclemmons/effect-ci-testbed/pull/428).
+This documentation change proposes no new API or runtime behavior. Failure paths
+retain the existing state.
+
+```diff
+ PublicIncidentArmWorkflow.run(event, step)
+   PublicFailureClaim.arm()
+     PublicPipelineReadiness.checkPublicPipeline(version: string)
+       receiver enrollment / unused admission and writer / budget readiness
+     SQLite transaction → store version-pinned arm; no emission
+
+ PrivateIncidentWorker.fetch(request: Request)
+   publicFaultFetch(request: Request, claim: PublicFaultClaim): Promise<Response>
+     PublicFailureClaim.claim(): Promise<boolean>
+       SQLite transaction → require arm, store claim before exception
+     throw deliberate fixture error → Cloudflare Issue → signed notification
+       PublicIncidentDispatcher.trigger(event: unknown)
+         PublicIncidentRepairWorkflow.run(event, step)
+           admitted repair → proposal → verification → unmerged PR
+```
+
+[Arming Workflow](../../test/apps/repair-incident/src/worker.ts#symbol=PublicIncidentArmWorkflow "source")
+
+[Durable arm and claim](../../test/apps/repair-incident/src/worker.ts#symbol=PublicFailureClaim "source")
+
+[HTTP eligibility and failure handling](../../test/apps/repair-incident/src/public-fault.ts#symbol=publicFaultFetch "source")
+
+[Host readiness, dispatch and repair ownership](./src/public-incident-repair.ts#symbol=PublicPipelineReadiness "source")
+
+### Current preparation
+
+As of October 29, 2026, the replacement deployment is enrolled but has **not been
+armed**, and its public incident trigger remains blocked. No new public incident
+or repair PR has been produced there. The approved $7 inference budget is separate
+from permission to arm or trigger this fixture; the proposal-only validation
+reserved $0.10. Budget reservations are bounds, not a measured invoice.
+
+The receipts below describe earlier executions. They do not establish a fresh
+incident-to-PR result on the replacement deployment.
+
+## Historical result: repair verified; final bot-identity check failed
 
 One ordinary public GET returned500 and produced Issue
 `52da6a3f-87f0-49cd-865d-c7d7030a169b` with one occurrence. Its authenticated

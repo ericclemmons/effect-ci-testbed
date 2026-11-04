@@ -63,8 +63,8 @@ test("host health observer updates the owned card with cumulative history, no se
 })
 
 test("native controller feeds each pinned observation to the same card before approval", async () => {
-  const baselineVersion = "09593237-23b2-4873-bd04-88c8e8488840"
-  const candidateVersion = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+  const baselineVersion = "f8526596-f9b8-4068-87c0-c517844488a8"
+  const candidateVersion = "27fca944-c549-433e-a1d4-15684b1c6cd9"
   const card = new RunCard({ instanceId: "run", repository: "owner/repo", revision: "abcdef123" })
   let activeCheckpoint = false
   let current: HmdObservation | undefined
@@ -113,8 +113,8 @@ test("native controller feeds each pinned observation to the same card before ap
 })
 
 test("promotion failure identifies the attempted stage rather than the last observed healthy allocation", async () => {
-  const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
-  const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+  const baseline = "f8526596-f9b8-4068-87c0-c517844488a8"
+  const candidate = "27fca944-c549-433e-a1d4-15684b1c6cd9"
   const journal = { previous: [{ version: baseline, percentage: 100 }], deployment: { id: "restored" } }
   const updates: any[] = []
   let current: HmdObservation

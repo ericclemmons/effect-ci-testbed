@@ -1,0 +1,10 @@
+{
+  "name": "Effect CI OIDC revoke",
+  "type": "self_hosted",
+  "domain": "effect-ci.<workers-dev-subdomain>.workers.dev/revoke",
+  "policies": [{
+    "name": "Signed workload identity",
+    "decision": "bypass",
+    "include": [{ "everyone": {} }]
+  }]
+}

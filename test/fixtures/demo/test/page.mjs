@@ -23,7 +23,7 @@ export function validatePage(manifest, run) {
     !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(manifest.repository) ||
     !new RegExp(`^${negative ? "negative" : "positive"}-[0-9a-f-]{36}$`).test(manifest.captureId) ||
     (!negative && manifest.scenario !== "build then browser interaction") ||
-    manifest.command !== "cf-ci run build --format=json" ||
+    manifest.command !== "effect-ci run build --format=json" ||
     manifest.actual !== run.status ||
     manifest.expected !== (negative ? "failed" : "passed") ||
     manifest.signedAttestation !== false ||

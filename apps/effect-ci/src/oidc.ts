@@ -44,7 +44,7 @@ export const oidc = async (request: Request, environment: OidcEnvironment, conte
     if (typeof claims.repository_id !== "string" || typeof claims.repository_owner_id !== "string"
       || !allowedOwner(environment, claims.repository_owner_id)) throw new Error("Owner rejected")
     const registered = await registry.get(claims.repository_id)
-    if (!registered || registered.ownerId !== claims.repository_owner_id) throw new Error("Enable this repository with cf-ci oidc")
+    if (!registered || registered.ownerId !== claims.repository_owner_id) throw new Error("Enable this repository with effect-ci oidc")
     const scopes = JSON.parse(environment.EFFECT_CI_OIDC_SCOPES ?? "{}") as Record<string, Policy[]>
     return authorize(claims, input, [{ repositoryId: "*", repositoryOwnerId: registered.ownerId,
       ref: "*", workflowRef: "*", worker: input?.worker, accountId: environment.CLOUDFLARE_ACCOUNT_ID ?? "", scopes }])

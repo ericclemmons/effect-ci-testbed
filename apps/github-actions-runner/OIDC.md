@@ -1,7 +1,7 @@
 # Legacy runner credential exchange
 
 New projects use the [shared CI app](../effect-ci/README.md#unified-cli-and-workload-identity)
-and `cf-ci oidc`, including `cf-ci run --remote`. See the canonical
+and `effect-ci oidc`, including `effect-ci run --remote`. See the canonical
 [Wrangler](../../examples/oidc-wrangler/README.md) and
 [cf](../../examples/oidc-cf/README.md) examples. They support new Worker creation
 and repository self-enrollment without a deployment action or a separate broker URL.

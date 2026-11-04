@@ -8,7 +8,7 @@ import test from "node:test"
 
 test("standalone CLI publishes only changed output, including a shared-only edit", () => {
   const root = mkdtempSync(join(tmpdir(), "effect-ci-standalone-output-"))
-  const bin = fileURLToPath(new URL("../../packages/cli/src/bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("../../packages/cli/src/effect-ci.ts", import.meta.url))
   try {
     for (const directory of ["app", "packages"]) {
       cpSync(new URL(`./${directory}`, import.meta.url), join(root, directory), { recursive: true })

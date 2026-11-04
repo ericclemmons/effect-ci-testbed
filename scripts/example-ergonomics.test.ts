@@ -8,7 +8,7 @@ import * as Effect from "effect/Effect"
 import { build } from "../examples/node-pnpm/.cloudflare/ci/actions.ts"
 
 const cli = (args: string[]) => {
-  const result = spawnSync(process.execPath, ["packages/cli/src/bin.ts", "--workflow",
+  const result = spawnSync(process.execPath, ["packages/cli/src/effect-ci.ts", "--workflow",
     "examples/node-pnpm/.cloudflare/ci/workflow.ts", ...args, "--format=json"], { encoding: "utf8" })
   assert.equal(result.status, 0, result.stderr || result.stdout)
   return JSON.parse(result.stdout)
@@ -27,7 +27,7 @@ test("root recipe shortcuts execute or plan rather than silently printing help",
   const { scripts } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
   const entries = Object.entries(scripts).filter(([name]) => name.startsWith("ci:"))
   assert.ok(entries.length >= 8)
-  for (const [name, command] of entries) assert.match(String(command), /\bcf-ci\b.*\b(?:run|plan)\b/, name)
+  for (const [name, command] of entries) assert.match(String(command), /\beffect-ci\b.*\b(?:run|plan)\b/, name)
 })
 
 test("the pnpm recipe exposes useful goals, not its internal setup", () => {

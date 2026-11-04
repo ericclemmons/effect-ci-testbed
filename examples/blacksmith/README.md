@@ -9,7 +9,8 @@ goes into the [Effect workflow](./.cloudflare/ci/workflow.ts).
 ## Try it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/blacksmith/.cloudflare/ci/workflow.ts
+cd examples/blacksmith
+effect-ci run
 ```
 
 For hosted execution, enable Blacksmith for your organization and repository,

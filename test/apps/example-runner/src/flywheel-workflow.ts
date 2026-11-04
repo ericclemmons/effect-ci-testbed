@@ -13,7 +13,7 @@ import trust from "./flywheel-trust.ts"
 import { probeBatch, cohortSample, type ProbeBatch } from "./hmd-cohort.ts"
 
 const baseline = "156c4427-b574-49e8-a6c9-cf2d034131b3"
-const origin = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const origin = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "5 minutes" } as const
 type Parameters = { revision: string; mode: "verify" | "release"; build?: BuildReceipt }
 type Broker = Pick<ReleaseManager, "begin" | "promote" | "rollback" | "renew">

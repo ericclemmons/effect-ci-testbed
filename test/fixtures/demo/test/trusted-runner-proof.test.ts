@@ -56,7 +56,7 @@ test(
       assert.ok(suite);
       assert.equal(suite.claim.identity.revision, head);
       assert.equal(suite.claim.identity.repository, `https://github.com/${repo}`);
-      assert.equal(suite.claim.identity.workflowId, "cf-ci-demo");
+      assert.equal(suite.claim.identity.workflowId, "effect-ci-demo");
       assert.equal(suite.claim.identity.command, testCommand);
       assert.equal(suite.claim.identity.policyDigest, await demoRunnerPolicyDigest(true));
       assert.equal(
@@ -149,7 +149,7 @@ test(
     assert.equal(suite.claim.runId, remoteId);
     assert.equal(suite.claim.identity.repository, `https://github.com/${repo}`);
     assert.equal(suite.claim.identity.revision, head);
-    assert.equal(suite.claim.identity.workflowId, "cf-ci-demo");
+    assert.equal(suite.claim.identity.workflowId, "effect-ci-demo");
     assert.equal(suite.claim.identity.command, testCommand);
     assert.equal(suite.claim.identity.policyDigest, await demoRunnerPolicyDigest(true));
     assert.equal(

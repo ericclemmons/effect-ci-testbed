@@ -4,7 +4,7 @@ import { nativeFetchOutcome, sqlFetchOutcome } from "./wobs-cohort.ts"
 import { reconcileTelemetry } from "../../../../packages/cloudflare/src/telemetry-cohort.ts"
 
 const ids = ["0123456789abcdef", "1123456789abcdef"]
-const url = "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health"
+const url = "https://effect-ci-hmd-demo.eclemmons.workers.dev/health"
 const event = (id: string, status = 200) => ({ timestamp: 150, $metadata: { type: "cf-worker-event", requestId: `native-${id}`, rayId: id },
   $workers: { scriptName: "effect-ci-hmd-demo", eventType: "fetch", executionModel: "stateless", truncated: false,
     scriptVersion: { id: "candidate" }, outcome: "ok", event: { request: { method: "GET", url }, response: { status } } } })
@@ -51,7 +51,7 @@ test("SQL projection uses native columns and attributes, not spoofable applicati
       "$workers.event.request.url": url, "$workers.event.response.status": 503, "hmd.outcome": "ok" } }
   assert.equal(sqlFetchOutcome(row)?.healthy, false)
   assert.equal(sqlFetchOutcome(row)?.id, row.rayId)
-  assert.equal(sqlFetchOutcome({ ...row, attributes: { ...row.attributes, "$workers.event.request.url": "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health?probe=REDACTED" } })?.id, row.rayId)
+  assert.equal(sqlFetchOutcome({ ...row, attributes: { ...row.attributes, "$workers.event.request.url": "https://effect-ci-hmd-demo.eclemmons.workers.dev/health?probe=REDACTED" } })?.id, row.rayId)
   assert.equal(sqlFetchOutcome({ ...row, rayId: undefined }), undefined)
   assert.equal(sqlFetchOutcome({ ...row, logType: "cf-worker-log" }), undefined)
   assert.equal(sqlFetchOutcome({ ...row, sampleInterval: "1" }), undefined)

@@ -2,3 +2,6 @@
 .deploy.env
 
 .env.production
+.env.production.local
+access/*.json
+!access/*.example.json

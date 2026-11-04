@@ -6,7 +6,7 @@ export const workloadToken = async (service: string): Promise<string> => {
   const origin = new URL(service).origin
   if (process.env.EFFECT_CI_OIDC_TOKEN) return process.env.EFFECT_CI_OIDC_TOKEN
   if (!process.env.ACTIONS_ID_TOKEN_REQUEST_URL || !process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
-    throw new Error("Run in the hosted cf-ci runner or GitHub Actions with permissions: id-token: write")
+    throw new Error("Run in the hosted Effect CI runner or GitHub Actions with permissions: id-token: write")
   }
   const url = new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL)
   url.searchParams.set("audience", origin)

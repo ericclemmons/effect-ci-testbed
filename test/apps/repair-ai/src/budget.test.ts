@@ -39,13 +39,13 @@ test("concurrent shared lifetime reservations cannot exceed the cumulative $7 au
   await assert.rejects(reserve(memory(read()).store, "new-run", "new-call"), /exhausted/);
 });
 
-test("the $5 extension retains all original $2 ledger entries and never refunds or resets", async () => {
+test("the work lifetime budget retains charged entries and never refunds or resets", async () => {
   const reservations = Array.from({ length: 20 }, (_, i) => ({
     id: `old${i}`,
     run: `oldrun${Math.floor(i / 4)}`,
   }));
   const { store, read } = memory({ version: 1, reservations });
-  assert.equal(BUDGET_NAME, "friday-demo-repair-2-usd-v1");
+  assert.equal(BUDGET_NAME, "work-demo-repair-7-usd-20261030-v1");
   assert.equal(budgetStatus(read()).reservedCents, 200);
   assert.equal(budgetStatus(read()).remainingCents, 500);
   await assert.rejects(reserve(store, "new", "old0"), /already consumed/);

@@ -9,8 +9,8 @@ import { healthyPhases, healthyBatchSize, maximumHealthyCohorts, assertHealthyNa
 import { verifyHealthyLab } from "./hmd-lab-result.ts"
 import { canRetryNativeQuery, nativeSqlPolicy } from "./wobs-sql-policy.ts"
 
-const BASELINE = "09593237-23b2-4873-bd04-88c8e8488840"
-const CANDIDATE = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+const BASELINE = "f8526596-f9b8-4068-87c0-c517844488a8"
+const CANDIDATE = "27fca944-c549-433e-a1d4-15684b1c6cd9"
 const ONCE = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 
 /** Trusted dedicated-target full healthy rollout lab. All health outcomes are

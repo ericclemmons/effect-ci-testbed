@@ -16,7 +16,7 @@ test("native demo enrollment selects the same package suite as local discovery, 
     ci: true,
     source: { checkout: () => Effect.succeed(CI.Workspace.local(root)) },
   });
-  assert.equal(result.plan.workflowId, "cf-ci-demo");
+  assert.equal(result.plan.workflowId, "effect-ci-demo");
   assert.deepEqual(
     result.plan.nodes.map((node) => node.id),
     [

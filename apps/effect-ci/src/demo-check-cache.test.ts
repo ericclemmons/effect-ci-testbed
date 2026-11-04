@@ -69,7 +69,7 @@ for (const suite of [false, true])
       const revision = "c".repeat(40);
       const hit = await Effect.runPromise(
         demoCheckCache(runner).lookup({
-          workflowId: "cf-ci-demo",
+          workflowId: "effect-ci-demo",
           stepId: suite ? "test" : "syntax",
           command: suite ? testCommand : syntaxCommand,
           policy: { scope: "commit" },

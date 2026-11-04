@@ -1,0 +1,11 @@
+{
+  "name": "@turbo-ci/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@turbo-ci/core": "1.0.0" },
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --minify --format=esm --outfile=dist/app.js && cp index.html dist/index.html",
+    "check": "tsc -p tsconfig.json --noEmit"
+  }
+}

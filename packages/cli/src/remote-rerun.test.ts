@@ -33,7 +33,7 @@ test("CLI negotiates explicit compute reruns before dispatch and never silently 
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     const address = server.address(); assert.ok(address && typeof address !== "string");
     const run = (args: string[]) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [fileURLToPath(new URL("./bin.ts", import.meta.url)), ...args, "--format=json", "--workflow", join(directory, "ci.ts")], {
+      const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), ...args, "--format=json", "--workflow", join(directory, "ci.ts")], {
         cwd: directory, env: { ...process.env, EFFECT_CI_REMOTE_URL: `http://127.0.0.1:${address.port}`, EFFECT_CI_REMOTE_TOKEN: "fixture-token",
           EFFECT_CI_REMOTE_PROFILE: join(directory, "no-profile.json"), CF_ACCESS_TOKEN: "", CF_ACCESS_CLIENT_ID: "", CF_ACCESS_CLIENT_SECRET: "" },
       });

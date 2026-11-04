@@ -1,0 +1,17 @@
+{
+  "name": "effect-ci-turbo-ci",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "plan": "npm --prefix app run ci -- --plan",
+    "ci": "npm --prefix app run ci"
+  },
+  "dependencies": {
+    "@effect-ci-testbed/ci": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

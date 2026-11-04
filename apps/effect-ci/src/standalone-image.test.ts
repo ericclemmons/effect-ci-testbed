@@ -22,6 +22,8 @@ test(
     assert.deepEqual(Object.keys(config.exports).sort(), [
       "EffectCIWorkflow",
       "GitCheckoutOutbound",
+      "OidcRepositories",
+      "TokenLease",
       "WorkspaceContainer",
     ]);
     const name = config.exports.WorkspaceContainer.container;

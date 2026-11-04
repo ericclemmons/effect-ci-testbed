@@ -67,7 +67,7 @@ for (const entry of cases) {
         history.params.repository,
         "https://github.com/ericclemmons/effect-ci-testbed.git",
       );
-      assert.equal(history.output.workflowId, "cf-ci-demo");
+      assert.equal(history.output.workflowId, "effect-ci-demo");
       assert.equal(history.output.environment, "cloudflare");
       assert.equal(history.output.nodes.length, 8);
       const syntax = history.output.nodes.find((node: any) => node.id === "syntax");

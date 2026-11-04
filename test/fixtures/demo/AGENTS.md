@@ -1,7 +1,7 @@
 # Demo
 
-Use `cf-ci`, `cf-ci list`, `cf-ci plan`, and `cf-ci run [target]` from this
-directory. In this workspace checkout, use `pnpm exec cf-ci` if the executable is
+Use `effect-ci`, `effect-ci list`, `effect-ci plan`, and `effect-ci run [target]` from this
+directory. In this workspace checkout, use `pnpm exec effect-ci` if the executable is
 not on PATH. Do not pass `--workflow`. The initial demo has no CI marker:
 help/list/plan infer package scripts without writing files; explicit run creates
 the ignored empty `.cloudflare/ci/ci.ts` marker. No target means the full workflow.
@@ -30,7 +30,7 @@ Reusable evidence is commit-first, not dirty-tree feedback. In a clean enrolled
 checkout, after the authorized commit has been pushed:
 
 ```sh
-cf-ci run test build --remote --format=json
+effect-ci run test build --remote --format=json
 ```
 
 The trusted host uses the same check definitions for remote and SCM runs. It

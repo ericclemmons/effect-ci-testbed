@@ -115,7 +115,7 @@ jobs:
           name: timing-history
           path: examples/timing-aware-splitting/app
       - run: cp examples/timing-aware-splitting/app/timings.json examples/timing-aware-splitting/app/previous-timings.json
-      - run: pnpm cf-ci run --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts --format=text
+      - run: pnpm effect-ci run --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts --format=text
       - run: node scripts/assert-parallel-recipe-reports.mjs timing-aware-splitting previous-timings.json
       - uses: actions/upload-artifact@v7
         with:

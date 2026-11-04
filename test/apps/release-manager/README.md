@@ -199,7 +199,7 @@ cf build
 # Preserve all current bindings, secrets, Access and existing Workflow/DO state:
 cf deploy --prebuilt
 cd ../../fixtures/demo
-cf-ci run --remote
+effect-ci run --remote
 ```
 
 The enrolled demo adds `prepare release` after its actual build/verification/site

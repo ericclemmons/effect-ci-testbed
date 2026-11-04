@@ -7,7 +7,7 @@ const batch = { requested: 2, unknown: 0, receipts: [{ ray: old, version: "old" 
 const row = (ray: string, version: string, status = 200) => ({ timestamp: 150, scriptName: "effect-ci-hmd-demo", logType: "cf-worker-event",
   requestId: `native-${ray}`, rayId: ray, sampleInterval: 1, attributes: { "$workers.eventType": "fetch", "$workers.executionModel": "stateless",
     "$workers.truncated": false, "$workers.scriptVersion.id": version, "$workers.outcome": "ok", "$workers.event.request.method": "GET",
-    "$workers.event.request.url": "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health", "$workers.event.response.status": status } })
+    "$workers.event.request.url": "https://effect-ci-hmd-demo.eclemmons.workers.dev/health", "$workers.event.response.status": status } })
 const rows = [row(old, "old"), row(candidate, "new", 503)]
 
 test("mixed native version cohorts require independent receipts and every terminal event", async () => {
@@ -85,7 +85,7 @@ test("corrupt independent manifests reject before querying and duplicate deliver
 })
 
 test("large cohorts partition SQL without weakening cross-partition native identity checks", async () => {
-  const receipts = Array.from({ length: 5_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "09593237-23b2-4873-bd04-88c8e8488840" }))
+  const receipts = Array.from({ length: 5_000 }, (_, index) => ({ ray: index.toString(16).padStart(16, "0"), version: "f8526596-f9b8-4068-87c0-c517844488a8" }))
   const version = receipts[0]!.version
   let calls = 0
   const query = async (input: { query: string; params: Record<string, string> }) => {

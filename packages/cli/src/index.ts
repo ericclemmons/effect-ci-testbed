@@ -1,8 +1,9 @@
 import { hasWorkloadIdentity, workloadHeaders } from "./workload-auth.ts"
 import { runOidc } from "./oidc.ts"
-import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { vitePlusTasks } from "./vite-plus.ts"
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
-import { basename, dirname, join, resolve } from "node:path"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs, parseEnv } from "node:util"
 import { projectEnvironment } from "./project-env.ts"
@@ -14,7 +15,7 @@ import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/proj
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
 import { remoteEventUrl, remoteOrigin, remoteRecords } from "./remote-protocol.ts"
 import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
-import { readProjectRemote, resolveRemote } from "./remote-config.ts"
+import { readProjectOidc, readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 import { githubSourceComparison } from "./source-comparison.ts"
 
@@ -34,6 +35,7 @@ export interface Invocation {
 }
 
 export interface Program {
+  readonly requiresTarget?: boolean
   readonly actions?: Readonly<Record<string, unknown>>
   readonly local?: CI.RunConfiguration | ((context: LocalContext) => CI.RunConfiguration)
   readonly remote?: (invocation: Invocation) => Promise<unknown>
@@ -152,7 +154,6 @@ const cloneUrl = (value: string): string => {
 const describeEvent = (event: WorkflowInstanceEvent): string => {
   const errorMessage = remoteErrorMessage(event.error?.message)
   switch (event.type) {
-    case "step_started": return `→ ${event.stepName}`
     case "step_completed": {
       let value = event.output
       if (typeof value === "string") {
@@ -161,19 +162,25 @@ const describeEvent = (event: WorkflowInstanceEvent): string => {
       const output = value && typeof value === "object"
         ? value as Record<string, unknown>
         : undefined
-      const stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
+      let stdout = typeof output?.stdout === "string" ? output.stdout.trimEnd() : ""
+      // Older hosts ran the project CLI in JSON mode. Use its existing summary
+      // formatter while keeping ordinary command output unchanged.
+      if (stdout) {
+        try {
+          const result = JSON.parse(stdout)
+          if (result?.schemaVersion === 1 && result.ok === true && result.plan)
+            stdout = CI.formatPlan(result.plan)
+        } catch { /* Ordinary command output is text, not a CLI result. */ }
+      }
       const stderr = typeof output?.stderr === "string" ? output.stderr.trimEnd() : ""
       const logs = [stdout, stderr].filter(Boolean).join("\n")
 
-      return `✓ ${event.stepName}${logs ? `\n${logs}` : ""}`
+      return logs
     }
-    case "step_errored": return `✗ ${event.stepName}`
-    case "attempt_errored": return `↻ ${event.stepName} attempt ${event.attempt} failed${errorMessage ? `: ${errorMessage}` : ""}`
-    case "wait_started": return `… ${event.stepName}`
     case "workflow_completed": return "✓ Workflow completed"
     case "workflow_errored": return `✗ Workflow failed${errorMessage ? `: ${errorMessage}` : ""}`
     case "workflow_terminated": return "✗ Workflow terminated"
-    default: return event.type
+    default: return ""
   }
 }
 
@@ -198,7 +205,10 @@ const streamRemoteEvents = async (
       cursor.value = event.eventId
     }
     events.push(event)
-    if (format === "text") console.log(describeEvent(event))
+    if (format === "text") {
+      const text = describeEvent(event)
+      if (text) console.log(text)
+    }
     if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(event.type)) break
   }
 
@@ -235,7 +245,7 @@ const remoteConnection = (root: string) => {
     throw new CliFailure(
       "CI_REMOTE_AUTH_REQUIRED",
       ExitCode.providerUnavailable,
-      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
+      `Remote endpoint found, but authentication is missing. For an enrolled Access identity, run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then effect-ci doctor --remote. Other hosts require your private Effect CI API profile. Keep credentials out of project env files; never use a deployment token.`,
     )
   }
 
@@ -258,14 +268,14 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
     if (response.status === 401 || response.status === 403 || accessLogin) {
       await response.body?.cancel().catch(() => {})
       throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable,
-        workload ? "Workload authentication was rejected. Grant id-token: write and enable this repository with cf-ci oidc. No run was dispatched."
-          : `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then cf-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
+        workload ? `Workload authentication was rejected. Grant id-token: write and enable this repository with effect-ci oidc. No run was dispatched.`
+          : `Remote authentication needs refreshing. Run cloudflared access login --quiet ${new URL(remoteUrl).origin}, then effect-ci doctor --remote. Other hosts may require their private API profile. No run was dispatched.`)
     }
     if (response.ok) available = await response.json()
   } catch (error) {
     if (error instanceof CliFailure) throw error
   }
-  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown; rerun?: unknown } | undefined
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown; projectSelection?: unknown; rerun?: unknown } | undefined
   const targets = descriptor?.targets
   if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
       targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
@@ -280,6 +290,7 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
   if (workload && (!Array.isArray(descriptor.authentication) || !descriptor.authentication.includes("github-oidc")))
     throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable, "This host has not enabled workload identity authentication")
   return { targets: targets as string[],
+    ...(descriptor.projectSelection === true ? { projectSelection: true as const } : {}),
     ...(descriptor.rerun === true ? { rerun: true as const } : {}),
     ...(descriptor.targetDiscovery === "project" ? { targetDiscovery: "project" as const } : {}) }
 }
@@ -287,6 +298,7 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
 const builtInRemote = async (
   invocation: Invocation,
   root: string,
+  workflowPath: string,
 ): Promise<unknown> => {
   const connection = remoteConnection(root)
   const { remoteUrl } = connection
@@ -308,16 +320,33 @@ const builtInRemote = async (
     )
   }
   const revision = git(root, "rev-parse", "HEAD")
+  const repositoryRoot = git(root, "rev-parse", "--show-toplevel")
+  const selectedRoot = relative(realpathSync(repositoryRoot), realpathSync(root)).split("\\").join("/") || "."
+  const selectedWorkflow = relative(root, workflowPath).split("\\").join("/")
+  const workflow = selectedWorkflow === ".cloudflare/ci/workflow.ts" ? undefined
+    : selectedWorkflow === ".cloudflare/ci/ci.ts" && !existsSync(workflowPath) ? "." : selectedWorkflow
+  const needsSelection = selectedRoot !== "." || Boolean(workflow)
+  const capabilities = await remoteCapabilities(connection).catch(error => {
+    // Legacy default-only hosts may have no capabilities endpoint.
+    if (!needsSelection && error instanceof CliFailure && error.code === "CI_REMOTE_TARGET_UNAVAILABLE") return undefined
+    throw error
+  })
+  const project = capabilities?.projectSelection
+    ? { root: selectedRoot, ...(workflow ? { workflow } : {}) } : undefined
+  if (needsSelection && !project && (selectedRoot !== "." || capabilities?.targetDiscovery === "project")) {
+    throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+      "This host cannot select a project directory or workflow. No run was dispatched; update the host or run locally.")
+  }
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
   const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
-  if (!targets && (connection.accessOnly || connection.workload)) await remoteCapabilities(connection)
+  if (!targets && !capabilities && (connection.accessOnly || connection.workload)) await remoteCapabilities(connection)
   if (targets) {
     if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
     // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
     // selected-goal invocation can never silently execute the default suite.
-    const enrolled = await remoteCapabilities(connection)
+    const enrolled = capabilities ?? await remoteCapabilities(connection)
     if (invocation.rerunFrom && !enrolled.rerun)
       throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
         "This host has not enrolled explicit compute reruns. No run was dispatched.")
@@ -331,6 +360,7 @@ const builtInRemote = async (
     redirect: "error",
     headers: await connection.requestHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
+      ...(project ? { project } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
   })
 
@@ -426,6 +456,7 @@ interface ParsedInvocation {
 const parseInvocation = (
   args: ReadonlyArray<string>,
   onFormat?: (format: OutputFormat) => void,
+  root?: string,
 ): ParsedInvocation => {
   let parsed: ReturnType<typeof parseArgs>
 
@@ -488,10 +519,10 @@ const parseInvocation = (
   if (rerunFrom !== undefined && (command !== "run" || !parsed.values.remote || targets.length === 0 ||
     !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(rerunFrom)))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
-      "Use cf-ci run <compute goals...> --remote --rerun-from <run UUID>")
+      `Use effect-ci run <compute goals...> --remote --rerun-from <run UUID>`)
 
   if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid"))
-    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Use cf-ci doctor --remote [--format=text|json]; it checks access without running work")
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Use effect-ci doctor --remote [--format=text|json]; it checks access without running work`)
 
   if (command === "list" && targets.length) {
     throw new CliFailure(
@@ -501,11 +532,16 @@ const parseInvocation = (
     )
   }
 
+  const enrollment = command === "run" && !parsed.values.help && !parsed.values.local && !parsed.values.remote && root
+    ? readProjectOidc(root) : undefined
+  const location = parsed.values.remote || (typeof enrollment?.issuer === "string" && typeof enrollment.repository === "string")
+    ? "remote" : "local"
+
   return {
     command,
     format,
     help: parsed.values.help === true,
-    location: parsed.values.remote ? "remote" : "local",
+    location,
     targets,
     ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
@@ -515,18 +551,18 @@ const parseInvocation = (
 const help = (workflowId: string): string => `Effect CI: ${workflowId}
 
 Usage:
-  cf-ci oidc [--service https://your-ci-host]
-  cf-ci oidc -- <deploy command>
-  cf-ci                         Show this help and project targets
-  cf-ci run [targets...] [--local|--remote] [--format=text|json]
-  cf-ci run <compute goals...> --remote --rerun-from <run UUID>
-  cf-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
-  cf-ci list [--format=text|json]
-  cf-ci doctor --remote [--format=text|json]
-  cf-ci run path/to/workflow.ts [target]
-  cf-ci --workflow path/to/workflow.ts [run|plan|list] [target]
-  cf-ci --workflow path/to/package [run|plan|list] [target]
-  cf-ci run --remote --env-file path/to/.env.production
+  effect-ci oidc [--service https://your-ci-host]
+  effect-ci oidc -- <deploy command>
+  effect-ci                         Show this help and project targets
+  effect-ci run [targets...] [--local|--remote] [--format=text|json]
+  effect-ci run <compute goals...> --remote --rerun-from <run UUID>
+  effect-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
+  effect-ci list [--format=text|json]
+  effect-ci doctor --remote [--format=text|json]
+  effect-ci run path/to/workflow.ts [target]
+  effect-ci --workflow path/to/workflow.ts [run|plan|list] [target]
+  effect-ci --workflow path/to/package [run|plan|list] [target]
+  effect-ci run --remote --env-file path/to/.env.production
 
 Commands:
   oidc    Enable repository deployment, or run a command with temporary credentials
@@ -535,16 +571,19 @@ Commands:
   list    List runnable commands for this project
 
 Examples:
-  cf-ci run                     Execute the whole default workflow
-  cf-ci run test build          Run both goals with their shared dependencies
-  cf-ci plan                    Inspect the whole workflow without executing
-  cf-ci plan --format=mermaid    Print its Mermaid graph
-  cf-ci list                    Discover exact commands to run
-  AI_AGENT=demo cf-ci list       Preview automatic agent-friendly JSON
+  effect-ci run                     Execute the whole default workflow
+  effect-ci run test build          Run both goals with their shared dependencies
+  effect-ci plan                    Inspect the whole workflow without executing
+  effect-ci plan --format=mermaid    Print its Mermaid graph
+  effect-ci list                    Discover exact commands to run
+  AI_AGENT=demo effect-ci list       Preview automatic agent-friendly JSON
 
-Without an explicit path, cf-ci discovers .cloudflare/ci/workflow.ts or an empty
+Without an explicit path, effect-ci discovers .cloudflare/ci/workflow.ts or an empty
 ci.ts marker from the current directory or one of its parents. Help never initializes
-a project; an explicit local run can initialize supported package scripts.
+a project. Auto-discovered scripts and Vite+ tasks require an explicit action name.
+A named local run can initialize the CI marker.
+Run defaults to remote after OIDC enrollment; --local runs working-tree edits.
+List and plan stay local. Remote failures never fall back to local execution.
 Output defaults to JSON for a directly detected coding agent and text otherwise.
 Detection uses @vercel/detect-agent, including AI_AGENT and tool-specific signals.
 No agent flag is needed. An explicit --format always wins.`
@@ -686,15 +725,6 @@ export const loadProgram = async (
   }
 }
 
-const inferredScriptOrder = [
-  "format",
-  "lint",
-  "check",
-  "typecheck",
-  "test",
-  "build",
-] as const
-
 const inferJavaScriptProgram = (root: string): Program => {
   const manifestPath = join(root, "package.json")
 
@@ -709,18 +739,28 @@ const inferJavaScriptProgram = (root: string): Program => {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
     readonly name?: string
     readonly scripts?: Readonly<Record<string, string>>
+    readonly dependencies?: Readonly<Record<string, string>>
+    readonly devDependencies?: Readonly<Record<string, string>>
   }
-  const names = inferredScriptOrder.filter((name) => manifest.scripts?.[name])
+  let tasks: ReturnType<typeof vitePlusTasks> = { names: [], dependencies: {} }
+  if (manifest.dependencies?.["vite-plus"] || manifest.devDependencies?.["vite-plus"]) {
+    try { tasks = vitePlusTasks(root) }
+    catch (error) {
+      throw new CliFailure("CI_VITE_PLUS_CONFIG_INVALID", ExitCode.usage,
+        `Cannot discover Vite+ tasks. Install project dependencies and check vite.config.ts. ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  const names = [...Object.keys(manifest.scripts ?? {}), ...tasks.names]
 
   if (names.length === 0) {
     throw new CliFailure(
       "CI_ZERO_CONFIG_NO_TASKS",
       ExitCode.usage,
-      "Zero-config CI found no format, lint, check, typecheck, test, or build scripts",
+      "Zero-config CI found no package.json scripts or Vite+ run.tasks",
     )
   }
 
-  return CI.fromPackageJson(manifest)
+  return CI.fromPackageJson(manifest, { tasks: tasks.names, taskDependencies: tasks.dependencies })
 }
 
 /** Explicit local execution opts this package into script discovery, never remote or plan. */
@@ -731,9 +771,10 @@ export const initializeJavaScriptProject = (
   if (findWorkflow(cwd) || args.some((arg) =>
     arg === "--workflow" || arg.startsWith("--workflow=") || looksLikeWorkflowPath(arg)
   )) return undefined
-  const invocation = parseInvocation(args)
+  const invocation = parseInvocation(args, undefined, cwd)
   if (invocation.help || invocation.command !== "run" || invocation.location !== "local") return undefined
-  // Validate scripts and the requested target before writing anything or running scripts.
+  // Validate the explicit selection before loading config or writing a marker.
+  requireAction(invocation.targets)
   const program = inferJavaScriptProgram(resolve(cwd))
   selectedWorkflow(program, invocation.targets)
   for (const directory of [join(cwd, ".cloudflare"), join(cwd, ".cloudflare", "ci")]) {
@@ -865,6 +906,11 @@ const classifyFailure = (error: unknown): CliFailure => {
   )
 }
 
+const requireAction = (targets: ReadonlyArray<string>): void => {
+  if (!targets.length) throw new CliFailure("CI_ACTION_REQUIRED", ExitCode.usage,
+    "Choose an action: effect-ci run <action>. Use effect-ci list to see available actions.")
+}
+
 const selectedWorkflow = (
   program: Program,
   targets: ReadonlyArray<string>,
@@ -875,7 +921,8 @@ const selectedWorkflow = (
   const actions = targets.map(target => {
     const action = available[target]
     if (!action) throw new CliFailure(
-      "CI_UNKNOWN_TARGET", ExitCode.usage, `Unknown action target: ${target}`,
+      "CI_UNKNOWN_TARGET", ExitCode.usage, `Unknown action target: ${target}${Object.keys(available).length === 0
+        ? ". No exported actions were found; export CI actions from your workflow to select them by name." : ""}`,
       { available: Object.keys(available).sort() },
     )
     return action
@@ -894,15 +941,15 @@ const list = (program: Program, format: OutputFormat): void => {
       command: "list",
       workflow: program.workflow.id,
       targets,
-      commands: ["cf-ci run", ...targets.map((target) => `cf-ci run ${target}`)],
+      commands: [...(program.requiresTarget ? [] : ["effect-ci run"]), ...targets.map((target) => `effect-ci run ${target}`)],
     })
     return
   }
 
   console.log(`Workflow: ${program.workflow.id}`)
   console.log("Run commands:")
-  console.log("  cf-ci run  (whole workflow)")
-  for (const target of targets) console.log(`  cf-ci run ${target}`)
+  if (!program.requiresTarget) console.log(`  effect-ci run  (whole workflow)`)
+  for (const target of targets) console.log(`  effect-ci run ${target}`)
 }
 
 export const main = async (
@@ -913,7 +960,7 @@ export const main = async (
   let format: OutputFormat = detectedFormat()
 
   try {
-    const invocation = parseInvocation(args, value => { format = value })
+    const invocation = parseInvocation(args, value => { format = value }, projectRoot(workflowPath))
     format = invocation.format
 
     if (invocation.help) {
@@ -937,7 +984,9 @@ export const main = async (
 
     if (invocation.command === "doctor") {
       const capabilities = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
-      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", ...capabilities, dispatched: false }
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets: capabilities.targets,
+        ...(capabilities.rerun ? { rerun: true } : {}),
+        ...(capabilities.targetDiscovery ? { targetDiscovery: capabilities.targetDiscovery } : {}), dispatched: false }
       if (format === "json") printJson(result)
       else console.log(capabilities.targetDiscovery === "project"
         ? "Remote access ready. Selected goals are discovered inside the project workspace. No workflow started."
@@ -947,6 +996,7 @@ export const main = async (
 
     // A built-in hosted invocation selects from the host's enrolled goals, not
     // an absent/stale local module. Custom remote handlers retain local validation.
+    if (invocation.command === "run" && program.requiresTarget) requireAction(invocation.targets)
     const workflow = invocation.location === "remote" && !program.remote
       ? program.workflow : selectedWorkflow(program, invocation.targets)
     const request: Invocation = {
@@ -965,7 +1015,7 @@ export const main = async (
           "Explicit compute reruns require negotiated hosted support; a custom remote handler cannot ignore this option.")
       const result = program.remote
         ? await program.remote(request)
-        : await builtInRemote(request, projectRoot(workflowPath))
+        : await builtInRemote(request, projectRoot(workflowPath), workflowPath)
 
       if (format === "json") {
         printJson({
@@ -1085,7 +1135,7 @@ export const runCli = async (
     }
     args = remaining.length ? remaining : ["--help"]
     if (args[0] === "oidc") {
-      await runOidc(args.slice(1), cwd, remoteHeaders(process.env.EFFECT_CI_REMOTE_URL ?? "https://effect-ci-github-cloudflare.ericclemmons.workers.dev"))
+      await runOidc(args.slice(1), cwd, remoteHeaders(process.env.EFFECT_CI_REMOTE_URL ?? "https://effect-ci-github-cloudflare.eclemmons.workers.dev"))
       return
     }
     // A configured hosted suite does not need a local workflow to dispatch Git HEAD.
@@ -1094,7 +1144,7 @@ export const runCli = async (
     // Readiness must not import project modules, initialize markers, inspect a
     // dirty tree as execution input, or create a remote workflow.
     if (!explicit) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
       if (invocation.command === "doctor") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
@@ -1104,7 +1154,13 @@ export const runCli = async (
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "doctor checks the current project's remote configuration; do not pass a workflow path")
     }
     if (!explicit) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
+      if (!invocation.help && invocation.command === "run" && !invocation.targets.length) {
+        const path = findWorkflow(cwd)
+        if (!path || (basename(path).startsWith("ci.") && readFileSync(path, "utf8").trim() === "")) {
+          requireAction(invocation.targets)
+        }
+      }
       if (invocation.location === "remote" && invocation.command === "run") {
         process.exitCode = await main({ workflow: CI.workflow("hosted", function* () {}) }, args,
           resolve(cwd, ".cloudflare/ci/workflow.ts"))
@@ -1112,7 +1168,7 @@ export const runCli = async (
       }
     }
     if (!explicit && !findWorkflow(cwd)) {
-      const invocation = parseInvocation(args, value => { format = value })
+      const invocation = parseInvocation(args, value => { format = value }, cwd)
       if (invocation.location === "local" && (invocation.help || invocation.command !== "run")) {
         let program: Program
         try { program = inferJavaScriptProgram(resolve(cwd)) }

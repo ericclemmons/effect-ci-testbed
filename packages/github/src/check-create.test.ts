@@ -228,8 +228,8 @@ test("the actual GitHub runner recovers reporting without executing its workflow
   const bootstrap = join(root, "fetch.mjs")
   const workflow = join(root, "workflow.ts")
   writeFileSync(workflow, `import * as CI from ${JSON.stringify(pathToFileURL(resolve("packages/ci/src/index.ts")).href)};
-    const task=CI.action('test',()=>()=>console.log('BODY_EXECUTED_ONCE'));
-    export default CI.workflow('optional-checks',()=>task());`)
+    export const task=CI.action('test',()=>()=>console.log('BODY_EXECUTED_ONCE'));
+    export default CI.workflow('optional-checks',()=>{throw new Error('selected action must not run the default')});`)
   writeFileSync(bootstrap, `import{appendFileSync}from'node:fs';let posts=0;
     globalThis.fetch=async(url,init)=>{
       appendFileSync(${JSON.stringify(capture)},JSON.stringify({url:String(url),method:init?.method??'GET',body:init?.body})+'\\n');
@@ -242,7 +242,7 @@ test("the actual GitHub runner recovers reporting without executing its workflow
   const result = spawnSync(process.execPath, ["--import", bootstrap, "packages/github/run.run.ts"], {
     encoding: "utf8", timeout: 15_000, env: { ...env,
       GITHUB_TOKEN: "captured-only", GITHUB_REPOSITORY: "owner/repo", EFFECT_CI_SHA: options.sha,
-      EFFECT_CI_WORKFLOW: workflow, EFFECT_CI_APP_SLUG: options.appSlug, EFFECT_CI_EXTERNAL_ID: "fixture:run:1",
+      EFFECT_CI_WORKFLOW: workflow, EFFECT_CI_ACTIONS: '["task"]', EFFECT_CI_APP_SLUG: options.appSlug, EFFECT_CI_EXTERNAL_ID: "fixture:run:1",
     },
   })
   assert.equal(result.status, 0, result.stdout + result.stderr + String(result.error ?? ""))

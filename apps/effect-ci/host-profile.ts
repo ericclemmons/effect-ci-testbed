@@ -1,7 +1,7 @@
 type Environment = Readonly<Record<string, string | undefined>>;
 
-/** Deployment-time choices only. Existing installations retain the demo profile;
- * the new-account template explicitly chooses standalone. No credentials here. */
+/** Deployment-time choices only. The complete host uses demo; standalone retains
+ * the reduced portable entrypoint. No credentials here. */
 export function hostProfile(
   env: Environment,
 ): { profile: "demo" } | { profile: "standalone"; name: string; root: string } {

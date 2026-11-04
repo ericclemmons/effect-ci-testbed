@@ -6,15 +6,15 @@ import { runHumanReviewedHmd, type HmdObservation } from "./hmd-review-runner.ts
 import { hmdCardObserver } from "../../../../apps/effect-ci/src/hmd-card.ts"
 import { RunCard } from "../../../../packages/github-cloudflare/src/run-card.ts"
 
-const baseline = "09593237-23b2-4873-bd04-88c8e8488840"
-const candidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
+const baseline = "f8526596-f9b8-4068-87c0-c517844488a8"
+const candidate = "27fca944-c549-433e-a1d4-15684b1c6cd9"
 const ray = "0123456789abcdef"
 const batch = { requested: 1, unknown: 0, receipts: [{ ray, version: candidate }] }
 const row = { timestamp: 150, scriptName: "effect-ci-hmd-demo", logType: "cf-worker-event",
   rayId: ray, requestId: "native-event", sampleInterval: 1, attributes: {
     "$workers.eventType": "fetch", "$workers.executionModel": "stateless", "$workers.truncated": false,
     "$workers.scriptVersion.id": candidate, "$workers.outcome": "ok", "$workers.event.request.method": "GET",
-    "$workers.event.request.url": "https://effect-ci-hmd-demo.ericclemmons.workers.dev/health",
+    "$workers.event.request.url": "https://effect-ci-hmd-demo.eclemmons.workers.dev/health",
     "$workers.event.response.status": 503,
   } }
 

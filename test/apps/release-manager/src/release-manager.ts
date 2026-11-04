@@ -1,6 +1,6 @@
 import { beginRelease, releaseAllocation, type VersionAllocation } from "../../../../packages/cloudflare/src/release-policy.ts"
 
-export const RELEASE_ACCOUNT = "0db135ec469e2f216fcea26426f29755"
+export const RELEASE_ACCOUNT = "da2f8f3e41d6b5018df12a58b417d918"
 export const RELEASE_SCRIPT = "effect-ci-hmd-demo"
 export interface Deployment { readonly id: string; readonly versions: ReadonlyArray<VersionAllocation>; readonly message?: string }
 interface Intent { readonly sequence: number; readonly expected: string; readonly versions: ReadonlyArray<VersionAllocation>; readonly message: string; readonly phase: number; readonly rollback: boolean }

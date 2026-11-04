@@ -29,9 +29,9 @@ test(
     import{ReleaseJournalObject as Base}from'./worker.ts';import{RELEASE_SCRIPT}from'./release-manager.ts';
     let posts=0;const versions=new Map();
     globalThis.fetch=async(raw,init)=>{const url=new URL(String(raw));
-      if(url.origin==='https://effect-ci-demo-site.ericclemmons.workers.dev')return new Response(${JSON.stringify(assets)}[url.pathname.split('/').at(-1)],
+      if(url.origin==='https://effect-ci-demo-site.eclemmons.workers.dev')return new Response(${JSON.stringify(assets)}[url.pathname.split('/').at(-1)],
         {headers:{'x-site-revision':url.pathname.split('/')[2],'x-site-digest':'${site.digest}'}});
-      if(!url.href.startsWith('https://api.cloudflare.com/client/v4/accounts/0db135ec469e2f216fcea26426f29755/workers/scripts/effect-ci-hmd-demo/'))throw Error('Wrong target');
+      if(!url.href.startsWith('https://api.cloudflare.com/client/v4/accounts/da2f8f3e41d6b5018df12a58b417d918/workers/scripts/effect-ci-hmd-demo/'))throw Error('Wrong target');
       if(new Headers(init.headers).get('authorization')!=='Bearer fixture-token')throw Error('Wrong credential');
       if(url.pathname.endsWith('/deployments')){if(init.method==='POST')throw Error('Must not promote');return Response.json({success:true,result:{deployments:[{id:'22222222-2222-4222-8222-222222222222',versions:[{version_id:'33333333-3333-4333-8333-333333333333',percentage:100}]}]}});}
       if(init.method==='POST'){posts++;const id='11111111-1111-4111-8111-'+posts.toString(16).padStart(12,'0');const metadata=JSON.parse(await init.body.get('metadata').text());versions.set(id,{id,annotations:metadata.annotations,resources:{bindings:metadata.bindings}});return Response.json({success:true,result:{id}});}

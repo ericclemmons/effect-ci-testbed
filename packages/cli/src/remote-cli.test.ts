@@ -12,7 +12,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-remote-"))
   const workstationHome = await mkdtemp(join(tmpdir(), "effect-ci-private-home-"))
   const ci = fileURLToPath(new URL("../../ci/src/index.ts", import.meta.url))
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const server = createServer()
   let dispatches = 0
   let disconnectOnce = false
@@ -26,6 +26,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let resultAvailable = false
   let resultStatus = 200
   let resultReads = 0
+  let projectSelection = false
+  const projects: unknown[] = []
   let targetDiscovery: unknown
   const selections: unknown[] = []
   try {
@@ -57,7 +59,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json",
           ...([302,307].includes(capabilityStatus) ? {location:"https://fixture.cloudflareaccess.com/cdn-cgi/access/login?token=never-reflect-login-token"} : {}) })
         response.end(JSON.stringify({ protocol: capabilityProtocol, targets: targetDiscovery === "project" ? [] : ["test", "build"],
-          ...(targetDiscovery === undefined ? {} : { targetDiscovery }) }))
+          ...(targetDiscovery === undefined ? {} : { targetDiscovery }), ...(projectSelection ? { projectSelection: true } : {}) }))
         return
       }
       if (request.url === `${routePrefix}/runs/fixture` && resultAvailable) {
@@ -75,7 +77,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(input.repository, "https://github.com/example/project.git")
         assert.equal(input.root, undefined)
         assert.equal(input.projectRoot, undefined)
-        selections.push(JSON.parse(body).targets)
+        projects.push(input.project)
+        selections.push(input.targets)
         response.writeHead(202, { "content-type": "application/json" })
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture`,
           ...(resultAvailable ? { resultAvailable: true } : {}) }))
@@ -108,7 +111,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         // Native subscriptions may remain open after the terminal event.
       }
     })
-    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = [], command = "run", fromFile = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+    const run = (userToken = "", explicit = true, format = "text", projectConfig = false, targets: string[] = explicit ? [] : ["build"], command = "run", fromFile = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, command, ...targets, "--remote", `--format=${format}`, ...(fromFile ? ["--env-file", ".env.production"] : []), ...(explicit ? ["--workflow", join(directory, "ci.ts")] : [])], {
         cwd: directory,
         env: { ...process.env, EFFECT_CI_REMOTE_PROFILE: join(workstationHome, ".config", "effect-ci", "remotes.json"), EFFECT_CI_REMOTE_URL: fromFile ? "http://unused.invalid" : projectConfig ? "" : origin + routePrefix, EFFECT_CI_REMOTE_TOKEN: fromFile ? "stale-token" : projectConfig ? "" : "fixture-api-token", CF_ACCESS_CLIENT_ID: "fixture-access-id", CF_ACCESS_CLIENT_SECRET: "fixture-access-secret", CF_ACCESS_TOKEN: userToken },
@@ -257,7 +260,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
       "CF_ACCESS_CLIENT_SECRET=fixture-access-secret",
     ].join("\n"))
     targetDiscovery = "project"
-    const fromFile = await run("stale-user-token", false, "text", false, [], "run", true)
+    const fromFile = await run("stale-user-token", false, "text", false, ["build"], "run", true)
     assert.equal(fromFile.code, 0, fromFile.output)
     assert.match(fromFile.output, /Workflow completed/)
     // A local workflow must not be imported or select the remote repository's goals.
@@ -265,9 +268,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     await writeFile(join(directory, ".cloudflare/ci/workflow.ts"), 'throw new Error("local workflow must not run before dispatch")\n')
     execFileSync("git", ["add", ".cloudflare/ci/workflow.ts"], { cwd: directory })
     execFileSync("git", ["commit", "-qm", "local workflow fixture"], { cwd: directory })
+    projectSelection = true
     const discovered = await run("fixture-user-token", false, "text", false, ["build"])
     assert.equal(discovered.code, 0, discovered.output)
     assert.deepEqual(selections.at(-1), ["build"])
+    assert.deepEqual(projects.at(-1), { root: "." }, "root selection must override a host's configured nested root")
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

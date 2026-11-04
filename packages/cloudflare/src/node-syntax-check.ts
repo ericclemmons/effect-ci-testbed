@@ -1,7 +1,7 @@
 import { hostedCheckBytes, type HostedCheckIdentity } from "./check-evidence.ts";
 
 export const syntaxRepository = "https://github.com/ericclemmons/effect-ci-testbed";
-export const syntaxWorkflow = "cf-ci-demo";
+export const syntaxWorkflow = "effect-ci-demo";
 export const syntaxKeyId = "demo-node-syntax-v1";
 export const syntaxImage =
   "sha256:7b2ede4459d6738f1465db630f3fe3794fd9c9ba28f8b5a9dffc3900b8df9924";

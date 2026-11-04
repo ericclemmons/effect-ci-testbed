@@ -10,7 +10,7 @@ import test from "node:test"
 test("Access-only CLI negotiates host enrollment before any default or selected dispatch; API profiles stay optional only for that mode", async () => {
   const directory = await mkdtemp(join(tmpdir(), "effect-ci-access-only-")), server = createServer()
   let enrolled = true, allowed = true, dispatches = 0, capabilityReads = 0
-  const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   try {
     await writeFile(join(directory, "package.json"), JSON.stringify({ name: "access-fixture", scripts: { test: "node test.mjs", build: "node build.mjs" } }))
     for (const args of [["init", "-q"], ["config", "user.name", "CI fixture"], ["config", "user.email", "ci@example.invalid"],
@@ -41,7 +41,9 @@ test("Access-only CLI negotiates host enrollment before any default or selected 
     })
     const run = (args: string[], serviceOnly = false) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [bin, ...args, "--remote", "--format=json"], { cwd: directory,
-        env: { ...process.env, EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "",
+        env: { ...process.env, GITHUB_ACTIONS: "false", EFFECT_CI_OIDC_TOKEN: "",
+          ACTIONS_ID_TOKEN_REQUEST_URL: "", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "",
+          EFFECT_CI_REMOTE_URL: origin, EFFECT_CI_REMOTE_TOKEN: "",
           EFFECT_CI_REMOTE_PROFILE: join(directory, "missing-profile.json"), CF_ACCESS_TOKEN: serviceOnly ? "" : "fixture-owner-access",
           CF_ACCESS_CLIENT_ID: "fixture-service-id", CF_ACCESS_CLIENT_SECRET: "fixture-service-secret" } })
       let output = ""; child.stdout.on("data", b => { output += b }); child.stderr.on("data", b => { output += b })
@@ -49,13 +51,17 @@ test("Access-only CLI negotiates host enrollment before any default or selected 
     })
     const doctor = await run(["doctor"])
     assert.equal(doctor.code, 0, doctor.output); assert.equal(dispatches, 0)
-    for (const args of [["run"], ["run", "test", "build"]]) {
+    const unnamed = await run(["run"])
+    assert.equal(unnamed.code, 2, unnamed.output)
+    assert.equal(JSON.parse(unnamed.output).error.code, "CI_ACTION_REQUIRED")
+    assert.equal(dispatches, 0)
+    for (const args of [["run", "test"], ["run", "test", "build"]]) {
       const result = await run(args); assert.equal(result.code, 0, result.output)
       assert.doesNotMatch(result.output, /fixture-owner-access|fixture-service-secret/)
     }
     assert.equal(dispatches, 2); assert.equal(capabilityReads, 3)
     enrolled = false
-    for (const args of [["doctor"], ["run"], ["run", "test"]]) {
+    for (const args of [["doctor"], ["run", "build"], ["run", "test"]]) {
       const result = await run(args); assert.equal(result.code, 3, result.output)
       assert.equal(JSON.parse(result.output).error.code, "CI_REMOTE_AUTH_REQUIRED")
     }

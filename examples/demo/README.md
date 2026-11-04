@@ -1,338 +1,385 @@
-# Effect CI: the kitchen-sink demo
+# Walkthrough
 
-One Vite app, from short-lived GitHub deployment credentials and existing package
-scripts to remote CI, reusable results, GitHub approval, Slack, previews,
-controlled releases, and repair proposals.
-Each chapter adds a capability without replacing the app's tools.
+Create a React app with a Worker API, build it without a CI workflow, cache the
+build, and open a GitHub PR with checks. Run the same build on an enrolled Effect
+CI host using OIDC, deploy with temporary credentials, and send the result to Slack.
 
-The local chapters run in the copied app below. The hosted adapter uses the same
-authored program for the explicitly enrolled reference app, adding trusted result
-reuse, Slack, publication, and release decisions. A copied app or new repository
-does not inherit those credentials or permissions. Hosted changes still need
-live acceptance before this tour can be called complete. AI is off.
+An existing Node project can start at **Inspect before running**. Your
+`package.json` scripts are already CI actions. Vite+ is optional; this example
+uses it for task caching.
 
-## 1. Start the app
+## 1. Make the CLI available
 
-Requires Node 24.11+ and pnpm 12.8.1.
+Install [Vite+](https://viteplus.dev/guide/), Node 24.11+ or 26+, pnpm,
+[GitHub CLI](https://cli.github.com/), and Git. Remote execution also needs an
+Effect CI host, its GitHub App installed on your repository, and permission to
+sign in through its Cloudflare Access policy. Ask your operator for the service
+origin and App installation link. [Self-hosting](../../apps/effect-ci/SELF-HOST.md)
+is a separate operator task.
+
+The prototype CLI is unpublished. Install it in a separate directory:
 
 ```sh
-cd $(mktemp -d)
-pnpm dlx tiged ericclemmons/effect-ci-testbed/examples/demo demo
-cd demo
-pnpm install
-pnpm dev
+git clone https://github.com/ericclemmons/effect-ci-testbed.git
+cd effect-ci-testbed
+pnpm install --frozen-lockfile
+export EFFECT_CI_SOURCE="$PWD"
+export PATH="$EFFECT_CI_SOURCE/node_modules/.bin:$PATH"
+effect-ci --help
+gh auth login
 ```
 
-Open the Vite URL. Stop the server with Ctrl-C.
+Keep this shell open. `EFFECT_CI_SOURCE` is used below to install the runnable
+GitHub Actions examples into your app.
 
-## 2. Keep GitHub Actions; replace the deployment secret
+## 2. Create a Cloudflare app
 
-Start adopting Effect CI before changing how your checks run. Keep GitHub-hosted
-execution and your normal deployment command. Add one authentication step to
-exchange GitHub's OIDC identity for a 15-minute token scoped to this Worker.
-
-The supplied [deployment workflow](./tutorial/oidc.example.yml) builds this same
-app, authenticates, and runs its existing deployment tool. After pushing the app
-to your own repository:
-
-1. Bootstrap the configured Worker once with operator credentials, then follow
-   [OIDC setup](../../apps/github-actions-runner/OIDC.md) with your repository,
-   `--worker effect-ci-tutorial --workflow .github/workflows/deploy.yml --ref main`.
-   This needs a trusted host and a one-time issuer credential; copying the demo
-   does not grant deployment authority.
-2. Copy the workflow into place and push it:
-
-   ```sh
-   cp tutorial/oidc.example.yml .github/workflows/deploy.yml
-   git add .github/workflows/deploy.yml
-   git commit -m "Deploy with short-lived credentials"
-   git push
-   gh workflow run deploy.yml
-   ```
-
-The job needs `id-token: write`; it requests only `workers:edit`. The action
-revokes the token after the job. No long-lived Cloudflare token goes into GitHub.
-Checks can keep using ordinary package scripts; the next chapter introduces
-`cf-ci` without requiring another authentication change.
-
-The [cf](../oidc-cf) and [Wrangler](../oidc-wrangler) recipes own the deployment
-actions that the repository's E2E workflow runs on trusted pushes. Both verify
-single-Worker access, denial of the other Worker and R2, deployment, and cleanup.
-Those two recipes provide the live OIDC proof; this demo supplies the same
-adoption step for its own app, with separate Worker enrollment.
-
-## 3. Existing scripts become CI
-
-[Package scripts](./package.json#json=scripts "source")
-
-Link the unpublished CLI and SDK from your Effect CI checkout. Replace the paths:
+From the directory where you keep projects:
 
 ```sh
-pnpm link /path/to/effect-ci-testbed/packages/cli /path/to/effect-ci-testbed/packages/ci
-git init
+vp create cloudflare
+```
+
+Use [Cloudflare's React starter](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/):
+name the app `walkthrough`, choose **Framework Starter**, **React**, TypeScript,
+and pnpm. Enable Git and commit hooks. Skip deployment for now.
+
+```sh
+cd walkthrough
+vp dev
+```
+
+Open the printed URL. Click **Name from API** to call the Worker. It returns
+`{ "name": "Cloudflare" }`. Stop the server with Ctrl-C.
+
+## 3. Inspect before running
+
+```sh
+effect-ci list
+effect-ci plan build --format=mermaid
+```
+
+Every package script is an action, including `dev`, `build`, and `lint`.
+Vite+ tasks under `run.tasks` in `vite.config.ts` are actions too. Choose a finite
+task such as `build` for CI; `dev` stays running.
+
+```mermaid
+flowchart LR
+  checkout --> install --> build
+```
+
+Both commands inspect the project without running scripts or writing a CI file.
+Auto-discovered projects require an action name; bare `effect-ci run` explains
+how to choose one.
+
+### Give an agent the same interface
+
+```sh
+AI_AGENT=demo effect-ci list
+effect-ci plan build --format=json
+```
+
+The first command previews automatic agent detection. A typical discovery result
+looks like this; available targets depend on the starter version:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "list",
+  "workflow": "walkthrough",
+  "targets": ["build", "dev", "lint", "preview"],
+  "commands": [
+    "effect-ci run build",
+    "effect-ci run dev",
+    "effect-ci run lint",
+    "effect-ci run preview"
+  ]
+}
+```
+
+An agent discovers commands, inspects the plan, runs a selected goal, and reads
+the JSON result and process exit code. `--format=json` makes that contract
+explicit. No agent-specific workflow is needed.
+
+## 4. Run the build
+
+```sh
+effect-ci run build --local
+```
+
+The starter's build script checks TypeScript and bundles the SPA and Worker.
+The first local run creates an empty `.cloudflare/ci/ci.ts` discovery marker.
+You haven't authored a CI graph or deployed anything.
+
+Before enrollment, `effect-ci run build` also runs locally. **After OIDC
+enrollment, it defaults to remote execution.** Keep `--local` for quick feedback
+on edits before committing. `list` and `plan` stay local throughout this guide.
+
+## 5. Run again from cache
+
+Move the build command from `package.json` into Vite+'s `run.tasks` in
+`vite.config.ts`. Keep the starter's imports and plugins. Add `run: cachedBuild`
+to its existing `defineConfig({ ... })` object, using this value:
+
+[Cached build task](./tutorial/cache-task.ts#symbol=cachedBuild "source")
+
+Place the declaration above `defineConfig`, or inline its object as the `run`
+property. Remove `scripts.build` from `package.json`. Change any remaining
+`pnpm run build` callers, such as the preview script, to `vp run build`.
+A task name must exist in one place: package scripts or Vite+ tasks.
+
+```sh
+effect-ci list
+effect-ci run build --local
+effect-ci run build --local
+```
+
+Inspect the second run for Vite+'s cache-hit output. The unchanged bundle can be
+replayed; TypeScript may still run. Change `name: "Cloudflare"` to
+`name: "Effect CI"` in `worker/index.ts`, then run again:
+
+```sh
+effect-ci run build --local
+```
+
+The changed input should produce a bundle cache miss. Effect CI invokes the task
+through `vp run build`; Vite+ owns its cache.
+[Vite+ caching](../vite-plus-cache) explains inputs and outputs. A local cache hit
+does not prove a fresh hosted container has the same cache.
+
+### Exercise the local journey
+
+From the installed Effect CI source clone:
+
+```sh
+node examples/demo/tutorial/verify-local.mjs
+```
+
+This creates a fresh Vite+ project in a temporary directory, discovers its build
+script, runs it, moves it to the cached task above, and demonstrates a cache hit
+followed by a miss after a source edit. It also creates and locally verifies a
+commit using an ephemeral signing key. The printed directory retains the app
+and logs. It uses dependencies already cached by the source installation.
+It does not create a GitHub repository, deploy a Worker, or contact Slack; those
+parts of the journey use your enrolled resources below.
+
+[Executable local journey](./tutorial/verify-local.mjs)
+
+## 6. Create a GitHub repository with signed commits
+
+Use your existing signing setup if you have one. Otherwise, register an existing
+SSH public key as a **signing key** on GitHub and configure this repository:
+
+```sh
+gh ssh-key add "$HOME/.ssh/id_ed25519.pub" --type signing --title "Walkthrough signing"
+git config --local gpg.format ssh
+git config --local user.signingkey "$HOME/.ssh/id_ed25519.pub"
+git config --local commit.gpgsign true
+```
+
+This assumes the matching private key exists and is available for signing. If
+you need a key, follow [GitHub's signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key).
+Set `git config --local user.email` to an email verified on your GitHub account.
+Agents use this Git configuration too; an interactive signer may ask you to
+unlock the key. Keep the private key on your machine.
+
+```sh
+git branch -M main
 git add .
-git commit -m "Start the demo"
-pnpm exec cf-ci run test build
+git commit -S -m "feat: Build the walkthrough app"
+gh repo create walkthrough --private --source=. --remote=origin --push
 ```
 
-No workflow file required. Discover the available actions and inspect their plan:
+The [repository command](https://cli.github.com/manual/gh_repo_create) creates a
+private repository in your account and pushes the current branch. Use an unused
+name if `walkthrough` already exists. The starter's earlier commit is unchanged;
+the commits made here are signed.
+
+<a id="6-run-on-a-host"></a>
+
+## 7. Enroll OIDC and run on a host
+
+Install your operator's GitHub App on the new repository. Its allowed-owner policy
+must include your GitHub account or organization. Install
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+for Access authentication. Set your actual service origin, then enroll:
 
 ```sh
-pnpm exec cf-ci list
-pnpm exec cf-ci plan --format=mermaid
+export EFFECT_CI_REMOTE_URL=https://your-ci-host.workers.dev
+cloudflared access login --quiet "$EFFECT_CI_REMOTE_URL"
+effect-ci oidc --service "$EFFECT_CI_REMOTE_URL"
+git add .cloudflare/ci/oidc.json
+git commit -S -m "ci: Enroll hosted execution"
+git push
+effect-ci doctor --remote
+effect-ci run build --remote --format=text
 ```
 
-Change `src/message.ts`, then run test and build again. Your package scripts
-remain the source of truth.
+Enrollment writes the public service origin and repository name to
+`.cloudflare/ci/oidc.json`. It contains no credential. `doctor` checks access and
+available goals without starting a Workflow. The host must report project
+discovery or advertise `build`.
 
-[Script discovery](../zero-config)
+Remote execution checks out the **pushed commit**. Commit and push first; a dirty
+working tree is rejected. The CLI streams progress and returns a failing exit
+code when the run fails. A remote error never silently executes locally.
 
-## 4. The same commands for people and agents
-
-An author or agent uses the same workflow, with structured results when useful:
+After enrollment, these select the same remote execution path:
 
 ```sh
-pnpm exec cf-ci run test build --format=json
+effect-ci run build
+effect-ci run build --remote
 ```
 
-Structured output does not require a model or a separate agent-only CI path.
+Run the remote command twice at the same pushed commit and inspect the build
+output for a Vite+ cache hit on the second run. The host preserves
+`node_modules/.vite/task-cache`; Vite+ decides whether the task inputs match.
+A cold host or changed inputs can still produce a miss. Record the commit,
+remote Workflow IDs, and cache output before claiming remote cache reuse.
 
-## 5. Cache tasks and rerun affected work
-
-Run the build twice and inspect Vite+'s hit/miss output:
+For uncommitted edits and fast local feedback:
 
 ```sh
-pnpm exec cf-ci run build
-pnpm exec cf-ci run build
+effect-ci run build --local
 ```
 
-Change `packages/greeting/message.ts` and repeat. The importing app rebuilds,
-even though `src/app.ts` did not change. The task runner owns its dependency
-graph and cache; Effect CI keeps using the same build command.
+OIDC enrollment enables repository identity. Deployment additionally needs the
+operator's Cloudflare account and approved deployment scope.
 
-There are three different things to reuse: dependency downloads, task output,
-and verified CI results. Download caching still performs the locked install;
-task caching avoids recomputation; signed results are covered in chapter 10.
-Choose cache paths and input keys explicitly, or disable caching for a workload.
+## 8. Open a PR and see its check
 
-[Vite+ caching](../vite-plus-cache) · [Turborepo caching](../turborepo-cache) ·
-[Dependency downloads](../package-manager-cache) · [Cache policy](../cache-policy) ·
-[Dependency-aware reruns](../dependency-aware-reruns)
-
-## 6. Parallel checks, shared prerequisites
-
-Adopt the supplied workflow when you want more control:
+Install this complete GitHub Actions workflow into your app:
 
 ```sh
-mkdir -p .cloudflare/ci
-cp tutorial/workflow.ts .cloudflare/ci/workflow.ts
-cp tutorial/program.ts .cloudflare/ci/program.ts
-git add .cloudflare/ci
-git commit -m "Add CI workflow"
-pnpm exec cf-ci run
+mkdir -p .github/workflows
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/checks.example.yml" .github/workflows/checks.yml
 ```
 
-The [workflow](./tutorial/workflow.ts) uses ordinary TypeScript:
+[GitHub checks and Slack update](./tutorial/checks.example.yml "source")
 
-[Source](./tutorial/program.ts#symbol=createDemoProgram.build "source")
-
-Actions declare their prerequisites; shared actions run once. Parallel work is
-explicit, rather than an automatic reordering of arbitrary JavaScript.
-Request an exported action directly when you only need that goal.
-
-[Exported actions](../exported-actions) · [Isolated snapshot fan-out](../snapshot-fanout)
-
-## 7. Source-aware checks
-
-On a branch, commit a README edit and run the workflow. The supplied lint action
-can skip it. Commit a change to `packages/greeting/message.ts` and run again:
-lint runs, and the app consumes the changed shared package.
-
-[Source](./tutorial/program.ts#symbol=createDemoProgram.lint "source")
-
-Missing comparison information runs the check conservatively. The change rule
-belongs to your workflow, not a separately maintained path-filter configuration.
-Event and branch conditions are separate: use `CI.when` with event/ref conditions
-when, for example, only a push to main should release. Those conditions appear
-in the plan; ordinary JavaScript branches only describe the path being planned.
-
-[Conditional execution](../conditional-deploy)
-
-## 8. Publish only changed output
-
-Run the adopted workflow twice. It compares the built `dist/**` bytes with the
-last successful publication: identical output skips publication; changed output
-publishes once. A failed build keeps the previous successful baseline.
-
-This local chapter publishes to `.effect-ci/deployed-site`, not Cloudflare.
-Build identity and deployment identity are separate: reusing a build does not
-implicitly authorize a release.
-
-[Changed-output deployment](../deploy-changed-output) ·
-[Portable artifacts](../portable-artifacts)
-
-## 9. Remote execution without a second workflow
-
-With a configured host and an enrolled, clean pushed commit, move execution off
-your laptop:
+The job installs the unpublished CLI outside your app checkout and dispatches
+`build` to the enrolled host. `id-token: write` lets GitHub supply a short-lived
+identity. No stored Effect CI API token or Cloudflare deployment token is needed.
+The toolchain revision is pinned; update it deliberately when upgrading the CLI.
 
 ```sh
-pnpm exec cf-ci doctor --remote
-pnpm exec cf-ci run --remote
-pnpm exec cf-ci run test build --remote
+git switch -c feat/github-checks
+git add .github/workflows/checks.yml
+git commit -S -m "ci: Run the build on Cloudflare"
+git push -u origin feat/github-checks
+gh pr create --title "ci: Run the build on Cloudflare"
+gh pr checks
+gh pr view --json headRefOid,statusCheckRollup
 ```
 
-The standalone host runs authored workflows inside an isolated container, not
-inside the privileged host process. Hosts advertising project goal discovery can
-also run selected exported actions. The project CLI validates every requested
-goal before executing any of them; older fixed-goal hosts retain their allowlist.
+GitHub prompts for the PR description. In the PR, **Checks** shows the `build` job
+from **Effect CI**; its log contains the remote Workflow ID and execution output.
+`gh pr checks` takes a snapshot; run it again when you want another status.
 
-Keep the workflow and move its execution from your laptop to the hosted runner.
-Cloudflare workflows retain action checkpoints and workspace snapshots across
-durable execution. Remote log streaming lets the CLI follow the same run; a lost
-connection must not cause it to dispatch the work again.
+This workflow runs on **push**, including pushes to your PR branch. Its check
+belongs to that branch's head commit. The host currently rejects workload
+identities from `pull_request` and `pull_request_target` events, so this does not
+dispatch fork PR code. GitHub Actions reports the job check; it is separate from
+the native App checks used by this repository's own hosted recipes.
 
-On the enrolled showcase host, selected goals have individual native checkpoints
-and progress. To explicitly rerun affected compute actions, replace `RUN_ID` with
-the UUID returned by a completed successful compute run of the same commit:
+Confirm GitHub verified the signed head commit:
 
 ```sh
-pnpm exec cf-ci run build --remote
-pnpm exec cf-ci run test --remote --rerun-from RUN_ID
+gh api "repos/{owner}/{repo}/commits/$(git rev-parse HEAD)" --jq '.commit.verification | {verified, reason}'
 ```
 
-The second command creates a new immutable attempt. It reruns test and its
-dependents, reusing eligible unaffected work; it does not rewrite the first run.
-Expired workspaces, another commit, failed attempts, and publication actions are
-not eligible. A rejected request does not silently dispatch a fresh run.
+Expect `verified: true`. Otherwise, check the key registration and committer
+email. A commit signature identifies its signer; signed CI receipts are a
+separate host capability that this setup does not grant automatically.
+The [trusted remote guide](../../apps/effect-ci/TRUSTED-REMOTE.md) records signed
+check and build receipts for specifically enrolled demos. An ordinary GitHub
+check or Vite+ cache hit is not that attestation.
 
-[Host setup](../../apps/effect-ci/SELF-HOST.md) · [Durable runner](../cloudflare-runner)
+### Give your agent this working loop
 
-## 10. Signed results and reusable build workspaces
+```text
+Use effect-ci list --format=json to discover the project's goals.
+Inspect effect-ci plan build --format=json before running work.
+Run effect-ci run build --local --format=json while editing.
+Create a signed commit and push the branch before remote execution.
+Run effect-ci run build --remote --format=json; inspect its exit code and result.
+Open a PR and inspect gh pr checks and the head commit's signature verification.
+Do not treat a local cache hit as proof that a remote run passed.
+```
 
-The trusted-runner chapter connects local development, remote checks, and SCM CI:
-verify an exact commit once, then reuse matching successful results instead of
-running the same checks again after a push.
+## 9. Deploy with short-lived credentials
 
-Pure checks reuse signed results. A build can also return a signed workspace
-snapshot, allowing a later action to consume the same files without rebuilding.
-Missing, changed, or expired evidence runs the work normally. No signing key
-belongs in the app, and a local Vite+ cache hit is not a signed result.
+If your operator has enabled Cloudflare deployment scopes, install the optional
+manual deployment job and the ordinary Cloudflare CLI:
 
-The enrolled host records signed success and failure observations separately
-from reusable successful checks. Public evidence exposes commitments, not private
-snapshot handles. A later push can reuse matching checks and the checked build;
-an explicit affected rerun bypasses those old caches for the requested work.
+```sh
+pnpm add --save-dev cf@1.0.0-beta.12 @cloudflare/vite-plugin@2.0.0-beta.v.7
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/cloudflare.config.ts" cloudflare.config.ts
+pnpm exec cf build
+cp "$EFFECT_CI_SOURCE/examples/demo/tutorial/oidc.example.yml" .github/workflows/deploy.yml
+git add .
+git commit -S -m "ci: Deploy with OIDC credentials"
+git push
+```
 
-[Result reuse](../verification-evidence) · [Workspace snapshots](../snapshot-fanout) ·
-[Hosted integration](../../apps/effect-ci/TRUSTED-REMOTE.md)
+[OIDC deployment job](./tutorial/oidc.example.yml "source")
 
-## 11. GitHub CI and Slack progress
+[Worker and SPA configuration](./tutorial/cloudflare.config.ts "source")
 
-The conference flow is edit → commit → push → inspect the run in Slack. The
-GitHub App starts CI for the pushed commit; Slack keeps one parent progress bar
-and a compact, maintained step table. Failures link to the affected step and show
-captured failure details. When the runner loses a command result, it reports an
-unknown exit instead of inventing a test failure or automatically rerunning it.
-Release reviews can add health charts and direct decisions on the same thread,
-instead of making the presenter switch between disconnected dashboards.
+After this file reaches your default branch, start **Deploy the app with
+short-lived credentials** from GitHub's **Actions** tab, or run:
 
-An authored workflow can also run through GitHub Actions. Where it executes is
-separate from the workflow's dependencies and checks.
+```sh
+gh workflow run deploy.yml --ref main
+```
 
-The copied app does not install the App, enroll itself, or gain Slack access.
-Those connections belong to the host setup.
+The configuration preserves the starter's `worker/index.ts` API alongside the
+SPA. Without that entrypoint, Vite autoconfiguration can produce an assets-only
+app. `cf build` prepares the app locally without deploying it. Commit any
+configuration it creates along with the lockfile. If you chose another app name,
+update `name` in this configuration and `worker` in the workflow to match.
 
-[GitHub CI on Cloudflare](../github-cloudflare-ci) ·
-[Slack interaction](../cloudflare-hitl-release)
+The deployment job checks out the app at the workspace root. The
+[authentication action](../../.github/actions/cloudflare-auth/README.md)
+discovers the committed host from `.cloudflare/ci/oidc.json`, enrolls the signed
+GitHub repository identity, and exports temporary Cloudflare credentials to later
+steps. It uses the same host-owned enrollment and token endpoints as the CLI.
+No CI CLI installation, authentication wrapper, or separate GitHub host variable
+is needed for deployment.
 
-## 12. Safe-change approval so authors can self-merge
+The final command stays `pnpm exec cf deploy`. It builds the app and deploys it.
+The action's post hook revokes the 15-minute credential when the job ends,
+including after deployment failure. An interrupted job that cannot run cleanup
+relies on token expiry. Use a host and Cloudflare account where you intend to
+create this Worker. The operator's account-scoped Workers policy can create new
+Workers; the `worker` input does not turn it into a single-Worker permission.
 
-Adjust the GitHub approval policy dynamically. Here, arbitrarily call a change
-safe when no TypeScript, TSX, or JSON files changed:
+## 10. Send the result to Slack
 
-[Source](../small-change/workflow.ts#symbol=approveSmallChanges "source")
+Create an [incoming webhook](https://api.slack.com/messaging/webhooks) for your
+Slack channel, then store its URL in the app repository:
 
-That's the entire workflow decision. No `review()` fallback: normal GitHub review
-is already the default. A safe change gets approval so its author or agent can
-self-merge once all checks and other GitHub requirements pass—not an automatic merge.
+```sh
+gh secret set SLACK_WEBHOOK_URL
+```
 
-The trusted App supplies `approve()` and checks the current diff and commit.
-PR code cannot grant itself approval authority.
+Enter the URL at the prompt. The checks workflow's final **Update Slack** step
+posts the build status, exact commit, and GitHub run link. It runs after success
+or failure and skips posting until the secret exists. The secret is scoped to
+that step. Trigger another signed push to see the update:
 
-[Safe-change example](../small-change)
+```sh
+git commit --allow-empty -S -m "ci: Exercise Slack notification"
+git push
+gh pr checks
+```
 
-## 13. Previews from the checked build
+The Slack message links to the run for this new commit. Check that link and the
+PR's head SHA before treating an earlier green check as the current result.
 
-Branch publication should give you a commit-pinned preview of the same build
-that passed CI, without rebuilding it for the browser. Production stays on the
-previous release while you review the preview.
-
-The enrolled reference app's `demo/showcase-preview` branch selects hosted preview
-publication. The trusted adapter consumes the completed build snapshot, publishes
-its exact assets, and independently reads their bytes back. The local directory
-publisher in chapter 8 is not a hosted preview service; arbitrary copies do not
-gain publication authority.
-
-[Static assets](../static-assets-source) · [Deployment hooks](../deploy-hook) ·
-[Ordered deployments](../ordered-deploy)
-
-## 14. Health checks and human release decisions
-
-The enrolled reference app's `demo/showcase` branch requests a release. Its first
-Slack card is **Start rollout**: a real human must choose **Progress** or **Reject**
-before uploading a candidate or changing production traffic. Rejecting or letting
-that initial decision expire leaves production unchanged.
-
-After Start, upload the checked candidate without moving production traffic.
-Then roll it out through 10%, 25%, 75%, and 100%, observing health at each phase.
-
-Healthy results can advance. Unhealthy results restore the previous allocation.
-When health is uncertain, pause for a Slack **Progress** or **Reject** decision
-rather than pretending sparse data is healthy. Only the actual human's decision
-can release a waiting gate; an agent must not approve it. Rejection or timeout
-restores the previous allocation; reaching 100% still needs the final health check.
-
-This is a hosted release chapter, not a command to deploy the copied app or
-replay an existing rollout.
-[Health-gated rollout](../health-mediated-release) ·
-[Human review of uncertain health](../health-mediated-approval) ·
-[Slack approvals](../cloudflare-hitl-release) · [Rollback](../rollback-compensation)
-
-## 15. Auto-fix proposals, with independent checks
-
-Close the loop: failure → proposed patch → allowed-diff check → exact-commit
-tests → pull request. The proposal does not get to merge or deploy itself.
-
-For the conference demo, AI stays modeled/off. A known failing greeting test can
-start a deterministic, narrowly allowed patch proposal from the immutable prepared
-workspace. Independent verification runs lint and the direct test task against a
-separate candidate workspace and checks that the candidate bytes did not change.
-
-The primary run stays failed. The child proposal and verification have separate
-progress and signed observations on the same Slack thread. No pull request is created;
-the PR proposal is explicitly modeled. Nothing is merged or deployed. Unknown
-command results do not start repair, and failed verification cannot produce a
-verified proposal. No paid model, public error, or old repair replay is needed.
-
-[Repair proposals](../flue-repair)
-
-## 16. Keep the controls as the demo grows
-
-- [Required and optional checks](../optional-checks), [timeouts](../execution-policy),
-  and [explicit retries](../retry) make failure policy visible.
-- [Immutable attempts](../immutable-attempts) keep earlier results rather than
-  rewriting a failed run as success.
-- [Secret requirements and redaction](../secure-secrets) and
-  [host-authenticated outbound requests](../secret-outbound) keep credentials out
-  of project code and containers.
-- [Worker-isolate checks](../dynamic-worker-checks) and
-  [project HTTP checks](../dynamic-project-checks) show lightweight work running
-  without a container. A [containerless publication](../containerless-site) can
-  also build and serve a small site in isolates; that is not arbitrary Vite/npm support.
-
-The point is one connected app that grows through the whole tour—not a separate
-toy project for every feature. The focused examples explain individual pieces;
-this README keeps the full route together.
-Other runner, source, package-manager, and toolchain combinations belong in the
-[capability matrix](../README.md), not extra detours in this presentation.
+For a human approval gate, use the [Slack release recipe](../cloudflare-hitl-release).
+It calls `CI.Approval.request` before release and requires a host adapter with an
+authorized reviewer list and verified Slack callbacks. A webhook status message
+does not grant approval authority. Generic repository runs on the shared host do
+not automatically inherit that adapter.

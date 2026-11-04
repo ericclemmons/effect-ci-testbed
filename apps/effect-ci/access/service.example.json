@@ -1,0 +1,11 @@
+{
+  "name": "Effect CI",
+  "type": "self_hosted",
+  "domain": "effect-ci.<workers-dev-subdomain>.workers.dev",
+  "session_duration": "24h",
+  "policies": [{
+    "name": "Host owner",
+    "decision": "allow",
+    "include": [{ "email": { "email": "<your-email>" } }]
+  }]
+}

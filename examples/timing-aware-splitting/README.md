@@ -61,9 +61,10 @@ assignment and feedback behavior; it is not evidence of a CI speedup.
 From the repository root after `pnpm install`:
 
 ```sh
-pnpm cf-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts plan
-pnpm cf-ci --workflow examples/timing-aware-splitting/.cloudflare/ci/workflow.ts run --format=text
-node --test examples/timing-aware-splitting/.cloudflare/ci/tests/timing-aware-splitting.test.ts
+cd examples/timing-aware-splitting
+effect-ci plan
+effect-ci run --format=text
+node --test .cloudflare/ci/tests/timing-aware-splitting.test.ts
 ```
 
 Compare [plain GitHub Actions](./.github/workflows/github.yml) with the

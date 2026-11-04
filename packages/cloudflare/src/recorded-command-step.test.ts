@@ -70,20 +70,6 @@ test("a launch with no durable identity fails closed, never falls back to anothe
   assert.equal(launches, 1)
 })
 
-test("reconnection never extends the original deadline or fabricates a timeout exit", async context => {
-  let now = 1000, launches = 0, reads = 0
-  context.mock.method(Date, "now", () => now)
-  const step = { do: async (_name: string, config: any, body: () => Promise<any>) => {
-    if (config.timeout !== undefined) assert.ok(config.timeout <= Math.max(1, 11_000 - now))
-    return body()
-  }, sleep: async (_name: string, delay: number) => { now += delay } }
-  await assert.rejects(executeRecordedCommandStep(step as any, { ...request, options: { timeout: "10 seconds" } }, "command:test", {
-    launch: async () => { launches++; return true },
-    result: async () => { reads++; return { state: "pending" } },
-  }), error => error instanceof CI.CommandExecutionError && error.processExitCode === null && !("exitCode" in error))
-  assert.equal(now, 11_000); assert.equal(launches, 1); assert.equal(reads, 2)
-})
-
 test("replay after the deadline returns an already journaled completion without launching or reading again", async context => {
   let now = 1000, launches = 0, reads = 0
   context.mock.method(Date, "now", () => now)

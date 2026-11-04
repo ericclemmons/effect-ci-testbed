@@ -119,6 +119,7 @@ test("standalone selects authored goals in root and nested workspaces without ru
       export default CI.workflow("my conference workflow", () => all());
     `);
     const commands: Array<{ cwd: string; command: string }> = [];
+    const output: string[] = [];
     const run = (targets: ReadonlyArray<string> = []) => CI.runPromise(standaloneProgram(root, targets).workflow, {
       output: "silent",
       ci: true,
@@ -138,6 +139,7 @@ test("standalone selects authored goals in root and nested workspaces without ru
           try {
             const stdout = execFileSync("/bin/sh", ["-c", local], { cwd: command.workspace.cwd,
               env: { PATH: process.env.PATH }, encoding: "utf8", timeout: 20_000 });
+            output.push(stdout);
             return { exitCode: 0, stdout, stderr: "" };
           } catch (error) {
             const failure = error as { status: number; stdout: string; stderr: string };
@@ -147,6 +149,7 @@ test("standalone selects authored goals in root and nested workspaces without ru
       },
     });
     await run(["notes", "build"]);
+    assert.ok(output.some(text => text.includes("CI execution summary: my conference workflow/notes+build")));
     assert.equal(readFileSync(join(project, "notes.txt"), "utf8"), "authored");
     assert.equal(readFileSync(join(project, "build.txt"), "utf8"), "built");
     assert.equal(readFileSync(join(project, "setup.txt"), "utf8"), "setup");

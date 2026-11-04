@@ -11,12 +11,14 @@ export const patterns = [
   "apps/repair-ai/scripts/README.md", "packages/*/*.md", "packages/cloudflare/src/*.md",
 ]
 
+export const documentationId = (path) => path === "examples/demo/README.md" ? "walkthrough" : path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
+
 export function pages() {
   return [...new Set(globSync(patterns, { cwd: root }))].filter(path => !path.endsWith("/AGENTS.md")).sort().map((path) => {
     const body = readFileSync(resolve(root, path), "utf8")
-    const id = path.replace(/(^|\/)README\.md$/, "").replace(/\.md$/, "").toLowerCase() || "index"
+    const id = documentationId(path)
     return { path, id, body, title: body.match(/^# (.+)$/m)?.[1] ?? path }
-  })
+  }).flatMap(page => page.id === "walkthrough" ? [{ ...page, id: "examples/demo" }, page] : [page])
 }
 
 export const href = (id) => id === "index" ? "/" : `/${id}/`
@@ -26,29 +28,48 @@ export function sidebar() {
   const recipes = new Map(docs.filter((page) => /^examples\/[^/]+\/README\.md$/.test(page.path))
     .map((page) => [page.path.split("/")[1], page]))
   const groups = []
-  const used = new Set()
+  const byLabel = (a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })
+  const used = new Set(["demo"])
   for (const section of readFileSync(resolve(root, "examples/README.md"), "utf8").split(/^## /m).slice(1)) {
-    const items = []
-    for (const [, name] of section.matchAll(/\]\(\.\/([^/#)]+)/g)) {
+    const [label] = section.split("\n")
+    if (!label.startsWith("CI.")) continue
+    const api = docs.find(page => page.title === label)
+    if (!api) throw new Error(`Missing API page for ${label}`)
+    const methods = [...api.body.matchAll(/^## (\w+)$/gm)].map(([, method]) => ({
+      label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
+    }))
+    const examples = []
+    for (const [, label, name] of section.matchAll(/\[([^\]]+)\]\(\.\/([^/#)]+)\)/g)) {
       if (!recipes.has(name) || used.has(name)) continue
       used.add(name)
-      items.push({ label: recipes.get(name).title, slug: recipes.get(name).id })
+      if (!examples.some(item => item.label === label)) examples.push({ label, slug: recipes.get(name).id })
     }
-    if (items.length) groups.push({ label: section.split("\n")[0], collapsed: true, items })
+    groups.push({ label, collapsed: true, items: [
+      { label: "Usage", slug: api.id },
+      ...(methods.length ? [{ label: "Methods", collapsed: true, items: methods.sort(byLabel) }] : []),
+      ...(examples.length ? [{ label: "Examples", collapsed: true, items: examples.sort(byLabel) }] : []),
+    ] })
   }
   const extra = [...recipes].filter(([name]) => !used.has(name))
     .map(([, page]) => ({ label: page.title, slug: page.id }))
-  if (extra.length) groups.push({ label: "More examples", collapsed: true, items: extra })
   return [
-    { label: "Start here", items: [
-      { label: "Overview & quickstart", link: "/" },
-      { label: "Demo", slug: "examples/demo" },
-      ...(docs.some(page => page.id === "examples/demo/talking-script") ? [{ label: "Demo walkthrough", slug: "examples/demo/talking-script" }] : []),
-      { label: "Self-hosting", slug: "apps/effect-ci" },
-    ] },
-    { label: "Recipes", items: [{ label: "Reading guide", slug: "examples" }, ...groups] },
-    { label: "Services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
-    { label: "Reference", collapsed: true, items: [{ autogenerate: { directory: "packages" } }] },
+    { label: "Features", link: "/" },
+    { label: "Walkthrough", slug: "walkthrough" },
+    { label: "API", items: [
+      ...groups,
+      { label: "CLI", slug: "packages/cli" },
+      { label: "Ecosystem", slug: "examples/ecosystem" },
+      { label: "Execution evidence", slug: "examples/coverage" },
+      { label: "GitHub", slug: "examples/github" },
+      { label: "Self-hosting", slug: "apps/effect-ci/self-host" },
+      { label: "Repository wiring", slug: "apps/docs/laboratory" },
+      { label: "SDK", slug: "packages/ci" },
+      { label: "Packages", collapsed: true, items: docs
+        .filter(page => page.path.startsWith("packages/") && !page.title.startsWith("CI."))
+        .map(page => ({ label: page.title, slug: page.id })).sort(byLabel) },
+      { label: "Hosts and services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
+    ].sort(byLabel) },
+    { label: "Recipes", collapsed: true, items: extra.sort(byLabel) },
   ]
 }
 

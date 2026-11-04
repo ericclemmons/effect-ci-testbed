@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 
-const bin = fileURLToPath(new URL("./bin.ts", import.meta.url))
+const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
 const repository = fileURLToPath(new URL("../../../", import.meta.url))
 const example = fileURLToPath(new URL("../../../examples/exported-actions/", import.meta.url))
 const zeroConfig = fileURLToPath(new URL("../../../examples/zero-config/", import.meta.url))
@@ -14,14 +14,14 @@ const run = (args: ReadonlyArray<string>, cwd: string = repository) =>
     encoding: "utf8",
   })
 
-test("bare cf-ci shows help, Mermaid usage and project targets just like --help", () => {
+test("bare effect-ci shows help, Mermaid usage and project targets just like --help", () => {
   const bare = run([], example)
   const explicit = run(["--help"], example)
   assert.equal(bare.status, 0, bare.stderr)
   assert.equal(bare.stdout, explicit.stdout)
-  assert.match(bare.stdout, /cf-ci run\s+Execute the whole default workflow/)
-  assert.match(bare.stdout, /cf-ci plan --format=mermaid/)
-  assert.match(bare.stdout, /Run commands:\n  cf-ci run  \(whole workflow\)\n  cf-ci run check/)
+  assert.match(bare.stdout, /effect-ci run\s+Execute the whole default workflow/)
+  assert.match(bare.stdout, /effect-ci plan --format=mermaid/)
+  assert.match(bare.stdout, /Run commands:\n  effect-ci run  \(whole workflow\)\n  effect-ci run check/)
   assert.doesNotMatch(bare.stdout, /CI execution summary/)
 })
 
@@ -72,7 +72,7 @@ test("human defaults to text and direct-agent environment detection defaults to 
     })
     assert.equal(agent.status, 0, agent.stderr)
     assert.equal(JSON.parse(agent.stdout).workflow, "exported-actions")
-    assert.deepEqual(JSON.parse(agent.stdout).commands, ["cf-ci run", "cf-ci run check"])
+    assert.deepEqual(JSON.parse(agent.stdout).commands, ["effect-ci run", "effect-ci run check"])
   }
 })
 

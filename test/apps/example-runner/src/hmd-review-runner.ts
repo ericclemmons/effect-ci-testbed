@@ -9,10 +9,10 @@ import type { ReceiptBatch } from "./wobs-samples.ts"
 import { canRetryNativeQuery, nativeSqlPolicy } from "./wobs-sql-policy.ts"
 import { hmdFailureReason } from "./hmd-failure.ts"
 
-const baselineVersion = "09593237-23b2-4873-bd04-88c8e8488840"
-const healthyCandidate = "c94cee12-0bf4-48fb-bb42-9235f7ab7a3c"
-const failingCandidate = "02de9b2e-95d0-49e6-b787-467e25c5a65c"
-const origin = "https://effect-ci-hmd-demo.ericclemmons.workers.dev"
+const baselineVersion = "f8526596-f9b8-4068-87c0-c517844488a8"
+const healthyCandidate = "27fca944-c549-433e-a1d4-15684b1c6cd9"
+const failingCandidate = "6fc2cbb9-794c-47d5-989b-5c1a4af1342c"
+const origin = "https://effect-ci-hmd-demo.eclemmons.workers.dev"
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const
 const margins = { maxErrorRate: 0.1, maxIncrease: 0.05, errorGuardBand: 0.02, increaseGuardBand: 0.01 }
 

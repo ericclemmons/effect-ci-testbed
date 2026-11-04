@@ -12,7 +12,7 @@ export const routingDiagnosticCandidate = Object.freeze({
   policy: demoCandidatePolicy,
   script: "effect-ci-hmd-demo",
 });
-const baseline = "09593237-23b2-4873-bd04-88c8e8488840";
+const baseline = "f8526596-f9b8-4068-87c0-c517844488a8";
 const once = { retries: { limit: 0, delay: "1 second" }, timeout: "2 minutes" } as const;
 export function assertRoutingDiagnosticPayload(payload: unknown): void {
   if (!payload || typeof payload !== "object" || Object.getPrototypeOf(payload) !== Object.prototype || Reflect.ownKeys(payload).length !== 1)

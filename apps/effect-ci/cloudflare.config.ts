@@ -1,10 +1,12 @@
 import { defineConfig, defineContainer, exports, bindings } from "cf/config";
 import { hostProfile } from "./host-profile.ts";
 
-// cf/config does not yet expose Access resources. See access.config.ts and
-// README.md for the accompanying Access application and policy provisioning.
+// cf/config does not yet expose Access resources. SELF-HOST.md has the
+// accompanying Access application and policy commands.
 
 const name = "effect-ci-github-cloudflare";
+
+if (process.env.EFFECT_CI_OIDC_SCOPES) JSON.parse(process.env.EFFECT_CI_OIDC_SCOPES);
 
 const workspace = defineContainer({
   name: "effect-ci-workspace",
@@ -84,7 +86,7 @@ const demo = defineConfig({
         exportName: "RecordedProposalEvidence",
       }),
       RELEASE_MANAGER: bindings.worker({ worker: "effect-ci-release-manager" }),
-      ANALYTICS_SQL: bindings.analyticsSQL(),
+      ANALYTICS_SQL: bindings.analytics(),
     },
   },
   containers: [workspace],

@@ -1,0 +1,7 @@
+{
+  "workers:edit": [{
+    "effect": "allow",
+    "permission_groups": [{ "id": "<workers-scripts-write-permission-id>" }],
+    "resources": { "com.cloudflare.api.account.<destination-account-id>": "*" }
+  }]
+}

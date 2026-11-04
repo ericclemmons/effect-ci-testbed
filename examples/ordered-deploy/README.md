@@ -12,7 +12,8 @@ the two deployments in order; the build runs once.
 ## Run it
 
 ```sh
-pnpm exec cf-ci run --workflow examples/ordered-deploy/.cloudflare/ci/workflow.ts
+cd examples/ordered-deploy
+effect-ci run
 ```
 
 The two Workers build with `cf build` and deploy with
