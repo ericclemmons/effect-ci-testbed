@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
-import { runCli } from "./index.ts"
+import "./sdk-loader.ts"
+
+const { runCli } = await import("./index.ts")
 
 await runCli()

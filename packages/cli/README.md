@@ -94,3 +94,7 @@ public origin and repository name in `.cloudflare/ci/oidc.json`, which subsequen
 remote commands discover automatically.
 
 [Remote authentication](./src/workload-auth.ts "source")
+
+Authored workflows can import `@effect-ci-testbed/ci`, its subpaths, and `effect`
+from the CLI runtime. Local and hosted entrypoints use the same SDK instance;
+no unpublished SDK dependency or local path link is needed in the app manifest.
