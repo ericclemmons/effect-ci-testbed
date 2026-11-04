@@ -35,6 +35,7 @@ const child = spawn(process.execPath, [
   "--workflow",
   required("EFFECT_CI_WORKFLOW"),
   process.env.DRY_RUN ? "plan" : "run",
+  "--local",
   ...actions,
 ], {
   env: { ...process.env, EFFECT_CI_EVENT_FD: "3" },
