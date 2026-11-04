@@ -124,7 +124,7 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run GitHub CI on Cloudflare](./github-cloudflare-ci) ([deploy service](../apps/effect-ci)) | — | — | — | ✅ |
-| [Run CI remotely from the CLI](./demo#6-run-on-a-host) | — | — | — | ✅ |
+| [Run CI remotely from the CLI](./demo#7-enroll-oidc-and-run-on-a-host) | — | — | — | ✅ |
 | [Release from verified local checks](./release-flywheel) | — | ✅ | — | ✅ |
 | [Approve a deployment in GitHub](./hitl-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Approve a release in Slack](./cloudflare-hitl-release) | — | — | — | ✅ |
