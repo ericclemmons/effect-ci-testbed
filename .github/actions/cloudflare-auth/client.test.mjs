@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -68,4 +68,40 @@ test("action exports masked credentials, saves cleanup state, and its post step 
   });
   assert.equal(post.status, 0, post.stderr);
   assert.match(post.stdout, /revoked/);
+});
+
+test("root checkout discovers its host and enrolls before ordinary deployment credentials are exported", () => {
+  const root = mkdtempSync(join(tmpdir(), "effect-ci-auth-journey-"));
+  mkdirSync(join(root, ".cloudflare/ci"), { recursive: true });
+  writeFileSync(join(root, ".cloudflare/ci/oidc.json"), JSON.stringify({ issuer: input.broker }));
+  const envFile = join(root, "env");
+  const stateFile = join(root, "state");
+  const script = `
+    import assert from 'node:assert/strict';
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+      calls.push(String(url));
+      if (String(url).includes('/token?')) return Response.json({ value: 'signed-identity' });
+      if (String(url).endsWith('/api/oidc/repositories')) {
+        assert.deepEqual(JSON.parse(init.body), { repository: 'owner/walkthrough' });
+        assert.equal(init.headers.authorization, 'Bearer signed-identity');
+        return Response.json({ enabled: true, issuer: ${JSON.stringify(input.broker)}, repository: 'owner/walkthrough' });
+      }
+      assert.equal(String(url), ${JSON.stringify(input.broker + "/token")});
+      return Response.json(${JSON.stringify(credentials)});
+    };
+    await import(${JSON.stringify(new URL("./index.mjs", import.meta.url).href)});
+    assert.equal(process.exitCode ?? 0, 0);
+    assert.deepEqual(calls.map(url => new URL(url).pathname), ['/token', '/api/oidc/repositories', '/token']);
+  `;
+  const env = { ...process.env, "INPUT_BROKER-URL": "", EFFECT_CI_REMOTE_URL: "",
+    INPUT_ENROLL: "true", INPUT_WORKER: "walkthrough", GITHUB_REPOSITORY: "owner/walkthrough",
+    GITHUB_WORKSPACE: root, GITHUB_ENV: envFile, GITHUB_STATE: stateFile,
+    ACTIONS_ID_TOKEN_REQUEST_URL: input.requestUrl, ACTIONS_ID_TOKEN_REQUEST_TOKEN: input.requestToken };
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8", env });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const deploymentEnvironment = Object.fromEntries(readFileSync(envFile, "utf8").trim().split("\n").map(line => line.split("=")));
+  assert.equal(deploymentEnvironment.CLOUDFLARE_API_TOKEN, credentials.token);
+  assert.equal(deploymentEnvironment.CLOUDFLARE_ACCOUNT_ID, credentials.accountId);
+  assert.match(readFileSync(stateFile, "utf8"), /receipt=revocation-receipt/);
 });

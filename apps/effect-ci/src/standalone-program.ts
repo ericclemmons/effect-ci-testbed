@@ -2,7 +2,6 @@ import * as CI from "@effect-ci-testbed/ci";
 
 export const standaloneContainerOptions = {
   image: "workspace",
-  instance: "standard-2",
   loginShell: false,
   readyCommand: "/usr/local/bin/node -e 'if(process.getuid()!==1000)process.exit(1)'",
 } as const;
@@ -37,25 +36,7 @@ export function standaloneProgram(root: string, targets: ReadonlyArray<string> =
         const workspace = root === "." ? repository : repository.directory(root);
         const packageJson = yield* workspace.readFile("package.json");
         if (packageJson === undefined) return workspace;
-        let installation = workspace;
-        const manifest = JSON.parse(packageJson);
-        let hasPackageManager = Boolean(manifest.packageManager);
-        for (const lockfile of ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"]) {
-          hasPackageManager ||= yield* workspace.exists(lockfile);
-        }
-        if (!hasPackageManager && root !== ".") {
-          const segments = root.split("/");
-          while (segments.length > 0) {
-            segments.pop();
-            const ancestor = segments.length ? repository.directory(segments.join("/")) : repository;
-            const ancestorManifest = JSON.parse((yield* ancestor.readFile("package.json")) ?? "{}");
-            if ((yield* ancestor.exists("pnpm-workspace.yaml")) || ancestorManifest.workspaces) {
-              installation = ancestor;
-              break;
-            }
-          }
-        }
-        const pm = yield* CI.PackageManager.JavaScript(installation);
+        const pm = yield* CI.PackageManager.JavaScript(workspace);
         yield* pm.install();
         return workspace;
       },
@@ -65,7 +46,7 @@ export function standaloneProgram(root: string, targets: ReadonlyArray<string> =
     // Explicit local execution cannot recurse into the host's remote endpoint.
     return yield* workspace.exec(["node /opt/effect-ci/src/hosted.ts run", ...targets,
       ...(workflow ? [`--workflow=${workflow}`] : []),
-      "--local --format=json"].join(" "));
+      "--local --format=text"].join(" "));
   });
   return {
     workflow: CI.workflow("hosted-ci", () => run()),

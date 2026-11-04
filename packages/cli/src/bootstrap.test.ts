@@ -40,6 +40,22 @@ test("plan, list, remote and explicit paths never initialize", () => fixture(roo
   }
 }))
 
+test("enrollment keeps discovery local and --local executes working-tree edits", () => fixture(root => {
+  mkdirSync(join(root, ".cloudflare/ci"), { recursive: true })
+  writeFileSync(join(root, ".cloudflare/ci/oidc.json"), JSON.stringify({
+    issuer: "https://unavailable.invalid", repository: "owner/project",
+  }))
+  const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
+  for (const args of [["list"], ["plan", "lint"], ["run", "lint", "--local"]]) {
+    const result = spawnSync(process.execPath, [bin, ...args, "--format=json"], {
+      cwd: root, encoding: "utf8", timeout: 30_000,
+    })
+    assert.equal(result.status, 0, result.stderr || result.stdout)
+    assert.equal(JSON.parse(result.stdout).ok, true)
+  }
+  assert.equal(readFileSync(join(root, "checked.txt"), "utf8"), "ok")
+}))
+
 test("bare CLI and --help describe commands without initializing or executing an unconfigured package", () => fixture(root => {
   const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   for (const args of [[], ["--help"]]) {

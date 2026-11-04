@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, execFileSync } from "node:child_process"
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createServer } from "node:http"
@@ -10,6 +10,7 @@ import test from "node:test"
 test("remote dispatch, capabilities, logs and status automatically use refreshed workload identity", async () => {
   const directory = mkdtempSync(join(tmpdir(), "workload-remote-"))
   let origin = "", identities = 0, dispatches = 0
+  let rejectRuns = false
   const paths: string[] = []
   const server = createServer(async (request, response) => {
     const url = new URL(request.url!, origin)
@@ -28,6 +29,11 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
       response.end(JSON.stringify({ protocol: "effect-ci-remote-v1", targets: [], targetDiscovery: "project", authentication: ["github-oidc"] }))
     } else if (url.pathname === "/api/runs") {
       dispatches++
+      if (rejectRuns) {
+        response.writeHead(503)
+        response.end("Host unavailable")
+        return
+      }
       let body = ""
       for await (const chunk of request) body += chunk
       assert.equal(JSON.parse(body).repository, "https://github.com/owner/project.git")
@@ -54,7 +60,8 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     delete env.EFFECT_CI_OIDC_TOKEN
     delete env.EFFECT_CI_REMOTE_URL
     const run = (args: string[]) => new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), ...args, ...(args[0] === "oidc" ? [] : ["--remote", "--format=json"])], { cwd: directory, env })
+      const [command] = args
+      const child = spawn(process.execPath, [fileURLToPath(new URL("./effect-ci.ts", import.meta.url)), ...args, ...(command === "oidc" ? [] : ["--format=json"])], { cwd: directory, env })
       let output = ""
       child.stdout.on("data", chunk => { output += chunk })
       child.stderr.on("data", chunk => { output += chunk })
@@ -65,7 +72,7 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     assert.equal(enabled.code, 0, enabled.output)
     assert.ok(paths.includes("/api/oidc/repositories"))
     assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: directory, encoding: "utf8" }), "")
-    const doctor = await run(["doctor"])
+    const doctor = await run(["doctor", "--remote"])
     assert.equal(doctor.code, 0, doctor.output)
     assert.equal(dispatches, 0)
     const result = await run(["run", "build"])
@@ -75,6 +82,14 @@ test("remote dispatch, capabilities, logs and status automatically use refreshed
     assert.ok(paths.includes("/api/runs/job-run"))
     assert.ok(identities >= 5)
     assert.doesNotMatch(result.output, /job-identity|must-not-leak|github-request-token/)
+    const explicit = await run(["run", "build", "--remote"])
+    assert.equal(explicit.code, 0, explicit.output)
+    assert.equal(dispatches, 2)
+    rejectRuns = true
+    const failed = await run(["run", "build"])
+    assert.equal(failed.code, 3, failed.output)
+    assert.equal(JSON.parse(failed.output).error.code, "CI_REMOTE_FAILED")
+    assert.equal(existsSync(join(directory, ".cloudflare/ci/ci.ts")), false)
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()))
     rmSync(directory, { recursive: true, force: true })

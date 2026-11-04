@@ -130,6 +130,9 @@ interface WorkspaceContainerStub {
   ) => Promise<void>
 }
 
+// Match public GitHub Linux runner CPU capacity for fresh and restored workspaces.
+const defaultInstance = "standard-4"
+
 export interface WorkspaceContainerOptions {
   readonly entrypoint?: ReadonlyArray<string>
   readonly image?: string
@@ -299,7 +302,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     if (activeCheckpoint) {
       container.start({
         containerSnapshot: activeCheckpoint,
-        instance: options.instance ?? "lite",
+        instance: options.instance ?? defaultInstance,
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
@@ -315,7 +318,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     container.start({
       image: configuredImage ?? imageName,
-      instance: options.instance ?? "lite",
+      instance: options.instance ?? defaultInstance,
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })
@@ -380,7 +383,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
       container.start({
         containerSnapshot: revision,
-        instance: options.instance ?? "lite",
+        instance: options.instance ?? defaultInstance,
         entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
         enableInternet: true,
       })
@@ -762,7 +765,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
 
     container.start({
       containerSnapshot: snapshot,
-      instance: options.instance ?? "lite",
+      instance: options.instance ?? defaultInstance,
       entrypoint: [...(options.entrypoint ?? ["sleep", "infinity"])],
       enableInternet: true,
     })

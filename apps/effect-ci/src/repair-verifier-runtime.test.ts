@@ -59,7 +59,7 @@ test(
     // Actual DO RPC surface, but FAKE execution. This is not native Node evidence.
     export class WorkspaceContainer extends DurableObject {
       materializeSource(value,options){
-        if(value.length!==3||JSON.stringify(value).includes("local-host-secret")||options.image!=="workspace"||options.instance!=="standard-1")throw new Error("Unsafe materialization");
+        if(value.length!==3||JSON.stringify(value).includes("local-host-secret")||options.image!=="workspace")throw new Error("Unsafe materialization");
         files=value;
       }
       execute(command,cwd,step,revision,cachePaths,cacheRoot,options){

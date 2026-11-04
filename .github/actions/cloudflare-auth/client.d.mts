@@ -1,6 +1,7 @@
 export class AuthenticationError extends Error {}
 export interface ExchangeInput {
   broker: string;
+  repository?: string;
   worker: string;
   scopes: string;
   requestUrl: string;
