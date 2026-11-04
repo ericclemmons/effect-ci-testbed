@@ -1,0 +1,35 @@
+name: Deploy the app with short-lived credentials
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@main
+        with:
+          enroll: "true"
+          worker: walkthrough
+      - run: pnpm exec cf deploy
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+        run: |
+          jq -n --arg text "${GITHUB_REPOSITORY}: ${STATUS} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" '{text: $text}' |
+            curl --fail --silent --show-error --max-time 15 -H 'Content-Type: application/json' --data-binary @- "$SLACK_WEBHOOK_URL"

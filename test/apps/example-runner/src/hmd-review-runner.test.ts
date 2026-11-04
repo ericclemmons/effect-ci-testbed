@@ -138,7 +138,7 @@ for (const scenario of ["early-health", "deadline", "sticky-regression", "manual
       if (scenario === "manual-in-flight" && waits === 2) return { payload: { snapshot: first.snapshot, decision: "rejected", reason: "In-flight reject delivered" } }
       if (scenario === "stale-button" && waits === 2) return { payload: { snapshot: first.snapshot, decision: "approved", reason: "Stale fixture" } }
       now += options.timeout
-      throw Object.assign(new Error(`Execution timed out after ${options.timeout}ms`), { name: "Error" })
+      throw Object.assign(new Error(`WorkflowTimeoutError: Execution timed out after ${options.timeout}ms`), { name: "Error" })
     } } as unknown as WorkflowStep
     try {
       const run = runHumanReviewedHmd("sampling-fixture", step, broker, async (_origin, identity) => {

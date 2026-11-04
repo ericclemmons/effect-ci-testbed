@@ -1,7 +1,8 @@
 # Examples
 
-Start with [the walkthrough](./demo). The API section explains each API and links to
-solutions that use it. Recipes covers broader goals. Entries are alphabetical.
+Start with [the walkthrough](./demo). Reference explains the SDK and CLI. Guides
+cover setup and hosting; Examples lists runnable recipes. The API groups below
+link to solutions that use each API. Entries within each group are alphabetical.
 
 Install dependencies once at the repository root with `pnpm install`. Add the
 unpublished CLI to your shell from that root:
@@ -128,3 +129,10 @@ Each example starts with `cd examples/...`. The CLI discovers its workflow there
 - [Use existing package scripts](./zero-config)
 
 Hosted credentials and service setup live in the [host guide](../apps/effect-ci/README.md).
+
+The hosted runner discovers project workflows; basic recipes do not need separate
+Workers or deployments. From this repository, select a recipe with
+`effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`.
+The runner checks out the pushed commit and runs that project's workflow in its
+workspace. It does not upload local edits or import recipes into the host Worker.
+See [remote project selection](../packages/cli/README.md#remote-project-selection).

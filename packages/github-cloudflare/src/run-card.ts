@@ -270,7 +270,7 @@ export class RunCard {
     const restored = Boolean(options.rollbackStep && (this.phase === "success" || this.phase === "failure") &&
       this.checks.get(options.rollbackStep)?.status === "complete")
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
-      { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
+      { running: "▶️ Running", waiting: "⏳ Awaiting approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     if (options.statusOnly) {
       const current = (this.phase === "success" ? this.lastCompletedStep : undefined) ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
         ordered.find(id => ["failed", "rejected"].includes(this.checks.get(id)!.status)) ??
@@ -298,8 +298,12 @@ export class RunCard {
         ordered.find(id => this.checks.get(id)!.status === "running") ??
         ordered.find(id => this.checks.get(id)!.status === "failed") ??
         ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
+      // Each segment is 5% of candidate traffic, so every supported release
+      // phase has an exact bar. The decision buttons already explain the pause.
       const title = restored ? `${headline}${this.phase === "failure" && current ? ` · ${current}` : ""}` :
-        this.phase === "success" ? headline : `${headline}${current ? ` · ${current}` : ""}`
+        this.phase === "success" ? headline : this.health && (this.phase === "running" || this.phase === "waiting") ?
+          `${this.workflowId} · ${"▰".repeat(this.health.phase / 5)}${"▱".repeat(20 - this.health.phase / 5)} ${this.health.phase}%` :
+          `${headline}${current ? ` · ${current}` : ""}`
       // Reuse the existing capability/button builder, but never carry its checklist,
       // diagnostics, metric text or image into the continuously updated root card.
       const full = this.render({ ...options, minimal: false })
@@ -307,7 +311,6 @@ export class RunCard {
       return { text: title, blocks: [
         { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
-        ...(this.review ? [{ type: "section", text: { type: "plain_text", text: this.review.request.summary.slice(0, 1000) } }] : []),
         ...actions,
       ] }
     }

@@ -16,3 +16,7 @@ effect-ci run check
 only named `CI.action` exports become CLI targets.
 
 [Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)
+
+Use the same exported goal on your configured hosted service from the repository root:
+`effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
+No recipe-specific deployment is required; remote execution uses the pushed commit.

@@ -28,6 +28,14 @@ The container's outbound HTTPS proxy authenticates only the authorized main depl
 commands; Node and Docker receive dummy login values and trust the runtime proxy CA.
 A failed or uncertain publication is inspected, not blindly replayed.
 
+## Container capacity
+
+Fresh and restored CI workspaces default to `standard-4`: 4 vCPU, 12 GiB RAM
+and 20 GB disk. Hosts can override `instance` with a smaller named size.
+This matches standard public GitHub Linux runner CPU capacity, with less RAM
+(GitHub provides 16 GB) and more disk (GitHub provides 14 GB).
+Hardware sizing does not imply the same preinstalled tools or performance.
+
 ## Host configuration
 
 [SELF-HOST.md](./SELF-HOST.md) covers the App, secrets, Access and CLI setup.
@@ -36,6 +44,11 @@ installs dependencies, and runs the same CLI inside the container at the reposit
 root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional package
 scripts there. `effect-ci run build --remote` selects the repository's build action;
 no target runs its whole workflow. The host never imports repository workflow code.
+
+For Vite+ task caching, prefer pnpm. The default transport restores
+`node_modules/.vite/task-cache` before installation, but npm's frozen `npm ci`
+install deletes it. npm builds can succeed without reusing task results; see the
+[npm task-cache limitation](../../examples/node-npm/README.md#task-cache-limitation).
 
 The `demo` profile is the complete current host, including its connected services.
 The self-hosting guide deploys this profile.
@@ -97,7 +110,9 @@ These are not automatic enrollment for a fresh copy of the tutorial.
 approval authority. Host policy selects which runs notify. The root CI/CD workflow
 has no human gate. The [HITL example](../../examples/cloudflare-hitl-release/README.md)
 shows an explicit approval action; [demo release evidence](./DEMO-RELEASE.md) retains
-the earlier release integration.
+the earlier release integration. The [human walkthrough handoff](./HUMAN-REVIEW.md)
+separates that signed, delegated execution from the independent human evidence
+still required by issue #141. Do not replay a release to refresh old documentation.
 
 ### Separate health-mediated approval lab
 

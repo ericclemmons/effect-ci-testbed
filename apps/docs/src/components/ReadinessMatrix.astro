@@ -32,7 +32,6 @@ const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").r
   <p>Every example, across the places it should work.</p>
   <div class="summary" data-summary>{passed} / {cells.length} passing · {Math.round(passed / cells.length * 100)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
   <progress max={cells.length} value={passed} aria-label="Passing feature and environment combinations"></progress>
-  <p class="legend"><span class="pass">✓</span> Passing <span class="fail">×</span> Missing or unsuccessful <span>— Not applicable</span></p>
   <p class="note">Last completed main snapshot. Local includes local Cloudflare runtime execution; hosted requires a native Cloudflare check. Click a square for its evidence.</p>
   <div class="matrix-scroll" tabindex="0" role="region" aria-label="Feature compatibility matrix">
     <table>
@@ -62,10 +61,6 @@ const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").r
   progress::-webkit-progress-bar { background: var(--sl-color-gray-5); }
   progress::-webkit-progress-value { background: #15803d; }
   progress::-moz-progress-bar { background: #15803d; }
-  .legend { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; font-size: .8rem; }
-  .legend .pass, .legend .fail { display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 2px; color: white; }
-  .pass { background: #15803d; }
-  .fail { background: #b91c1c; }
   .note { color: var(--sl-color-gray-2); font-size: .8rem; }
   .matrix-scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: .85rem; }

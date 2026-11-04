@@ -1,0 +1,18 @@
+--- a/.cloudflare/ci/ci.ts
++++ b/.cloudflare/ci/ci.ts
+@@ -32,7 +32,14 @@
+   "publish local site",
+   function* () {
+     const workspace = yield* build();
+-    return () => site.publish(workspace);
++    return function* () {
++      const approval = yield* CI.Approval;
++      yield* approval.request({
++        title: "Publish the walkthrough?",
++        summary: "The build passed and its output changed.",
++      });
++      return yield* site.publish(workspace);
++    };
+   },
+ );
+ 

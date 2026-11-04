@@ -26,6 +26,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let resultAvailable = false
   let resultStatus = 200
   let resultReads = 0
+  let projectSelection = false
+  const projects: unknown[] = []
   let targetDiscovery: unknown
   const selections: unknown[] = []
   try {
@@ -57,13 +59,23 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json",
           ...([302,307].includes(capabilityStatus) ? {location:"https://fixture.cloudflareaccess.com/cdn-cgi/access/login?token=never-reflect-login-token"} : {}) })
         response.end(JSON.stringify({ protocol: capabilityProtocol, targets: targetDiscovery === "project" ? [] : ["test", "build"],
-          ...(targetDiscovery === undefined ? {} : { targetDiscovery }) }))
+          ...(targetDiscovery === undefined ? {} : { targetDiscovery }), ...(projectSelection ? { projectSelection: true } : {}) }))
+        return
+      }
+      if (request.url === `${routePrefix}/runs/fixture` && diagnosticFailure) {
+        response.writeHead(200, { "content-type": "application/json" })
+        response.end(JSON.stringify({ status: "errored", error: { message: "Command failed" } }))
         return
       }
       if (request.url === `${routePrefix}/runs/fixture` && resultAvailable) {
         resultReads++
         response.writeHead(resultStatus, { "content-type": "application/json" })
         response.end(JSON.stringify({ status: "complete", output: { evidence: { receipts: [{ keyId: "host-fixture", signature: "test-only" }] } } }))
+        return
+      }
+      if (request.url === `${routePrefix}/runs/fixture`) {
+        response.writeHead(200, { "content-type": "application/json" })
+        response.end(JSON.stringify({ status: "running" }))
         return
       }
       if (request.url === `${routePrefix}/runs`) {
@@ -75,7 +87,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(input.repository, "https://github.com/example/project.git")
         assert.equal(input.root, undefined)
         assert.equal(input.projectRoot, undefined)
-        selections.push(JSON.parse(body).targets)
+        projects.push(input.project)
+        selections.push(input.targets)
         response.writeHead(202, { "content-type": "application/json" })
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture`,
           ...(resultAvailable ? { resultAvailable: true } : {}) }))
@@ -95,7 +108,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
           const message = encodeCommandDiagnostics({ version: 1, stepId: "compile", command: "node check.mjs", cwd: "/workspace", exitCode: 7,
             output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } })!
           response.write(JSON.stringify({ eventId: 1, type: "step_errored", stepName: 'action:"compile"', error: { message } }) + "\n")
-          response.write(JSON.stringify({ eventId: 2, type: "workflow_errored", error: { message } }) + "\n")
+          // Reproduce a real native stream that stays open without a terminal event.
           return
         }
         response.write(JSON.stringify({ eventId: 1, type: "step_completed", stepName: "lint", output: JSON.stringify({ stdout: "lint passed" }) }) + "\n")
@@ -265,9 +278,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     await writeFile(join(directory, ".cloudflare/ci/workflow.ts"), 'throw new Error("local workflow must not run before dispatch")\n')
     execFileSync("git", ["add", ".cloudflare/ci/workflow.ts"], { cwd: directory })
     execFileSync("git", ["commit", "-qm", "local workflow fixture"], { cwd: directory })
+    projectSelection = true
     const discovered = await run("fixture-user-token", false, "text", false, ["build"])
     assert.equal(discovered.code, 0, discovered.output)
     assert.deepEqual(selections.at(-1), ["build"])
+    assert.deepEqual(projects.at(-1), { root: "." }, "root selection must override a host's configured nested root")
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

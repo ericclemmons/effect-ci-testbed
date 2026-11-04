@@ -38,7 +38,7 @@ const Base = GitHubCloudflare.workflowEntrypoint<unknown>((environment, paramete
   root: "examples/demo",
   detailsUrl: showcaseDetailsUrl,
   cache: false,
-  container: { image: "showcase", instance: "standard-1", loginShell: false,
+  container: { image: "showcase", loginShell: false,
     readyCommand: showcaseReadyCommand },
   slackLayout: "status-thread",
   slackCommandOutput: "failed",

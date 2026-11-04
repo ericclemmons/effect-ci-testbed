@@ -9,7 +9,8 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 | --- | --- |
 | `effect-ci list` | Runnable project goals. |
 | `effect-ci plan test build --format=mermaid` | Dependency graph; no execution. |
-| `effect-ci run test build` | Execute selected goals locally. |
+| `effect-ci run test build` | Execute remotely after OIDC enrollment, locally otherwise. |
+| `effect-ci run test build --local` | Execute working-tree edits locally. |
 | `effect-ci run test build --remote` | Dispatch advertised goals to an enrolled host. |
 | `effect-ci doctor --remote` | Check host access without starting a run. |
 | `effect-ci oidc -- <command>` | Run a child with temporary deployment credentials. |
@@ -39,6 +40,29 @@ The package is unpublished. Install this repository's dependencies and add its
 
 [CLI entrypoint](./src/effect-ci.ts "source")
 
+## Remote project selection
+
+`effect-ci run --remote` runs the project in the current directory through your
+configured hosted service. For a nested project, change to its directory or pass
+`--workflow path/to/project/.cloudflare/ci/workflow.ts`. An explicit workflow
+filename is preserved too; `--workflow path/to/project` selects package-script
+discovery. Exported goals use the same service, for example
+`effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
+
+The CLI sends the repository-relative project directory and, when needed, the
+workflow filename with the pushed commit. The host installs the project and
+discovers its workflow inside the isolated workspace. No per-recipe Worker or
+deployment is needed. The CLI checks host support before dispatching a selected
+project. Older generic hosts reject selection
+without starting the wrong workflow. Legacy fixed-goal hosts retain their existing
+repository-root goal-dispatch behavior. Hosts reject absolute paths, traversal,
+and unsupported selection.
+Authentication, source authorization, and clean-worktree checks are unchanged.
+
+[Remote dispatch](./src/index.ts#symbol=builtInRemote "source")
+
+[Hosted project execution](../../apps/effect-ci/src/standalone-program.ts#symbol=standaloneProgram "source")
+
 ## OIDC deployment
 
 Run `effect-ci oidc --service https://your-hosted-ci-origin` once from a repository with
@@ -50,6 +74,12 @@ files and aliases work as they do for `effect-ci run --remote`.
 The GitHub App must be installed on the repository. Successful enrollment writes
 `.cloudflare/ci/oidc.json` with the service origin and repository name. Commit that
 file; it contains no credentials. Repeating enrollment is safe.
+
+After enrollment, `effect-ci run build` defaults to remote execution. Use
+`effect-ci run build --local` for fast feedback on working-tree edits. `list` and
+`plan` stay local; `--remote` remains available explicitly. A host URL or private
+API profile alone does not change the default. Remote errors never silently run
+work locally.
 
 In CI, use `effect-ci oidc -- pnpm exec wrangler deploy` or
 `effect-ci oidc -- pnpm exec cf deploy`. The command uses GitHub Actions OIDC (with
@@ -69,6 +99,15 @@ in the shared app. Project enrollment cannot grant itself arbitrary permissions.
 
 ## Identity for remote execution
 
+Human remote runs show command output and the same CI summary as local runs.
+Hosted command output arrives when each command finishes. Cloudflare's internal
+step and attempt records remain available in JSON output. The CLI bounds each
+log subscription to 30 seconds, checks the same run's status after interruptions,
+and resumes from its event cursor while the run remains live. A missing terminal
+log event does not hide a confirmed failure or trigger another run. When status
+confirms completion before the terminal event arrives, JSON contains the confirmed
+result and the events received so far; that event list may be incomplete.
+
 `effect-ci doctor --remote` and `effect-ci run --remote` automatically choose identity:
 local users reuse their enrolled Cloudflare Access session; GitHub Actions and
 hosted CI use their execution-platform identity. Dispatch, status, and logs all
@@ -83,3 +122,7 @@ public origin and repository name in `.cloudflare/ci/oidc.json`, which subsequen
 remote commands discover automatically.
 
 [Remote authentication](./src/workload-auth.ts "source")
+
+Authored workflows can import `@effect-ci-testbed/ci`, its subpaths, and `effect`
+from the CLI runtime. Local and hosted entrypoints use the same SDK instance;
+no unpublished SDK dependency or local path link is needed in the app manifest.

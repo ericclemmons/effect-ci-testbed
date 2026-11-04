@@ -238,7 +238,9 @@ export const workflowEntrypoint = <A>(
         key: github?.repositoryName ?? event.payload.repository,
         // Vite+ fingerprints task inputs itself; this is only its transport cache.
         keyFiles: [],
-        paths: ["node_modules/.vite/task-cache"],
+        // pnpm's prunedAt changes on a fresh install. Preserve its metadata so
+        // Vite+ can compare dependency inputs without a timestamp-only miss.
+        paths: ["node_modules/.vite/task-cache", "node_modules/.modules.yaml"],
       } }),
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
