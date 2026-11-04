@@ -75,6 +75,21 @@ independent allocation and health GETs confirmed the captured baseline at 100%,
 healthy, deployment `02aa36d3-b852-4449-ba24-29480032271c`.
 The callback failure must be diagnosed before another human acceptance attempt.
 
+Eric explicitly authorized temporary production diagnostics for that HTTP 403.
+Version `a87979b1-985d-4812-8a6e-88a19f3633f2`, deployment
+`29e33f35-8e9c-4b55-a7fd-bf442f5e071f`, uses exact merged main
+`d0aa80fa5929b695b5ad98fe18dc78da761a5f3e` plus logging in the two existing
+callback rejection guards. The six flags report only app/team/reviewer and
+channel/action/trigger checks; no identifiers, credentials or request payloads
+are logged. Authorization behavior is unchanged. A full source archive comparison
+confirmed the only source difference was `apps/effect-ci/src/hmd-slack.ts`.
+All 29 existing callback/rollout tests and the deployment build passed. Independent
+readback confirmed the diagnostic version at 100% with identical binding,
+environment, export, compatibility and container metadata. The target remained
+on the captured baseline at 100%. Main's pending automatic deployment can remove
+the temporary instrumentation, so verify the live callback version before using
+new evidence. No fresh human run was started by this deployment.
+
 ## Historical reconciliation — October 26, 2026
 
 **Status, October 26, 2026:** implementation and signed execution evidence exist;
