@@ -90,6 +90,29 @@ on the captured baseline at 100%. Main's pending automatic deployment can remove
 the temporary instrumentation, so verify the live callback version before using
 new evidence. No fresh human run was started by this deployment.
 
+Eric then confirmed readiness for diagnostic run
+`human-progress-reject-20261103-5`. Its real Progress callback reached diagnostic
+version `a87979b1-985d-4812-8a6e-88a19f3633f2` with HTTP 403. The recorded flags
+were `appMatches: true`, `teamMatches: true`, `reviewerAllowed: false`.
+Eric confirmed he uses two Slack accounts and authorized adding work member
+`U0C7VTU3H38` while preserving existing reviewers. The current reviewer list is
+stored as a Workers secret and its value is not exposed by version readback;
+do not replace unknown existing reviewers with only the new ID.
+Run 5 expired without an accepted decision; native restoration and independent
+allocation/health GETs confirmed the captured baseline at 100%, healthy,
+deployment `1d6fbbae-f16b-41c8-8481-b867edfa8f05`.
+
+The requested feedback change acknowledges a signed, matching-app/workspace/channel
+click from an unlisted account and sends that user a private Slack explanation.
+The message identifies the clicking account and explains switching accounts or
+requesting access; no review capability is inspected or consumed. It uses Slack's
+fixed `chat.postEphemeral` endpoint with the existing bot credential, never a
+payload-supplied response URL. Invalid signatures and mismatched contexts remain
+blocked. The temporary diagnostic logs are removed from source. Existing callback
+and card fixtures reproduce the missing feedback before the change; all 58
+affected existing tests pass after it. This local proof is not live delivery
+acceptance, and does not itself change the reviewer allowlist.
+
 ## Historical reconciliation — October 26, 2026
 
 **Status, October 26, 2026:** implementation and signed execution evidence exist;

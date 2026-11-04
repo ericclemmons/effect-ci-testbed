@@ -19,8 +19,22 @@ export async function hmdSlackInteraction(request: Request, env: Environment, re
   if (body.length > 32_000 || !await verifySlackSignature(env.SLACK_SIGNING_SECRET, body, request.headers.get("x-slack-request-timestamp"), request.headers.get("x-slack-signature"))) return new Response("Invalid signature", { status: 401 })
   let p
   try { p = JSON.parse(new URLSearchParams(body).get("payload") ?? "null") } catch { return new Response("Invalid payload", { status: 400 }) }
-  if (p?.api_app_id !== env.SLACK_APP_ID || p.team?.id !== env.SLACK_TEAM_ID ||
-    !env.SLACK_APPROVER_IDS.split(",").map((id) => id.trim()).includes(p.user?.id)) return new Response("Unauthorized reviewer", { status: 403 })
+  if (p?.api_app_id !== env.SLACK_APP_ID || p.team?.id !== env.SLACK_TEAM_ID) return new Response("Unauthorized reviewer", { status: 403 })
+  if (!env.SLACK_APPROVER_IDS.split(",").map((id) => id.trim()).includes(p.user?.id)) {
+    if (p.type !== "block_actions" || p.channel?.id !== env.SLACK_CHANNEL_ID ||
+      typeof p.user?.id !== "string" || !/^[UW][A-Z0-9]+$/.test(p.user.id)) return new Response("Unauthorized reviewer", { status: 403 })
+    try {
+      const response = await transport("https://slack.com/api/chat.postEphemeral", {
+        method: "POST", redirect: "manual", signal: AbortSignal.timeout(2000),
+        headers: { authorization: `Bearer ${env.SLACK_BOT_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ channel: env.SLACK_CHANNEL_ID, user: p.user.id,
+          text: `Slack account ${p.user.id} is not authorized to review this release. Switch to an approved account or ask an administrator to add this account. No decision was recorded.` }),
+      })
+      if (!response.ok || (await response.json() as { ok?: boolean }).ok !== true) console.warn("HMD reviewer feedback could not be delivered")
+    } catch { console.warn("HMD reviewer feedback could not be delivered") }
+    // Acknowledge the click without inspecting or consuming any review capability.
+    return new Response(null, { status: 200 })
+  }
   const actor = `slack:${p.team.id}:${p.user.id}`
   try {
     if (p.type === "block_actions") {
