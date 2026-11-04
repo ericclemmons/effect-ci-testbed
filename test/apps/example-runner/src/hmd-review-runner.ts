@@ -224,8 +224,9 @@ export async function runHumanReviewedHmd(
             // Native local RPC drops the custom Error.name but preserves this
             // exact timeout message. Require the configured duration, elapsed
             // snapshot deadline and atomic review fence as independent checks.
+            const timeoutMessage = `Execution timed out after ${window?.milliseconds ?? (progress?.autoProgressMinutes ?? 5) * 60_000}ms`
             const timedOut = error instanceof Error && (error.name === "WorkflowTimeoutError" ||
-              (error.name === "Error" && error.message === `Execution timed out after ${window?.milliseconds ?? (progress?.autoProgressMinutes ?? 5) * 60_000}ms`))
+              (error.name === "Error" && [timeoutMessage, `WorkflowTimeoutError: ${timeoutMessage}`].includes(error.message)))
             if (!progress || !timedOut) throw error
           }
           const now = await step.do(`review:clock-${phase}-${waitIndex}`, once, async () => Date.now())

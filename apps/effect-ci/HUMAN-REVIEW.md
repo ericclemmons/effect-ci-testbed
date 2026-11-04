@@ -1,5 +1,44 @@
 # Independent human rollout review
 
+## Prototype acceptance — November 3, 2026
+
+Eric accepted the smaller user story: receive a clear rollout card, understand
+the risk, click Progress once at 10%, then Reject at the 25% review and see the
+actual result and exact restoration. No API or approval-policy change is needed.
+The four-phase, stale/replay and emergency campaign remains deferred; completing
+this smaller check does not satisfy every original #141 criterion.
+
+The first live attempt, `human-progress-reject-20261103-1`, failed validation
+before any step or card because the CLI's `--params` argument submitted a string
+rather than an object. Its history remains intact. The corrected request uses
+`--body` with a `params` object; it does not restart the failed instance.
+
+The corrected run, `human-progress-reject-20261103-2`, delivered root card
+`1793761280.595109` and promoted the existing healthy candidate
+`27fca944-c549-433e-a1d4-15684b1c6cd9` to 10%. No reviewer decision was recorded.
+The first 30-second sampling wait threw an Error whose message was
+`WorkflowTimeoutError: Execution timed out after 30000ms`. The controller only
+recognized the unprefixed wrapper message, so it failed closed before the
+advertised two-minute review deadline. This is not a human Reject or acceptance.
+
+Native cleanup restored version `f8526596-f9b8-4068-87c0-c517844488a8` at 100%,
+deployment `1f00c667-9977-493f-b5ac-5efa8cb84642`. Independent deployment and
+health GETs confirmed the exact captured allocation and healthy baseline.
+The deployed host version was `f4665dc6-a1f6-48f3-8ee0-d8d4c46d04d1`;
+its deployment annotation identifies [unmerged PR #441](https://github.com/ericclemmons/effect-ci-testbed/pull/441).
+Source inspected for this run was `6ea26405d920f79d665953fd160b0ec01a0a7316`.
+No screenshot or independent human click is claimed.
+
+The local compatibility fix accepts both exact wrapper messages for the expected
+duration. It leaves reviewer authority, fixed deadlines, regression handling and
+rollback unchanged. Updating the existing sampling fixture to the observed native
+message reproduced three failures before the fix; all 30 focused existing runner,
+native-ingestion and Slack checks passed afterward. This local result is not
+hosted acceptance. Preserve the live host's unmerged work before any separately
+authorized deployment or another human window.
+
+## Historical reconciliation — October 26, 2026
+
 **Status, October 26, 2026:** implementation and signed execution evidence exist;
 the independent human walkthrough for [#141](https://github.com/ericclemmons/effect-ci-testbed/issues/141)
 is not established by the inspected records. Keep the issue open. No rollout,
@@ -54,9 +93,10 @@ readback was false; the direct in-app opening fallback returned `queued`, not
 therefore remain unverified. Use an existing authorized session; do not broaden
 permissions or publish credentials to unblock this readback.
 
-## Remaining human interaction
+## Deferred full campaign
 
-This is an unstarted session plan, not dispatch approval. Agree the exact owned
+The following original #141 campaign is deferred, not required for the smaller
+prototype check above. It is not dispatch approval. Agree the exact owned
 target, candidate, bounded run count and time window after preflight. Reuse
 existing infrastructure; no new resources, inference, permissions or unrelated
 campaigns are part of #141. Issues #138/#139/#140 remain separate.
