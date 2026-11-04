@@ -22,7 +22,7 @@ const Retained = Schema.Struct({
   number: Count.check(Schema.isGreaterThan(0)),
   startedAt: Text, completedAt: Text,
   environment: Text,
-  requested: Schema.Array(NodeId), nodes: Schema.Array(Node).check(Schema.isLengthBetween(1, 5)),
+  requested: Schema.Array(NodeId), nodes: Schema.Array(Node).check(Schema.isBetweenLength(1, 5)),
   outputs: Schema.Record(NodeId, Schema.optionalKey(Output)),
 });
 export type RetainedShowcaseAttempt = typeof Retained.Encoded;

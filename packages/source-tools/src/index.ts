@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 import * as prettier from "prettier/standalone"
 import estree from "prettier/plugins/estree"
 import typescript from "prettier/plugins/typescript"
@@ -16,7 +16,7 @@ export interface FormatResult {
 export interface SourceToolsService {
   readonly format: (request: FormatRequest) => Effect.Effect<FormatResult, unknown>
 }
-export class SourceTools extends ServiceMap.Service<SourceTools, SourceToolsService>()(
+export class SourceTools extends Context.Service<SourceTools, SourceToolsService>()(
   "@effect-ci-testbed/SourceTools",
 ) {}
 

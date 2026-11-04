@@ -12,14 +12,14 @@
     "./command-diagnostics": "./src/command-diagnostics.ts",
     "./directory-deployment": "./src/directory-deployment.ts",
     "./source-changes": "./src/source-changes.ts",
-    "./paths": "./src/path-glob.ts"
+    "./paths": "./src/paths.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "effect": "4.0.0-beta.19",
+    "effect": "4.1.2",
     "picomatch": "4.0.7",
     "yaml": "2.9.1"
   },

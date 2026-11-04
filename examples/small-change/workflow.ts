@@ -5,7 +5,7 @@ import type * as Effect from "effect/Effect"
 export function approveSmallChanges<A, R>(approve: () => Effect.Effect<A, unknown, R>) {
   return CI.workflow("small-change", function* () {
     const source = yield* CI.Source
-    if (!(yield* source.changed("**/*.(ts|tsx|json)"))) {
+    if (!(yield* source.changed("**/*.{ts,tsx,json}"))) {
       return yield* approve()
     }
   })

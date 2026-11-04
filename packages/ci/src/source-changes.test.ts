@@ -94,7 +94,7 @@ test("deleted paths, both sides of a rename, and unusual Git filenames remain ma
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test("provider changes use portable root-relative globs, not substring matches", async () => {
+test("provider changes use root-relative Effect globs, not substring matches", async () => {
   const cases: ReadonlyArray<readonly [string | ReadonlyArray<string>, string, boolean]> = [
     ["apps/site/**", "apps/site/index.html", true],
     ["apps/site/**", "other/apps/site/index.html", false],
@@ -102,12 +102,15 @@ test("provider changes use portable root-relative globs, not substring matches",
     ["apps/site/**/*.ts", "apps/site/index.ts", true],
     ["apps/site/**/*.ts", "apps/site/deep/index.ts", true],
     ["**/*.ts", "index.ts", true],
-    ["**/*.(ts|tsx|json)", "index.ts", true],
-    ["**/*.(ts|tsx|json)", "src/Button.tsx", true],
-    ["**/*.(ts|tsx|json)", "nested/package.json", true],
-    ["**/*.(ts|tsx|json)", "docs/README.md", false],
-    ["**/*.(ts|tsx|json)", "index.ts.bak", false],
+    ["**/*.{ts,tsx,json}", "index.ts", true],
+    ["**/*.{ts,tsx,json}", "src/Button.tsx", true],
+    ["**/*.{ts,tsx,json}", "nested/package.json", true],
+    ["**/*.{ts,tsx,json}", "docs/README.md", false],
+    ["**/*.{ts,tsx,json}", "index.ts.bak", false],
     ["**", "line\nbreak.txt", true],
+    ["**", ".cloudflare/ci/workflow.ts", true],
+    ["src/[ab]?.ts", "src/a😀.ts", true],
+    ["**/*.(ts|tsx)", "src/Button.tsx", false],
     [["apps/site/**", "packages/ui/**"], "packages/ui/button.ts", true],
     ["file?.txt", "file1.txt", true],
     ["file?.txt", "file12.txt", false],

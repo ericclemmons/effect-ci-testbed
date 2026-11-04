@@ -87,11 +87,11 @@ export interface WorkerOptions {
   ) => Workflow<WorkflowParameters>
 }
 
-const HistoryRevision = Schema.String.check(Schema.isLowercased(), Schema.isLengthBetween(40, 40)).pipe(
-  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(20, 20))),
+const HistoryRevision = Schema.String.check(Schema.isLowercased(), Schema.isBetweenLength(40, 40)).pipe(
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isBetweenLength(20, 20))),
 )
-const HistoryCursor = Schema.String.check(Schema.isLowercased(), Schema.isLengthBetween(64, 64)).pipe(
-  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(32, 32))),
+const HistoryCursor = Schema.String.check(Schema.isLowercased(), Schema.isBetweenLength(64, 64)).pipe(
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isBetweenLength(32, 32))),
 )
 const HistoryQuery = Schema.Struct({ revision: HistoryRevision, after: Schema.optionalKey(HistoryCursor) })
 

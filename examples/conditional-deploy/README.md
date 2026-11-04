@@ -7,7 +7,7 @@ Skip work when its inputs did not change. Use ordinary control flow:
 [Source](./.cloudflare/ci/if-else.ts#symbol=default "source")
 
 Paths are repository-relative. Include shared dependencies and configuration.
-Globs support `*`, `**`, `?`, and alternatives such as `**/*.(ts|tsx|json)`.
+Effect globs include dotfiles and support `*`, `**`, `?`, character classes, and brace alternatives such as `**/*.{ts,tsx,json}`.
 Added, deleted, and renamed paths count. Unknown comparisons return `true`.
 
 ```sh
