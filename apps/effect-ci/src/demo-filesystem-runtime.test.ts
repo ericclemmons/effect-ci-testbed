@@ -51,12 +51,15 @@ test(
         async putCachedSnapshot(){}
         async checkpoint(name){const value={id:"fixture-"+name,name,size:1};snapshots.push(value);return value;}
         async readFile(path,root){
-          if(root!==cwd&&root!=="/workspace/repository")throw new Error("Wrong remote root: "+root);
+          if(root!==cwd&&!(cwd.startsWith(root+"/")&&root.startsWith("/workspace/repository")))throw new Error("Wrong remote root: "+root);
           reads.push({path,root});
-          return path==="package.json"?JSON.stringify(manifest):path.startsWith('dist/')?assets[path.slice(5)]:undefined;
+          return path==="package.json"&&root===cwd?JSON.stringify(manifest):path.startsWith('dist/')?assets[path.slice(5)]:undefined;
         }
         async exists(path,root){
-          if(root!==cwd)throw new Error("Wrong package root");
+          if(root!==cwd){
+            if(cwd.startsWith(root+"/")&&root.startsWith("/workspace/repository"))return root==="/workspace/repository"&&path===".git";
+            throw new Error("Wrong package root");
+          }
           exists.push(path);return path==='.'||(!missingLock&&path==="package-lock.json");
         }
         async execute(command,root,_step,revision){

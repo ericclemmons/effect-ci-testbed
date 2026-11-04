@@ -2,7 +2,6 @@ import { spawn } from "node:child_process"
 import { existsSync, readFileSync, writeSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import picomatch from "picomatch"
-import { parse as parseYaml } from "yaml"
 import * as Cache from "effect/Cache"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
@@ -934,10 +933,10 @@ export const JavaScript = (
           : Workspace.remote(workspace.id!, dirname(ancestor.cwd), workspace.revision)
         const ancestorManifest = yield* ancestor.readFile("package.json")
         const workspaceYaml = yield* ancestor.readFile("pnpm-workspace.yaml")
-        const member = yield* Effect.try({
-          try: () => {
+        const member = yield* Effect.tryPromise({
+          try: async () => {
             const manifest = JSON.parse(ancestorManifest ?? "{}")
-            const patterns = workspaceYaml !== undefined ? parseYaml(workspaceYaml)?.packages ?? []
+            const patterns = workspaceYaml !== undefined ? (await import("yaml")).parse(workspaceYaml)?.packages ?? []
               : Array.isArray(manifest.workspaces) ? manifest.workspaces : manifest.workspaces?.packages
             if (patterns === undefined) return undefined
             if (!Array.isArray(patterns) || patterns.some(pattern => typeof pattern !== "string"))
