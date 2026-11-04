@@ -25,7 +25,7 @@
     "@effect-ci-testbed/cloudflare": "workspace:*",
     "@effect-ci-testbed/local-container": "workspace:*",
     "@types/node": "^26.6.3",
-    "effect": "4.0.0-beta.19",
+    "effect": "4.1.2",
     "typescript": "^7.0.2"
   },
   "engines": {

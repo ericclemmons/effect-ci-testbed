@@ -66,7 +66,7 @@ export const makeActionExecutor = (
   activeBodies: Set<string>,
 ): CI.ActionExecutor => ({
   execute: (request) => Effect.gen(function* () {
-    const services = yield* Effect.services<any>()
+    const services = yield* Effect.context<any>()
     const result = yield* Effect.tryPromise({
       try: () => step.do(`action:${JSON.stringify(request.stepId)}`, {
         retries: request.options.retries ?? { limit: 0, delay: 0, backoff: "constant" },
@@ -81,7 +81,7 @@ export const makeActionExecutor = (
           // Native timeout owns the retry history; Effect timeout additionally
           // interrupts fibers so an expired attempt cannot later commit a result.
           const timed = request.options.timeout === undefined ? body : body.pipe(Effect.timeout(request.options.timeout))
-          const exit = await Effect.runPromiseExit(timed.pipe(Effect.provideServices(services)))
+          const exit = await Effect.runPromiseExit(timed.pipe(Effect.provideContext(services)))
           // Preserve original errors, including a provider's NonRetryableError.
           if (Exit.isFailure(exit)) throw nativeCommandError(Cause.squash(exit.cause))
           const result = exit.value

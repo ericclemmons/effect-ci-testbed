@@ -19,7 +19,7 @@ const Descriptor = Schema.fromJsonString(Schema.Struct({
     path: Schema.NonEmptyString.check(Schema.isMaxLength(256)),
     size: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0), Schema.isLessThanOrEqualTo(4 * 1024 * 1024)),
     sha256: ShowcaseDigest,
-  })).check(Schema.isLengthBetween(10, 10)),
+  })).check(Schema.isBetweenLength(10, 10)),
 }));
 
 /** This is explicit owned-app enrollment, not a generic signer for uploaded

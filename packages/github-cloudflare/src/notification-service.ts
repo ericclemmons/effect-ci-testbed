@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 import type { RunSnapshot } from "./run-card.ts"
 
 export type NotificationReceipt = Readonly<Record<string, string>>
@@ -14,7 +14,7 @@ export type Delivery =
   | { readonly provider: string; readonly status: "failed" }
 export type NotificationCheckpoint = (provider: string, key: string, deliver: () => Promise<Delivery>) => Promise<Delivery>
 
-export class Notifications extends ServiceMap.Service<Notifications, {
+export class Notifications extends Context.Service<Notifications, {
   readonly publish: (key: string, run: RunSnapshot) => Effect.Effect<ReadonlyArray<Delivery>>
 }>()("@effect-ci-testbed/Notifications") {}
 
