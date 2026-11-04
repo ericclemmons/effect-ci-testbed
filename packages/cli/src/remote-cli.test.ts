@@ -62,10 +62,20 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
           ...(targetDiscovery === undefined ? {} : { targetDiscovery }), ...(projectSelection ? { projectSelection: true } : {}) }))
         return
       }
+      if (request.url === `${routePrefix}/runs/fixture` && diagnosticFailure) {
+        response.writeHead(200, { "content-type": "application/json" })
+        response.end(JSON.stringify({ status: "errored", error: { message: "Command failed" } }))
+        return
+      }
       if (request.url === `${routePrefix}/runs/fixture` && resultAvailable) {
         resultReads++
         response.writeHead(resultStatus, { "content-type": "application/json" })
         response.end(JSON.stringify({ status: "complete", output: { evidence: { receipts: [{ keyId: "host-fixture", signature: "test-only" }] } } }))
+        return
+      }
+      if (request.url === `${routePrefix}/runs/fixture`) {
+        response.writeHead(200, { "content-type": "application/json" })
+        response.end(JSON.stringify({ status: "running" }))
         return
       }
       if (request.url === `${routePrefix}/runs`) {
@@ -98,7 +108,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
           const message = encodeCommandDiagnostics({ version: 1, stepId: "compile", command: "node check.mjs", cwd: "/workspace", exitCode: 7,
             output: { stdout: "compiler context\n", stderr: "missing export\n", truncated: false } })!
           response.write(JSON.stringify({ eventId: 1, type: "step_errored", stepName: 'action:"compile"', error: { message } }) + "\n")
-          response.write(JSON.stringify({ eventId: 2, type: "workflow_errored", error: { message } }) + "\n")
+          // Reproduce a real native stream that stays open without a terminal event.
           return
         }
         response.write(JSON.stringify({ eventId: 1, type: "step_completed", stepName: "lint", output: JSON.stringify({ stdout: "lint passed" }) }) + "\n")

@@ -101,7 +101,12 @@ in the shared app. Project enrollment cannot grant itself arbitrary permissions.
 
 Human remote runs show command output and the same CI summary as local runs.
 Hosted command output arrives when each command finishes. Cloudflare's internal
-step and attempt records remain available in JSON output.
+step and attempt records remain available in JSON output. The CLI bounds each
+log subscription to 30 seconds, checks the same run's status after interruptions,
+and resumes from its event cursor while the run remains live. A missing terminal
+log event does not hide a confirmed failure or trigger another run. When status
+confirms completion before the terminal event arrives, JSON contains the confirmed
+result and the events received so far; that event list may be incomplete.
 
 `effect-ci doctor --remote` and `effect-ci run --remote` automatically choose identity:
 local users reuse their enrolled Cloudflare Access session; GitHub Actions and

@@ -32,7 +32,7 @@ test("multiple selected goals fan out, share prerequisites once, and do not invo
     workflow: CI.workflow("project", () => Effect.die("default must not run")),
     actions: { test: goal("test"), build: goal("build") },
   }
-  const result = await capture(() => main(program, ["run", "test", "build", "test", "--format=json"]))
+  const result = await capture(() => main(program, ["run", "test", "build", "test", "--local", "--format=json"]))
   assert.equal(result.code, 0)
   assert.deepEqual(result.output.targets, ["test", "build"])
   assert.equal(result.output.workflow, "project/test+build")
@@ -47,7 +47,7 @@ test("all targets are validated before execution; list and excessive selections 
   const known = CI.action<void>("known", () => () => Effect.sync(() => { called = true }))
   const program = { workflow: CI.workflow("project", known), actions: { known } }
   for (const args of [["run", "known", "missing"], ["list", "known"], ["run", ...Array(33).fill("known")]]) {
-    const result = await capture(() => main(program, [...args, "--format=json"]))
+    const result = await capture(() => main(program, [...args, "--local", "--format=json"]))
     assert.equal(result.code, 2)
     assert.equal(result.output.ok, false)
     assert.equal(called, false)
