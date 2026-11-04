@@ -2,10 +2,22 @@
 
 Public site: https://effect-ci-docs.eclemmons.workers.dev
 
-The Starlight site reads existing Markdown directly from the repository. Keep
+The Nimbus site reads existing Markdown directly from the repository. Keep
 recipe documentation beside its code in `examples/<recipe>/README.md`; service
 documentation belongs in `apps/<service>/README.md`. No copied pages or generated
 Markdown are committed.
+
+The presentation uses the [Nimbus starter](https://github.com/cloudflare/nimbus/tree/main/packages/nimbus-starter-source).
+Its layouts, components, styles, and agent routes live in `src/`; the framework
+is pinned to `@cloudflare/nimbus-docs` 0.19.2. `NIMBUS-LICENSE` retains its MIT
+license. The site includes navigation filtering, Pagefind search, dark mode,
+page copying, Markdown routes, and an `llms.txt` index. Keep the collocated loader
+and repository Markdown transform when updating the starter. No CMS sync or
+database is needed.
+
+The loader resolves repository links and source snippets before Nimbus renders
+them, so HTML, search, and Markdown exports share the same content. The committed
+`nimbus.json` records the reviewed starter version; `.nimbus/` is a generated cache.
 
 The homepage is a static feature compatibility matrix. Rows and applicability
 come from `examples/COVERAGE.md`; new example directories are included automatically.
@@ -22,11 +34,17 @@ leaves the existing site in place. Completed failures still publish red results.
 The existing Cloudflare authentication action obtains and revokes a short-lived
 OIDC deployment token after the static build passes.
 
-Green means the mapped check passed. Missing, skipped, cancelled and failed
-checks stay red; not-applicable cells do not count toward progress. Local
+Green ✓ means the mapped check passed; red × means a recorded failure, timeout
+or required action. Missing, skipped, cancelled and neutral checks show a gray
+em dash (—), because they do not establish success or failure. Not-applicable
+cells also show an em dash and do not count toward progress. Local
 Cloudflare runtime checks count as local, and only native `Cloudflare / <recipe>`
 checks from the Effect CI App count as hosted. The page does not infer readiness
-from historical coverage ticks.
+from historical coverage ticks. The hosted column reports evidence for that exact
+commit, not whether a recipe is supported. For example, npm and pnpm workflows
+can run remotely even when that snapshot has no matching native check. Checks
+labeled `GitHub Actions / <recipe>` do not establish Cloudflare execution, even
+when the Effect CI App publishes them.
 
 The walkthrough comes from
 `examples/demo/README.md` at `/walkthrough/`; `/examples/demo/` remains a compatibility route.
@@ -72,7 +90,7 @@ rolling back the publication migration.
 ## Include code from source
 
 Write a standalone Markdown link with the title `"source"`. It remains a normal
-clickable source link on GitHub; Starlight adds a highlighted snippet from the file.
+clickable source link on GitHub; Nimbus adds a highlighted snippet from the file.
 Paths are relative to the README. For example, the actual site configuration is:
 
 [Site configuration](./astro.config.mjs "source")

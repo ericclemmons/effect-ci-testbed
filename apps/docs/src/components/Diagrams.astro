@@ -1,16 +1,12 @@
----
-import Head from "@astrojs/starlight/components/Head.astro"
----
-<Head />
 <style is:global>
-  .sl-markdown-content textarea {
+  .docs-content textarea {
     display: block;
     width: 100%;
     padding: 1rem;
-    border: 1px solid var(--sl-color-gray-4);
+    border: 1px solid var(--nb-border);
     border-radius: 0.5rem;
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text);
+    background: var(--nb-background);
+    color: var(--nb-foreground);
     font: inherit;
     resize: vertical;
   }
@@ -20,7 +16,7 @@ import Head from "@astrojs/starlight/components/Head.astro"
     const nodes = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])")
     if (!nodes.length) return
     const { default: mermaid } = await import("mermaid")
-    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: document.documentElement.dataset.theme === "dark" ? "dark" : "default" })
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: document.documentElement.dataset.mode === "dark" ? "dark" : "default" })
     await mermaid.run({ nodes: Array.from(nodes) })
   }
   diagrams()

@@ -8,6 +8,7 @@ examples/deploy-changed-output/.effect-ci/deployments/
 **/.cloudflare/output/
 **/.cloudflare/state/
 dist/
+.nimbus/
 .DS_Store
 *.tsbuildinfo
 .standalone-runtime/

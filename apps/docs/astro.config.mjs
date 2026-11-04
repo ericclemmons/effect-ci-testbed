@@ -1,17 +1,17 @@
 import { defineConfig } from "astro/config"
-import { unified } from "@astrojs/markdown-remark"
-import starlight from "@astrojs/starlight"
-import { repository, repositoryMarkdown, root, sidebar } from "./src/repository.mjs"
+import tailwindcss from "@tailwindcss/vite"
+import nimbus, { defineConfig as defineNimbusConfig } from "@cloudflare/nimbus-docs"
+import { repository, root, sidebar } from "./src/repository.mjs"
 
 export default defineConfig({
-  site: "https://effect-ci-docs.eclemmons.workers.dev",
-  markdown: { processor: unified({ remarkPlugins: [repositoryMarkdown] }) },
-  integrations: [starlight({
+  output: "static",
+  prefetch: { prefetchAll: true, defaultStrategy: "hover" },
+  integrations: [nimbus(defineNimbusConfig({
+    site: "https://effect-ci-docs.eclemmons.workers.dev",
     title: "Effect CI",
-    description: "CI experiments by Eric Clemmons.",
-    social: [{ icon: "github", label: "GitHub", href: repository }],
-    sidebar: sidebar(),
-    components: { Head: "./src/components/Head.astro", MarkdownContent: "./src/components/MarkdownContent.astro" },
-  })],
-  vite: { server: { fs: { allow: [root] } } },
+    description: "Write CI once. Run it locally, on GitHub, or on Cloudflare.",
+    github: repository,
+    sidebar: { items: sidebar() },
+  }))],
+  vite: { plugins: [tailwindcss()], server: { fs: { allow: [root] } } },
 })
