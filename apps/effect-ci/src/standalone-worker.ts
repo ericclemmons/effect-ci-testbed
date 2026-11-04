@@ -4,6 +4,7 @@ import type { OidcEnvironment } from "./oidc-repositories.ts";
 export { TokenLease, OidcRepositories } from "./oidc.ts";
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import { standaloneContainerOptions, standaloneProgram } from "./standalone-program.ts";
+import { projectCapabilities, projectSelection } from "./project-runner.ts";
 
 export { WorkspaceContainer, GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 
@@ -20,7 +21,8 @@ const ci = GitHubCloudflare.worker({
 export default {
   async fetch(request: Request, environment: GitHubCloudflare.WorkerEnvironment & OidcEnvironment, context: ExecutionContext) {
     const path = new URL(request.url).pathname;
-    const forward = (verified: Request, auth: OidcEnvironment) => ci.fetch(verified, { ...environment, ...auth }, context);
+    const forward = async (verified: Request, auth: OidcEnvironment) =>
+      projectCapabilities(verified, await ci.fetch(verified, { ...environment, ...auth }, context));
     if (path === "/api/oidc/repositories" && request.method === "POST") return enrollWorkload(request, environment, repositoryRegistry(context));
     if (path.startsWith("/api/")) return workloadRemote(request, environment, repositoryRegistry(context), forward);
     if (path === "/oidc/repositories") return operatorRemote(request, environment, (verified, auth) => oidc(verified, { ...environment, ...auth }, context));
@@ -36,7 +38,8 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
       (environment as unknown as { EFFECT_CI_PROJECT_ROOT?: string }).EFFECT_CI_PROJECT_ROOT ?? ".";
     const targets = parameters.trigger === "remote"
       ? parameters.targets ?? (parameters.target ? [parameters.target] : []) : [];
-    return standaloneProgram(root, targets).workflow;
+    const project = projectSelection(parameters);
+    return standaloneProgram(project?.root ?? root, targets, project?.workflow).workflow;
   },
   {
     remoteGitHubCheckout: true,

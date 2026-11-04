@@ -18,6 +18,11 @@ depends on test, which depends on lint. Shared installation runs once.
 Compare the [Effect workflow](./.cloudflare/ci/workflow.ts) with
 [GitHub Actions YAML](./.github/workflows/github.yml).
 
+Use the same workflow on your configured hosted runner with
+`effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`
+from the repository root. No recipe-specific deployment is required. Remote
+execution uses the clean, pushed commit, not local edits.
+
 ## Task-cache limitation
 
 Use [pnpm](../node-pnpm/) when you need Vite+ task-cache reuse with the hosted

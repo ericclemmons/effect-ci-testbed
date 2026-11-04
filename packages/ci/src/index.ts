@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { existsSync, readFileSync, writeSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, relative } from "node:path"
+import picomatch from "picomatch"
 import * as Cache from "effect/Cache"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
@@ -919,9 +920,53 @@ export const JavaScript = (
       ))
     }
 
+    const declaredManager = yield* Effect.try({
+      try: () => fromPackageManagerField(packageJson),
+      catch: error => new PackageManagerError(workspace.cwd, String(error)),
+    })
+    if (!declaredManager && names.length === 0) {
+      // A member inherits its nearest workspace's manager and install root.
+      // Stop at the checkout boundary; script execution stays in the member.
+      let ancestor = workspace
+      while (!(yield* ancestor.exists(".git")) && dirname(ancestor.cwd) !== ancestor.cwd) {
+        ancestor = workspace.kind === "local" ? Workspace.local(dirname(ancestor.cwd))
+          : Workspace.remote(workspace.id!, dirname(ancestor.cwd), workspace.revision)
+        const ancestorManifest = yield* ancestor.readFile("package.json")
+        const workspaceYaml = yield* ancestor.readFile("pnpm-workspace.yaml")
+        const member = yield* Effect.tryPromise({
+          try: async () => {
+            const manifest = JSON.parse(ancestorManifest ?? "{}")
+            const patterns = workspaceYaml !== undefined ? (await import("yaml")).parse(workspaceYaml)?.packages ?? []
+              : Array.isArray(manifest.workspaces) ? manifest.workspaces : manifest.workspaces?.packages
+            if (patterns === undefined) return undefined
+            if (!Array.isArray(patterns) || patterns.some(pattern => typeof pattern !== "string"))
+              throw new Error("Workspace packages must be an array of globs")
+            const path = relative(ancestor.cwd, workspace.cwd).split("\\").join("/")
+            const included = patterns.filter(pattern => !pattern.startsWith("!"))
+            const excluded = patterns.filter(pattern => pattern.startsWith("!")).map(pattern => pattern.slice(1))
+            return patterns.length > 0 && picomatch(included.length ? included : ["**"])(path) &&
+              !picomatch([...excluded, "**/node_modules/**", "**/bower_components/**"])(path)
+          },
+          catch: error => new PackageManagerError(ancestor.cwd, String(error)),
+        })
+        if (member === false) break
+        if (member) {
+          const owner = yield* JavaScript(ancestor)
+          return {
+            ...owner,
+            workspace,
+            install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
+            run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
+            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : `${owner.name} exec`} ${command}`),
+          }
+        }
+      }
+    }
+
     const name = yield* Effect.try({
       try: () => {
-        const detected = fromPackageManagerField(packageJson) ?? names[0]
+        const [lockfileManager] = names
+        const detected = declaredManager ?? lockfileManager
 
         if (!detected) {
           throw new PackageManagerError(

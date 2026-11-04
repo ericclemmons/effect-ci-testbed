@@ -15,6 +15,11 @@ export interface GitHubWorkflowParameters {
   readonly detailsUrl?: string
 }
 
+interface RemoteProject {
+  readonly root: string
+  readonly workflow?: string
+}
+
 export interface RemoteWorkflowParameters {
   readonly trigger: "remote"
   readonly repository: string
@@ -200,7 +205,7 @@ const isApprovalAuthorized = async (
   return difference === 0
 }
 
-const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undefined> => {
+const readRemoteRun = async (request: Request): Promise<(RemoteRunRequest & { readonly project?: RemoteProject }) | undefined> => {
   let value: unknown
 
   try {
@@ -219,6 +224,18 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
 
   if (record.ref !== undefined && typeof record.ref !== "string") return undefined
   if (record.target !== undefined && typeof record.target !== "string") return undefined
+  let project: RemoteProject | undefined
+  if (record.project !== undefined) {
+    if (!record.project || typeof record.project !== "object" || Array.isArray(record.project)) return undefined
+    const selected = record.project as Record<string, unknown>
+    const relativePath = (value: unknown): value is string => typeof value === "string" &&
+      value.length <= 1024 && /^[a-zA-Z0-9_@./-]+$/.test(value) &&
+      value.split("/").every(part => part !== "" && part !== "." && part !== "..")
+    if (selected.root !== "." && !relativePath(selected.root)) return undefined
+    if (selected.workflow !== undefined && selected.workflow !== "." && !relativePath(selected.workflow)) return undefined
+    project = { root: selected.root as string,
+      ...(selected.workflow === undefined ? {} : { workflow: selected.workflow as string }) }
+  }
   let selection: ReadonlyArray<string> | undefined
   try { selection = selectedTargets(record) } catch { return undefined }
   if (record.rerunFrom !== undefined && !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(record.rerunFrom)) return undefined
@@ -226,6 +243,7 @@ const readRemoteRun = async (request: Request): Promise<RemoteRunRequest | undef
   return {
     repository: record.repository,
     revision: record.revision,
+    ...(project ? { project } : {}),
     ...(record.ref ? { ref: record.ref } : {}),
     ...(record.target ? { target: record.target } : {}),
     ...(record.targets === undefined ? {} : { targets: selection! }),
@@ -246,6 +264,8 @@ const remoteRun = async (
   const input = await readRemoteRun(request)
 
   if (!input) return new Response("Invalid remote run", { status: 400 })
+  if (input.project && options.remoteTargetDiscovery !== "project")
+    return new Response("Remote project selection is not enrolled", { status: 403 })
   if (input.rerunFrom !== undefined && (!options.remoteRerun || !input.target && !input.targets))
     return new Response("Compute rerun is not enrolled", { status: 403 })
   const selection = selectedTargets(input)

@@ -1,9 +1,9 @@
 import { hasWorkloadIdentity, workloadHeaders } from "./workload-auth.ts"
 import { runOidc } from "./oidc.ts"
 import { vitePlusTasks } from "./vite-plus.ts"
-import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
-import { basename, dirname, join, resolve } from "node:path"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs, parseEnv } from "node:util"
 import { projectEnvironment } from "./project-env.ts"
@@ -275,7 +275,7 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
   } catch (error) {
     if (error instanceof CliFailure) throw error
   }
-  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown; rerun?: unknown } | undefined
+  const descriptor = available as { protocol?: unknown; targets?: unknown; authentication?: unknown; targetDiscovery?: unknown; projectSelection?: unknown; rerun?: unknown } | undefined
   const targets = descriptor?.targets
   if (descriptor?.protocol !== "effect-ci-remote-v1" || !Array.isArray(targets) || targets.length > 16 ||
       targets.some(name => typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)) ||
@@ -290,6 +290,7 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
   if (workload && (!Array.isArray(descriptor.authentication) || !descriptor.authentication.includes("github-oidc")))
     throw new CliFailure("CI_REMOTE_AUTH_REQUIRED", ExitCode.providerUnavailable, "This host has not enabled workload identity authentication")
   return { targets: targets as string[],
+    ...(descriptor.projectSelection === true ? { projectSelection: true as const } : {}),
     ...(descriptor.rerun === true ? { rerun: true as const } : {}),
     ...(descriptor.targetDiscovery === "project" ? { targetDiscovery: "project" as const } : {}) }
 }
@@ -297,6 +298,7 @@ const remoteCapabilities = async ({ remoteUrl, accessOnly, workload, requestHead
 const builtInRemote = async (
   invocation: Invocation,
   root: string,
+  workflowPath: string,
 ): Promise<unknown> => {
   const connection = remoteConnection(root)
   const { remoteUrl } = connection
@@ -318,16 +320,33 @@ const builtInRemote = async (
     )
   }
   const revision = git(root, "rev-parse", "HEAD")
+  const repositoryRoot = git(root, "rev-parse", "--show-toplevel")
+  const selectedRoot = relative(realpathSync(repositoryRoot), realpathSync(root)).split("\\").join("/") || "."
+  const selectedWorkflow = relative(root, workflowPath).split("\\").join("/")
+  const workflow = selectedWorkflow === ".cloudflare/ci/workflow.ts" ? undefined
+    : selectedWorkflow === ".cloudflare/ci/ci.ts" && !existsSync(workflowPath) ? "." : selectedWorkflow
+  const needsSelection = selectedRoot !== "." || Boolean(workflow)
+  const capabilities = await remoteCapabilities(connection).catch(error => {
+    // Legacy default-only hosts may have no capabilities endpoint.
+    if (!needsSelection && error instanceof CliFailure && error.code === "CI_REMOTE_TARGET_UNAVAILABLE") return undefined
+    throw error
+  })
+  const project = capabilities?.projectSelection
+    ? { root: selectedRoot, ...(workflow ? { workflow } : {}) } : undefined
+  if (needsSelection && !project && (selectedRoot !== "." || capabilities?.targetDiscovery === "project")) {
+    throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
+      "This host cannot select a project directory or workflow. No run was dispatched; update the host or run locally.")
+  }
   const ref = gitOptional(root, "symbolic-ref", "--quiet", "HEAD")
   // A URL override must never inherit another service's machine-profile token.
   const targets = invocation.targets?.length ? invocation.targets : invocation.target ? [invocation.target] : undefined
-  if (!targets && (connection.accessOnly || connection.workload)) await remoteCapabilities(connection)
+  if (!targets && !capabilities && (connection.accessOnly || connection.workload)) await remoteCapabilities(connection)
   if (targets) {
     if (targets.length > 16 || targets.some(name => !/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,63}$/.test(name)))
       throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, "Select at most 16 bounded remote goal names")
     // Older hosts ignore unknown JSON fields: negotiate BEFORE any POST so a
     // selected-goal invocation can never silently execute the default suite.
-    const enrolled = await remoteCapabilities(connection)
+    const enrolled = capabilities ?? await remoteCapabilities(connection)
     if (invocation.rerunFrom && !enrolled.rerun)
       throw new CliFailure("CI_REMOTE_TARGET_UNAVAILABLE", ExitCode.providerUnavailable,
         "This host has not enrolled explicit compute reruns. No run was dispatched.")
@@ -341,6 +360,7 @@ const builtInRemote = async (
     redirect: "error",
     headers: await connection.requestHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
+      ...(project ? { project } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
   })
 
@@ -964,7 +984,9 @@ export const main = async (
 
     if (invocation.command === "doctor") {
       const capabilities = await remoteCapabilities(remoteConnection(projectRoot(workflowPath)))
-      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", ...capabilities, dispatched: false }
+      const result = { schemaVersion: 1, ok: true, command: "doctor", location: "remote", targets: capabilities.targets,
+        ...(capabilities.rerun ? { rerun: true } : {}),
+        ...(capabilities.targetDiscovery ? { targetDiscovery: capabilities.targetDiscovery } : {}), dispatched: false }
       if (format === "json") printJson(result)
       else console.log(capabilities.targetDiscovery === "project"
         ? "Remote access ready. Selected goals are discovered inside the project workspace. No workflow started."
@@ -993,7 +1015,7 @@ export const main = async (
           "Explicit compute reruns require negotiated hosted support; a custom remote handler cannot ignore this option.")
       const result = program.remote
         ? await program.remote(request)
-        : await builtInRemote(request, projectRoot(workflowPath))
+        : await builtInRemote(request, projectRoot(workflowPath), workflowPath)
 
       if (format === "json") {
         printJson({
