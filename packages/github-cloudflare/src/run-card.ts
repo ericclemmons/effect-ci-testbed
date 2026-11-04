@@ -298,8 +298,12 @@ export class RunCard {
         ordered.find(id => this.checks.get(id)!.status === "running") ??
         ordered.find(id => this.checks.get(id)!.status === "failed") ??
         ordered.find(id => ["queued", "planned"].includes(this.checks.get(id)!.status)) ?? ordered.at(-1)
+      // Each segment is 5% of candidate traffic, so every supported release
+      // phase has an exact bar. The decision buttons already explain the pause.
       const title = restored ? `${headline}${this.phase === "failure" && current ? ` · ${current}` : ""}` :
-        this.phase === "success" ? headline : `${headline}${current ? ` · ${current}` : ""}`
+        this.phase === "success" ? headline : this.health && (this.phase === "running" || this.phase === "waiting") ?
+          `${this.workflowId} · ${"▰".repeat(this.health.phase / 5)}${"▱".repeat(20 - this.health.phase / 5)} ${this.health.phase}%` :
+          `${headline}${current ? ` · ${current}` : ""}`
       // Reuse the existing capability/button builder, but never carry its checklist,
       // diagnostics, metric text or image into the continuously updated root card.
       const full = this.render({ ...options, minimal: false })
