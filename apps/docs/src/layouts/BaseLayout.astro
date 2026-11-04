@@ -5,6 +5,7 @@ import "@fontsource-variable/jetbrains-mono";
 import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
 import "../styles/globals.css";
 import "../styles/prose.css";
+import { logo } from "../components/logo";
 import Diagrams from "../components/Diagrams.astro";
 import { ClientRouter } from "astro:transitions";
 import { config } from "virtual:nimbus/config";
@@ -68,6 +69,7 @@ const resolvedMarkdownUrl =
 <html lang={lang}>
   <head>
     <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href={logo} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
     <WebMCP />

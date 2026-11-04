@@ -49,13 +49,8 @@ const el = (type: string, style: Style, children?: CardNode | (CardNode | undefi
 });
 
 const Logo = (height: number): CardNode => ({
-  type: "svg",
-  props: {
-    width: Math.round((height * logo.width) / logo.height),
-    height,
-    viewBox: `0 0 ${logo.width} ${logo.height}`,
-    children: logo.paths.map((d) => ({ type: "path", props: { d, fill: FOREGROUND } })),
-  },
+  type: "img",
+  props: { src: logo, width: height, height },
 });
 
 async function card({ section, title, sizes }: { section?: string; title: string; sizes: number[] }): Promise<CardNode> {

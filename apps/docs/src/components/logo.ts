@@ -1,5 +1,4 @@
-export const logo = {
-  width: 24,
-  height: 24,
-  paths: ["M4 3h16v4H8v3h10v4H8v3h12v4H4z"],
-};
+import icon from "../../../effect-ci/assets/bolt-stack.svg?raw"
+
+// Reuse the editable source for the GitHub App and Slack icon.
+export const logo = `data:image/svg+xml;base64,${Buffer.from(icon).toString("base64")}`
