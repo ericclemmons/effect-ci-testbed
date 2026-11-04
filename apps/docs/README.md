@@ -13,8 +13,8 @@ Colors come from public GitHub check results for one resolved `main` commit,
 loaded in the browser with no credentials. Green means the mapped check passed;
 amber hourglasses mean results are loading or the check is queued or running.
 Missing, skipped, cancelled, and failed checks stay red. Not-applicable
-cells do not count toward progress. Refresh reloads results; an API or rate-limit
-error is shown explicitly. Local Cloudflare runtime checks count as local, and
+cells do not count toward progress. Reloading the page reloads results; an API or
+rate-limit error is shown explicitly. Local Cloudflare runtime checks count as local, and
 only native `Cloudflare / <recipe>` checks from the Effect CI App count as hosted.
 The page does not infer current readiness from historical coverage ticks.
 

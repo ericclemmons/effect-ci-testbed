@@ -15,7 +15,6 @@ export function loadReadiness() {
   const summary = panel.querySelector<HTMLElement>("[data-summary]")!
   const progress = panel.querySelector<HTMLProgressElement>("[data-progress]")!
   const revision = panel.querySelector<HTMLAnchorElement>("[data-revision]")!
-  const refresh = panel.querySelector<HTMLButtonElement>("[data-refresh]")!
   const cells = Array.from(panel.querySelectorAll<HTMLAnchorElement>("[data-cell]"))
 
   async function read(path: string) {
@@ -27,7 +26,6 @@ export function loadReadiness() {
   }
 
   async function update() {
-    refresh.disabled = true
     summary.textContent = "Loading checks from main…"
     progress.value = 0
     for (const cell of cells) {
@@ -82,9 +80,8 @@ export function loadReadiness() {
         cell.title = `${cell.dataset.feature} · ${cell.dataset.environment}: checks unavailable`
         cell.setAttribute("aria-label", cell.title)
       }
-      summary.textContent = `Checks unavailable. ${error instanceof Error ? error.message : "Could not reach GitHub"}. Red squares are unverified; refresh to retry.`
-    } finally { refresh.disabled = false }
+      summary.textContent = `Checks unavailable. ${error instanceof Error ? error.message : "Could not reach GitHub"}. Red squares are unverified; reload the page to retry.`
+    }
   }
-  refresh.addEventListener("click", update)
   void update()
 }
