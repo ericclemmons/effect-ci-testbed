@@ -104,26 +104,30 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
 
    [`vite.config.ts`](./tutorial/cache.diff "source")
 
-2. Run twice:
+2. Run twice to prove unchanged inputs reuse the build:
 
-   ```sh
-   effect-ci run build
-   effect-ci run build
+   ```console frame="terminal"
+   $ effect-ci run build
+   …
+
+   $ effect-ci run build
+   $ tsc -b ◉ cache hit, replaying
+   $ vp build ◉ cache hit, replaying
+   …
    ```
-
-   - [ ] Second run: Vite+ cache hit.
 
 3. Change the API response:
 
    [`worker/index.ts`](./tutorial/worker.diff "source")
 
-4. Run again:
+4. Run again to prove source edits invalidate the cache:
 
-   ```sh
-   effect-ci run build
+   ```console frame="terminal"
+   $ effect-ci run build
+   …
+   $ vp build ○ cache miss: 'worker/index.ts' modified, executing
+   …
    ```
-
-   - [ ] Changed input: cache miss.
 
 ## 6. Create a GitHub repository
 
@@ -135,8 +139,6 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    git commit -m "feat: Cache the build"
    gh repo create walkthrough --private --source=. --remote=origin --push
    ```
-
-   Existing Git setup is enough. Effect CI does not require signed commits.
 
 <a id="6-run-on-a-host"></a>
 
