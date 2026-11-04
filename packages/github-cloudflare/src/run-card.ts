@@ -270,7 +270,7 @@ export class RunCard {
     const restored = Boolean(options.rollbackStep && (this.phase === "success" || this.phase === "failure") &&
       this.checks.get(options.rollbackStep)?.status === "complete")
     const headline = restored ? this.phase === "failure" ? "↩️ Rolled back" : "↩️ Previous version restored" :
-      { running: "▶️ Running", waiting: "⏳ Waiting for approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
+      { running: "▶️ Running", waiting: "⏳ Awaiting approval", success: "✅ Passed", failure: "❌ Failed" }[this.phase]
     if (options.statusOnly) {
       const current = (this.phase === "success" ? this.lastCompletedStep : undefined) ?? ordered.find(id => this.checks.get(id)!.status === "waiting") ??
         ordered.find(id => ["failed", "rejected"].includes(this.checks.get(id)!.status)) ??
@@ -307,7 +307,6 @@ export class RunCard {
       return { text: title, blocks: [
         { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
         { type: "context", elements: [{ type: "mrkdwn", text: sourceLinks(this.identity), verbatim: true }] },
-        ...(this.review ? [{ type: "section", text: { type: "plain_text", text: this.review.request.summary.slice(0, 1000) } }] : []),
         ...actions,
       ] }
     }

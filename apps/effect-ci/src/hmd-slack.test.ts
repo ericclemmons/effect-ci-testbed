@@ -24,7 +24,22 @@ test("default direct buttons record the signed decision without a modal or a fab
   assert.equal((decisions[1] as unknown[])[1], "rejected")
   const response = await hmdSlackInteraction(signed(block), direct, { inspect: async () => true, submit: async () => false }, forbidden)
   assert.match(await response.text(), /No decision was resent/)
-  assert.equal((await hmdSlackInteraction(signed({ ...block, user: { id: "U2" } }), direct, { inspect: forbidden, submit: forbidden }, forbidden)).status, 403)
+  let feedback = 0
+  const notify: typeof fetch = async (url, init) => {
+    feedback++
+    assert.equal(url, "https://slack.com/api/chat.postEphemeral")
+    assert.equal(init?.redirect, "manual")
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-token")
+    const message = JSON.parse(String(init?.body))
+    assert.equal(message.channel, "C1")
+    assert.equal(message.user, "U2")
+    assert.match(message.text, /U2.*is not authorized/)
+    assert.match(message.text, /Switch.*account/)
+    assert.match(message.text, /No decision was recorded/)
+    return Response.json({ ok: true })
+  }
+  assert.equal((await hmdSlackInteraction(signed({ ...block, user: { id: "U2" }, response_url: "https://untrusted.example/ignore" }), direct, { inspect: forbidden, submit: forbidden }, notify)).status, 200)
+  assert.equal(feedback, 1)
 })
 test("button opens a private rationale modal; only signed matching submission consumes a decision", async () => {
   let modal: Record<string, any> | undefined
@@ -49,7 +64,7 @@ test("fresh HMAC, pinned app/team/channel and reviewer are required before RPC o
   for (const request of [new Request("https://ci.example/webhooks/slack", { method: "POST", body: "bad" }), signed(block, "1")]) {
     assert.equal((await hmdSlackInteraction(request, env, reviews, forbidden)).status, 401)
   }
-  for (const patch of [{ api_app_id: "A2" }, { team: { id: "T2" } }, { user: { id: "U2" } }, { channel: { id: "C2" } }]) {
+  for (const patch of [{ api_app_id: "A2" }, { team: { id: "T2" } }, { channel: { id: "C2" } }, { user: { id: "U2" }, channel: { id: "C2" } }]) {
     assert.equal((await hmdSlackInteraction(signed({ ...block, ...patch }), env, reviews, forbidden)).status, 403)
   }
   assert.equal((await hmdSlackInteraction(signed(submission("reason", "slack:T1:OTHER")), env, reviews, forbidden)).status, 403)
