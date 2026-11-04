@@ -59,6 +59,11 @@ Paths are relative to the README. For example, the actual site configuration is:
 In a recipe README, write `[Workflow](./.cloudflare/ci/workflow.ts "source")` to
 include that recipe's workflow.
 
+Use an inline-code filename as the link label to show only the snippet on the
+site, with that filename as its caption:
+``[`vite.config.ts`](./path/to/cache.diff "source")``.
+Diff files use highlighted `diff` syntax. GitHub still shows a source link.
+
 To show one TypeScript declaration, append `#symbol=name` (or `#symbol=outer.inner`
 for a nested declaration) to its path. To show one
 top-level JSON property, append `#json=key`. Selection uses the source declaration

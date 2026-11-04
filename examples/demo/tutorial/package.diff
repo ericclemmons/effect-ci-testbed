@@ -1,0 +1,17 @@
+--- a/package.json
++++ b/package.json
+@@ -5,11 +5,10 @@
+   "type": "module",
+   "scripts": {
+     "dev": "vp dev",
+-    "build": "tsc -b && vp build",
+     "lint": "vp lint",
+-    "preview": "pnpm run build && vp preview",
+-    "deploy": "pnpm run build && wrangler deploy",
+-    "cf-typegen": "wrangler types",
++    "preview": "vp run build && vp preview",
++    "deploy": "cf deploy",
++    "cf-typegen": "cf types",
+     "prepare": "vp config"
+   },
+   "dependencies": {

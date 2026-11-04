@@ -113,7 +113,7 @@ function snippet(url, from) {
   } else if (file.fragment) {
     throw new Error(`Unknown source selector: ${url}`)
   }
-  const language = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml" }[extname(file.path)] ?? "text"
+  const language = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff" }[extname(file.path)] ?? "text"
   return { ...file, value, language, url: `${repository}/blob/main/${file.path}${lines}` }
 }
 
@@ -138,7 +138,10 @@ export function repositoryMarkdown() {
           const code = snippet(link.url, from)
           link.url = code.url
           link.title = null
-          return [child, { type: "code", lang: code.language, meta: `title="${code.path}"`, value: code.value }]
+          const [label] = link.children
+          const filename = link.children.length === 1 && label.type === "inlineCode" ? label.value : undefined
+          const block = { type: "code", lang: code.language, meta: `title="${(filename ?? code.path).replaceAll('"', '&quot;')}"`, value: code.value }
+          return filename ? [block] : [child, block]
         }
         if (child.type === "link" || child.type === "image") child.url = rewrite(child.url, child.type === "image")
         if (child.type === "html") child.value = child.value.replace(/\b(src|href)="([^"]+)"/g, (_, attribute, url) => `${attribute}="${rewrite(url, attribute === "src")}"`)

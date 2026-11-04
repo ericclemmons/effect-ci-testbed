@@ -13,14 +13,14 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
-          version: 12.8.1
+          version: latest
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@95e9d2c4027b2d2fb8d88af1545442bef0677c4d
+      - uses: ericclemmons/effect-ci-testbed/.github/actions/cloudflare-auth@main
         with:
           enroll: "true"
           worker: walkthrough
