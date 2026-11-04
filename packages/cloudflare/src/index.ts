@@ -1,6 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci"
 import { gitSourceChangesCommand, parseGitSourceChanges } from "@effect-ci-testbed/ci/source-changes"
-import { outputManifestCommand, parseOutputManifest, type OutputManifest } from "./output-manifest.ts"
+import { readOutputManifest, type OutputManifest } from "./output-manifest.ts"
 import type { RunnerWorkspaceResult } from "./runner-step-result.ts"
 import {
   DurableObject,
@@ -742,9 +742,7 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
       try {
         await this.restore(snapshot, { ...(options.instance ? { instance: options.instance } : {}),
           entrypoint: ["sleep", "infinity"], loginShell: false, readyCommand: "/usr/bin/python3 -I -c pass" })
-        const result = await this.run(outputManifestCommand(patterns), cwd)
-        if (result.exitCode !== 0) throw Error("Snapshot output inspection failed")
-        return parseOutputManifest(result.stdout, patterns)
+        return await readOutputManifest(patterns, command => this.run(command, cwd))
       } finally {
         if (this.container().running) await this.container().destroy("Releasing output inspection workspace")
       }

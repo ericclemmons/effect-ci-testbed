@@ -2,8 +2,9 @@ import { createHash, randomUUID } from "node:crypto"
 import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { join, parse, resolve } from "node:path"
 import * as Effect from "effect/Effect"
+import * as Glob from "effect/Glob"
 import { executionMode, type Workspace, type WorkspaceChangeProvider } from "./index.ts"
-import { pathGlob, pathPatterns } from "./path-glob.ts"
+import { pathPatterns, pathPrefixes } from "./paths.ts"
 
 interface FileIdentity { path: string; size: number; sha256: string; executable: boolean }
 interface Manifest { version: 1; paths: ReadonlyArray<string>; configuration: string; files: FileIdentity[] }
@@ -54,7 +55,7 @@ export function directoryDeployment(options: {
   /** Non-secret serving/runtime policy identity; a policy change requires publish. */
   readonly configuration?: string
 }) {
-  const directory = resolve(options.directory), paths = pathPatterns(options.paths), matchers = paths.map(pathGlob)
+  const directory = resolve(options.directory), paths = pathPatterns(options.paths), matchers = paths.map(pattern => Glob.make(pattern, { dot: true }))
   if (directory === parse(directory).root) throw Error("A deployment needs its own directory")
   const configuration = hash(options.configuration ?? "directory-deployment-v1")
   const currentPath = join(directory, "current.json")
@@ -72,16 +73,12 @@ export function directoryDeployment(options: {
       try { stat = lstatSync(join(cwd, path)) } catch (error) { if (missing(error)) return; throw error }
       if (stat.isSymbolicLink()) throw Error("Deployment symlinks are unsupported")
       if (stat.isDirectory()) for (const name of readdirSync(join(cwd, path)).sort()) walk(path ? `${path}/${name}` : name)
-      else if (matchers.some(pattern => pattern.test(path))) {
+      else if (matchers.some(pattern => Glob.match(pattern, path))) {
         if (!stat.isFile()) throw Error("Invalid deployment file")
         found.add(path)
       }
     }
-    for (const pattern of paths) {
-      const parts = pattern.split("/"), firstGlob = parts.findIndex(part => /[*?]/.test(part))
-      const prefix = (firstGlob < 0 ? parts : parts.slice(0, firstGlob)).join("/")
-      walk(prefix)
-    }
+    for (const prefix of pathPrefixes(paths)) walk(prefix)
     const data = [...found].sort().map(path => {
       const value = bytes(cwd, path)
       size += value.bytes.length

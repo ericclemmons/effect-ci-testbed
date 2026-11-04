@@ -1,14 +1,14 @@
 import * as CI from "@effect-ci-testbed/ci";
 import * as Effect from "effect/Effect";
-import { pathGlob } from "@effect-ci-testbed/ci/paths";
+import * as Glob from "effect/Glob";
 import { smallChange, type SmallChangeDecision, type SmallChangeEvidence } from "../../../packages/github/src/small-change.ts";
 import type { SmallChangeOperation } from "../../../packages/github/src/small-change-host.ts";
 import { pullRequestWorkflow } from "./workflows/pull-request.ts";
 
 // Trusted host policy identity, never selected by incoming project code.
 export const policyId = "demo-non-code-v3";
-const code = pathGlob("**/*.(ts|tsx|json)");
-export const smallChangePolicy = ({ files }: SmallChangeEvidence) => !files.some(file => code.test(file.path));
+const code = Glob.make("**/*.{ts,tsx,json}", { dot: true });
+export const smallChangePolicy = ({ files }: SmallChangeEvidence) => !files.some(file => Glob.match(code, file.path));
 
 export interface PullRequestCapabilities {
   readonly read: () => Promise<SmallChangeEvidence>;

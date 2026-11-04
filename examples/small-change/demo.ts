@@ -1,6 +1,6 @@
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
-import { pathGlob } from "@effect-ci-testbed/ci/paths"
+import * as Glob from "effect/Glob"
 import { smallChange, type SmallChangeEvidence, type SmallChangeDecision } from "../../packages/github/src/small-change.ts"
 import { approveSmallChanges } from "./workflow.ts"
 
@@ -19,8 +19,8 @@ export function smallChangeExample(host: {
 }) {
   let observed: Promise<SmallChangeEvidence> | undefined
   const read = () => observed ??= host.read()
-  const code = pathGlob("**/*.(ts|tsx|json)")
-  const policy = (input: SmallChangeEvidence) => !input.files.some(file => code.test(file.path))
+  const code = Glob.make("**/*.{ts,tsx,json}", { dot: true })
+  const policy = (input: SmallChangeEvidence) => !input.files.some(file => Glob.match(code, file.path))
   const source: CI.SourceService = {
     checkout: () => Effect.die("This example reads the PR diff through the App"),
     changes: () => Effect.tryPromise(async (): Promise<CI.SourceChanges> => {

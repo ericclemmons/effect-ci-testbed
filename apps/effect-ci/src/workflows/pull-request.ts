@@ -5,7 +5,7 @@ import type * as Effect from "effect/Effect";
 export function pullRequestWorkflow<A, R>(approve: () => Effect.Effect<A, unknown, R>) {
   return CI.workflow("org-pull-request", function* () {
     const source = yield* CI.Source;
-    if (!(yield* source.changed("**/*.(ts|tsx|json)"))) return yield* approve();
+    if (!(yield* source.changed("**/*.{ts,tsx,json}"))) return yield* approve();
   });
 }
 

@@ -1,4 +1,5 @@
-import { pathGlob, pathPatterns } from "@effect-ci-testbed/ci/paths"
+import * as Glob from "effect/Glob"
+import { pathPatterns, pathPrefixes } from "@effect-ci-testbed/ci/paths"
 
 export interface OutputFile {
   readonly path: string
@@ -15,10 +16,11 @@ export interface OutputManifest {
 // This fixed program only reads files. Python is an explicit container contract,
 // not a project command or a dependency silently installed during a comparison.
 const inspect = String.raw`
-import os,sys,json,stat,re,hashlib
+import os,sys,json,stat,hashlib
 spec=json.loads(sys.argv[1]); root=os.getcwd()
 if os.path.realpath(root)!=root: raise ValueError('Output root contains a symlink')
-files={}; visited=set(); total=0
+files={}; candidates=[]; visited=set(); total=0
+selected=set(spec['paths']) if spec['paths'] is not None else None
 def walk(path):
  global total
  if path in visited: return
@@ -29,7 +31,8 @@ def walk(path):
  if stat.S_ISLNK(s.st_mode): raise ValueError('Output symlinks are unsupported')
  if stat.S_ISDIR(s.st_mode):
   for name in sorted(os.listdir(path or '.')): walk(path+'/'+name if path else name)
- elif any(re.fullmatch(pattern,path) for pattern in spec['matches']):
+ elif selected is None: candidates.append(path)
+ elif path in selected:
   if not stat.S_ISREG(s.st_mode) or len(files)>=1000 or s.st_size>16777216: raise ValueError('Invalid output file')
   h=hashlib.sha256(); size=0
   with os.fdopen(os.open(path,os.O_RDONLY|os.O_NOFOLLOW),'rb') as f:
@@ -43,21 +46,41 @@ def walk(path):
   if (s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_mode)!=(after.st_ino,size,after.st_mtime_ns,after.st_ctime_ns,after.st_mode) or before.st_mtime_ns!=after.st_mtime_ns: raise ValueError('Output changed while reading')
   files[path]={'path':path,'size':size,'sha256':h.hexdigest(),'executable':bool(s.st_mode&0o111)}
 for prefix in spec['prefixes']: walk(prefix)
-print(json.dumps({'version':1,'patterns':spec['patterns'],'files':list(files.values())},ensure_ascii=True,separators=(',',':')))
+print(json.dumps(candidates if selected is None else {'version':1,'patterns':spec['patterns'],'files':list(files.values())},ensure_ascii=True,separators=(',',':')))
 `
 
-export function outputManifestCommand(input: ReadonlyArray<string>): string[] {
-  const patterns = pathPatterns(input)
-  const prefixes = patterns.map(pattern => {
-    const parts = pattern.split("/"), first = parts.findIndex(part => /[*?]/.test(part))
-    return (first < 0 ? parts : parts.slice(0, first)).join("/")
-  })
-  return ["/usr/bin/python3", "-I", "-c", inspect, JSON.stringify({ patterns, prefixes, matches: patterns.map(pattern => pathGlob(pattern).source) })]
+/** The host owns matching; the container only enumerates and reads snapshot files. */
+export async function readOutputManifest(input: ReadonlyArray<string>, run: (command: string[]) => Promise<{
+  readonly stdout: string; readonly exitCode: number
+}>): Promise<OutputManifest> {
+  const patterns = pathPatterns(input), matchers = patterns.map(pattern => Glob.make(pattern, { dot: true }))
+  const prefixes = pathPrefixes(patterns)
+  const command = (paths: ReadonlyArray<string> | null) => ["/usr/bin/python3", "-I", "-c", inspect,
+    JSON.stringify({ patterns, prefixes, paths })]
+  const listed = await run(command(null))
+
+  if (listed.exitCode !== 0 || listed.stdout.length > 1_048_576) throw Error("Snapshot output listing failed")
+  const candidates: unknown = JSON.parse(listed.stdout)
+
+  if (!Array.isArray(candidates) || candidates.length > 10_000 || candidates.some(path =>
+    typeof path !== "string" || !relativePath(path))) throw Error("Invalid output paths")
+  const paths = [...new Set(candidates as string[])].filter(path => matchers.some(matcher => Glob.match(matcher, path))).sort()
+  const result = await run(command(paths))
+
+  if (result.exitCode !== 0) throw Error("Snapshot output inspection failed")
+  const manifest = parseOutputManifest(result.stdout, patterns)
+
+  if (JSON.stringify(manifest.files.map(file => file.path)) !== JSON.stringify(paths)) throw Error("Output changed while reading")
+
+  return manifest
 }
+
+const relativePath = (path: string) => !!path && path.length <= 4096 &&
+  !path.split("/").some(part => !part || part === "." || part === "..") && !/[\\\x00-\x1f]/.test(path)
 
 export function parseOutputManifest(text: string, input: ReadonlyArray<string>): OutputManifest {
   if (text.length > 1_048_576) throw Error("Output manifest limit exceeded")
-  const patterns = pathPatterns(input), matchers = patterns.map(pathGlob)
+  const patterns = pathPatterns(input), matchers = patterns.map(pattern => Glob.make(pattern, { dot: true }))
   const value = JSON.parse(text)
   if (!value || Object.keys(value).sort().join() !== "files,patterns,version" || value.version !== 1 ||
     JSON.stringify(value.patterns) !== JSON.stringify(patterns) || !Array.isArray(value.files) || value.files.length > 1000)
@@ -66,8 +89,7 @@ export function parseOutputManifest(text: string, input: ReadonlyArray<string>):
   let size = 0
   for (const file of value.files) {
     if (!file || Object.keys(file).sort().join() !== "executable,path,sha256,size" || typeof file.path !== "string" ||
-      file.path.length > 4096 || file.path.split("/").some((part: string) => !part || part === "." || part === "..") ||
-      /[\\\x00-\x1f]/.test(file.path) || !matchers.some(matcher => matcher.test(file.path)) || seen.has(file.path) ||
+      !relativePath(file.path) || !matchers.some(matcher => Glob.match(matcher, file.path)) || seen.has(file.path) ||
       !Number.isSafeInteger(file.size) || file.size < 0 || !/^[a-f0-9]{64}$/.test(file.sha256) || typeof file.executable !== "boolean")
       throw Error("Invalid output manifest file")
     size += file.size
