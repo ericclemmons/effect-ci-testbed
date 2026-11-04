@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 export const ShowcaseGoal = Schema.Literals(["lint", "test", "build"]);
-export const ShowcaseGoals = Schema.UniqueArray(ShowcaseGoal).check(Schema.isLengthBetween(1, 3));
+export const ShowcaseGoals = Schema.UniqueArray(ShowcaseGoal).check(Schema.isBetweenLength(1, 3));
 export const ShowcaseSelection = Schema.Struct({
   target: Schema.optionalKey(ShowcaseGoal),
   targets: Schema.optionalKey(ShowcaseGoals),
@@ -11,10 +11,10 @@ export const ShowcaseRerun = Schema.Struct({
   rerunFrom: Schema.optionalKey(Schema.String.check(Schema.isUUID(undefined))),
 });
 export const ShowcaseRevision = Schema.String.check(Schema.isLowercased()).pipe(
-  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(20, 20))),
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isBetweenLength(20, 20))),
 );
 export const ShowcaseDigest = Schema.String.check(Schema.isLowercased()).pipe(
-  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isLengthBetween(32, 32))),
+  Schema.decodeTo(Schema.Uint8ArrayFromHex.check(Schema.isBetweenLength(32, 32))),
 );
 export const ShowcaseVersion = Schema.String.check(Schema.isUUID(undefined));
 export const ShowcasePublication = Schema.Struct({

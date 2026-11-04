@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -227,6 +227,10 @@ test("the actual GitHub runner recovers reporting without executing its workflow
   const capture = join(root, "requests.jsonl")
   const bootstrap = join(root, "fetch.mjs")
   const workflow = join(root, "workflow.ts")
+  mkdirSync(join(root, ".cloudflare/ci"), { recursive: true })
+  writeFileSync(join(root, ".cloudflare/ci/oidc.json"), JSON.stringify({
+    issuer: "https://remote.example.invalid", repository: "owner/repo",
+  }))
   writeFileSync(workflow, `import * as CI from ${JSON.stringify(pathToFileURL(resolve("packages/ci/src/index.ts")).href)};
     export const task=CI.action('test',()=>()=>console.log('BODY_EXECUTED_ONCE'));
     export default CI.workflow('optional-checks',()=>{throw new Error('selected action must not run the default')});`)
@@ -241,7 +245,7 @@ test("the actual GitHub runner recovers reporting without executing its workflow
     !key.startsWith("GITHUB_") && !key.startsWith("EFFECT_CI_") && key !== "DRY_RUN"))
   const result = spawnSync(process.execPath, ["--import", bootstrap, "packages/github/run.run.ts"], {
     encoding: "utf8", timeout: 15_000, env: { ...env,
-      GITHUB_TOKEN: "captured-only", GITHUB_REPOSITORY: "owner/repo", EFFECT_CI_SHA: options.sha,
+      GITHUB_ACTIONS: "true", GITHUB_TOKEN: "captured-only", GITHUB_REPOSITORY: "owner/repo", EFFECT_CI_SHA: options.sha,
       EFFECT_CI_WORKFLOW: workflow, EFFECT_CI_ACTIONS: '["task"]', EFFECT_CI_APP_SLUG: options.appSlug, EFFECT_CI_EXTERNAL_ID: "fixture:run:1",
     },
   })

@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@effect-ci-testbed/ci": "workspace:*",
-    "effect": "4.0.0-beta.19"
+    "effect": "4.1.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261001.1",

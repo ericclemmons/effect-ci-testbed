@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 import type { StaticAssetReceipt } from "./static-assets-journal.ts"
 export interface StaticAssetsService {
   readonly capture: () => Effect.Effect<string, unknown>
@@ -7,7 +7,7 @@ export interface StaticAssetsService {
   readonly verify: (revision: string) => Effect.Effect<StaticAssetReceipt, unknown>
 }
 /** Host provides the closed capability. No token, account, target or module input. */
-export class StaticAssets extends ServiceMap.Service<StaticAssets, StaticAssetsService>()("@effect-ci-testbed/StaticAssets") {}
+export class StaticAssets extends Context.Service<StaticAssets, StaticAssetsService>()("@effect-ci-testbed/StaticAssets") {}
 
 /** Keep known host stages useful without reflecting arbitrary upstream/RPC errors. */
 export function staticAssetHostError(error: unknown): Error {

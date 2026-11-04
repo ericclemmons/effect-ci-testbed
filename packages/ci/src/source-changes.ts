@@ -1,7 +1,8 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Glob from "effect/Glob"
 import type { CommandExecutor, SourceService, WorkflowEventShape } from "./index.ts"
-import { pathGlob, pathPatterns } from "./path-glob.ts"
+import { pathPatterns } from "./paths.ts"
 
 /** Explicit committed comparison. Use mergeBase for a PR's branch-point diff. */
 export interface SourceComparison {
@@ -95,9 +96,9 @@ export function makeSourceQueries(source: SourceService, options: {
     ...(source.reference ? { reference: source.reference } : {}),
     changes,
     changed: (patterns, comparison) => Effect.suspend(() => {
-      const matchers = pathPatterns(patterns).map(pathGlob)
+      const matchers = pathPatterns(patterns).map(pattern => Glob.make(pattern, { dot: true }))
       return changes(comparison).pipe(Effect.map(result => result.status === "unknown" ||
-        result.paths.some(path => matchers.some(pattern => pattern.test(path)))))
+        result.paths.some(path => matchers.some(pattern => Glob.match(pattern, path)))))
     }),
   }
 }

@@ -182,8 +182,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -334,8 +334,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -389,8 +389,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/github-cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -461,8 +461,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ci
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -602,8 +602,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -633,8 +633,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare-dynamic-worker
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -667,8 +667,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/source-tools
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       prettier:
         specifier: 3.6.2
         version: 3.6.2
@@ -722,8 +722,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/github-cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1
@@ -744,8 +744,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -904,8 +904,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -956,8 +956,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ci
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -978,8 +978,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare-dynamic-worker
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -1121,8 +1121,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/github
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -1164,8 +1164,8 @@ importers:
   packages/ci:
     dependencies:
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       picomatch:
         specifier: 4.0.7
         version: 4.0.7
@@ -1195,8 +1195,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -1211,8 +1211,8 @@ importers:
         specifier: workspace:*
         version: link:../ci
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261001.1
@@ -1233,8 +1233,8 @@ importers:
         specifier: workspace:*
         version: link:../source-tools
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
@@ -1344,8 +1344,8 @@ importers:
         specifier: 2.6.2
         version: 2.6.2
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       jose:
         specifier: 6.2.12
         version: 6.2.12
@@ -1366,8 +1366,8 @@ importers:
         specifier: workspace:*
         version: link:../ci
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -1379,8 +1379,8 @@ importers:
   packages/source-tools:
     dependencies:
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
       prettier:
         specifier: 3.6.2
         version: 3.6.2
@@ -1481,8 +1481,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/github-cloudflare
       effect:
-        specifier: 4.0.0-beta.19
-        version: 4.0.0-beta.19
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -3106,36 +3106,6 @@ packages:
   '@modelcontextprotocol/server@2.3.0':
     resolution: {integrity: sha512-+6b0LdsQLmHsvS7J6sQJ4weTpzUn61fU1JKS+321/+IyDYoHW5CR2Tgqcs6GgAAQvlesCo6yX3xttgmx+XGtJw==}
     engines: {node: '>=20'}
-
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
-    resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
-    resolution: {integrity: sha512-zExlW9zUJKZH/tOtVMttwjKa4Xm/3KcNjnE3dPN92uCktwavMxpgCA3MoJK/DOnTWsQgo224OaST27/mPNAf+w==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
-    resolution: {integrity: sha512-dgX0P/9wGPJeHFBG+ZmhgE6bmtMt7NP5CRBGyyktpopdk/mW4POnrpQsSLtKI1dwpc+pPLuXHDh6vvskyQE/sw==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
-    resolution: {integrity: sha512-Tg3yX65f5GbtXLkrYEHE5oibZG9epyYWas7FogTTEJeDEF9JlXJzKgXaNhT3UXlTOeA+AfZpYZYZ0uPj7Cfquw==}
-    cpu: [arm]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
-    resolution: {integrity: sha512-8TNXMEjJc3QEy7R/x1INhgiU+XakDAFUzBhaz7+Rbrs8NH5UQeHQxxmzsSBJGyV6I1jW79undiQm8tOI+D+8FQ==}
-    cpu: [x64]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
-    resolution: {integrity: sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==}
-    cpu: [x64]
-    os: [win32]
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -5715,8 +5685,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.0-beta.19:
-    resolution: {integrity: sha512-SzlmpRx2floIefRnxdyWYi1VRU3e2WD7Xp17FG6kJ6sfI4KbgTT7J7JqOnsGqlFvc+Yuz2xWnOXlevYjE7jLxg==}
+  effect@4.1.2:
+    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   electron-to-chromium@1.5.453:
     resolution: {integrity: sha512-9r/nz9akllr3SZsHUhfK10ktUH6j0Dbo3cKdh91khw0FvR6HhXGnATmOq5X8ena2aq4GXLQ1koh3nvKaQJaNmQ==}
@@ -5860,10 +5830,6 @@ packages:
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
 
-  fast-check@4.10.2:
-    resolution: {integrity: sha512-iK2f+YrcmoeGqk6fA0ea2bptcu/itMIm4NfEozq6N25+aG6h7s5HZbB/k1aV7b5w5sFLMCbbtRUsTVR+BgC3xw==}
-    engines: {node: '>=12.17.0'}
-
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -5910,9 +5876,6 @@ packages:
   finalhandler@2.1.1:
     resolution: {integrity: sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==}
     engines: {node: '>= 18.0.0'}
-
-  find-my-way-ts@0.1.6:
-    resolution: {integrity: sha512-a85L9ZoXtNAey3Y6Z+eBWW658kO/MwR7zIafkIUPUMf3isZG0NCs2pjW2wtjxAKuJPxMAsHUIP4ZPGv0o5gyTA==}
 
   flatted@3.4.4:
     resolution: {integrity: sha512-5+ybhBZANEJxaH3X5evAFatUxLfEHSr7n6kYJ+1Qd0mUqr4eu9gIf6GDbWHf8RJijHrjjO8G+la14SlL2SeS1Q==}
@@ -6137,10 +6100,6 @@ packages:
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
-  ini@6.0.0:
-    resolution: {integrity: sha512-IBTdIkzZNOpqm7q3dRqJvMaldXjDHWkEDfrwGEQTs5eaQMWV+djAhR+wahyNNMAa+qpbDUhBMVt4ZKNwpPm7xQ==}
-    engines: {node: ^20.17.0 || >=22.9.0}
-
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
 
@@ -6257,6 +6216,10 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  klona@2.0.6:
+    resolution: {integrity: sha512-dhG34DXATL5hSxJbIexCft8FChFXtmskoZYnoPWjXQuebWYCNkVeV3KkGegCK9CP1oswI/vQibS2GY7Em/sJJA==}
+    engines: {node: '>= 8'}
 
   kubernetes-types@1.30.0:
     resolution: {integrity: sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==}
@@ -6644,16 +6607,6 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  msgpackr-extract@3.0.4:
-    resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
-    hasBin: true
-
-  msgpackr@1.12.1:
-    resolution: {integrity: sha512-4EUH9tQHnMmEgzW/MdAP0KIfa1T9AF+htl0ffe2n5vb2EKn9y2co8ccpgWko6S52Jy1PQZKwRnx5/KkYjtd9MQ==}
-
-  multipasta@0.2.8:
-    resolution: {integrity: sha512-ZPWuMKyv0cSO29f7hozp+k6+crZbQijV8ipMvxNxRf2SwtYGTX1ZX89Kd20VV4H9Znonx+EQn+iy1wGQsJ+b+Q==}
-
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
@@ -6694,10 +6647,6 @@ packages:
   node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
-  node-gyp-build-optional-packages@5.2.2:
-    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
-    hasBin: true
 
   node-mock-http@1.0.5:
     resolution: {integrity: sha512-KQyt/wLjG3TAc7DOUhpqWzgd4ERxR80JOlTK5VE5R1S12IaPVN5qkj4klBce9HPG1Njuup4Sb5bljaT34lIyjw==}
@@ -6956,9 +6905,6 @@ packages:
     peerDependenciesMeta:
       kerberos:
         optional: true
-
-  pure-rand@8.4.2:
-    resolution: {integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==}
 
   qs@6.16.0:
     resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
@@ -7375,9 +7321,6 @@ packages:
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
-
-  toml@3.0.0:
-    resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==}
 
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
@@ -9604,24 +9547,6 @@ snapshots:
       '@modelcontextprotocol/core': 2.3.0
       zod: 4.6.1
 
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
-    optional: true
-
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -11622,18 +11547,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.0-beta.19:
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      fast-check: 4.10.2
-      find-my-way-ts: 0.1.6
-      ini: 6.0.0
-      kubernetes-types: 1.30.0
-      msgpackr: 1.12.1
-      multipasta: 0.2.8
-      toml: 3.0.0
-      uuid: 13.0.2
-      yaml: 2.9.1
+  effect@4.1.2: {}
 
   electron-to-chromium@1.5.453: {}
 
@@ -11848,10 +11762,6 @@ snapshots:
 
   extend@3.0.2: {}
 
-  fast-check@4.10.2:
-    dependencies:
-      pure-rand: 8.4.2
-
   fast-deep-equal@3.1.3: {}
 
   fast-png@8.0.0:
@@ -11900,8 +11810,6 @@ snapshots:
       statuses: 2.0.2
     transitivePeerDependencies:
       - supports-color
-
-  find-my-way-ts@0.1.6: {}
 
   flatted@3.4.4: {}
 
@@ -12245,8 +12153,7 @@ snapshots:
 
   ini@6.0.0: {}
 
-  inline-style-parser@0.2.7:
-    optional: true
+  inline-style-parser@0.2.7: {}
 
   internmap@1.0.1: {}
 
@@ -12332,6 +12239,8 @@ snapshots:
   khroma@2.1.0: {}
 
   kleur@4.1.5: {}
+
+  klona@2.0.6: {}
 
   kubernetes-types@1.30.0: {}
 
@@ -13019,24 +12928,6 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msgpackr-extract@3.0.4:
-    dependencies:
-      node-gyp-build-optional-packages: 5.2.2
-    optionalDependencies:
-      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
-    optional: true
-
-  msgpackr@1.12.1:
-    optionalDependencies:
-      msgpackr-extract: 3.0.4
-
-  multipasta@0.2.8: {}
-
   mz@2.7.0:
     dependencies:
       any-promise: 1.3.0
@@ -13068,11 +12959,6 @@ snapshots:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
-
-  node-gyp-build-optional-packages@5.2.2:
-    dependencies:
-      detect-libc: 2.1.2
-    optional: true
 
   node-mock-http@1.0.5: {}
 
@@ -13387,8 +13273,6 @@ snapshots:
       ipaddr.js: 1.9.1
 
   proxy-agent-negotiate@1.1.0: {}
-
-  pure-rand@8.4.2: {}
 
   qs@6.16.0:
     dependencies:
@@ -14077,8 +13961,6 @@ snapshots:
   tinyrainbow@3.2.0: {}
 
   toidentifier@1.0.1: {}
-
-  toml@3.0.0: {}
 
   totalist@3.0.1: {}
 
