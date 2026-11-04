@@ -12,7 +12,7 @@ Terminal output is excerpted; hosted examples are illustrative. `<…>` values v
 Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
 `cloudflared`, and `beautiful-mermaid`.
 
-1. Install the unpublished CLI in a separate directory:
+1. Clone the prototype in your projects directory:
 
    ```sh
    git clone https://github.com/ericclemmons/effect-ci-testbed.git
@@ -28,6 +28,8 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    ```console frame="terminal"
    $ command -v effect-ci
    <source-directory>/node_modules/.bin/effect-ci
+
+   $ cd ..
    ```
 
 - [ ] The CLI is available in this shell.
@@ -304,25 +306,25 @@ This job uses push events; fork PR events are not enrolled.
 
 ## 9. Own the workflow
 
-1. Disable the SDK's optional native addon:
+1. Link the SDK from the source clone beside `walkthrough`:
 
-   [`pnpm-workspace.yaml`](./tutorial/pnpm.diff "source")
+   ```console frame="terminal"
+   $ pnpm link ../effect-ci-testbed/packages/ci
+   …
 
-2. Install SDK types from the prototype source:
-
-   ```sh
-   pnpm add -D github:ericclemmons/effect-ci-testbed#path:packages/ci
+   $ node -p "require.resolve('@effect-ci-testbed/ci')"
+   <source-directory>/packages/ci/src/index.ts
    ```
 
-3. Add a Node TypeScript scope for the workflow:
+2. Add a Node TypeScript scope for the workflow:
 
    [`.cloudflare/ci/tsconfig.json`](./tutorial/ci.tsconfig.json "source")
 
-4. Replace the discovery marker:
+3. Replace the discovery marker:
 
    [`.cloudflare/ci/ci.ts`](./tutorial/ci.exec.ts "source")
 
-5. Inspect your graph, then run its default goal:
+4. Inspect your graph, then run its default goal:
 
    ```console frame="terminal"
    $ effect-ci plan
