@@ -1,0 +1,273 @@
+{
+  "recordedDate": "2026-11-03",
+  "service": "https://effect-ci-github-cloudflare.eclemmons.workers.dev",
+  "authentication": "Existing cloudflared Access operator session; not GitHub workload OIDC",
+  "deployedFixVersion": "f4665dc6-a1f6-48f3-8ee0-d8d4c46d04d1",
+  "runs": [
+    {
+      "name": "first",
+      "command": "run build --remote",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "f315bc09-ad8a-42b0-b5cc-fb572c68599d",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "703805b58fbf3556c04455a1e34e016a9e9b1359",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "build"
+        ]
+      },
+      "errorCode": null,
+      "restoredSnapshot": {
+        "id": "337fcb43-4bb9-41ce-a16b-a67f59ccb0fb",
+        "name": "project workflow-workspace",
+        "size": 85343238
+      },
+      "savedSnapshot": {
+        "id": "3771d1a9-6133-43c8-b486-42486c4ca76e",
+        "name": "project workflow-workspace",
+        "size": 93850304
+      },
+      "cacheIdentity": "cache:v3:7b46f9b612d399fa0daf6ebd0cc9c3468744bce7a4e359558a029fb091529dd9",
+      "timingSeconds": {
+        "setup": 14.624,
+        "restore": 11.39,
+        "install": 4.202,
+        "projectCommand": 26.154,
+        "snapshots": 23.668,
+        "clientWall": 88.204
+      },
+      "taskCacheMessages": [
+        "$ vp lint --type-aware --type-check --allow all src ○ cache miss: env 'OXLINT_TSGOLINT_PATH' changed, executing",
+        "$ vp lint ○ cache miss: env 'OXLINT_TSGOLINT_PATH' changed, executing",
+        "$ vp build ○ cache miss: args changed, executing"
+      ],
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:15) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n$ vpr typecheck && vpr lint\n$ vpr build:source\n",
+        "stdout": "✓ Lockfile passes supply-chain policies (verified 32s ago)\nLockfile is up to date, resolution step is skipped\nDownloading @oxlint/binding-linux-x64-gnu@1.85.0: 0.00 B/6.53 MB\nDownloading @oxlint-tsgolint/linux-x64@7.0.2003: 0.00 B/7.77 MB\nDownloading @voidzero-dev/vite-plus-linux-x64-gnu@1.0.0: 0.00 B/13.40 MB\nProgress: resolved 84, reused 0, downloaded 84, added 82\nPackages: +84\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 84, reused 0, downloaded 84, added 84, done\n\ndevDependencies:\n+ vite-plus 1.0.0\n\nDone in 1.7s using pnpm v12.8.1\n$ vp lint --type-aware --type-check --allow all src ○ cache miss: env 'OXLINT_TSGOLINT_PATH' changed, executing\nFound 0 warnings and 0 errors.\nFinished in 572ms on 2 files with 0 rules using 4 threads.\n\n$ vp lint ○ cache miss: env 'OXLINT_TSGOLINT_PATH' changed, executing\nFound 0 warnings and 0 errors.\nFinished in 344ms on 3 files with 97 rules using 4 threads.\n\n$ vp build ○ cache miss: args changed, executing\ntransforming...\n✓ 2 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/message.js  0.10 kB │ gzip: 0.10 kB\n\n✓ built in 31ms\n\n\nCI execution summary: cf-ci-demo/build\nEnvironment: development\n\n✓ checkout\n\n✓ install depends on checkout\n\n✓ build depends on install\n"
+      }
+    },
+    {
+      "name": "second",
+      "command": "run build",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "70131f52-d142-444d-8b9d-1a13b00217ed",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "703805b58fbf3556c04455a1e34e016a9e9b1359",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "build"
+        ]
+      },
+      "errorCode": null,
+      "restoredSnapshot": {
+        "id": "3771d1a9-6133-43c8-b486-42486c4ca76e",
+        "name": "project workflow-workspace",
+        "size": 93850304
+      },
+      "savedSnapshot": {
+        "id": "011018bc-86b5-41d1-bf20-aa0fffc10671",
+        "name": "project workflow-workspace",
+        "size": 2590316
+      },
+      "cacheIdentity": "cache:v3:7b46f9b612d399fa0daf6ebd0cc9c3468744bce7a4e359558a029fb091529dd9",
+      "timingSeconds": {
+        "setup": 11.795,
+        "restore": 12.536,
+        "install": 1.492,
+        "projectCommand": 5.899,
+        "snapshots": 18.48,
+        "clientWall": 58.471
+      },
+      "taskCacheMessages": [
+        "$ vp lint --type-aware --type-check --allow all src ○ cache miss: 'node_modules/.modules.yaml' modified, executing",
+        "$ vp lint ○ cache miss: 'node_modules/.modules.yaml' modified, executing",
+        "$ vp build ○ cache miss: 'node_modules/.modules.yaml' modified, executing"
+      ],
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:15) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n$ vpr typecheck && vpr lint\n$ vpr build:source\n",
+        "stdout": "✓ Lockfile passes supply-chain policies (verified 1m ago)\nLockfile is up to date, resolution step is skipped\nPackages: +84\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 84, reused 84, downloaded 0, added 84, done\n\ndevDependencies:\n+ vite-plus 1.0.0\n\nDone in 651ms using pnpm v12.8.1\n$ vp lint --type-aware --type-check --allow all src ○ cache miss: 'node_modules/.modules.yaml' modified, executing\nFound 0 warnings and 0 errors.\nFinished in 451ms on 2 files with 0 rules using 4 threads.\n\n$ vp lint ○ cache miss: 'node_modules/.modules.yaml' modified, executing\nFound 0 warnings and 0 errors.\nFinished in 273ms on 3 files with 97 rules using 4 threads.\n\n$ vp build ○ cache miss: 'node_modules/.modules.yaml' modified, executing\ntransforming...\n✓ 2 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/message.js  0.10 kB │ gzip: 0.10 kB\n\n✓ built in 25ms\n\n\nCI execution summary: cf-ci-demo/build\nEnvironment: development\n\n✓ checkout\n\n✓ install depends on checkout\n\n✓ build depends on install\n"
+      }
+    },
+    {
+      "name": "fixed-first",
+      "command": "run build --remote",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "e06e3b6a-323a-445d-badd-e34e54873cf6",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "703805b58fbf3556c04455a1e34e016a9e9b1359",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "build"
+        ]
+      },
+      "errorCode": null,
+      "restoredSnapshot": null,
+      "savedSnapshot": {
+        "id": "60110b00-7abf-45e5-85f5-1ac76714faf5",
+        "name": "project workflow-workspace",
+        "size": 93473271
+      },
+      "cacheIdentity": "cache:v3:ddb7f8f0e3080527c891b5a6c006c54074664063dbb091bfd256331bdc53aa72",
+      "timingSeconds": {
+        "setup": 15.582,
+        "restore": 0.32,
+        "install": 2.848,
+        "projectCommand": 13.556,
+        "snapshots": 20.448,
+        "clientWall": 58.936
+      },
+      "taskCacheMessages": [],
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:17) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n$ vpr typecheck && vpr lint\n$ vpr build:source\n",
+        "stdout": "✓ Lockfile passes supply-chain policies (verified 19s ago)\nLockfile is up to date, resolution step is skipped\nDownloading @oxlint-tsgolint/linux-x64@7.0.2003: 0.00 B/7.77 MB\nDownloading @voidzero-dev/vite-plus-linux-x64-gnu@1.0.0: 0.00 B/13.40 MB\nDownloading @oxlint/binding-linux-x64-gnu@1.85.0: 0.00 B/6.53 MB\nPackages: +84\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 84, reused 0, downloaded 84, added 84, done\n\ndevDependencies:\n+ vite-plus 1.0.0\n\nDone in 1.4s using pnpm v12.8.1\n$ vp lint --type-aware --type-check --allow all src\nFound 0 warnings and 0 errors.\nFinished in 516ms on 2 files with 0 rules using 4 threads.\n\n$ vp lint\nFound 0 warnings and 0 errors.\nFinished in 243ms on 3 files with 97 rules using 4 threads.\n\n$ vp build\ntransforming...\n✓ 2 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/message.js  0.10 kB │ gzip: 0.10 kB\n\n✓ built in 25ms\n\n\nCI execution summary: cf-ci-demo/build\nEnvironment: development\n\n✓ checkout\n\n✓ install depends on checkout\n\n✓ build depends on install\n"
+      }
+    },
+    {
+      "name": "fixed-second",
+      "command": "run build",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "4170b033-b6bf-46d5-a988-6fdfcd2e3ddb",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "703805b58fbf3556c04455a1e34e016a9e9b1359",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "build"
+        ]
+      },
+      "errorCode": null,
+      "restoredSnapshot": {
+        "id": "60110b00-7abf-45e5-85f5-1ac76714faf5",
+        "name": "project workflow-workspace",
+        "size": 93473271
+      },
+      "savedSnapshot": {
+        "id": "967673ff-c1dc-4f47-ae17-9d24d747ab92",
+        "name": "project workflow-workspace",
+        "size": 2562966
+      },
+      "cacheIdentity": "cache:v3:ddb7f8f0e3080527c891b5a6c006c54074664063dbb091bfd256331bdc53aa72",
+      "timingSeconds": {
+        "setup": 24.975,
+        "restore": 13.375,
+        "install": 3.929,
+        "projectCommand": 5.736,
+        "snapshots": 20.393,
+        "clientWall": 80.413
+      },
+      "taskCacheMessages": [
+        "$ vp lint --type-aware --type-check --allow all src ◉ cache hit, replaying",
+        "vp run: cache hit, 656ms saved.",
+        "$ vp lint ◉ cache hit, replaying",
+        "vp run: cache hit, 318ms saved.",
+        "$ vp build ◉ cache hit, replaying",
+        "vp run: cache hit, 285ms saved."
+      ],
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:19) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n$ vpr typecheck && vpr lint\n$ vpr build:source\n",
+        "stdout": "✓ Lockfile passes supply-chain policies (verified 1m ago)\nLockfile is up to date, resolution step is skipped\nPackages: +84\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 84, reused 84, downloaded 0, added 84, done\n\ndevDependencies:\n+ vite-plus 1.0.0\n\nDone in 743ms using pnpm v12.8.1\n$ vp lint --type-aware --type-check --allow all src ◉ cache hit, replaying\nFound 0 warnings and 0 errors.\nFinished in 516ms on 2 files with 0 rules using 4 threads.\n\n---\nvp run: cache hit, 656ms saved.\n$ vp lint ◉ cache hit, replaying\nFound 0 warnings and 0 errors.\nFinished in 243ms on 3 files with 97 rules using 4 threads.\n\n---\nvp run: cache hit, 318ms saved.\n$ vp build ◉ cache hit, replaying\ntransforming...\n✓ 2 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/message.js  0.10 kB │ gzip: 0.10 kB\n\n✓ built in 25ms\n\n---\nvp run: cache hit, 285ms saved.\n\nCI execution summary: cf-ci-demo/build\nEnvironment: development\n\n✓ checkout\n\n✓ install depends on checkout\n\n✓ build depends on install\n"
+      }
+    },
+    {
+      "name": "changed",
+      "command": "run build",
+      "exitCode": 0,
+      "ok": true,
+      "location": "remote",
+      "instanceId": "eca7abc8-96ce-4a4d-9e2e-ea1f93265edd",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "43addd948b6c643db191b24f8f07e1ae35170af5",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "build"
+        ]
+      },
+      "errorCode": null,
+      "restoredSnapshot": {
+        "id": "967673ff-c1dc-4f47-ae17-9d24d747ab92",
+        "name": "project workflow-workspace",
+        "size": 2562966
+      },
+      "savedSnapshot": {
+        "id": "3bc8187c-beaa-4fc3-b206-1e64efc571b1",
+        "name": "project workflow-workspace",
+        "size": 2487724
+      },
+      "cacheIdentity": "cache:v3:ddb7f8f0e3080527c891b5a6c006c54074664063dbb091bfd256331bdc53aa72",
+      "timingSeconds": {
+        "setup": 9.559,
+        "restore": 12.272,
+        "install": 2.218,
+        "projectCommand": 15.548,
+        "snapshots": 21.179,
+        "clientWall": 66.144
+      },
+      "taskCacheMessages": [
+        "$ vp lint --type-aware --type-check --allow all src ○ cache miss: 'src/message.js' modified, executing",
+        "$ vp lint ○ cache miss: 'src/message.js' modified, executing",
+        "$ vp build ○ cache miss: 'src/message.js' modified, executing"
+      ],
+      "projectOutput": {
+        "exitCode": 0,
+        "stderr": "(node:19) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n$ vpr typecheck && vpr lint\n$ vpr build:source\n",
+        "stdout": "✓ Lockfile passes supply-chain policies (verified 3m ago)\nLockfile is up to date, resolution step is skipped\nPackages: +84\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 84, reused 84, downloaded 0, added 84, done\n\ndevDependencies:\n+ vite-plus 1.0.0\n\nDone in 474ms using pnpm v12.8.1\n$ vp lint --type-aware --type-check --allow all src ○ cache miss: 'src/message.js' modified, executing\nFound 0 warnings and 0 errors.\nFinished in 546ms on 2 files with 0 rules using 4 threads.\n\n$ vp lint ○ cache miss: 'src/message.js' modified, executing\nFound 0 warnings and 0 errors.\nFinished in 259ms on 3 files with 97 rules using 4 threads.\n\n$ vp build ○ cache miss: 'src/message.js' modified, executing\ntransforming...\n✓ 2 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/message.js  0.10 kB │ gzip: 0.10 kB\n\n✓ built in 27ms\n\n\nCI execution summary: cf-ci-demo/build\nEnvironment: development\n\n✓ checkout\n\n✓ install depends on checkout\n\n✓ build depends on install\n"
+      }
+    },
+    {
+      "name": "failed",
+      "command": "run missing-pnpm-proof-goal",
+      "exitCode": 1,
+      "ok": false,
+      "location": null,
+      "instanceId": "820421ff-af19-4c70-86c2-46ce8850a126",
+      "source": {
+        "trigger": "remote",
+        "repository": "https://github.com/ericclemmons/effect-ci-demo.git",
+        "revision": "b2b96b5ff892a841cb1a2b7cbaafd45dc53e6a4d",
+        "ref": "refs/heads/codex/hosted-pnpm-cache",
+        "targets": [
+          "missing-pnpm-proof-goal"
+        ]
+      },
+      "errorCode": "CI_WORKFLOW_FAILED",
+      "restoredSnapshot": {
+        "id": "3bc8187c-beaa-4fc3-b206-1e64efc571b1",
+        "name": "project workflow-workspace",
+        "size": 2487724
+      },
+      "savedSnapshot": null,
+      "cacheIdentity": "cache:v3:ddb7f8f0e3080527c891b5a6c006c54074664063dbb091bfd256331bdc53aa72",
+      "timingSeconds": {
+        "setup": 6.99,
+        "restore": 12.831,
+        "install": 1.468,
+        "projectCommand": 0,
+        "snapshots": 12.348,
+        "clientWall": 39.513
+      },
+      "taskCacheMessages": [],
+      "projectOutput": null
+    }
+  ]
+}
