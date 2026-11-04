@@ -45,6 +45,11 @@ root by default. It discovers `.cloudflare/ci/workflow.ts` or conventional packa
 scripts there. `effect-ci run build --remote` selects the repository's build action;
 no target runs its whole workflow. The host never imports repository workflow code.
 
+For Vite+ task caching, prefer pnpm. The default transport restores
+`node_modules/.vite/task-cache` before installation, but npm's frozen `npm ci`
+install deletes it. npm builds can succeed without reusing task results; see the
+[npm task-cache limitation](../../examples/node-npm/README.md#task-cache-limitation).
+
 The `demo` profile is the complete current host, including its connected services.
 The self-hosting guide deploys this profile.
 Its root `/capabilities` and `/runs` API also runs arbitrary caller repositories
