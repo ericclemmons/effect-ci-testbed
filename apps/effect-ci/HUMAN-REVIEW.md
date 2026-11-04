@@ -62,6 +62,19 @@ thread were delivered. The human walkthrough remains pending; no new run is
 authorized merely by this timeout. Later host deployments must preserve the
 runtime fix until its source integration is agreed.
 
+For fresh run `human-progress-reject-20261103-4`, Eric explicitly confirmed he was
+ready and reported clicking Progress at 10%. Slack showed a warning that the app
+returned an error. Three host request events during the review window confirm
+`POST /webhooks/slack` returned HTTP 403 from version
+`ad120451-a131-45f0-9b4a-96d75fd11969` in 1–2 milliseconds. This is observed
+human interaction with a rejected callback, not absent human participation and
+not an accepted Progress decision. Existing logs do not distinguish which
+authorization/context guard rejected the request; no authority change is inferred.
+No 25% promotion occurred. The full deadline expired, and native restoration plus
+independent allocation and health GETs confirmed the captured baseline at 100%,
+healthy, deployment `02aa36d3-b852-4449-ba24-29480032271c`.
+The callback failure must be diagnosed before another human acceptance attempt.
+
 ## Historical reconciliation — October 26, 2026
 
 **Status, October 26, 2026:** implementation and signed execution evidence exist;
