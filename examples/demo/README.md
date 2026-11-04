@@ -1,5 +1,7 @@
 # Walkthrough
 
+Terminal output is excerpted; hosted examples are illustrative. `<…>` values vary.
+
 - [ ] Build a React app and Worker API.
 - [ ] Inspect, cache, and run the build on Cloudflare.
 - [ ] Write `ci.ts`; skip Markdown-only changes and unchanged output.
@@ -20,7 +22,15 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    gh auth login
    ```
 
-2. Keep this shell open. Return to your projects directory.
+2. Confirm the CLI is on your path, then return to your projects directory in
+   this shell:
+
+   ```console frame="terminal"
+   $ command -v effect-ci
+   <source-directory>/node_modules/.bin/effect-ci
+   ```
+
+- [ ] The CLI is available in this shell.
 
 ## 2. Create the app
 
@@ -42,7 +52,9 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
 
 4. Open the printed URL. Click **Name from API**.
 
-   - [ ] The API returns `{ "name": "Cloudflare" }`.
+   ```json
+   { "name": "Cloudflare" }
+   ```
 
 5. Stop the server with Ctrl-C. Commit the starter if needed, then migrate its
    Wrangler configuration for `cf`:
@@ -50,51 +62,94 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    ```sh
    git add .
    git commit -m "feat: Create the app"
-   cf migrate
-   pnpm add -D @cloudflare/vite-plugin@beta
+   ```
+
+   ```console frame="terminal"
+   $ cf migrate
+   Updated 3 file(s):
+   ├─ cloudflare.config.ts
+   ├─ package.json
+   └─ pnpm-lock.yaml
+   …
+   ✔ Migration complete.
+
+   $ pnpm add -D @cloudflare/vite-plugin@beta
+   …
    ```
 
 6. Ignore generated output and local publication state:
 
    [`.gitignore`](./tutorial/ignore.diff "source")
 
-   - [ ] `cloudflare.config.ts` keeps `entrypoint: "worker/index.ts"` and SPA assets.
-   - [ ] `cf migrate` installs the local `cf` dependency used by that config.
+- [ ] React reaches the Worker API.
+- [ ] `cf` configuration preserves the Worker entrypoint and SPA assets.
 
 ## 3. Inspect before running
 
-1. Discover the existing scripts:
+1. Inspect the build without executing it:
 
-   ```sh
-   effect-ci list
-   effect-ci plan build
-   effect-ci plan build --format=mermaid | beautiful-mermaid ascii
-   ```
+   ```console frame="terminal"
+   $ effect-ci list
+   Workflow: walkthrough
+   Run commands:
+     effect-ci run build
+     …
 
-   ```text
-   checkout → install → build
+   $ effect-ci plan build
+   CI plan: walkthrough/build
+   Environment: development
+   …
+   ○ checkout
+   …
+   ○ install depends on checkout
+   …
+   ○ build depends on install
+   …
+
+   $ effect-ci plan build --format=mermaid | beautiful-mermaid ascii
+   ┌──────────┐     ┌─────────┐     ┌───────┐
+   │          │     │         │     │       │
+   │ checkout ├────►│ install ├────►│ build │
+   │          │     │         │     │       │
+   └──────────┘     └─────────┘     └───────┘
    ```
 
 2. Preview the agent interface:
 
-   ```sh
-   AI_AGENT=demo effect-ci list
-   AI_AGENT=demo effect-ci plan build
+   ```console frame="terminal"
+   $ AI_AGENT=demo effect-ci list
+   {
+     "schemaVersion": 1,
+     "ok": true,
+     "command": "list",
+     "workflow": "walkthrough",
+     …
+   }
    ```
 
-   - [ ] Human: text. Agent: JSON. Same commands.
-   - [ ] No build has run.
+- [ ] Human and agent can inspect the same goals without running a build.
 
 ## 4. Run the build
 
-1. Run:
+1. Build locally before adding a workflow:
 
-   ```sh
-   effect-ci run build
+   ```console frame="terminal"
+   $ effect-ci run build
+   $ tsc -b
+   …
+   $ vp build
+   …
+   CI execution summary: walkthrough/build
+   Environment: development
+   …
+   ✓ checkout
+
+   ✓ install depends on checkout
+
+   ✓ build depends on install
    ```
 
-   - [ ] TypeScript passes; the React app and Worker bundle.
-   - [ ] Local execution, before OIDC enrollment.
+- [ ] The app builds locally without an authored CI workflow.
 
 ## 5. Cache the build
 
@@ -129,6 +184,8 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    …
    ```
 
+- [ ] Unchanged inputs reuse the build; source edits invalidate its cache.
+
 ## 6. Create a GitHub repository
 
 1. Commit and push:
@@ -139,6 +196,21 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
    git commit -m "feat: Cache the build"
    gh repo create walkthrough --private --source=. --remote=origin --push
    ```
+
+2. Confirm the repository and pushed commit:
+
+   ```console frame="terminal"
+   $ git remote get-url origin
+   <repository-url>
+
+   $ git rev-parse HEAD
+   <commit>
+
+   $ git ls-remote origin refs/heads/main
+   <commit>  refs/heads/main
+   ```
+
+- [ ] The app's commit is on GitHub.
 
 <a id="6-run-on-a-host"></a>
 
@@ -152,30 +224,55 @@ account can sign in through its Access policy.
    ```sh
    export EFFECT_CI_REMOTE_URL=https://effect-ci-github-cloudflare.eclemmons.workers.dev
    cloudflared access login --quiet "$EFFECT_CI_REMOTE_URL"
-   effect-ci oidc --service "$EFFECT_CI_REMOTE_URL"
+   ```
+
+   ```console frame="terminal"
+   $ effect-ci oidc --service "$EFFECT_CI_REMOTE_URL"
+   OIDC enabled for <owner>/walkthrough. …
+   ```
+
+   ```sh
    git add .cloudflare/ci/oidc.json
    git commit -m "ci: Enroll hosted execution"
    git push
-   effect-ci doctor --remote
    ```
 
-2. Run the pushed commit twice:
-
-   ```sh
-   effect-ci run build
-   effect-ci run build
+   ```console frame="terminal"
+   $ effect-ci doctor --remote
+   Remote access ready. … No workflow started.
    ```
 
-   - [ ] Remote Workflow IDs appear.
-   - [ ] Check the second run's cache output; a cold host can still miss.
+2. Run twice to check remote execution and cache reuse:
 
-3. Run uncommitted edits locally:
+   ```console frame="terminal"
+   $ effect-ci run build
+   Remote Workflow <first-run-id>
+   …
+   ✓ Workflow completed
 
-   ```sh
-   effect-ci run build --local
+   $ effect-ci run build
+   Remote Workflow <second-run-id>
+   …
+   $ vp build ◉ cache hit, replaying
+   …
+   ✓ Workflow completed
    ```
 
-   - [ ] Enrollment makes remote execution the default; `--local` bypasses it.
+   A cold host can report a cache miss.
+
+3. Edit the API response without committing. Bypass remote execution:
+
+   ```console frame="terminal"
+   $ effect-ci run build --local
+   …
+   CI execution summary: walkthrough/build
+   Environment: development
+   …
+   ✓ build depends on install
+   ```
+
+- [ ] The pushed build runs remotely; the second run reports its cache result.
+- [ ] Uncommitted edits build locally with `--local`.
 
 ## 8. Open a PR with checks
 
@@ -191,12 +288,19 @@ account can sign in through its Access policy.
    git commit -m "ci: Run the build on Cloudflare"
    git push -u origin feat/github-checks
    gh pr create --title "ci: Run the build on Cloudflare"
-   gh pr checks
    ```
 
-   - [ ] GitHub's `build` job dispatches to the enrolled host.
-   - [ ] Push events support branch PRs; fork PR events are not enrolled.
-   - [ ] No stored Effect CI token.
+3. After the check finishes, inspect its result:
+
+   ```console frame="terminal"
+   $ gh pr checks
+   …
+   ✓  build  <duration>  <run-url>
+   ```
+
+- [ ] The PR's pushed commit has a passing remote build check.
+
+This job uses push events; fork PR events are not enrolled.
 
 ## 9. Own the workflow
 
@@ -218,14 +322,23 @@ account can sign in through its Access policy.
 
    [`.cloudflare/ci/ci.ts`](./tutorial/ci.exec.ts "source")
 
-5. Inspect and run:
+5. Inspect your graph, then run its default goal:
 
-   ```sh
-   effect-ci plan
-   effect-ci run --local
+   ```console frame="terminal"
+   $ effect-ci plan
+   CI plan: walkthrough
+   …
+   ○ build depends on install
+   …
+
+   $ effect-ci run --local
+   …
+   CI execution summary: walkthrough
+   …
+   ✓ build depends on install
    ```
 
-   - [ ] Your file now owns the default goal.
+- [ ] `ci.ts` owns the default build goal.
 
 ### Replace shell plumbing with SDK methods
 
@@ -233,14 +346,24 @@ account can sign in through its Access policy.
 
    [`.cloudflare/ci/ci.ts`](./tutorial/sdk.diff "source")
 
-2. Run:
+2. Inspect the detected package manager, then run the same build:
 
-   ```sh
-   effect-ci run --local
+   ```console frame="terminal"
+   $ effect-ci plan
+   …
+   ○ install depends on checkout
+     $ pnpm install --frozen-lockfile
+   …
+   ○ build depends on install
+     $ pnpm exec vp run build
+   …
+
+   $ effect-ci run --local
+   …
+   ✓ build depends on install
    ```
 
-   - [ ] `CI.PackageManager.JavaScript` detects pnpm and its lockfile.
-   - [ ] `install()` uses the frozen lockfile; `exec()` runs the cached Vite+ task.
+- [ ] SDK methods detect pnpm and preserve the build's behavior.
 
 ### Skip Markdown-only changes
 
@@ -262,12 +385,28 @@ account can sign in through its Access policy.
    ```sh
    git add README.md
    git commit -m "docs: Update the readme"
-   EFFECT_CI_BASE_REVISION=HEAD~1 effect-ci run --local
    ```
 
-   - [ ] No checkout, install, or build actions run.
-   - [ ] Unknown source comparison runs CI.
-   - [ ] GitHub's path filter skips dispatch before remote compute starts.
+   ```console frame="terminal"
+   $ EFFECT_CI_BASE_REVISION=HEAD~1 effect-ci run --local
+   CI execution summary: walkthrough
+   Environment: development
+
+   $ echo $?
+   0
+   ```
+
+4. Push the Markdown-only commit:
+
+   ```sh
+   git push
+   ```
+
+5. Open GitHub Actions. Confirm this commit has no **Effect CI** run.
+
+- [ ] A Markdown-only commit succeeds with zero local actions and no remote dispatch.
+
+Unknown source comparisons run CI.
 
 ## 10. Skip unchanged build output
 
@@ -278,27 +417,45 @@ successful-deployment baseline adapter yet.
 
    [`.cloudflare/ci/ci.ts`](./tutorial/output.diff "source")
 
-2. Run twice without the earlier comparison override:
+2. Run twice to prove identical build output skips publication:
 
-   ```sh
-   effect-ci run --local
-   cat .effect-ci/deployed-site/current.json
-   effect-ci run --local
-   cat .effect-ci/deployed-site/current.json
+   ```console frame="terminal"
+   $ effect-ci run --local
+   …
+   ✓ build depends on install
+   …
+   ✓ publish local site depends on build
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <receipt-hash>  .effect-ci/deployed-site/current.json
+
+   $ effect-ci run --local
+   …
+   CI execution summary: walkthrough
+   Environment: development
+   …
+   ✓ checkout
+
+   ✓ install depends on checkout
+
+   ✓ build depends on install
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <receipt-hash>  .effect-ci/deployed-site/current.json
    ```
 
-   - [ ] First run: build → publish.
-   - [ ] Same bytes: build → skip publication; receipt stays unchanged.
-   - [ ] Failed build or publication keeps the last successful baseline.
+3. Change the API response again. Confirm new output publishes:
 
-3. Change the API response again and run:
+   ```console frame="terminal"
+   $ effect-ci run --local
+   …
+   ✓ publish local site depends on build
 
-   ```sh
-   effect-ci run --local
+   $ shasum .effect-ci/deployed-site/current.json
+   <new-receipt-hash>  .effect-ci/deployed-site/current.json
    ```
 
-   - [ ] Changed output publishes once.
-   - [ ] `workspace.changed(".cloudflare/output/**")` compares output, not source paths.
+- [ ] Identical output preserves the receipt; changed output publishes once.
 
 ## 11. Deploy with temporary credentials
 
@@ -315,9 +472,26 @@ This job deploys independently of the local publication lesson.
    gh workflow run deploy.yml --ref main
    ```
 
-   - [ ] The auth action exchanges GitHub OIDC for a temporary Cloudflare token.
-   - [ ] `cf deploy` builds and deploys the Worker and React assets.
-   - [ ] The action revokes the token on job exit; expiry covers interrupted cleanup.
+3. After the job finishes, inspect its authentication and cleanup logs:
+
+   ```console frame="terminal"
+   $ gh run view --log
+   …
+   Temporary Cloudflare credentials are available to subsequent steps.
+   …
+   Temporary Cloudflare token revoked.
+   ```
+
+4. Open the deployed URL from the job log. Click **Name from API**.
+
+   ```json
+   { "name": "<your-current-API-response>" }
+   ```
+
+- [ ] The deployed React app reaches its Worker API.
+- [ ] The job uses a temporary token and revokes it on exit.
+
+Token expiry covers interrupted cleanup.
 
 ## 12. Add Slack
 
@@ -339,7 +513,13 @@ This job deploys independently of the local publication lesson.
    gh workflow run deploy.yml --ref main
    ```
 
-   - [ ] Slack receives the job status and run link after success or failure.
+4. Open Slack and check the message:
+
+   ```text
+   <owner>/walkthrough: success — <GitHub-run-link>
+   ```
+
+- [ ] The channel receives the deployment result and its run link.
 
 ### Require approval before publication
 
@@ -349,14 +529,30 @@ This job deploys independently of the local publication lesson.
 
 2. Change the API response so the build output differs. Reject, then approve locally:
 
-   ```sh
-   EFFECT_CI_APPROVAL=rejected effect-ci run --local
-   EFFECT_CI_APPROVAL=approved effect-ci run --local
+   ```console frame="terminal"
+   $ shasum .effect-ci/deployed-site/current.json
+   <receipt-hash>  .effect-ci/deployed-site/current.json
+
+   $ EFFECT_CI_APPROVAL=rejected effect-ci run --local
+   …
+   Error [CI_APPROVAL_REJECTED]: publish local site was rejected
+
+   $ echo $?
+   4
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <receipt-hash>  .effect-ci/deployed-site/current.json
+
+   $ EFFECT_CI_APPROVAL=approved effect-ci run --local
+   …
+   ✓ publish local site depends on build
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <new-receipt-hash>  .effect-ci/deployed-site/current.json
    ```
 
-   - [ ] Rejection fails the run and preserves the baseline.
-   - [ ] Approval publishes the changed output.
-   - [ ] Missing approval handler fails closed.
+- [ ] Rejection blocks publication; approval publishes the changed output.
+- [ ] The baseline advances only after publication succeeds.
 
 Live Slack buttons require a host approval adapter with an authorized reviewer
 list and verified callbacks. Generic repository runs on this host do not have
