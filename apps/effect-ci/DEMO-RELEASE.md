@@ -1,5 +1,26 @@
 # Release the checked demo candidate
 
+## Evidence reconciliation — October 26, 2026
+
+The sections below retain their original deployment, uncertainty and cleanup
+history. Their pending statements describe those checkpoints, not the current
+implementation. In particular, the [October 16 normal main release](../../test/fixtures/demo/test/main-release-20261016.md)
+completed after the branch-policy checkpoint below. Its four signed decisions
+were explicitly delegated tests, not independent human review. Successful commit
+kept the candidate at 100%; it did not restore the previous release.
+
+The later showcase also requires a consumed private decision before candidate
+preparation. [PR #389](https://github.com/ericclemmons/effect-ci-testbed/pull/389)
+composed the signed Slack handler, SQLite ledger and release continuation in local
+Workerd tests with fake external transports. The [October 24 flywheel receipts](../../examples/release-flywheel/proof/README.md)
+retain a separate real hosted journey and exact restoration, with delegated
+approval. Neither supplies the independent human walkthrough required by
+[#141](https://github.com/ericclemmons/effect-ci-testbed/issues/141).
+
+See the [current handoff and dispatch preconditions](./HUMAN-REVIEW.md). Do not use
+the historical push, diagnostic or reset instructions below to manufacture fresh
+evidence, change the baseline or repeat a completed release.
+
 ## Branch contract
 
 The new host policy is **`main` → reviewed production deployment** and
