@@ -69,20 +69,6 @@ writeFileSync(join(project, "src/main.ts"), 'document.title = "Effect CI";');
 const changed = run("run", "build", "--local", "--format=text");
 if (!/cache miss/.test(changed)) throw new Error("Changed source did not report a cache miss");
 
-// Ephemeral identity verifies Git signing locally; it is not a GitHub verified identity.
-const key = join(directory, "signing");
-command("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", key]);
-const git = (...args) => command("git", args);
-git("init", "-q");
-git("config", "user.name", "Walkthrough local proof");
-git("config", "user.email", "walkthrough@example.invalid");
-git("config", "gpg.format", "ssh");
-git("config", "user.signingkey", key);
-git("add", ".");
-git("commit", "-S", "-qm", "feat: Build the walkthrough app");
-const signers = join(directory, "allowed-signers");
-writeFileSync(signers, `walkthrough@example.invalid ${readFileSync(`${key}.pub`, "utf8")}`);
-git("-c", `gpg.ssh.allowedSignersFile=${signers}`, "verify-commit", "HEAD");
 const proof = {
   project,
   logs: directory,
@@ -90,7 +76,6 @@ const proof = {
   localBuild: "passed",
   repeatedBuild: "cache hit",
   changedSource: "cache miss",
-  commitSignature: "verified locally with an ephemeral key",
   notExercised: [
     "React/Worker starter",
     "GitHub repo/PR/checks",

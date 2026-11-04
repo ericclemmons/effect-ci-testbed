@@ -1,0 +1,16 @@
+--- a/.cloudflare/ci/ci.ts
++++ b/.cloudflare/ci/ci.ts
+@@ -18,5 +18,13 @@
+ });
+ 
+ export default CI.workflow("walkthrough", function* () {
++  const source = yield* CI.Source;
++  const changes = yield* source.changes();
++  if (
++    changes.status === "known" &&
++    changes.paths.length > 0 &&
++    changes.paths.every((path) => path.endsWith(".md"))
++  )
++    return;
+   return yield* build();
+ });

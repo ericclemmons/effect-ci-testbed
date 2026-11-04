@@ -85,6 +85,14 @@ export function createDemoProgram<Receipt>(delivery: DemoDelivery<Receipt>) {
     build,
     deploy,
     workflow: CI.workflow("demo", function* () {
+      const source = yield* CI.Source;
+      const changes = yield* source.changes();
+      if (
+        changes.status === "known" &&
+        changes.paths.length > 0 &&
+        changes.paths.every((path) => path.endsWith(".md"))
+      )
+        return;
       const workspace = yield* build();
       if (!(yield* workspace.changed("dist/**"))) return;
       if (delivery.release) return yield* release();

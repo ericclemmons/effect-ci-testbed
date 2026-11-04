@@ -1,0 +1,15 @@
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -33,4 +33,12 @@
+     ],
+   },
+   plugins: lazyPlugins(() => [react(), cloudflare()]),
++  run: {
++    tasks: {
++      build: {
++        command: "tsc -b && vp build",
++        cache: { input: [{ auto: true }, "!.cloudflare/output/**"] },
++      },
++    },
++  },
+ });

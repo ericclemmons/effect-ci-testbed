@@ -379,13 +379,14 @@ const builtInRemote = async (
   const events: WorkflowInstanceEvent[] = []
   const cursor: { value?: number } = {}
   let interruptions = 0
+  let completedByStatus = false
   while (true) {
     const eventUrl = new URL(remoteEventUrl(remoteUrl, run.eventsUrl))
     if (cursor.value !== undefined) eventUrl.searchParams.set("cursor", String(cursor.value))
     const before = events.length
     try {
       await streamRemoteEvents(await fetch(eventUrl, {
-        headers: await connection.requestHeaders(), redirect: "error",
+        headers: await connection.requestHeaders(), redirect: "error", signal: AbortSignal.timeout(30_000),
       }), invocation.format, events, cursor)
       if (["workflow_completed", "workflow_errored", "workflow_terminated"].includes(events.at(-1)?.type ?? "")) break
     } catch (error) {
@@ -395,6 +396,26 @@ const builtInRemote = async (
         throw new CliFailure("CI_REMOTE_FAILED", ExitCode.providerUnavailable,
           "The remote service returned an invalid event record", { instanceId: run.instanceId })
       }
+    }
+    // Native subscriptions can omit the workflow terminal event after a step
+    // fails. Reconcile the same run; a disconnected stream is not a failure.
+    const status = await fetch(remoteEventUrl(remoteUrl, run.statusUrl), {
+      headers: await connection.requestHeaders(), redirect: "error", signal: AbortSignal.timeout(15_000),
+    }).then(async response => response.ok
+      ? await response.json() as { status?: string; error?: { message?: string } }
+      : undefined).catch(() => undefined)
+    if (status) {
+      if (status.status === "errored" || status.status === "terminated") {
+        throw new CliFailure("CI_WORKFLOW_FAILED", ExitCode.workflowFailure,
+          remoteErrorMessage(status.error?.message) ?? `Remote Workflow ${status.status}`,
+          { instanceId: run.instanceId, events, diagnostics: remoteCommandDiagnostics(events) })
+      }
+      if (status.status === "complete") {
+        completedByStatus = true
+        break
+      }
+      // A confirmed live run may be quiet for longer than the reconnect budget.
+      if (["queued", "running", "waiting", "paused"].includes(status.status ?? "")) interruptions = 0
     }
     if (events.length > before) interruptions = 0
     if (++interruptions > 5) {
@@ -416,7 +437,7 @@ const builtInRemote = async (
     )
   }
 
-  if (terminal?.type !== "workflow_completed") {
+  if (terminal?.type !== "workflow_completed" && !completedByStatus) {
     throw new CliFailure(
       "CI_REMOTE_STREAM_ENDED",
       ExitCode.providerUnavailable,

@@ -29,7 +29,6 @@ export function sidebar() {
     .map((page) => [page.path.split("/")[1], page]))
   const groups = []
   const byLabel = (a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })
-  const used = new Set(["demo"])
   for (const section of readFileSync(resolve(root, "examples/README.md"), "utf8").split(/^## /m).slice(1)) {
     const [label] = section.split("\n")
     if (!label.startsWith("CI.")) continue
@@ -38,38 +37,39 @@ export function sidebar() {
     const methods = [...api.body.matchAll(/^## (\w+)$/gm)].map(([, method]) => ({
       label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
     }))
-    const examples = []
-    for (const [, label, name] of section.matchAll(/\[([^\]]+)\]\(\.\/([^/#)]+)\)/g)) {
-      if (!recipes.has(name) || used.has(name)) continue
-      used.add(name)
-      if (!examples.some(item => item.label === label)) examples.push({ label, slug: recipes.get(name).id })
-    }
-    groups.push({ label, collapsed: true, items: [
-      { label: "Usage", slug: api.id },
-      ...(methods.length ? [{ label: "Methods", collapsed: true, items: methods.sort(byLabel) }] : []),
-      ...(examples.length ? [{ label: "Examples", collapsed: true, items: examples.sort(byLabel) }] : []),
-    ] })
+    groups.push(methods.length ? { label, collapsed: true, items: [
+      { label: "Overview", slug: api.id },
+      ...methods.sort(byLabel),
+    ] } : { label, slug: api.id })
   }
-  const extra = [...recipes].filter(([name]) => !used.has(name))
-    .map(([, page]) => ({ label: page.title, slug: page.id }))
   return [
-    { label: "Features", link: "/" },
-    { label: "Walkthrough", slug: "walkthrough" },
-    { label: "API", items: [
-      ...groups,
-      { label: "CLI", slug: "packages/cli" },
-      { label: "Ecosystem", slug: "examples/ecosystem" },
-      { label: "Execution evidence", slug: "examples/coverage" },
+    { label: "Getting started", items: [
+      { label: "Features", link: "/" },
+      { label: "Walkthrough", slug: "walkthrough" },
+    ] },
+    { label: "Guides", items: [
       { label: "GitHub", slug: "examples/github" },
       { label: "Self-hosting", slug: "apps/effect-ci/self-host" },
+      { label: "Ecosystem", slug: "examples/ecosystem" },
+      { label: "Execution evidence", slug: "examples/coverage" },
+    ] },
+    { label: "Examples", collapsed: true, items: [
+      { label: "Overview", slug: "examples" },
+      ...[...recipes].filter(([name]) => name !== "demo")
+        .map(([, page]) => ({ label: page.title, slug: page.id })).sort(byLabel),
+    ] },
+    { label: "Reference", collapsed: true, items: [
+      { label: "SDK overview", slug: "packages/ci" },
+      { label: "CLI", slug: "packages/cli" },
+      ...groups.sort(byLabel),
+    ] },
+    { label: "Development", collapsed: true, items: [
       { label: "Repository wiring", slug: "apps/docs/laboratory" },
-      { label: "SDK", slug: "packages/ci" },
       { label: "Packages", collapsed: true, items: docs
-        .filter(page => page.path.startsWith("packages/") && !page.title.startsWith("CI."))
+        .filter(page => page.path.startsWith("packages/") && !page.title.startsWith("CI.") && !["packages/ci", "packages/cli"].includes(page.id))
         .map(page => ({ label: page.title, slug: page.id })).sort(byLabel) },
       { label: "Hosts and services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
-    ].sort(byLabel) },
-    { label: "Recipes", collapsed: true, items: extra.sort(byLabel) },
+    ] },
   ]
 }
 
@@ -113,7 +113,7 @@ function snippet(url, from) {
   } else if (file.fragment) {
     throw new Error(`Unknown source selector: ${url}`)
   }
-  const language = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml" }[extname(file.path)] ?? "text"
+  const language = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff" }[extname(file.path)] ?? "text"
   return { ...file, value, language, url: `${repository}/blob/main/${file.path}${lines}` }
 }
 
@@ -138,7 +138,10 @@ export function repositoryMarkdown() {
           const code = snippet(link.url, from)
           link.url = code.url
           link.title = null
-          return [child, { type: "code", lang: code.language, meta: `title="${code.path}"`, value: code.value }]
+          const [label] = link.children
+          const filename = link.children.length === 1 && label.type === "inlineCode" ? label.value : undefined
+          const block = { type: "code", lang: code.language, meta: `title="${(filename ?? code.path).replaceAll('"', '&quot;')}"`, value: code.value }
+          return filename ? [block] : [child, block]
         }
         if (child.type === "link" || child.type === "image") child.url = rewrite(child.url, child.type === "image")
         if (child.type === "html") child.value = child.value.replace(/\b(src|href)="([^"]+)"/g, (_, attribute, url) => `${attribute}="${rewrite(url, attribute === "src")}"`)

@@ -1,5 +1,14 @@
 # Hosted workflow continuation
 
+## Task-cache transport
+
+The default workspace cache carries Vite+ task entries and pnpm's
+`node_modules/.modules.yaml`. Keeping pnpm's existing metadata avoids changing its
+`prunedAt` timestamp on every fresh install, which Vite+ otherwise sees as a
+changed dependency input. Dependencies are installed against the current checkout;
+Vite+ still owns task fingerprints and source invalidation. Custom cache paths
+and `cache: false` retain their existing behavior.
+
 ## Remote private checkout
 
 `workflowEntrypoint(definition, { remoteGitHubCheckout: true })` lets a self-hosted

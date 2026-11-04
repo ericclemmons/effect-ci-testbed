@@ -1,0 +1,14 @@
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -25,3 +25,11 @@
+           enroll: "true"
+           worker: walkthrough
+       - run: pnpm exec cf deploy
++      - name: Notify Slack
++        if: always()
++        env:
++          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
++          STATUS: ${{ job.status }}
++        run: |
++          jq -n --arg text "${GITHUB_REPOSITORY}: ${STATUS} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" '{text: $text}' |
++            curl --fail --silent --show-error --max-time 15 -H 'Content-Type: application/json' --data-binary @- "$SLACK_WEBHOOK_URL"

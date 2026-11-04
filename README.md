@@ -3,7 +3,7 @@
 > **Prototype.** I'm using this to try out CI ideas.
 
 [Walkthrough](./examples/demo/README.md) · [Ecosystem](./examples/ECOSYSTEM.md) ·
-[Recipes](./examples/README.md) · [API reference](./packages/ci/README.md)
+[Examples](./examples/README.md) · [Reference](./packages/ci/README.md)
 
 ## Features
 
@@ -33,8 +33,15 @@ effect-ci --help
 
 [Start the walkthrough](./examples/demo/README.md). No accounts needed for the local steps.
 
+## Guides
+
+[GitHub](./examples/GITHUB.md) · [Self-hosting](./apps/effect-ci/SELF-HOST.md) ·
+[Ecosystem](./examples/ECOSYSTEM.md) · [Execution evidence](./examples/COVERAGE.md)
+
 ## Reference
 
-[CLI](./packages/cli/README.md) · [SDK](./packages/ci/README.md) ·
-[Self-hosting](./apps/effect-ci/README.md) · [Repository wiring](./apps/docs/LABORATORY.md) ·
-[Execution evidence](./examples/COVERAGE.md) · [Documentation authoring](./apps/docs/README.md)
+[CLI](./packages/cli/README.md) · [SDK](./packages/ci/README.md)
+
+## Development
+
+[Repository wiring](./apps/docs/LABORATORY.md) · [Documentation authoring](./apps/docs/README.md)

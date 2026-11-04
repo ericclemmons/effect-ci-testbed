@@ -53,7 +53,7 @@ test("agent JSON distinguishes checkpoint uncertainty from a verified process ex
   process.stdout.write = ((value: string | Uint8Array) => { writes.push(String(value)); return true }) as typeof process.stdout.write
   try {
     const workflow = CI.workflow("unknown-command-fixture", () => Effect.fail(new CI.CommandCheckpointError("install", "pnpm install", "/workspace")))
-    const code = await main({ workflow }, ["run", "--format=json"])
+    const code = await main({ workflow }, ["run", "--local", "--format=json"])
     assert.equal(code, 1, "CLI failure is not an observed child exit 1")
     const value = JSON.parse(writes.join(""))
     assert.equal(value.ok, false)
@@ -70,7 +70,7 @@ test("agent JSON does not invent an exit code for a missing container result", a
   process.stdout.write = ((value: string | Uint8Array) => { writes.push(String(value)); return true }) as typeof process.stdout.write
   try {
     const workflow = CI.workflow("unknown-container-fixture", () => Effect.fail(new CI.CommandExecutionError("test", "node --test", "/workspace")))
-    assert.equal(await main({ workflow }, ["run", "--format=json"]), 1)
+    assert.equal(await main({ workflow }, ["run", "--local", "--format=json"]), 1)
     const value = JSON.parse(writes.join(""))
     assert.equal(value.error.code, "CI_COMMAND_OUTCOME_UNKNOWN")
     assert.deepEqual(value.error.details, { command: "node --test", cwd: "/workspace", stepId: "test",

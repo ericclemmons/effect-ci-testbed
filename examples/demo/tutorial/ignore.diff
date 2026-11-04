@@ -1,0 +1,12 @@
+--- a/.gitignore
++++ b/.gitignore
+@@ -29,3 +29,9 @@
+ !.dev.vars.example
+ .env*
+ !.env.example
++
++# cf build output and local publication
++.cloudflare/output/
++.cloudflare/state/
++.cloudflare/types/
++.effect-ci/

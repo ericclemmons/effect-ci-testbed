@@ -17,7 +17,7 @@ test("standalone uid/non-login policy cannot restore the old root runner's trans
   const request = {
     repository: "https://github.com/acme/private.git",
     key: "acme/private",
-    paths: ["node_modules/.vite/task-cache"],
+    paths: ["node_modules/.vite/task-cache", "node_modules/.modules.yaml"],
     files: [],
   };
   const legacy = await cacheIdentity({
