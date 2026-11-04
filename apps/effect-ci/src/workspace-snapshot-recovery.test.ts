@@ -223,7 +223,11 @@ function fixture() {
       let exitCode = 0, stdout = new Uint8Array();
       if (failReadiness && command.at(-1) === "fixed-ready") exitCode = 1;
       if (command[0] === "/usr/bin/python3" && outputResponse !== undefined) {
-        stdout = new TextEncoder().encode(outputResponse);
+        const input = command.at(-1);
+        const listing = input?.startsWith("{") && JSON.parse(input).paths === null;
+        stdout = new TextEncoder().encode(listing
+          ? JSON.stringify(JSON.parse(outputResponse).files?.map((file: { path: string }) => file.path) ?? [])
+          : outputResponse);
       }
       else if ((command[0] === "sh" || command[0] === "/bin/sh") && command.at(-1)?.includes("git --no-pager diff") && queryResponse !== undefined) {
         stdout = new TextEncoder().encode(queryResponse);
