@@ -177,7 +177,16 @@ test("native showcase checkpoints authored actions, consumes the checked build a
         const cap=JSON.parse(button.value);assert.equal(cap.phase,0);
         assert.equal((await click(cap,'approved',{secret:'wrong-test-secret'})).status,401);
         assert.equal((await click(cap,'approved',{timestamp:'1'})).status,401);
-        assert.equal((await click(cap,'approved',{user:'U2'})).status,403);
+        assert.equal((await click(cap,'approved',{user:'U2'})).status,200);
+        const unauthorized=await call({op:'state'});
+        const privateErrors=unauthorized.messages.filter((m:any)=>m.path==='/api/chat.postEphemeral');
+        assert.equal(privateErrors.length,1);
+        const [privateError]=privateErrors;
+        assert.equal(privateError.body.channel,'C1');
+        assert.equal(privateError.body.user,'U2');
+        assert.match(privateError.body.text,/Slack account U2 is not authorized to review this release/);
+        assert.match(privateError.body.text,/No decision was recorded/);
+        assert.equal(unauthorized.prepared,0);assert.equal(unauthorized.phase,0);assert.equal(unauthorized.commits,0);
         const stale=await click({...cap,snapshot:'f'.repeat(64)},'approved');
         assert.equal(stale.status,200);
         assert.equal((await stale.json()).text,'This phase is no longer awaiting review.');
