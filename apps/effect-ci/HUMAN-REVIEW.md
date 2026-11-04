@@ -37,6 +37,31 @@ native-ingestion and Slack checks passed afterward. This local result is not
 hosted acceptance. Preserve the live host's unmerged work before any separately
 authorized deployment or another human window.
 
+Eric subsequently authorized the narrow deployment and coordination with the two
+other chats sharing the host. Both owners held host deployments and merges.
+The deployment used exact live source `e87d9626a08f11e996d0d950fa9ebc9142b0b0aa`
+from [PR #412](https://github.com/ericclemmons/effect-ci-testbed/pull/412), plus only
+the runtime timeout hunk from `6f74b9d426cf20928d8a7372ec0791513d12c394`.
+A full archive comparison confirmed the sole changed source file was
+`test/apps/example-runner/src/hmd-review-runner.ts`; migrated account and version
+pins were preserved. Host version `ad120451-a131-45f0-9b4a-96d75fd11969`, deployment
+`b5e2d7ac-e69b-4335-9916-9da50e9a5a1f`, retained all 29 binding names/types,
+environment metadata, exports, compatibility settings and container metadata.
+The prebuilt deployment preserved existing secrets and left containers unchanged.
+
+Fresh run `human-progress-reject-20261103-3` delivered card
+`1793761920.502499` and reached the 10% review. It correctly survived three native
+30-second wrapped timeouts and the final 23,382-millisecond wait until the fixed
+two-minute deadline. No human decision was accepted and no 25% promotion occurred;
+the deadline resolver failed closed. This proves the deployed timeout fix and
+deadline restoration, not the requested human Progress/Reject acceptance.
+Native restoration and independent deployment/health GETs confirmed captured
+version `f8526596-f9b8-4068-87c0-c517844488a8` at 100%, deployment
+`ad7aa3b1-a51e-4be0-91fd-0382a37498ee`, healthy. The terminal card and restoration
+thread were delivered. The human walkthrough remains pending; no new run is
+authorized merely by this timeout. Later host deployments must preserve the
+runtime fix until its source integration is agreed.
+
 ## Historical reconciliation — October 26, 2026
 
 **Status, October 26, 2026:** implementation and signed execution evidence exist;
