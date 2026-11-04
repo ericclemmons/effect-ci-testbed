@@ -26,6 +26,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
   let resultAvailable = false
   let resultStatus = 200
   let resultReads = 0
+  let projectSelection = false
+  const projects: unknown[] = []
   let targetDiscovery: unknown
   const selections: unknown[] = []
   try {
@@ -57,7 +59,7 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         response.writeHead(supportsTargets ? capabilityStatus : 404, { "content-type": "application/json",
           ...([302,307].includes(capabilityStatus) ? {location:"https://fixture.cloudflareaccess.com/cdn-cgi/access/login?token=never-reflect-login-token"} : {}) })
         response.end(JSON.stringify({ protocol: capabilityProtocol, targets: targetDiscovery === "project" ? [] : ["test", "build"],
-          ...(targetDiscovery === undefined ? {} : { targetDiscovery }) }))
+          ...(targetDiscovery === undefined ? {} : { targetDiscovery }), ...(projectSelection ? { projectSelection: true } : {}) }))
         return
       }
       if (request.url === `${routePrefix}/runs/fixture` && diagnosticFailure) {
@@ -85,7 +87,8 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
         assert.equal(input.repository, "https://github.com/example/project.git")
         assert.equal(input.root, undefined)
         assert.equal(input.projectRoot, undefined)
-        selections.push(JSON.parse(body).targets)
+        projects.push(input.project)
+        selections.push(input.targets)
         response.writeHead(202, { "content-type": "application/json" })
         response.end(JSON.stringify({ instanceId: "fixture", eventsUrl: `${origin}${routePrefix}/runs/fixture/events`, statusUrl: `${origin}${routePrefix}/runs/fixture`,
           ...(resultAvailable ? { resultAvailable: true } : {}) }))
@@ -275,9 +278,11 @@ test("remote CLI authenticates dispatch and tails logs; dirty input cannot silen
     await writeFile(join(directory, ".cloudflare/ci/workflow.ts"), 'throw new Error("local workflow must not run before dispatch")\n')
     execFileSync("git", ["add", ".cloudflare/ci/workflow.ts"], { cwd: directory })
     execFileSync("git", ["commit", "-qm", "local workflow fixture"], { cwd: directory })
+    projectSelection = true
     const discovered = await run("fixture-user-token", false, "text", false, ["build"])
     assert.equal(discovered.code, 0, discovered.output)
     assert.deepEqual(selections.at(-1), ["build"])
+    assert.deepEqual(projects.at(-1), { root: "." }, "root selection must override a host's configured nested root")
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(directory, { recursive: true, force: true })

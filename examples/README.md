@@ -128,3 +128,10 @@ Each example starts with `cd examples/...`. The CLI discovers its workflow there
 - [Use existing package scripts](./zero-config)
 
 Hosted credentials and service setup live in the [host guide](../apps/effect-ci/README.md).
+
+The hosted runner discovers project workflows; basic recipes do not need separate
+Workers or deployments. From this repository, select a recipe with
+`effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`.
+The runner checks out the pushed commit and runs that project's workflow in its
+workspace. It does not upload local edits or import recipes into the host Worker.
+See [remote project selection](../packages/cli/README.md#remote-project-selection).
