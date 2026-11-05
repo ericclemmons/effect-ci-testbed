@@ -3,7 +3,7 @@ import { createHmac, generateKeyPairSync } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
-import { hostedExamples } from "./hosted-examples.ts";
+import { hostedExamples, projectRoot } from "./hosted-examples.ts";
 
 const repository = new URL("../../../", import.meta.url);
 const lockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "pnpm-workspace.yaml"];
@@ -23,10 +23,17 @@ test(
     });
     // The fake container serves the committed example files the package manager probes.
     const files: Record<string, string> = {};
-    for (const { recipe } of hostedExamples) {
+    for (const example of hostedExamples) {
       for (const name of ["package.json", ...lockfiles]) {
-        const path = new URL(`examples/${recipe}/${name}`, repository);
-        if (existsSync(path)) files[`examples/${recipe}/${name}`] = name === "package.json" ? readFileSync(path, "utf8") : "";
+        const path = new URL(`${projectRoot(example)}/${name}`, repository);
+        if (existsSync(path)) files[`${projectRoot(example)}/${name}`] = name === "package.json" ? readFileSync(path, "utf8") : "";
+      }
+    }
+    // Shard commands write reports that the join reads back; the fake does not run node.
+    for (const recipe of ["test-splitting", "timing-aware-splitting"]) {
+      for (const index of [0, 1]) {
+        files[`examples/${recipe}/app/reports/shard-${index}.json`] = JSON.stringify({ index, total: 2, history: {},
+          results: [{ file: `tests/${index}.test.mjs`, durationMs: 1, passed: true }] });
       }
     }
     const bundle = await build({
@@ -58,7 +65,7 @@ test(
         async checkout(repository,revision,directory,options,token){checkouts.push({repository,revision,directory,image:options?.image,instance:options?.instance,token:token==='fixture-installation-token'});}
         async execute(command,cwd,stepId,revision,cachePaths,cacheRoot,options){
           commands.push({command,cwd:relative(cwd),stepId,image:options?.image,instance:options?.instance,loginShell:options?.loginShell});
-          return {exitCode:this.env.FAIL_STEP===relative(cwd)+':'+stepId?1:0,stdout:'',stderr:''};
+          return {exitCode:this.env.FAIL_STEPS.includes(relative(cwd)+':'+stepId)?1:0,stdout:'',stderr:''};
         }
         async exists(path,cwd){return relative(cwd+'/'+path) in this.env.FILES;}
         async readFile(path,cwd){return this.env.FILES[relative(cwd+'/'+path)];}
@@ -85,7 +92,8 @@ test(
       conditions: ["workerd", "import"],
       external: ["cloudflare:workers", "node:*"],
     });
-    const runtime = (failStep = "") => new Miniflare({
+    // optional-checks' format script always exits 1 by design.
+    const runtime = (failSteps: ReadonlyArray<string> = []) => new Miniflare({
       workers: [{
         config: {
           name: "hosted-examples-test",
@@ -102,13 +110,13 @@ test(
             GITHUB_PRIVATE_KEY: { type: "text", value: privateKey },
             GITHUB_WEBHOOK_SECRET: { type: "text", value: "local-fixture" },
             FILES: { type: "json", value: files },
-            FAIL_STEP: { type: "text", value: failStep },
+            FAIL_STEPS: { type: "json", value: ["examples/optional-checks:format", ...failSteps] },
           },
         },
       }],
     });
-    const scenario = async (failStep?: string) => {
-      const mf = runtime(failStep);
+    const scenario = async (failSteps?: ReadonlyArray<string>) => {
+      const mf = runtime(failSteps);
       try {
         const call = async (input: unknown): Promise<any> =>
           (await mf.dispatchFetch("https://host.invalid/", { method: "POST", body: JSON.stringify(input) })).json();
@@ -162,17 +170,34 @@ test(
     const npm = passed.commands.filter(command => command.cwd === "examples/node-npm");
     assert.deepEqual(npm.map(command => command.stepId).sort(), ["build", "install", "lint", "test"]);
     assert.match(npm.find(command => command.stepId === "install")!.command, /npm ci/);
-    for (const command of passed.commands.filter(command => command.cwd.startsWith("examples/")))
+    assert.ok(passed.commands.length > 0);
+    for (const command of passed.commands)
       assert.deepEqual([command.image, command.instance, command.loginShell], ["repository", "standard-1", false]);
     assert.match(passed.commands.find(command => command.cwd === "examples/node-pnpm" && command.stepId === "install")!.command,
       /^pnpm --ignore-workspace install/);
+    // The demo row runs the walkthrough project, not examples/demo, under its own check name.
+    const demo = passed.commands.filter(command => command.cwd === "test/fixtures/demo");
+    assert.match(demo.find(command => command.stepId === "install")!.command, /npm ci/);
+    assert.deepEqual(demo.filter(command => command.stepId !== "install").map(command => command.command).sort(),
+      ["build", "check", "lint", "test", "typecheck"].map(name => `npm run "${name}"`));
+    // Every matrix cell runs from the app directory.
+    assert.deepEqual(passed.commands.filter(command => command.cwd === "examples/matrix/app").map(command => command.command).sort(),
+      ["node verify.mjs de-DE EUR", "node verify.mjs de-DE USD", "node verify.mjs en-US EUR", "node verify.mjs en-US USD"]);
+    // Each shard runs in its own step; the join receives both shard reports.
+    const splitting = passed.commands.filter(command => command.cwd === "examples/test-splitting/app");
+    assert.deepEqual(splitting.map(command => command.stepId).sort(), ["test shard 0/2", "test shard 1/2", "verify shard reports"]);
+    assert.match(splitting.find(command => command.stepId === "verify shard reports")!.command, /"index":0.*"index":1/);
+    // A failing optional check is neutral and does not fail its example.
+    assert.equal(summary(passed.checks, "Cloudflare / optional-checks").conclusion, "success");
+    assert.equal(passed.checks.filter(check => /^Cloudflare \/ optional-checks \/ \w+\. format \(optional\)$/.test(check.name)).at(-1)?.conclusion,
+      "neutral", JSON.stringify(passed.checks.filter(check => check.name?.startsWith("Cloudflare / optional-checks"))));
     assert.ok(passed.checkouts.every(checkout => checkout.token && checkout.revision === "a".repeat(40)));
     // Each example stops its own workspace and per-step containers.
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm`));
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm:step=build`), JSON.stringify(passed.stops));
 
     // A failing example reports only its own failure; monorepo and the other examples still pass.
-    const failed = await scenario("examples/node-npm:test");
+    const failed = await scenario(["examples/node-npm:test"]);
     assert.equal(failed.statuses[failed.delivery].status, "complete");
     assert.equal(summary(failed.checks, "Effect CI / Cloudflare").conclusion, "success");
     assert.equal(summary(failed.checks, "Cloudflare / node-npm").conclusion, "failure");
