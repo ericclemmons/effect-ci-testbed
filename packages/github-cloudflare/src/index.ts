@@ -74,7 +74,11 @@ export interface HostFailure extends Omit<HostFinalization<never>, "value" | "pu
   readonly report: CI.RuntimeEventHandler
 }
 
-export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache" | "root"> {
+export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache" | "root" | "cache"> {
+  /** Workspace cache transport. A function selects it from trusted run
+   * parameters, like `root`; `undefined` keeps the default task cache. */
+  readonly cache?: CI.WorkspaceCachePolicy | false |
+    ((parameters: WorkflowParameters) => CI.WorkspaceCachePolicy | false | undefined)
   /** Project directory within the checkout. A function selects it from trusted
    * run parameters, e.g. a host-selected `project.root`; never webhook content. */
   readonly root?: string | ((parameters: WorkflowParameters) => string | undefined)
@@ -237,11 +241,12 @@ export const workflowEntrypoint = <A>(
       ? () => GitHub.createInstallationToken(credentials(this.env), github.installationId)
       : undefined
     const root = typeof options.root === "function" ? options.root(event.payload) : options.root
+    const cache = typeof options.cache === "function" ? options.cache(event.payload) : options.cache
     const runner = Cloudflare.makeRunner({
       ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
       ...(options.commandEnvironment ? { commandEnvironment: () => options.commandEnvironment!(this.env, event.payload) } : {}),
-      cache: options.cache ?? { key: "task-cache", keyFiles: [] },
+      cache: cache ?? { key: "task-cache", keyFiles: [] },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(root ? { root } : {}),

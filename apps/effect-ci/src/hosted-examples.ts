@@ -2,17 +2,21 @@ import * as CI from "@effect-ci-testbed/ci";
 import { additionalRunId, detailsUrl, type WorkerEnvironment, type WorkerOptions, type WorkflowParameters } from "@effect-ci-testbed/github-cloudflare/worker";
 import conditionalDeploy from "../../../examples/conditional-deploy/.cloudflare/ci/workflow.ts";
 import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts";
+import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts";
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts";
 import matrix from "../../../examples/matrix/.cloudflare/ci/workflow.ts";
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts";
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts";
 import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/workflow.ts";
+import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts";
 import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts";
 import retry from "../../../examples/retry/.cloudflare/ci/workflow.ts";
 import rollbackCompensation from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts";
 import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts";
 import testSplitting from "../../../examples/test-splitting/.cloudflare/ci/workflow.ts";
 import timingAwareSplitting from "../../../examples/timing-aware-splitting/.cloudflare/ci/workflow.ts";
+import turborepoCache from "../../../examples/turborepo-cache/.cloudflare/ci/workflow.ts";
+import vitePlusCache from "../../../examples/vite-plus-cache/.cloudflare/ci/workflow.ts";
 import zeroConfigManifest from "../../../examples/zero-config/package.json" with { type: "json" };
 import demoManifest from "../../../test/fixtures/demo/package.json" with { type: "json" };
 import { monorepoAllowed } from "./monorepo-policy.ts";
@@ -23,6 +27,10 @@ export interface HostedExample {
   readonly recipe: string;
   /** Project directory when it is not `examples/<recipe>`. */
   readonly root?: string;
+  /** The recipe's own runner cache policy (its `src/worker.ts`). `"discover"`
+   * is the runner default: Vite+, Turbo and package caches found in the
+   * project. Omitted: no cache transport, so runs stay independent. */
+  readonly cache?: "discover" | CI.WorkspaceCachePolicy;
   readonly workflow: CI.Workflow<unknown>;
 }
 
@@ -58,9 +66,27 @@ export const hostedExamples: ReadonlyArray<HostedExample> = [
   { recipe: "rollback-compensation", workflow: rollbackCompensation },
   { recipe: "snapshot-fanout", workflow: snapshotFanout },
   { recipe: "portable-artifacts", workflow: portableArtifacts },
+  { recipe: "package-manager-cache", workflow: packageManagerCache, cache: {
+    key: "npm-downloads",
+    keyFiles: ["examples/package-manager-cache/app/package-lock.json"],
+    paths: ["examples/package-manager-cache/app/.effect-ci/cache/npm"],
+  } },
+  { recipe: "cache-policy", workflow: cachePolicy, cache: {
+    key: "custom-build-cache",
+    keyFiles: ["examples/cache-policy/app/src/input.txt"],
+    paths: ["examples/cache-policy/app/.cache/build"],
+  } },
+  { recipe: "vite-plus-cache", workflow: vitePlusCache, cache: "discover" },
+  { recipe: "turborepo-cache", workflow: turborepoCache, cache: "discover" },
 ];
 
 export const projectRoot = (example: HostedExample) => example.root ?? `examples/${example.recipe}`;
+
+/** The selected recipe's cache policy; `undefined` is the runner's discovered default. */
+export const exampleCache = (parameters: WorkflowParameters): CI.WorkspaceCachePolicy | false | undefined => {
+  const cache = selectedExample(parameters)?.cache;
+  return cache === "discover" ? undefined : cache ?? false;
+};
 
 export const selectedExample = (parameters: WorkflowParameters): HostedExample | undefined =>
   parameters.trigger === "github" && monorepoAllowed(parameters)

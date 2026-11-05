@@ -1,6 +1,6 @@
 import * as GitHubCloudflare from "@effect-ci-testbed/github-cloudflare";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { exampleDetailsUrl, selectedExample } from "./hosted-examples.ts";
+import { exampleCache, exampleDetailsUrl, selectedExample } from "./hosted-examples.ts";
 import { standaloneContainerOptions } from "./standalone-program.ts";
 
 // Unprivileged repository image, like other repository runs: no Docker,
@@ -11,7 +11,8 @@ const Base = GitHubCloudflare.workflowEntrypoint((_environment, parameters) => {
   if (!example) throw Error("Hosted examples require their authenticated source and an enrolled project");
   return example.workflow;
 }, {
-  cache: false,
+  // Off unless the recipe is about caching; then its own policy, keyed per recipe.
+  cache: exampleCache,
   root: parameters => selectedExample(parameters) && parameters.trigger === "github" ? parameters.project?.root : undefined,
   detailsUrl: exampleDetailsUrl,
   notificationChannels: () => ({}),
