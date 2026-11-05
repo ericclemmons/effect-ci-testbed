@@ -1,7 +1,11 @@
 import { resolve, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { unified } from "unified"
+import remarkParse from "remark-parse"
+import remarkStringify from "remark-stringify"
+import remarkGfm from "remark-gfm"
 import type { Loader } from "astro/loaders"
-import { dependencies, pages, repository, root } from "./repository.mjs"
+import { dependencies, pages, repository, repositoryMarkdown, root } from "./repository.mjs"
 
 export function readmes(): Loader {
   return {
@@ -13,16 +17,18 @@ export function readmes(): Loader {
         store.clear()
         watched = new Set(documents.flatMap(dependencies))
         watcher?.add([...watched])
+        const processor = unified().use(remarkParse).use(remarkGfm).use(repositoryMarkdown).use(remarkStringify)
         for (const page of documents) {
           const data = await parseData({ id: page.id, data: {
             title: page.title,
-            pagefind: page.id !== "examples/demo",
-            ...(page.id === "index" ? {} : { banner: { content: "<strong>Prototype.</strong> CI experiments by Eric Clemmons." } }),
-            editUrl: `${repository}/edit/main/${page.path}`,
+            searchable: page.id !== "examples/demo",
+            ...(page.id === "index" ? {} : { banner: { content: "Prototype. CI experiments by Eric Clemmons." } }),
+            sourceUrl: `${repository}/edit/main/${page.path}`,
           } })
           let body = page.body.replace(/^# .+\r?\n/m, "")
           if (page.id === "index") body = body.replace(/^## Features\n[\s\S]*?(?=^## )/m, "")
           const filePath = resolve(root, page.path)
+          body = String(await processor.process({ value: body, path: filePath }))
           store.set({ id: page.id, data, body, filePath: relative(fileURLToPath(config.root), filePath),
             rendered: await renderMarkdown(body, { fileURL: pathToFileURL(filePath) }) })
         }

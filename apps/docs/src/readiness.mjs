@@ -57,6 +57,7 @@ export function cellResult(snapshot, names, app) {
   const check = names.map(name => snapshot.check_runs.find(check => check.app.slug === app && check.name === name)).find(Boolean)
   return {
     passing: check?.conclusion === "success",
+    failing: ["failure", "timed_out", "action_required", "startup_failure"].includes(check?.conclusion),
     state: check ? `${check.name}: ${check.conclusion ?? "unverified"}` : "missing check",
     href: check ? `https://github.com/ericclemmons/effect-ci-testbed/runs/${check.id}` :
       `https://github.com/ericclemmons/effect-ci-testbed/commit/${snapshot.sha}/checks`,

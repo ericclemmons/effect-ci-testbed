@@ -90,7 +90,9 @@ test("feature pushes and manual runs validate without automatic production deplo
 
 test("every product app has main-branch CD and test apps stay separate", () => {
   const docs = JSON.parse(readFileSync("apps/docs/builds.json", "utf8"));
-  assert.equal(docs.provider, "Cloudflare Workers Builds");
+  assert.equal(docs.provider, "GitHub Actions");
+  assert.equal(docs.workflow, ".github/workflows/docs.yml");
+  assert.deepEqual(docs.legacyWorkersBuilds.branch_includes, ["codex/docs-builds-disabled"]);
   assert.equal(docs.branch, "main");
   assert.equal(docs.worker, "effect-ci-docs");
   assert.equal(docs.buildCommand, "pnpm docs:build");
