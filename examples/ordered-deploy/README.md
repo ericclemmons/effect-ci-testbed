@@ -9,6 +9,13 @@ build applications → deploy backend → deploy frontend
 Each deployment depends on the shared build. The aggregate deploy action calls
 the two deployments in order; the build runs once.
 
+## Condition the whole group
+
+`CI.when` gates the aggregate deploy action, so both deployments and their shared
+build run only for the listed events. The condition appears in the plan.
+
+[Workflow](./.cloudflare/ci/workflow.ts#symbol=workflow "source")
+
 ## Run it
 
 ```sh
