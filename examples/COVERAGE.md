@@ -8,11 +8,11 @@ provides suggested learning paths and explains the boundaries between similar ex
 
 Rows marked for conventional GitHub Actions include comparison YAML alongside the
 portable Effect CI version. ✅ means end-to-end execution in that actual environment;
-local `cf dev` counts as Local, not Cloudflare. 🔜 means unverified roadmap coverage,
+local `cf dev` counts as Effect CI (local), not Effect CI on Cloudflare. 🔜 means unverified roadmap coverage,
 not necessarily missing code; — means the execution model is irrelevant. Moving a
 recipe into a group does not change its verification status.
 
-`· containerless` is a capability label in the **Effect CI Cloudflare** column,
+`· containerless` is a capability label in the **Effect CI on Cloudflare** column,
 not another execution environment. `✅ · containerless` means the entire recorded
 recipe ran without a Container; `🔜 · containerless` is a planned containerless
 path, not verified support. An unlabeled cell is not a claim that a container is
@@ -21,12 +21,14 @@ a DO-backed source ingredient alone does not make the downstream pipeline contai
 
 ### Author a workflow
 
-Start with a conventional pipeline, then choose explicit actions or task discovery.
+Start with a conventional pipeline: install with npm or pnpm, pick a Node.js version and cache downloads. Then choose explicit actions or task discovery.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run CI with npm](./node-npm) | ✅ | ✅ | ✅ | ✅ |
 | [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ |
+| [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ |
+| [Cache dependency downloads](./package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ |
 | [Run a single check from the CLI](./exported-actions) | ✅ | ✅ | ✅ | ✅ |
 | [Check changes before pushing](./demo) | ✅ | ✅ | ✅ | ✅ |
@@ -35,7 +37,7 @@ Start with a conventional pipeline, then choose explicit actions or task discove
 
 Change where inputs come from without changing actions; publish outputs separately.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Checkout from local files or Git](./source-providers) | — | ✅ | — | — |
 | [Checkout from GitLab](./gitlab-source) | — | ✅ | ✅ | ✅ |
@@ -44,11 +46,24 @@ Change where inputs come from without changing actions; publish outputs separate
 | [Checkout from a Durable Object](./durable-object-source) | 🔜 | ✅ | ✅ | ✅ |
 | [Share build artifacts between jobs](./portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
 
+### Toolchains and container images
+
+Select runtimes and OS tools before adding a custom image. A runner image is not a project image.
+
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
+| --- | :---: | :---: | :---: | :---: |
+| [Install runtimes with Mise](./mise-toolchain) | ✅ | ✅ | ✅ | ✅ |
+| [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ |
+| [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
+| [Customize the CI container](./custom-runner-image) | — | ✅ | — | ✅ |
+| [Build and run Docker in CI](./docker-in-docker) | — | 🔜 | — | 🔜 |
+| [Build and publish a container image](./custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
+
 ### Runners and execution tiers
 
 Choose where the same program runs, from local containers to durable Workflows and isolates.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run CI in a local container](./local-container) | ✅ | ✅ | ✅ | — |
 | [Resume CI steps on Cloudflare](./cloudflare-runner) | ✅ | ✅ | ✅ | ✅ |
@@ -57,48 +72,33 @@ Choose where the same program runs, from local containers to durable Workflows a
 | [Format code without a container](./dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless |
 | [Test untrusted code without a container](./dynamic-project-checks) | — | ✅ | — | ✅ · containerless |
 
-### Toolchains and container images
-
-Select runtimes and OS tools before adding a custom image. A runner image is not a project image.
-
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
-| --- | :---: | :---: | :---: | :---: |
-| [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ |
-| [Install runtimes with Mise](./mise-toolchain) | ✅ | ✅ | ✅ | ✅ |
-| [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ |
-| [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
-| [Customize the CI container](./custom-runner-image) | — | ✅ | — | ✅ |
-| [Build and run Docker in CI](./docker-in-docker) | — | 🔜 | — | 🔜 |
-| [Build and publish a container image](./custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
-
 ### Control flow and recovery
 
 Add inspectable routing, parallel checks, retry policy, and compensation one at a time.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
-| [Self-merge safe changes](./small-change) | — | ✅ | 🔜 | 🔜 |
-| [Deploy only changed build output](./deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
 | [Run a group of actions only when a condition matches](../packages/ci/WORKFLOW.md#when) | 🔜 | 🔜 | 🔜 | 🔜 |
+| [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
+| [Deploy only changed build output](./deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ |
+| [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ |
+| [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ |
+| [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
 | [Run every combination in a matrix](./matrix) | ✅ | ✅ | ✅ | ✅ |
 | [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
 | [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | 🔜 | 🔜 |
-| [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ |
-| [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ |
-| [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ |
+| [Self-merge safe changes](./small-change) | — | ✅ | 🔜 | 🔜 |
 
 ### Caching, reruns, and verification
 
 Keep download caches, task caches, workspace checkpoints, and signed commit evidence distinct.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Cache dependency downloads](./package-manager-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Cache tasks with Vite+](./vite-plus-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Cache tasks with Turborepo](./turborepo-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Customize or disable caching](./cache-policy) | ✅ | ✅ | ✅ | ✅ |
@@ -110,7 +110,7 @@ Keep download caches, task caches, workspace checkpoints, and signed commit evid
 
 Keep credentials outside workspace containers, including authenticated outbound requests.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Use secrets without exposing them to containers](./secure-secrets) | ✅ | ✅ | ✅ | ✅ |
 | [Call authenticated APIs without exposing credentials](./secret-outbound) | — | 🔜 | — | ✅ |
@@ -121,7 +121,7 @@ Keep credentials outside workspace containers, including authenticated outbound 
 
 Integration recipes compose the earlier ingredients. Notification channels are not separate build pipelines.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Run GitHub CI on Cloudflare](./github-cloudflare-ci) ([deploy service](../apps/effect-ci)) | — | — | — | ✅ |
 | [Run CI remotely from the CLI](./demo#7-enroll-oidc-and-run-on-a-host) | — | — | — | ✅ |
@@ -134,7 +134,7 @@ Integration recipes compose the earlier ingredients. Notification channels are n
 
 Start with ordering and migrations, then study health gates and opt-in human review.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | Deploy an app to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Build or publish static files without a container](./static-assets-source) | — | 🔜 | — | ✅ · containerless |
@@ -153,7 +153,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 
 Inspect an existing verified Flue repair, then distinguish it from automatic healing.
 
-| Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
+| Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Inspect a verified Flue repair proposal](./flue-repair) | — | — | — | ✅ |
 | Repair, verify, and propose a fix for a failed action | 🔜 | 🔜 | 🔜 | 🔜 |
