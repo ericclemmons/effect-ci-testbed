@@ -20,5 +20,15 @@ node examples/small-change/demo.ts
 ```
 
 The local demo prints which changes would receive approval; it sends no GitHub
-reviews. Read the [workflow](./workflow.ts) and the
+reviews. To apply the policy to your own branch:
+
+```sh
+cd examples/small-change
+effect-ci run
+```
+
+The local workflow compares committed changes with the remote default branch and
+only prints the approval. A dirty checkout or unknown comparison leaves normal review.
+
+[Local workflow](./.cloudflare/ci/workflow.ts#symbol=default "source") Read the [workflow](./workflow.ts) and the
 [GitHub App integration](../../apps/effect-ci/src/workflows/pull-request.ts).

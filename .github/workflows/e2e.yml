@@ -212,6 +212,7 @@ jobs:
           - dynamic-project-checks
           - docker-in-docker
           - conditional-deploy
+          - small-change
           - deploy-changed-output
           - turbo-distributed
           - execution-policy
