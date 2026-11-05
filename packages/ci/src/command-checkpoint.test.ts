@@ -31,3 +31,30 @@ test("a command checkpoint keeps the step deadline without a long-running action
   assert.equal(actions, 0)
   assert.deepEqual(commands, [{ timeout: "30 minutes" }])
 })
+
+test("a check that ends with a workspace command never commits that workspace", async () => {
+  // The hosted monorepo `test` check returned `workspace.exec(...)`. Committing
+  // that post-test workspace snapshotted a VM nothing consumes, after the
+  // command had already passed, and failed when the host was redeployed.
+  const commits: string[] = []
+  const install = CI.action("install", () => function* () {
+    return yield* CI.Workspace.local("/fixture").exec("pnpm install --frozen-lockfile")
+  })
+  const test = CI.check("test", function* () {
+    const workspace = yield* install()
+    return () => workspace.exec("node --test")
+  }, { timeout: "30 minutes", checkpoint: "command" })
+
+  const result = await CI.runPromise(CI.workflow("check result", () => test()), {
+    output: "silent",
+    executor: { execute: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }) },
+    workspacePersistence: {
+      commit: ({ stepId, workspace }) => Effect.sync(() => { commits.push(stepId); return workspace }),
+      checkpoint: () => Effect.die("not used"), restore: () => Effect.die("not used"),
+    },
+  })
+
+  assert.equal(result.attempt.conclusion, "success")
+  assert.equal(result.value, undefined)
+  assert.deepEqual(commits, ["install"])
+})
