@@ -21,8 +21,11 @@ import {
   type WorkflowParameters,
 } from "./worker.ts"
 export { worker } from "./worker.ts"
+export { additionalRunId } from "./worker.ts"
 export type {
+  GitHubAdditionalRun,
   GitHubClient,
+  RemoteProject,
   GitHubWorkflowParameters,
   RemoteWorkflowParameters,
   WorkerEnvironment,
@@ -71,7 +74,10 @@ export interface HostFailure extends Omit<HostFinalization<never>, "value" | "pu
   readonly report: CI.RuntimeEventHandler
 }
 
-export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache"> {
+export interface WorkflowEntrypointOptions<A = unknown> extends Omit<Cloudflare.WorkflowEntrypointOptions<Environment, WorkflowParameters>, "checkCache" | "stepResultCache" | "root"> {
+  /** Project directory within the checkout. A function selects it from trusted
+   * run parameters, e.g. a host-selected `project.root`; never webhook content. */
+  readonly root?: string | ((parameters: WorkflowParameters) => string | undefined)
   /** Host-owned display link for this selected native Workflow, shared by
    * GitHub checks, Slack cards and finalization. Never project parameters. */
   readonly detailsUrl?: (environment: Environment, instanceId: string) => string | undefined
@@ -230,6 +236,7 @@ export const workflowEntrypoint = <A>(
     const token = github
       ? () => GitHub.createInstallationToken(credentials(this.env), github.installationId)
       : undefined
+    const root = typeof options.root === "function" ? options.root(event.payload) : options.root
     const runner = Cloudflare.makeRunner({
       ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
@@ -237,7 +244,7 @@ export const workflowEntrypoint = <A>(
       cache: options.cache ?? { key: "task-cache", keyFiles: [] },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
-      ...(options.root ? { root: options.root } : {}),
+      ...(root ? { root } : {}),
       ...(options.reuseWorkspace === undefined
         ? {}
         : { reuseWorkspace: options.reuseWorkspace }),

@@ -67,6 +67,7 @@ const demo = defineConfig({
       EffectCIWorkflow: exports.workflow({
         name,
       }),
+      ExampleCIWorkflow: exports.workflow({ name: "effect-ci-examples" }),
     },
     env: {
       VERSION_METADATA: bindings.versionMetadata(),

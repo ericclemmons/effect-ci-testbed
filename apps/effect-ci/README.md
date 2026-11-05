@@ -19,6 +19,18 @@ cf workers triggers deploy --prebuilt
 cf deploy --prebuilt
 ```
 
+The same check suite also starts each enrolled example as its own native Workflow
+(`effect-ci-examples`), checked out at the exact commit with the example directory
+as its project root. Each posts a `Cloudflare / <recipe>` summary, for example
+`Cloudflare / node-npm`. Examples run in the unprivileged `repository` image on
+`standard-1` containers, with no Docker, credentials, deployment or Slack card.
+An example's selection, start or CI failure stays on its own check; the monorepo
+run, its deployment and the other examples continue.
+
+[Hosted examples](./src/hosted-examples.ts#symbol=hostedExamples "source")
+
+[Example Workflow and container cleanup](./src/example-workflow.ts#symbol=ExampleCIWorkflow "source")
+
 There is no HMD gate or separate release broker in this path. The tutorial under
 `examples/demo` and test hosts under `test/apps` are tested, never automatically
 deployed. Supporting GitHub Actions jobs do not hold Cloudflare deployment credentials.

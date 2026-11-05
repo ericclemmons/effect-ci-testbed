@@ -10,6 +10,7 @@ import repository from "./repository-worker.ts";
 export { RepositoryCIWorkflow } from "./repository-worker.ts";
 
 import { monorepoGitHubRun } from "./monorepo-policy.ts";
+import { hostedExampleRuns } from "./hosted-examples.ts";
 import { showcaseCheckSuiteRun, showcaseGitHubRun, showcaseRouteAllowed } from "./showcase-policy.ts";
 import { showcaseApi as showcase } from "./showcase-api.ts";
 import { hmdSlackInteraction, isHmdSlackBody } from "./hmd-slack.ts";
@@ -30,6 +31,7 @@ export { DemoRoutingDiagnosticWorkflow } from "./demo-routing-diagnostic-workflo
 
 export { GitCheckoutOutbound } from "@effect-ci-testbed/github-cloudflare";
 export { MonorepoCIWorkflow as EffectCIWorkflow } from "./monorepo-workflow.ts";
+export { ExampleCIWorkflow } from "./example-workflow.ts";
 export { WorkspaceContainer, CloudflareDeploymentOutbound } from "./monorepo-container.ts";
 export { HealthChartRenderer } from "./health-renderer.ts";
 export { PrivateSlackImages } from "./private-images.ts";
@@ -48,6 +50,9 @@ const ci = GitHubCloudflare.worker({
   githubPushRun: showcaseGitHubRun,
   githubRun: (identity, environment, context) =>
     showcaseCheckSuiteRun(identity, environment, context) ?? monorepoGitHubRun(identity, environment, context),
+  // Independent of the monorepo run above: each example has its own check and instance.
+  githubCheckSuiteRuns: (identity, environment, context) =>
+    showcaseCheckSuiteRun(identity, environment, context) === false ? [] : hostedExampleRuns(identity, environment, context),
   remoteRunAllowed: () => false,
 });
 const demo = GitHubCloudflare.worker({
