@@ -1,0 +1,7 @@
+---
+import { logo } from "./logo";
+
+interface Props { class?: string }
+const { class: cls = "h-7 w-7" } = Astro.props;
+---
+<img src={logo} class={cls} width="28" height="28" alt="" />

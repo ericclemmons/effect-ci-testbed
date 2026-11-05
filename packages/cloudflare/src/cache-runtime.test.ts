@@ -20,6 +20,7 @@ test("transport caches follow the resolved runtime image, not its mutable alias"
         if(input.op==='image')return Response.json({image:await WorkspaceContainer.prototype.getImageIdentity.call({container:()=>({images:input.images})},input.options)??null});
         const events=[],primary={
           getImageIdentity:async()=>input.image,
+          taskCachePaths:async(_,root)=>{events.push('discover:'+(root??'.'));return ['node_modules/.vite/task-cache','.turbo/cache'];},
           checkout:async()=>{events.push('checkout');},
           readFile:async()=> 'unchanged-lockfile',
           restore:async(snapshot)=>{events.push('restore:'+snapshot.id);},
@@ -31,7 +32,8 @@ test("transport caches follow the resolved runtime image, not its mutable alias"
           return{getCachedSnapshot:async()=>snapshots.get(name),putCachedSnapshot:async(_,value)=>{events.push('write:'+name);snapshots.set(name,value);}};
         }};
         const runner=makeRunner({binding,workspaceId:'current',repository:'https://github.com/acme/project.git',revision:input.revision??'a'.repeat(40),
-          cache:input.disabled?undefined:{key:'dependencies',keyFiles:['pnpm-lock.yaml'],paths:['node_modules']},
+          cache:input.disabled?false:input.automatic?{key:'tasks',keyFiles:[]}:{key:'dependencies',keyFiles:['pnpm-lock.yaml'],paths:['node_modules']},
+          root:input.root,
           container:{image:'workspace',loginShell:false},step:{do:async(name,body)=>input.legacyReplay&&name==='workspace-cache:identity'?'cache:v2:old-alias-only':body()}});
         const workspace=await Effect.runPromise(runner.source.checkout());
         await Effect.runPromise(runner.persistence.commit({stepId:'install',workspace}));
@@ -62,6 +64,11 @@ test("transport caches follow the resolved runtime image, not its mutable alias"
     assert.notEqual(changed.find(e => e.startsWith("namespace:")), first.find(e => e.startsWith("namespace:")));
     assert.ok(!changed.some(e => e.startsWith("restore:")), JSON.stringify(changed));
     assert.match(changed.find(e => e.startsWith("namespace:"))!, /^namespace:cache:v3:/);
+    const automatic: string[] = await call({ image: imageA, automatic: true, root: 'apps/web' });
+    assert.ok(automatic.includes('discover:apps/web'));
+    const warm: string[] = await call({ image: imageA, automatic: true, root: 'apps/web', revision: 'c'.repeat(40) });
+    assert.ok(warm.some(event => event.startsWith('restore:')), JSON.stringify(warm));
+    assert.equal(warm.find(event => event.startsWith('namespace:')), automatic.find(event => event.startsWith('namespace:')));
     for (const input of [{}, { disabled: true }, { image: imageA, legacyReplay: true }]) {
       const fresh: string[] = await call(input);
       assert.deepEqual(fresh.filter(e => /^(namespace|write|restore):/.test(e)), []);

@@ -19,6 +19,7 @@ import { makeCommandStepExecutor } from "./command-step.ts"
 import { executeRecordedCommandStep } from "./recorded-command-step.ts"
 import { commandFailure } from "./command-error.ts"
 import { cacheIdentity } from "./cache-identity.ts"
+import { taskCacheProgram } from "@effect-ci-testbed/ci/task-cache"
 import { makeActionExecutor } from "./action-step.ts"
 import type { SourceFile } from "./artifacts-source.ts"
 import { withWobsLogging } from "./wobs-logger.ts"
@@ -75,6 +76,7 @@ export type RecordedCommandResult = { readonly state: "pending" } |
   { readonly state: "complete"; readonly result: ContainerExecutionResult }
 
 interface WorkspaceContainerStub {
+  readonly taskCachePaths: (cwd: string, root?: string, options?: WorkspaceContainerOptions) => Promise<ReadonlyArray<string>>
   readonly launchRecordedCommand: (id: string, args: RecordedCommandArgs) => Promise<boolean>
   readonly recordedCommandResult: (id: string, args: RecordedCommandArgs) => Promise<RecordedCommandResult>
   readonly inspectOutput: (snapshot: ContainerSnapshotValue, cwd: string, patterns: ReadonlyArray<string>, options?: WorkspaceContainerOptions) => Promise<OutputManifest>
@@ -594,6 +596,19 @@ export class WorkspaceContainer extends DurableObject<WorkspaceContainerEnvironm
     return parseGitSourceChanges(await this.run(containerShell(command, { ...options, loginShell: false }), cwd))
   }
 
+  /** Read metadata only; never import or execute repository configuration. */
+  async taskCachePaths(cwd: string, root = ".", options: WorkspaceContainerOptions = {}): Promise<ReadonlyArray<string>> {
+    await this.materialize("$task-cache", undefined, options)
+    const result = await this.run(["node", "-e", taskCacheProgram, cwd, root])
+    // Cache discovery is optional, including on images without Node.
+    if (result.exitCode !== 0) return []
+    const paths: unknown = JSON.parse(result.stdout)
+    if (!Array.isArray(paths) || paths.some(path => typeof path !== "string" || !path || path.startsWith("/") || path.split("/").includes(".."))) {
+      throw Error("Invalid task cache paths")
+    }
+    return paths
+  }
+
   async execute(
     command: string,
     cwd: string,
@@ -780,7 +795,7 @@ export interface RunnerOptions {
    * Workflow connection and poll using short read-only native checkpoints. */
   readonly durableCommands?: boolean
   readonly binding: DurableObjectNamespace
-  readonly cache?: {
+  readonly cache?: false | {
     readonly key: string
     readonly keyFiles: ReadonlyArray<string>
     readonly paths?: ReadonlyArray<string>
@@ -877,6 +892,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       ) as unknown as WorkspaceContainerStub
     : options.binding.getByName(options.workspaceId) as unknown as WorkspaceContainerStub
   let cache: WorkspaceContainerStub | undefined
+  let cachePolicy = options.cache === false ? undefined : options.cache
   const targetDirectory = options.targetDirectory ?? defaultTargetDirectory
   const checkout = (cachePaths?: ReadonlyArray<string>) => {
     const perform = (token: string | undefined) => primary.checkout(
@@ -922,24 +938,30 @@ export const makeRunner = (options: RunnerOptions): Runner => {
       }),
       checkout: () => Effect.tryPromise({
         try: async () => {
-          if (options.cache) {
+          if (cachePolicy) {
             // Read inputs from this run's source, never from a previous cache snapshot.
             await options.step.do("workspace-cache:source", async () => {
               await checkout()
             })
+            if (cachePolicy.paths === undefined) {
+              cachePolicy = { ...cachePolicy,
+                paths: await options.step.do("workspace-cache:paths", () =>
+                  primary.taskCachePaths(targetDirectory, options.root, options.container)),
+              }
+            }
             const identity = await options.step.do("workspace-cache:identity", async () => {
               const image = await primary.getImageIdentity(options.container)
               if (!image) return undefined
               const files: Array<readonly [string, string | undefined]> = []
-              for (const path of options.cache!.keyFiles) {
+              for (const path of cachePolicy!.keyFiles) {
                 // Validate before handing any path to the filesystem RPC.
                 await cacheIdentity({ repository: options.repository, key: "validate", paths: [], container: null, files: [[path, undefined]] })
                 files.push([path, await primary.readFile(path, targetDirectory, "workspace-cache:source", undefined, options.container)])
               }
               return cacheIdentity({
                 repository: options.repository,
-                key: options.cache!.key,
-                paths: options.cache!.paths ?? [],
+                key: cachePolicy!.key,
+                paths: cachePolicy!.paths ?? [],
                 container: { ...options.container, image },
                 files,
               })
@@ -959,7 +981,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
           }
 
           await options.step.do("checkout", async () => {
-            await checkout(options.cache?.paths)
+            await checkout(cachePolicy?.paths)
           })
 
           const cwd = options.root
@@ -995,7 +1017,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
             commandSequences.set(stepId, sequence)
             const id = JSON.stringify([stepId, sequence])
             const args: RecordedCommandArgs = [command, workspace.cwd, stepId,
-              revision?.value as ContainerSnapshotValue | undefined, options.cache?.paths, targetDirectory, options.container]
+              revision?.value as ContainerSnapshotValue | undefined, cachePolicy?.paths, targetDirectory, options.container]
             const recorded = await executeRecordedCommandStep(options.step,
               { command, stepId, workspace, options: stepOptions }, `command:${id}`, {
                 launch: () => containerFor(stepId, workspace).launchRecordedCommand(id, args),
@@ -1014,7 +1036,7 @@ export const makeRunner = (options: RunnerOptions): Runner => {
               return await container.execute(
                 command, workspace.cwd, stepId,
                 revision?.value as ContainerSnapshotValue | undefined,
-                options.cache?.paths, targetDirectory, options.container, environment,
+                cachePolicy?.paths, targetDirectory, options.container, environment,
               )
             } catch {
               // Redact the host cause before crossing any native checkpoint.
@@ -1217,19 +1239,10 @@ export const workflowEntrypoint = <
       throw new Error("WorkspaceContainer is not exported or bound")
     }
 
-    const cache = options.cache === false ? undefined : options.cache
     const runner = makeRunner({
       ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
-      ...(cache
-        ? {
-            cache: {
-              key: cache.key,
-              keyFiles: cache.keyFiles,
-              paths: cache.paths,
-            },
-          }
-        : {}),
+      cache: options.cache ?? { key: "task-cache", keyFiles: [] },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(options.root ? { root: options.root } : {}),

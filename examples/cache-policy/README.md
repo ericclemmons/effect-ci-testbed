@@ -4,8 +4,10 @@ Keep cache storage policy out of the actions that do the work.
 
 [Source](./src/worker.ts#symbol=EffectCIWorkflow "source")
 
-Pass `cache: false` to disable it. The GitHub adapter maps the equivalent policy
-to `actions/cache`; Cloudflare preserves the selected paths through snapshots.
+Vite+, Turbo and package download caches are discovered automatically by default.
+Supply paths only for custom cache locations, or pass `cache: false` to disable
+transport. GitHub Actions preserves the selected paths with `actions/cache`;
+Cloudflare transports them through snapshots. Task tools still decide cache hits.
 
 ## Run it twice
 

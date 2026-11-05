@@ -21,9 +21,21 @@ test("automatic cache scopes paths, fingerprints inputs, and saves updates acros
     assert.equal(first.enabled, true);
     assert.match(first.paths, /app\/node_modules\/\.vite\/task-cache/);
     assert.match(first.paths, /app\/\.effect-ci\/cache/);
+    mkdirSync(join(workspace, "app/packages/web"), { recursive: true });
+    writeFileSync(join(workspace, "app/packages/web/package.json"), JSON.stringify({ dependencies: { "vite-plus": "1.0.0" } }));
+    writeFileSync(join(workspace, "app/turbo.json"), '{}');
+    mkdirSync(join(workspace, "unrelated"));
+    writeFileSync(join(workspace, "unrelated/turbo.json"), '{}');
+    const discovered = githubCache(options);
+    assert.match(discovered.paths, /app\/packages\/web\/node_modules\/\.vite\/task-cache/);
+    assert.match(discovered.paths, /app\/\.turbo\/cache/);
+    assert.doesNotMatch(discovered.paths, /unrelated/);
+    assert.doesNotMatch(discovered.paths, /node_modules\/vite-plus/);
+    // Adding a cache location changes transport identity, not task eligibility.
+    assert.notEqual(discovered.restoreKey, first.restoreKey);
     assert.equal(first.paths.includes("node_modules\n"), false);
     const next = githubCache({ ...options, revision: "b".repeat(40) });
-    assert.equal(next.restoreKey, first.restoreKey);
+    assert.equal(next.restoreKey, discovered.restoreKey);
     assert.notEqual(next.key, first.key);
     writeFileSync(join(workspace, "app/package-lock.json"), "changed lock");
     assert.notEqual(githubCache(options).restoreKey, first.restoreKey);

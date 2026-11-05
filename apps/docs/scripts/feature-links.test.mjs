@@ -17,6 +17,14 @@ test("feature links reach the relevant guides and sections", () => {
 })
 
 test("every linked feature has a built page and section", () => {
+  assert.ok(homepage.includes('data-nb-sidebar-tree'))
+  assert.ok(homepage.includes('aria-label="Filter navigation"'))
+  const markdown = readFileSync(resolve(output, "examples/node-npm/index.md"), "utf8")
+  assert.ok(markdown.includes("https://github.com/ericclemmons/effect-ci-testbed/blob/main/examples/node-npm/.cloudflare/ci/actions.ts#L"))
+  assert.ok(markdown.includes("export const install"), "Markdown exports include source snippets")
+  assert.ok(markdown.includes("/examples/node-pnpm/"), "Markdown exports resolve documentation links")
+  assert.ok(readFileSync(resolve(output, "llms.txt"), "utf8").includes("/examples/llms.txt"))
+  assert.ok(readFileSync(resolve(output, "examples/llms.txt"), "utf8").includes("/examples/node-npm/index.md"))
   assert.ok(links.length > 50, "Feature table links must be present")
   for (const { href, title } of links) {
     const url = new URL(href, "https://docs.example")

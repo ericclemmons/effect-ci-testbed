@@ -74,7 +74,10 @@ toolchains. It expands a native graph during execution, not ordinary planning.
   output when it must cross to another workload.
 
 GitHub YAML supplies its runner and cache. A Cloudflare host supplies native
-Workflows, containers and storage. Neither belongs in portable `actions.ts`.
+Workflows, containers and storage. Both adapters discover conventional Vite+, Turbo
+and package download cache paths; task tools own input validation and output
+restoration. Neither storage policy nor provider credentials belong in portable
+`actions.ts`. See [cache policy](../../examples/cache-policy) for overrides.
 
 ## Checks, conditions and recovery
 

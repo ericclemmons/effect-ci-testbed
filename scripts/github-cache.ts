@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { taskCachePaths } from "../packages/ci/src/task-cache.ts";
 
 export const githubCache = (options: {
   workspace: string;
@@ -27,17 +28,9 @@ export const githubCache = (options: {
       : statSync(workflow).isDirectory()
         ? workflow
         : dirname(workflow);
-  const rootRelative = relative(workspace, root);
-  const atRoot = (path: string) => (rootRelative ? `${rootRelative}/${path}` : path);
   const paths =
     options.paths?.trim() ||
-    [
-      ...new Set([
-        atRoot("node_modules/.vite/task-cache"),
-        "node_modules/.vite/task-cache",
-        atRoot(".effect-ci/cache"),
-      ]),
-    ].join("\n");
+    taskCachePaths(workspace, relative(workspace, root)).join("\n");
   const hash = createHash("sha256");
   hash.update(
     JSON.stringify([

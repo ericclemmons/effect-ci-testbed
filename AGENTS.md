@@ -36,7 +36,7 @@ actions. If one path is blocked, keep working on the useful reversible work.
 
 ## Documentation
 
-Keep READMEs beside their code; `apps/docs` reads them directly into Starlight.
+Keep READMEs beside their code; `apps/docs` reads them directly into Nimbus.
 Use standalone Markdown links with the title `"source"` for code examples instead
 of copied code fences. Select declarations with `#symbol=name` or JSON properties
 with `#json=key`. See `apps/docs/README.md` for the authoring convention.

@@ -38,37 +38,37 @@ export function sidebar() {
       label: method, link: `${href(api.id)}#${method.toLowerCase()}`,
     }))
     groups.push(methods.length ? { label, collapsed: true, items: [
-      { label: "Overview", slug: api.id },
+      { label: "Overview", link: href(api.id) },
       ...methods.sort(byLabel),
-    ] } : { label, slug: api.id })
+    ] } : { label, link: href(api.id) })
   }
   return [
     { label: "Getting started", items: [
       { label: "Features", link: "/" },
-      { label: "Walkthrough", slug: "walkthrough" },
+      { label: "Walkthrough", link: href("walkthrough") },
     ] },
     { label: "Guides", items: [
-      { label: "GitHub", slug: "examples/github" },
-      { label: "Self-hosting", slug: "apps/effect-ci/self-host" },
-      { label: "Ecosystem", slug: "examples/ecosystem" },
-      { label: "Execution evidence", slug: "examples/coverage" },
+      { label: "GitHub", link: href("examples/github") },
+      { label: "Self-hosting", link: href("apps/effect-ci/self-host") },
+      { label: "Ecosystem", link: href("examples/ecosystem") },
+      { label: "Execution evidence", link: href("examples/coverage") },
     ] },
     { label: "Examples", collapsed: true, items: [
-      { label: "Overview", slug: "examples" },
+      { label: "Overview", link: href("examples") },
       ...[...recipes].filter(([name]) => name !== "demo")
-        .map(([, page]) => ({ label: page.title, slug: page.id })).sort(byLabel),
+        .map(([, page]) => ({ label: page.title, link: href(page.id) })).sort(byLabel),
     ] },
     { label: "Reference", collapsed: true, items: [
-      { label: "SDK overview", slug: "packages/ci" },
-      { label: "CLI", slug: "packages/cli" },
+      { label: "SDK overview", link: href("packages/ci") },
+      { label: "CLI", link: href("packages/cli") },
       ...groups.sort(byLabel),
     ] },
     { label: "Development", collapsed: true, items: [
-      { label: "Repository wiring", slug: "apps/docs/laboratory" },
+      { label: "Repository wiring", link: href("apps/docs/laboratory") },
       { label: "Packages", collapsed: true, items: docs
         .filter(page => page.path.startsWith("packages/") && !page.title.startsWith("CI.") && !["packages/ci", "packages/cli"].includes(page.id))
-        .map(page => ({ label: page.title, slug: page.id })).sort(byLabel) },
-      { label: "Hosts and services", collapsed: true, items: [{ autogenerate: { directory: "apps" } }] },
+        .map(page => ({ label: page.title, link: href(page.id) })).sort(byLabel) },
+      { label: "Hosts and services", collapsed: true, items: docs.filter(page => page.path.startsWith("apps/")).map(page => ({ label: page.title, link: href(page.id) })).sort(byLabel) },
     ] },
   ]
 }
