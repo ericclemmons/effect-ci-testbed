@@ -229,6 +229,7 @@ jobs:
           - r2-source
           - durable-object-source
           - release-flywheel
+          - d1-migration
           - turbo-ci
           - workspace
         mode:
