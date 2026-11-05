@@ -586,6 +586,31 @@ jobs:
           - example: workers-deploy
             workflow: examples/workers-deploy/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
+          - example: workspace
+            workflow: examples/workspace/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: turbo-ci
+            workflow: examples/turbo-ci/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: turbo-distributed
+            workflow: examples/turbo-distributed/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: dependency-aware-reruns
+            workflow: examples/dependency-aware-reruns/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: immutable-attempts
+            workflow: examples/immutable-attempts/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: d1-migration
+            workflow: examples/d1-migration/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: hitl-deploy
+            workflow: examples/hitl-deploy/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+            event: workflow_dispatch
+            # Unprotected so PR CI never waits for a person. The production
+            # environment's required reviewers are exercised by hitl-deploy.yml.
+            environment: hitl-deploy-ci
     uses: ./.github/workflows/effect-ci.yml
     with:
       workflow: ${{ matrix.workflow }}
@@ -595,6 +620,7 @@ jobs:
       cache-key: ${{ matrix.cache-key || '' }}
       cache-key-files: ${{ matrix.cache-key-files || '' }}
       cache-path: ${{ matrix.cache-path || '' }}
+      environment: ${{ matrix.environment || '' }}
     secrets: inherit
 
   hitl-deploy:
