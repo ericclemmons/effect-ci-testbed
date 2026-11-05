@@ -6,18 +6,8 @@ export const checkout = CI.action("checkout", function* () {
   return () => source.checkout()
 })
 
-export const buildImage = CI.action("build user image", () => function* () {
+export const runImage = CI.action("build and run user image", () => function* () {
   const workspace = yield* checkout()
 
-  return yield* workspace.exec(
-    "docker build --network=host --tag effect-ci-user-image app",
-  )
-})
-
-export const runImage = CI.action("run user image", () => function* () {
-  const workspace = yield* buildImage()
-
-  return yield* workspace.exec(
-    "docker run --network=host --rm effect-ci-user-image",
-  )
-})
+  return yield* workspace.exec("node .cloudflare/ci/build-and-run.mjs")
+}, { timeout: "5 minutes", retries: { limit: 0, delay: "1 second" } })
