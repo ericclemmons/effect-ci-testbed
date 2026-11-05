@@ -78,7 +78,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
-| [Run a group of actions only when a condition matches](./ordered-deploy#condition-the-whole-group) | ✅ | ✅ | ✅ | 🔜 |
+| [Run a group of actions only when a condition matches](./ordered-deploy#condition-the-whole-group) | ✅ | ✅ | ✅ | ✅ |
 | [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
 | [Deploy only changed build output](./deploy-changed-output) | ✅ | ✅ | — | 🔜 |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ |
@@ -139,7 +139,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | [Deploy an app to Cloudflare Workers](./workers-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Build or publish static files without a container](./static-assets-source) | — | — | — | ✅ · containerless |
 | [Build and serve a static site without a container](./containerless-site) | — | ✅ | — | ✅ · containerless |
-| [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
+| [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | ✅ |
 | [Migrate D1 before deploying a Worker](./d1-migration) | ✅ | ✅ | ✅ | 🔜 |
 | [Recover from a deploy failure after migration](./d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll out a Worker with health checks](./health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |

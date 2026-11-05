@@ -10,6 +10,7 @@ import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts";
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts";
 import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts";
 import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/workflow.ts";
+import orderedDeploy from "../../../examples/ordered-deploy/.cloudflare/ci/workflow.ts";
 import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts";
 import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts";
 import retry from "../../../examples/retry/.cloudflare/ci/workflow.ts";
@@ -82,6 +83,7 @@ export const hostedExamples: ReadonlyArray<HostedExample> = [
   { recipe: "turborepo-cache", workflow: turborepoCache, cache: "discover" },
   { recipe: "node-version", workflow: nodeVersion },
   { recipe: "mise-toolchain", workflow: miseToolchain },
+  { recipe: "ordered-deploy", workflow: orderedDeploy },
 ];
 
 export const projectRoot = (example: HostedExample) => example.root ?? `examples/${example.recipe}`;

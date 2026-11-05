@@ -3,5 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*"]
+  "workspaces": [
+    "apps/*"
+  ],
+  "overrides": {
+    "miniflare": {
+      "sharp": "0.35.5"
+    }
+  }
 }

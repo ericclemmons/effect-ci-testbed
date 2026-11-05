@@ -3,10 +3,11 @@
 Deploy the backend before the frontend that needs it.
 
 ```text
-build applications → deploy backend → deploy frontend
+install → build applications → deploy backend → deploy frontend
 ```
 
-Each deployment depends on the shared build. The aggregate deploy action calls
+The recipe installs its own npm workspace (`apps/*`) from its lockfile, so it
+runs from this directory alone. Each deployment depends on the shared build. The aggregate deploy action calls
 the two deployments in order; the build runs once.
 
 ## Condition the whole group
