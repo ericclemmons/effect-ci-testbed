@@ -90,7 +90,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ |
 | [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ |
-| [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | 🔜 | 🔜 |
+| [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | ✅ | 🔜 |
 | [Self-merge safe changes](./small-change) | — | ✅ | 🔜 | 🔜 |
 
 ### Caching, reruns, and verification
@@ -103,8 +103,8 @@ Keep download caches, task caches, workspace checkpoints, and signed commit evid
 | [Cache tasks with Turborepo](./turborepo-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Customize or disable caching](./cache-policy) | ✅ | ✅ | ✅ | ✅ |
 | [Reuse verified checks for a commit](./verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
-| [Rerun only affected checks](./dependency-aware-reruns) | 🔜 | ✅ | 🔜 | 🔜 |
-| [Keep rerun history and reuse passed steps](./immutable-attempts) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Rerun only affected checks](./dependency-aware-reruns) | ✅ | ✅ | ✅ | 🔜 |
+| [Keep rerun history and reuse passed steps](./immutable-attempts) | 🔜 | ✅ | ✅ | 🔜 |
 
 ### Secrets and outbound authentication
 
@@ -140,7 +140,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | [Build or publish static files without a container](./static-assets-source) | — | — | — | ✅ · containerless |
 | [Build and serve a static site without a container](./containerless-site) | — | ✅ | — | ✅ · containerless |
 | [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
-| [Migrate D1 before deploying a Worker](./d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
+| [Migrate D1 before deploying a Worker](./d1-migration) | 🔜 | ✅ | ✅ | 🔜 |
 | [Recover from a deploy failure after migration](./d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll out a Worker with health checks](./health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Review a rollout when health is uncertain](./health-mediated-approval) | — | 🔜 | — | 🔜 |
