@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "effect-ci-secret-outbound",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "containers": [
+    {
+      "class_name": "SecretWorkspaceContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "workspace": {
+          "dockerfile": "../custom-runner-image/Dockerfile"
+        }
+      }
+    }
+  ],
+  "exports": {
+    "SecretWorkspaceContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "CredentialVault": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "workflows": [
+    {
+      "binding": "EFFECT_CI",
+      "class_name": "SecretOutboundWorkflow",
+      "name": "effect-ci-secret-outbound"
+    }
+  ]
+}
