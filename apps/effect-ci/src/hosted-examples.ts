@@ -1,10 +1,16 @@
 import * as CI from "@effect-ci-testbed/ci";
 import { additionalRunId, detailsUrl, type WorkerEnvironment, type WorkerOptions, type WorkflowParameters } from "@effect-ci-testbed/github-cloudflare/worker";
+import conditionalDeploy from "../../../examples/conditional-deploy/.cloudflare/ci/workflow.ts";
+import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts";
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts";
 import matrix from "../../../examples/matrix/.cloudflare/ci/workflow.ts";
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts";
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts";
 import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/workflow.ts";
+import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts";
+import retry from "../../../examples/retry/.cloudflare/ci/workflow.ts";
+import rollbackCompensation from "../../../examples/rollback-compensation/.cloudflare/ci/workflow.ts";
+import snapshotFanout from "../../../examples/snapshot-fanout/.cloudflare/ci/workflow.ts";
 import testSplitting from "../../../examples/test-splitting/.cloudflare/ci/workflow.ts";
 import timingAwareSplitting from "../../../examples/timing-aware-splitting/.cloudflare/ci/workflow.ts";
 import zeroConfigManifest from "../../../examples/zero-config/package.json" with { type: "json" };
@@ -46,6 +52,12 @@ export const hostedExamples: ReadonlyArray<HostedExample> = [
   { recipe: "matrix", workflow: matrix },
   { recipe: "test-splitting", workflow: testSplitting },
   { recipe: "timing-aware-splitting", workflow: timingAwareSplitting },
+  { recipe: "conditional-deploy", workflow: conditionalDeploy },
+  { recipe: "execution-policy", workflow: executionPolicy },
+  { recipe: "retry", workflow: retry },
+  { recipe: "rollback-compensation", workflow: rollbackCompensation },
+  { recipe: "snapshot-fanout", workflow: snapshotFanout },
+  { recipe: "portable-artifacts", workflow: portableArtifacts },
 ];
 
 export const projectRoot = (example: HostedExample) => example.root ?? `examples/${example.recipe}`;
