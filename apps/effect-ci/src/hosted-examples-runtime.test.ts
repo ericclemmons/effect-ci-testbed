@@ -240,6 +240,16 @@ test(
     assert.match(mise[0]!, / mise --yes install$/);
     assert.ok(mise.some(command => command.includes("mise exec -- node")) && mise.some(command => command.includes("mise exec -- python")));
 
+    // ordered-deploy installs its own npm workspace, builds both apps, then dry-run deploys backend before frontend.
+    assert.deepEqual(passed.commands.filter(command => command.cwd === "examples/ordered-deploy")
+      .map(command => [command.stepId, command.command.replace(/^.*\bnpm ci\b.*/, "npm ci")]), [
+      ["install", "npm ci"],
+      ["build applications", "cd apps/backend && npx cf build --mode production"],
+      ["build applications", "cd apps/frontend && npx cf build --mode production"],
+      ["deploy backend", "cd apps/backend && npx cf deploy --prebuilt --mode production --dry-run"],
+      ["deploy frontend", "cd apps/frontend && npx cf deploy --prebuilt --mode production --dry-run"],
+    ]);
+
     // Cache recipes run with their own policy; the next push restores what the previous run of
     // the same recipe stored. Other examples keep cache transport off and never restore.
     const cached = hostedExamples.filter(example => example.cache);
