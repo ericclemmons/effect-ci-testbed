@@ -409,8 +409,8 @@ const assertDetailsUrl = (value: string) => {
 }
 
 const validAdditionalRuns = (runs: ReadonlyArray<GitHubAdditionalRun>): ReadonlyArray<GitHubAdditionalRun> => {
-  // Each run is a separate instance, check and set of containers: keep the fan-out small.
-  if (!Array.isArray(runs) || runs.length > 16) throw new Error("Invalid additional check-suite runs")
+  // Each run is a separate instance, check and set of containers: keep the fan-out bounded.
+  if (!Array.isArray(runs) || runs.length > 32) throw new Error("Invalid additional check-suite runs")
   const keys = new Set<string>()
   for (const run of runs) {
     // `${uuid}-${key}` stays within 64 characters and native instance ID syntax.

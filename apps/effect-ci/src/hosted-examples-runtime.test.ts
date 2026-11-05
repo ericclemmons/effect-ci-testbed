@@ -3,6 +3,7 @@ import { createHmac, generateKeyPairSync } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { taskCachePaths } from "@effect-ci-testbed/ci/task-cache";
 import { hostedExamples, projectRoot } from "./hosted-examples.ts";
 
 const repository = new URL("../../../", import.meta.url);
@@ -10,7 +11,7 @@ const lockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock
 
 test(
   "a signed check suite runs each hosted example beside monorepo and reports Cloudflare / <recipe>",
-  { timeout: 60_000 },
+  { timeout: 180_000 },
   async () => {
     const require = createRequire(import.meta.url);
     const plugin = realpathSync(new URL("../node_modules/@cloudflare/vite-plugin", import.meta.url));
@@ -24,11 +25,17 @@ test(
     // The fake container serves the committed example files the package manager probes.
     const files: Record<string, string> = {};
     for (const example of hostedExamples) {
-      for (const name of ["package.json", ...lockfiles]) {
-        const path = new URL(`${projectRoot(example)}/${name}`, repository);
-        if (existsSync(path)) files[`${projectRoot(example)}/${name}`] = name === "package.json" ? readFileSync(path, "utf8") : "";
+      for (const directory of [projectRoot(example), `${projectRoot(example)}/app`]) {
+        for (const name of ["package.json", ...lockfiles]) {
+          const path = new URL(`${directory}/${name}`, repository);
+          if (existsSync(path)) files[`${directory}/${name}`] = name === "package.json" ? readFileSync(path, "utf8") : "";
+        }
       }
     }
+    // Default cache discovery runs node in the container; compute it from the real checkout.
+    const discovered: Record<string, ReadonlyArray<string>> = {};
+    for (const example of hostedExamples)
+      if (example.cache === "discover") discovered[projectRoot(example)] = taskCachePaths(new URL(".", repository).pathname, projectRoot(example));
     // Shard commands write reports that the join reads back; the fake does not run node.
     for (const recipe of ["test-splitting", "timing-aware-splitting"]) {
       for (const index of [0, 1]) {
@@ -64,13 +71,18 @@ test(
       export class WorkspaceContainer extends DurableObject{
         async checkout(repository,revision,directory,options,token){checkouts.push({repository,revision,directory,image:options?.image,instance:options?.instance,token:token==='fixture-installation-token'});}
         async execute(command,cwd,stepId,revision,cachePaths,cacheRoot,options){
-          commands.push({command,cwd:relative(cwd),stepId,container:this.ctx.id.name,image:options?.image,instance:options?.instance,loginShell:options?.loginShell});
+          commands.push({command,cwd:relative(cwd),stepId,container:this.ctx.id.name,image:options?.image,instance:options?.instance,loginShell:options?.loginShell,cachePaths:cachePaths??[]});
           return {exitCode:this.env.FAIL_STEPS.includes(relative(cwd)+':'+stepId)?1:0,stdout:'',stderr:''};
         }
         async exists(path,cwd){return path==='.'||relative(cwd+'/'+path) in this.env.FILES;}
         async readFile(path,cwd){return this.env.FILES[relative(cwd+'/'+path)];}
-        async checkpoint(name){return {id:'snapshot-'+name,size:1};}
+        async checkpoint(name){return {id:'snapshot-'+name+'@'+this.ctx.id.name,size:1};}
         async restore(snapshot){restores.push({container:this.ctx.id.name,snapshot:snapshot.id});}
+        // Platform image digest and a cache store, as the real WorkspaceContainer keeps them.
+        async getImageIdentity(options){return options?.image==='repository'?'sha256:'+'1'.repeat(64):undefined;}
+        async taskCachePaths(cwd,root){return this.env.CACHE_PATHS[root]??[];}
+        async getCachedSnapshot(key){return this.ctx.storage.get('cache:'+key);}
+        async putCachedSnapshot(key,snapshot){await this.ctx.storage.put('cache:'+key,snapshot);}
         async stop(){stops.push(this.ctx.id.name);}
       }
       // Stand-in for the root workflow: the real one needs Docker and deploy credentials.
@@ -82,7 +94,7 @@ test(
         if(new URL(request.url).pathname==='/webhooks/github')return ci.fetch(request,env,ctx);
         const input=await request.json();
         if(input.op==='status')return Response.json(await(await ctx.exports[input.binding].get(input.id)).status());
-        if(input.op==='reset'){checks.length=0;commands.length=0;stops.length=0;checkouts.length=0;return Response.json({});}
+        if(input.op==='reset'){nextCheck=0;checks.length=0;commands.length=0;stops.length=0;checkouts.length=0;restores.length=0;return Response.json({});}
         return Response.json({checks,commands,stops,checkouts,restores});
       }};`,
       },
@@ -111,43 +123,51 @@ test(
             GITHUB_PRIVATE_KEY: { type: "text", value: privateKey },
             GITHUB_WEBHOOK_SECRET: { type: "text", value: "local-fixture" },
             FILES: { type: "json", value: files },
+            CACHE_PATHS: { type: "json", value: discovered },
             FAIL_STEPS: { type: "json", value: ["examples/optional-checks:format", ...failSteps] },
           },
         },
       }],
     });
-    const scenario = async (failSteps?: ReadonlyArray<string>) => {
+    type Run = { delivery: string; statuses: Record<string, any>; checks: any[]; commands: any[]; stops: string[]; checkouts: any[]; restores: any[] };
+    // Each run is a later push to the same host: durable state such as caches carries over.
+    const scenario = async (failSteps?: ReadonlyArray<string>, runs = 1): Promise<Run[]> => {
       const mf = runtime(failSteps);
       try {
         const call = async (input: unknown): Promise<any> =>
           (await mf.dispatchFetch("https://host.invalid/", { method: "POST", body: JSON.stringify(input) })).json();
-        const delivery = "11111111-2222-3333-4444-555555555555";
-        const body = JSON.stringify({
-          action: "requested",
-          check_suite: { app: { id: 1234 }, head_branch: "main", head_sha: "a".repeat(40) },
-          installation: { id: 165265172 },
-          repository: { clone_url: "https://github.com/ericclemmons/effect-ci-testbed.git", full_name: "ericclemmons/effect-ci-testbed" },
-        });
-        const webhook = await mf.dispatchFetch("https://host.invalid/webhooks/github", { method: "POST", body, headers: {
-          "x-github-event": "check_suite", "x-github-delivery": delivery,
-          "x-hub-signature-256": "sha256=" + createHmac("sha256", "local-fixture").update(body).digest("hex"),
-        } });
-        const accepted = await webhook.json() as any;
-        assert.equal(webhook.status, 202, JSON.stringify(accepted));
-        assert.equal(accepted.instanceId, delivery);
-        assert.deepEqual(accepted.additional, hostedExamples.map(({ recipe }) =>
-          ({ key: recipe, accepted: true, instanceId: `${delivery}-${recipe}` })));
-        const instances = [["EffectCIWorkflow", delivery],
-          ...hostedExamples.map(({ recipe }) => ["ExampleCIWorkflow", `${delivery}-${recipe}`])];
-        const statuses: Record<string, any> = {};
-        for (const [binding, id] of instances) {
-          for (let attempt = 0; attempt < 500; attempt++) {
-            statuses[id!] = await call({ op: "status", binding, id });
-            if (["complete", "errored"].includes(statuses[id!].status)) break;
-            await new Promise(resolve => setTimeout(resolve, 20));
+        const results: Run[] = [];
+        for (let run = 1; run <= runs; run++) {
+          await call({ op: "reset" });
+          const delivery = `11111111-2222-3333-4444-55555555555${run}`;
+          const body = JSON.stringify({
+            action: "requested",
+            check_suite: { app: { id: 1234 }, head_branch: "main", head_sha: "a".repeat(40) },
+            installation: { id: 165265172 },
+            repository: { clone_url: "https://github.com/ericclemmons/effect-ci-testbed.git", full_name: "ericclemmons/effect-ci-testbed" },
+          });
+          const webhook = await mf.dispatchFetch("https://host.invalid/webhooks/github", { method: "POST", body, headers: {
+            "x-github-event": "check_suite", "x-github-delivery": delivery,
+            "x-hub-signature-256": "sha256=" + createHmac("sha256", "local-fixture").update(body).digest("hex"),
+          } });
+          const accepted = await webhook.json() as any;
+          assert.equal(webhook.status, 202, JSON.stringify(accepted));
+          assert.equal(accepted.instanceId, delivery);
+          assert.deepEqual(accepted.additional, hostedExamples.map(({ recipe }) =>
+            ({ key: recipe, accepted: true, instanceId: `${delivery}-${recipe}` })));
+          const instances = [["EffectCIWorkflow", delivery],
+            ...hostedExamples.map(({ recipe }) => ["ExampleCIWorkflow", `${delivery}-${recipe}`])];
+          const statuses: Record<string, any> = {};
+          for (const [binding, id] of instances) {
+            for (let attempt = 0; attempt < 500; attempt++) {
+              statuses[id!] = await call({ op: "status", binding, id });
+              if (["complete", "errored"].includes(statuses[id!].status)) break;
+              await new Promise(resolve => setTimeout(resolve, 20));
+            }
           }
+          results.push({ delivery, statuses, ...(await call({})) });
         }
-        return { delivery, statuses, ...(await call({})) as { checks: any[]; commands: any[]; stops: string[]; checkouts: any[]; restores: any[] } };
+        return results;
       } finally { await mf.dispose(); }
     };
     const summary = (checks: any[], name: string) => {
@@ -156,8 +176,8 @@ test(
       return checks.filter(check => check.id === created.id).at(-1);
     };
 
-    const passed = await scenario();
-    for (const [id, status] of Object.entries(passed.statuses))
+    const [first, passed] = await scenario(undefined, 2) as [Run, Run];
+    for (const [id, status] of [...Object.entries(first.statuses), ...Object.entries(passed.statuses)])
       assert.equal(status.status, "complete", `${id}: ${JSON.stringify(status)}`);
     assert.deepEqual(summary(passed.checks, "Effect CI / Cloudflare"),
       { id: 1, name: "Cloudflare / monorepo", status: "completed", conclusion: "success", op: "update" });
@@ -201,15 +221,42 @@ test(
       [`${passed.delivery}-snapshot-fanout:step=left`, `${passed.delivery}-snapshot-fanout:step=right`]);
     // The consumer restores the published artifact before reading it.
     assert.ok(passed.restores.some(restore => restore.container.startsWith(`${passed.delivery}-portable-artifacts`) &&
-      restore.snapshot === "snapshot-artifact:worker"), JSON.stringify(passed.restores));
+      restore.snapshot.startsWith("snapshot-artifact:worker@")), JSON.stringify(passed.restores));
     assert.ok(passed.commands.some(command => command.cwd === "examples/portable-artifacts" && command.command === "test -f dist/worker.js"));
     assert.ok(passed.checkouts.every(checkout => checkout.token && checkout.revision === "a".repeat(40)));
     // Each example stops its own workspace and per-step containers.
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm`));
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm:step=build`), JSON.stringify(passed.stops));
 
+    // Cache recipes run with their own policy; the next push restores what the previous run of
+    // the same recipe stored. Other examples keep cache transport off and never restore.
+    const cached = hostedExamples.filter(example => example.cache);
+    assert.deepEqual(cached.map(({ recipe }) => recipe), ["package-manager-cache", "cache-policy", "vite-plus-cache", "turborepo-cache"]);
+    for (const example of cached) {
+      const { recipe } = example;
+      const paths = example.cache === "discover" ? discovered[projectRoot(example)] : example.cache!.paths;
+      assert.ok(paths!.length > 0, recipe);
+      for (const run of [first, passed]) {
+        const commands = run.commands.filter(command => command.container.startsWith(`${run.delivery}-${recipe}`));
+        assert.ok(commands.length > 0, recipe);
+        for (const command of commands) assert.deepEqual(command.cachePaths, paths, `${recipe}: ${command.command}`);
+      }
+      assert.ok(!first.restores.some(restore => restore.container === `${first.delivery}-${recipe}`), `${recipe}: first run has no cache`);
+      const restored = passed.restores.filter(restore => restore.container === `${passed.delivery}-${recipe}`);
+      assert.equal(restored.length, 1, `${recipe}: ${JSON.stringify(passed.restores)}`);
+      assert.match(restored[0].snapshot, new RegExp(`@${first.delivery}-${recipe}(:|$)`), recipe);
+    }
+    for (const { recipe } of hostedExamples.filter(example => !example.cache)) {
+      assert.ok(!passed.restores.some(restore => restore.container === `${passed.delivery}-${recipe}`), recipe);
+      for (const command of passed.commands.filter(command => command.container.startsWith(`${passed.delivery}-${recipe}`)))
+        assert.deepEqual(command.cachePaths, [], recipe);
+    }
+    // Default discovery finds each tool's task cache in the nested app.
+    assert.ok(discovered["examples/vite-plus-cache"]!.includes("examples/vite-plus-cache/app/node_modules/.vite/task-cache"));
+    assert.ok(discovered["examples/turborepo-cache"]!.includes("examples/turborepo-cache/app/.turbo/cache"));
+
     // A failing example reports only its own failure; monorepo and the other examples still pass.
-    const failed = await scenario(["examples/node-npm:test"]);
+    const [failed] = await scenario(["examples/node-npm:test"]) as [Run];
     assert.equal(failed.statuses[failed.delivery].status, "complete");
     assert.equal(summary(failed.checks, "Effect CI / Cloudflare").conclusion, "success");
     assert.equal(summary(failed.checks, "Cloudflare / node-npm").conclusion, "failure");

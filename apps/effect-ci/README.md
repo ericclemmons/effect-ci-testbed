@@ -28,6 +28,11 @@ as its project root. Each posts a `Cloudflare / <recipe>` summary, for example
 An example's selection, start or CI failure stays on its own check; the monorepo
 run, its deployment and the other examples continue.
 
+Cache transport is off for examples, so each run is independent. The cache recipes
+(`package-manager-cache`, `cache-policy`, `vite-plus-cache`, `turborepo-cache`)
+enable their own runner policy instead. Each cache is keyed by recipe, so a later
+push restores what the previous run of the same recipe stored.
+
 [Hosted examples](./src/hosted-examples.ts#symbol=hostedExamples "source")
 
 [Example Workflow and container cleanup](./src/example-workflow.ts#symbol=ExampleCIWorkflow "source")

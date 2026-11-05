@@ -12,7 +12,9 @@ dispatch and response are unchanged except for an `additional` result list.
 
 Pair it with `workflowEntrypoint(definition, { root: parameters => ... })` to run
 from the host-selected `project.root`. The project is chosen by trusted host code,
-never copied from webhook content.
+never copied from webhook content. `cache: parameters => ...` selects that project's
+cache policy the same way; returning `undefined` keeps the default task cache.
+At most 32 additional runs start per check suite.
 
 [Additional run contract](./src/worker.ts#symbol=GitHubAdditionalRun "source")
 
