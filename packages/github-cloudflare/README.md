@@ -2,12 +2,21 @@
 
 ## Task-cache transport
 
-The default workspace cache carries Vite+ task entries and pnpm's
-`node_modules/.modules.yaml`. Keeping pnpm's existing metadata avoids changing its
-`prunedAt` timestamp on every fresh install, which Vite+ otherwise sees as a
-changed dependency input. Dependencies are installed against the current checkout;
-Vite+ still owns task fingerprints and source invalidation. Custom cache paths
-and `cache: false` retain their existing behavior.
+Both native workflow adapters preserve conventional Vite+, Turbo and package
+download caches by default. Discovery reads package manifests and configuration
+filenames in the project, its nested packages and its ancestors; it never imports
+project configuration. Custom cache locations still need an explicit policy.
+
+The runner restores a transport snapshot, checks out current source, and retains
+only the selected cache paths. Vite+ and Turbo validate their own entries and
+restore task outputs. Successful actions still return snapshot-backed workspaces;
+deployments and arbitrary commands do not become cached operations.
+
+The cache also carries pnpm's `node_modules/.modules.yaml`. Keeping that metadata
+avoids a changing `prunedAt` timestamp causing dependency-input misses. Installed
+dependencies and old build outputs are cleaned before the new run. Configured
+cache paths replace discovery; `cache: false` disables transport. Runtime-image
+changes invalidate the transport snapshot. Images without Node skip discovery.
 
 ## Remote private checkout
 

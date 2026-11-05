@@ -234,14 +234,7 @@ export const workflowEntrypoint = <A>(
       ...(options.durableCommands ? { durableCommands: true } : {}),
       binding,
       ...(options.commandEnvironment ? { commandEnvironment: () => options.commandEnvironment!(this.env, event.payload) } : {}),
-      ...(options.cache === false ? {} : { cache: options.cache ?? {
-        key: github?.repositoryName ?? event.payload.repository,
-        // Vite+ fingerprints task inputs itself; this is only its transport cache.
-        keyFiles: [],
-        // pnpm's prunedAt changes on a fresh install. Preserve its metadata so
-        // Vite+ can compare dependency inputs without a timestamp-only miss.
-        paths: ["node_modules/.vite/task-cache", "node_modules/.modules.yaml"],
-      } }),
+      cache: options.cache ?? { key: "task-cache", keyFiles: [] },
       ...(options.container ? { container: options.container } : {}),
       repository: event.payload.repository,
       ...(options.root ? { root: options.root } : {}),

@@ -12,6 +12,7 @@
     "./command-diagnostics": "./src/command-diagnostics.ts",
     "./directory-deployment": "./src/directory-deployment.ts",
     "./source-changes": "./src/source-changes.ts",
+    "./task-cache": "./src/task-cache.ts",
     "./paths": "./src/paths.ts"
   },
   "scripts": {
