@@ -6,11 +6,14 @@ const key = (secret: string) => {
   return new TextEncoder().encode(secret)
 }
 
-export const hostedIdentity = (claims: { repository_id: string; repository_owner_id: string; ref: string; revision: string }, origin: string, secret: string) =>
-  new SignJWT({ ...claims, workflow_ref: `${origin}/hosted-ci`, event_name: "workflow_dispatch", run_id: crypto.randomUUID(), run_attempt: "1" })
+export const hostedIdentity = (claims: { repository_id: string; repository_owner_id: string; ref: string; revision: string }, origin: string, secret: string) => {
+  // One clock read: separate reads can straddle a second and stretch the lifetime past 5 minutes.
+  const now = Math.floor(Date.now() / 1000)
+  return new SignJWT({ ...claims, workflow_ref: `${origin}/hosted-ci`, event_name: "workflow_dispatch", run_id: crypto.randomUUID(), run_attempt: "1" })
     .setProtectedHeader({ alg: "HS256" }).setIssuer(`${origin}/oidc`).setAudience(origin)
     .setSubject(`repository:${claims.repository_id}`).setJti(crypto.randomUUID())
-    .setIssuedAt().setNotBefore("0s").setExpirationTime("5m").sign(key(secret))
+    .setIssuedAt(now).setNotBefore(now).setExpirationTime(now + 300).sign(key(secret))
+}
 
 export const workloadIdentity = (secret: string) => async (token: string, audience: string) => {
   // The unverified issuer only selects a verifier; both paths verify signatures,
