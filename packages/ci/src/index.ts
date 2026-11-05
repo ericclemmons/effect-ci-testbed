@@ -1704,13 +1704,16 @@ export const action = <
 /**
  * A side-effect-free assertion whose success can be reused by a trusted runner.
  * Checks return no workspace revision or domain output: they either succeed or fail.
+ * A handler may end with `workspace.exec(...)`; its workspace is discarded, so a
+ * runner never commits (snapshots) a check's workspace after the command passes.
  */
 export const check = <Args extends ReadonlyArray<unknown> = ReadonlyArray<never>>(
   id: string,
   construction: ActionConstruction<Args, void>,
   options: CheckOptions = {},
 ): ((...args: Args) => Effect.Effect<void, unknown, Runtime | CurrentStep>) =>
-  action<void, Args>(id, construction, options as ActionOptions)
+  action<void, Args>(id, bodyToEffect(construction).pipe(Effect.map((handler) =>
+    (...args: Args) => Effect.asVoid(bodyToEffect(() => handler(...args))))), options as ActionOptions)
 
 /** Identifies action factories exported as direct CLI targets. */
 export const isAction = (value: unknown): value is ActionTarget =>

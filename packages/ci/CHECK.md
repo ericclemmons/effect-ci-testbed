@@ -4,6 +4,11 @@ Use `CI.check(id, construction, options?)` for an assertion that returns no
 workspace or domain result. It succeeds or fails. Dependencies belong in the
 check's construction, just as they do in an action.
 
+Its handler may end with `workspace.exec(...)`. The check discards that
+workspace, so a runner never commits or snapshots it after the command passes.
+A long hosted test step then has no post-command snapshot that can fail when its
+container is replaced.
+
 [Inspect required files](../../examples/workspace/.cloudflare/ci/actions.ts#symbol=inspect "source")
 
 A check may opt into `reuse: { scope: "commit" }`. A trusted host must verify
