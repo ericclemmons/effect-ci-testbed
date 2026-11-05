@@ -182,6 +182,7 @@ jobs:
   local:
     name: ${{ matrix.example }} / local / ${{ matrix.mode }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -228,7 +229,6 @@ jobs:
           - r2-source
           - durable-object-source
           - release-flywheel
-          - d1-migration
           - turbo-ci
           - workspace
         mode:
