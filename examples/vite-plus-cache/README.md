@@ -17,7 +17,8 @@ effect-ci run
 
 The second run reports a cache hit. Change a file the build reads and it rebuilds.
 
-The [runner policy](./src/worker.ts) preserves `node_modules/.vite/task-cache`.
+The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,
+including the nested app's cache. No cache key or paths are needed in the workflow.
 Your build remains an ordinary package script; network, time, and environment
 dependencies need explicit tracking when filesystem observation cannot capture them.
 
