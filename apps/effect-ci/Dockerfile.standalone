@@ -15,6 +15,11 @@ COPY --from=docker.io/cloudflare/sandbox:1.0.0@sha256:5bc187515bad0d9d486a4f1476
   /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
 
 RUN mkdir -p /workspace && chown node:node /workspace
+
+# CI.Toolchain.Node and CI.Toolchain.Mise run Mise. Last layer, so a version
+# bump reuses everything above; the same pinned release local recipes use.
+COPY --from=ghcr.io/jdx/mise:2026.9.11-debian@sha256:12f3fe18fe6c02c54d1bbb9bdc60a492a72a320252439f0df657c6f01a04c23f \
+  /usr/local/bin/mise /usr/local/bin/mise
 ENV HOME=/home/node
 USER node
 WORKDIR /workspace

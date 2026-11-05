@@ -23,7 +23,8 @@ The same check suite also starts each enrolled example as its own native Workflo
 (`effect-ci-examples`), checked out at the exact commit with the example directory
 as its project root. Each posts a `Cloudflare / <recipe>` summary, for example
 `Cloudflare / node-npm`. The `demo` row runs the walkthrough project in
-`test/fixtures/demo`, like its other columns. Examples run in the unprivileged `repository` image on
+`test/fixtures/demo`, like its other columns. Examples run in the unprivileged `repository` image (Node, pnpm, Git, Python and
+Mise for `CI.Toolchain`) on
 `standard-1` containers, with no Docker, credentials, deployment or Slack card.
 An example's selection, start or CI failure stays on its own check; the monorepo
 run, its deployment and the other examples continue.

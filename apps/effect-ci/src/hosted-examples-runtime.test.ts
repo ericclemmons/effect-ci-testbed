@@ -8,6 +8,8 @@ import { hostedExamples, projectRoot } from "./hosted-examples.ts";
 
 const repository = new URL("../../../", import.meta.url);
 const lockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "pnpm-workspace.yaml"];
+// Toolchain declarations CI.Toolchain.Node and CI.Toolchain.Mise read.
+const toolchains = [".node-version", ".nvmrc", "mise.toml", ".mise.toml", ".tool-versions"];
 
 test(
   "a signed check suite runs each hosted example beside monorepo and reports Cloudflare / <recipe>",
@@ -26,9 +28,9 @@ test(
     const files: Record<string, string> = {};
     for (const example of hostedExamples) {
       for (const directory of [projectRoot(example), `${projectRoot(example)}/app`]) {
-        for (const name of ["package.json", ...lockfiles]) {
+        for (const name of ["package.json", ...lockfiles, ...toolchains]) {
           const path = new URL(`${directory}/${name}`, repository);
-          if (existsSync(path)) files[`${directory}/${name}`] = name === "package.json" ? readFileSync(path, "utf8") : "";
+          if (existsSync(path)) files[`${directory}/${name}`] = lockfiles.includes(name) ? "" : readFileSync(path, "utf8");
         }
       }
     }
@@ -227,6 +229,16 @@ test(
     // Each example stops its own workspace and per-step containers.
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm`));
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm:step=build`), JSON.stringify(passed.stops));
+
+    // Toolchain recipes install the declared runtimes with Mise in the repository image, then use them.
+    assert.deepEqual(passed.commands.filter(command => command.cwd === "examples/node-version").map(command => command.command), [
+      "MISE_DATA_DIR=.effect-ci/cache/mise/data MISE_CACHE_DIR=.effect-ci/cache/mise/cache mise --yes install node@22.20.0",
+      "MISE_DATA_DIR=.effect-ci/cache/mise/data MISE_CACHE_DIR=.effect-ci/cache/mise/cache mise exec node@22.20.0 -- node -e \"if (process.version !== 'v22.20.0') process.exit(1)\"",
+    ]);
+    const mise = passed.commands.filter(command => command.cwd === "examples/mise-toolchain").map(command => command.command);
+    assert.equal(mise.length, 3, JSON.stringify(mise));
+    assert.match(mise[0]!, / mise --yes install$/);
+    assert.ok(mise.some(command => command.includes("mise exec -- node")) && mise.some(command => command.includes("mise exec -- python")));
 
     // Cache recipes run with their own policy; the next push restores what the previous run of
     // the same recipe stored. Other examples keep cache transport off and never restore.
