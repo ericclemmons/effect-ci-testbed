@@ -635,6 +635,9 @@ jobs:
           - example: timing-aware-splitting
             package: effect-ci-timing-aware-splitting-fixture
             workflow: effect-ci-timing-aware-splitting
+          - example: secret-outbound
+            package: effect-ci-secret-outbound-fixture
+            workflow: effect-ci-secret-outbound
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4

@@ -113,7 +113,7 @@ Keep credentials outside workspace containers, including authenticated outbound 
 | Recipe | GitHub Actions | Effect CI Local | Effect CI GitHub | Effect CI Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | [Use secrets without exposing them to containers](./secure-secrets) | ✅ | ✅ | ✅ | ✅ |
-| [Call authenticated APIs without exposing credentials](./secret-outbound) | — | 🔜 | — | ✅ |
+| [Call authenticated APIs without exposing credentials](./secret-outbound) | — | ✅ | — | ✅ |
 | [Deploy with Wrangler using short-lived credentials](./oidc-wrangler) | ✅ | — | — | — |
 | [Deploy with cf using short-lived credentials](./oidc-cf) | ✅ | — | — | — |
 

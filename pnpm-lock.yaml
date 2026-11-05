@@ -928,6 +928,28 @@ importers:
 
   examples/runner-selection: {}
 
+  examples/secret-outbound:
+    dependencies:
+      '@effect-ci-testbed/ci':
+        specifier: workspace:*
+        version: link:../../packages/ci
+      '@effect-ci-testbed/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261001.1
+        version: 5.20261001.1
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: 4.145.0
+        version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
+
   examples/snapshot-fanout:
     dependencies:
       '@effect-ci-testbed/ci':
@@ -6217,13 +6239,6 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
-  klona@2.0.6:
-    resolution: {integrity: sha512-dhG34DXATL5hSxJbIexCft8FChFXtmskoZYnoPWjXQuebWYCNkVeV3KkGegCK9CP1oswI/vQibS2GY7Em/sJJA==}
-    engines: {node: '>= 8'}
-
-  kubernetes-types@1.30.0:
-    resolution: {integrity: sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==}
-
   layerr@3.0.0:
     resolution: {integrity: sha512-tv754Ki2dXpPVApOrjTyRo4/QegVb9eVFq4mjqp4+NM5NaX7syQvN5BBNfV/ZpAHCEHV24XdUVrBAoka4jt3pA==}
 
@@ -7994,7 +8009,7 @@ snapshots:
       estree-util-visit: 2.0.0
       github-slugger: 2.0.0
       hast-util-from-html: 2.0.3
-      hast-util-to-html: 9.0.5
+      hast-util-to-html: 9.0.6
       hast-util-to-text: 4.0.2
       mdast-util-definitions: 6.0.0
       rehype-raw: 7.0.0
@@ -12151,9 +12166,8 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ini@6.0.0: {}
-
-  inline-style-parser@0.2.7: {}
+  inline-style-parser@0.2.7:
+    optional: true
 
   internmap@1.0.1: {}
 
@@ -12239,10 +12253,6 @@ snapshots:
   khroma@2.1.0: {}
 
   kleur@4.1.5: {}
-
-  klona@2.0.6: {}
-
-  kubernetes-types@1.30.0: {}
 
   layerr@3.0.0: {}
 
@@ -13373,7 +13383,7 @@ snapshots:
   rehype-stringify@10.0.1:
     dependencies:
       '@types/hast': 3.0.5
-      hast-util-to-html: 9.0.5
+      hast-util-to-html: 9.0.6
       unified: 11.0.5
     optional: true
 
