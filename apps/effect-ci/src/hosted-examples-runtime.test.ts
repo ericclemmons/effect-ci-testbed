@@ -47,7 +47,7 @@ test(
       import{monorepoGitHubRun}from'./monorepo-policy.ts';
       import{hostedExampleRuns}from'./hosted-examples.ts';
       export{ExampleCIWorkflow}from'./example-workflow.ts';
-      const checks=[],commands=[],stops=[],checkouts=[];let nextCheck=0;
+      const checks=[],commands=[],stops=[],checkouts=[],restores=[];let nextCheck=0;
       const relative=path=>path.replace(/^\\/workspace\\/repository\\/?/,'');
       globalThis.fetch=async(input,init={})=>{
         const url=new URL(String(input));if(url.origin!=='https://api.github.com')throw Error('Unexpected destination '+url);
@@ -64,12 +64,13 @@ test(
       export class WorkspaceContainer extends DurableObject{
         async checkout(repository,revision,directory,options,token){checkouts.push({repository,revision,directory,image:options?.image,instance:options?.instance,token:token==='fixture-installation-token'});}
         async execute(command,cwd,stepId,revision,cachePaths,cacheRoot,options){
-          commands.push({command,cwd:relative(cwd),stepId,image:options?.image,instance:options?.instance,loginShell:options?.loginShell});
+          commands.push({command,cwd:relative(cwd),stepId,container:this.ctx.id.name,image:options?.image,instance:options?.instance,loginShell:options?.loginShell});
           return {exitCode:this.env.FAIL_STEPS.includes(relative(cwd)+':'+stepId)?1:0,stdout:'',stderr:''};
         }
-        async exists(path,cwd){return relative(cwd+'/'+path) in this.env.FILES;}
+        async exists(path,cwd){return path==='.'||relative(cwd+'/'+path) in this.env.FILES;}
         async readFile(path,cwd){return this.env.FILES[relative(cwd+'/'+path)];}
         async checkpoint(name){return {id:'snapshot-'+name,size:1};}
+        async restore(snapshot){restores.push({container:this.ctx.id.name,snapshot:snapshot.id});}
         async stop(){stops.push(this.ctx.id.name);}
       }
       // Stand-in for the root workflow: the real one needs Docker and deploy credentials.
@@ -82,7 +83,7 @@ test(
         const input=await request.json();
         if(input.op==='status')return Response.json(await(await ctx.exports[input.binding].get(input.id)).status());
         if(input.op==='reset'){checks.length=0;commands.length=0;stops.length=0;checkouts.length=0;return Response.json({});}
-        return Response.json({checks,commands,stops,checkouts});
+        return Response.json({checks,commands,stops,checkouts,restores});
       }};`,
       },
       bundle: true,
@@ -146,7 +147,7 @@ test(
             await new Promise(resolve => setTimeout(resolve, 20));
           }
         }
-        return { delivery, statuses, ...(await call({})) as { checks: any[]; commands: any[]; stops: string[]; checkouts: any[] } };
+        return { delivery, statuses, ...(await call({})) as { checks: any[]; commands: any[]; stops: string[]; checkouts: any[]; restores: any[] } };
       } finally { await mf.dispose(); }
     };
     const summary = (checks: any[], name: string) => {
@@ -191,6 +192,17 @@ test(
     assert.equal(summary(passed.checks, "Cloudflare / optional-checks").conclusion, "success");
     assert.equal(passed.checks.filter(check => /^Cloudflare \/ optional-checks \/ \w+\. format \(optional\)$/.test(check.name)).at(-1)?.conclusion,
       "neutral", JSON.stringify(passed.checks.filter(check => check.name?.startsWith("Cloudflare / optional-checks"))));
+    // main deploys conditional-deploy; its condition is the recipe, not a skip.
+    assert.deepEqual(passed.commands.filter(command => command.cwd === "examples/conditional-deploy").map(command => command.command),
+      ["echo deploy"]);
+    // Parallel branches of snapshot-fanout write the same file in separate containers.
+    const fanout = passed.commands.filter(command => command.cwd === "examples/snapshot-fanout/app" && command.stepId !== "prepare");
+    assert.deepEqual(fanout.map(command => command.container).sort(),
+      [`${passed.delivery}-snapshot-fanout:step=left`, `${passed.delivery}-snapshot-fanout:step=right`]);
+    // The consumer restores the published artifact before reading it.
+    assert.ok(passed.restores.some(restore => restore.container.startsWith(`${passed.delivery}-portable-artifacts`) &&
+      restore.snapshot === "snapshot-artifact:worker"), JSON.stringify(passed.restores));
+    assert.ok(passed.commands.some(command => command.cwd === "examples/portable-artifacts" && command.command === "test -f dist/worker.js"));
     assert.ok(passed.checkouts.every(checkout => checkout.token && checkout.revision === "a".repeat(40)));
     // Each example stops its own workspace and per-step containers.
     assert.ok(passed.stops.includes(`${passed.delivery}-node-npm`));
