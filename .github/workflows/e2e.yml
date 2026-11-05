@@ -132,6 +132,7 @@ jobs:
           - rollback-compensation
           - deploy-hook
           - dependency-aware-reruns
+          - workers-deploy
     steps:
       - uses: actions/checkout@v7
 
@@ -231,6 +232,7 @@ jobs:
           - release-flywheel
           - turbo-ci
           - workspace
+          - workers-deploy
         mode:
           - plan
           - execute
@@ -578,6 +580,9 @@ jobs:
             runs-on: '["ubuntu-latest"]'
           - example: custom-container-image
             workflow: examples/custom-container-image/.cloudflare/ci/workflow.ts
+            runs-on: '["ubuntu-latest"]'
+          - example: workers-deploy
+            workflow: examples/workers-deploy/.cloudflare/ci/workflow.ts
             runs-on: '["ubuntu-latest"]'
     uses: ./.github/workflows/effect-ci.yml
     with:
