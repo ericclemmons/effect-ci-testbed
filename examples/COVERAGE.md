@@ -56,7 +56,7 @@ Select runtimes and OS tools before adding a custom image. A runner image is not
 | [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ |
 | [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ |
 | [Customize the CI container](./custom-runner-image) | — | ✅ | — | ✅ |
-| [Build and run Docker in CI](./docker-in-docker) | — | 🔜 | — | 🔜 |
+| [Build and run Docker in CI](./docker-in-docker) | — | ✅ | — | 🔜 |
 | [Build and publish a container image](./custom-container-image) | ✅ | ✅ | ✅ | 🔜 |
 
 ### Runners and execution tiers
