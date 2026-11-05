@@ -10,6 +10,15 @@ docker build --network=host --tag effect-ci-user-image app
 docker run --network=host --rm effect-ci-user-image
 ```
 
+## Run it locally
+
+```sh
+cd examples/docker-in-docker
+effect-ci run
+```
+
+Locally, the same actions use the host's Docker daemon; no nested daemon starts.
+
 ## Run it on Cloudflare
 
 After deploying its [Worker](./src/worker.ts):

@@ -182,6 +182,7 @@ jobs:
   local:
     name: ${{ matrix.example }} / local / ${{ matrix.mode }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -206,6 +207,30 @@ jobs:
           - ordered-deploy
           - custom-container-image
           - deploy-hook
+          - portable-artifacts
+          - blacksmith
+          - dynamic-project-checks
+          - docker-in-docker
+          - conditional-deploy
+          - deploy-changed-output
+          - turbo-distributed
+          - execution-policy
+          - retry
+          - rollback-compensation
+          - package-manager-cache
+          - vite-plus-cache
+          - turborepo-cache
+          - verification-evidence
+          - dependency-aware-reruns
+          - immutable-attempts
+          - secure-secrets
+          - source-providers
+          - gitlab-source
+          - r2-source
+          - durable-object-source
+          - release-flywheel
+          - turbo-ci
+          - workspace
         mode:
           - plan
           - execute
@@ -220,6 +245,8 @@ jobs:
       - name: Run examples/${{ matrix.example }} (${{ matrix.mode }})
         env:
           EFFECT_CI_EVENT: ${{ matrix.example == 'deploy-hook' && 'deploy_hook' || 'pull_request' }}
+          # Only the secrets recipe resolves a host secret; other recipes get none.
+          GITHUB_TOKEN: ${{ matrix.example == 'secure-secrets' && github.token || '' }}
         run: |
           workflow="examples/${{ matrix.example }}/.cloudflare/ci/workflow.ts"
           actions=()
@@ -569,9 +596,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `execute` runs the approved path, matching every recipe's local check name.
         mode:
           - plan
-          - approved
+          - execute
           - rejected
     steps:
       - uses: actions/checkout@v7
