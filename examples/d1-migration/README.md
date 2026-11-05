@@ -19,8 +19,8 @@ effect-ci run
 ```
 
 This applies the migration to local D1 and dry-runs deployment. No production
-database changes. The current `cf d1 --local` command can hang on GitHub-hosted
-Ubuntu, so use the local recipe there with care.
+database changes. Use `cf` 1.0.0-beta.24 or later: earlier versions can leave
+the local runtime's file watcher open, so `cf d1 --local` never exits on Linux.
 
 For production, supply the database ID and deployment credentials through the
 runner.
