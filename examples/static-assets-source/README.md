@@ -20,6 +20,10 @@ publisher already configured:
 cf workflows instances create effect-ci-static-assets-publish --body '{"instance_id":"my-static-build-run","params":{"mode":"build","revision":"FULL_40_CHARACTER_COMMIT"}}'
 ```
 
+There is no local run: the recipe exists to exercise Cloudflare's Assets upload
+and deployment APIs with a host-held credential, and those APIs have no local equivalent.
+The compiler and publisher policies have offline tests.
+
 The current publisher is scoped to the testbed and its dedicated target.
 For your own installation, configure the repository reader, target Worker and
 host-held deployment credential; see [setup and authority](./AUTHORITY.md).

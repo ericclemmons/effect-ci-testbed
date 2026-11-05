@@ -1,0 +1,21 @@
+// Local Cloudflare runtime only; deployments use cloudflare.config.ts.
+// `wrangler dev` runs the same Worker, Dynamic Worker loader, DO and Workflow locally.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "effect-ci-containerless-site",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "worker_loaders": [{ "binding": "LOADER" }],
+  "vars": { "SITE_ORIGIN": "http://localhost:8787" },
+  "exports": {
+    "SiteRevisions": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "workflows": [
+    {
+      "binding": "BUILD",
+      "class_name": "ContainerlessSiteWorkflow",
+      "name": "effect-ci-containerless-site-build"
+    }
+  ]
+}

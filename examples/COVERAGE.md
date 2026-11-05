@@ -137,8 +137,8 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare |
 | --- | :---: | :---: | :---: | :---: |
 | Deploy an app to Cloudflare Workers | 🔜 | 🔜 | 🔜 | 🔜 |
-| [Build or publish static files without a container](./static-assets-source) | — | 🔜 | — | ✅ · containerless |
-| [Build and serve a static site without a container](./containerless-site) | — | 🔜 | — | ✅ · containerless |
+| [Build or publish static files without a container](./static-assets-source) | — | — | — | ✅ · containerless |
+| [Build and serve a static site without a container](./containerless-site) | — | ✅ | — | ✅ · containerless |
 | [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
 | [Migrate D1 before deploying a Worker](./d1-migration) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Recover from a deploy failure after migration](./d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |

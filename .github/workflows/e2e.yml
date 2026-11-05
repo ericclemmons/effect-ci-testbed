@@ -638,6 +638,11 @@ jobs:
           - example: secret-outbound
             package: effect-ci-secret-outbound-fixture
             workflow: effect-ci-secret-outbound
+          - example: containerless-site
+            package: '@effect-ci-testbed/containerless-site'
+            workflow: effect-ci-containerless-site-build
+            # Its source reader accepts only an immutable commit.
+            revision: sha
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -657,7 +662,7 @@ jobs:
       - name: Execute the workflow in Cloudflare locally
         env:
           REPOSITORY: ${{ github.event.pull_request.head.repo.clone_url || 'https://github.com/ericclemmons/effect-ci-testbed.git' }}
-          REVISION: ${{ github.head_ref || github.ref_name }}
+          REVISION: ${{ matrix.revision == 'sha' && (github.event.pull_request.head.sha || github.sha) || github.head_ref || github.ref_name }}
         run: |
           log="$RUNNER_TEMP/${{ matrix.example }}.log"
           instance_id="effect-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -673,7 +678,8 @@ jobs:
               echo "wrangler dev exited before becoming ready" >&2
               exit 1
             fi
-            if curl --silent --fail --output /dev/null http://localhost:8787; then
+            # Any HTTP response means the server is up; some Workers return 404 at /.
+            if curl --silent --output /dev/null http://localhost:8787; then
               ready=1
               break
             fi

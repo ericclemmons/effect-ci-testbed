@@ -84,12 +84,14 @@ function revisions(ctx: ExecutionContext) {
     ctx.exports as unknown as { SiteRevisions: DurableObjectNamespace<SiteRevisions> }
   ).SiteRevisions.getByName(REVISIONS);
 }
+// SITE_ORIGIN lets the local runtime verify its own server; deployments use the public origin.
 export class ContainerlessSiteWorkflow extends WorkflowEntrypoint<
-  { LOADER: WorkerLoader },
+  { LOADER: WorkerLoader; SITE_ORIGIN?: string },
   { revision: string }
 > {
   override async run(event: Readonly<WorkflowEvent<{ revision: string }>>, step: WorkflowStep) {
     const revision = revisionFor(event.payload?.revision);
+    const origin = this.env.SITE_ORIGIN ?? SITE_ORIGIN;
     const store = revisions(this.ctx);
     const recorded = <T>(name: string, operation: () => Promise<T>) =>
       Effect.tryPromise({
@@ -117,7 +119,7 @@ export class ContainerlessSiteWorkflow extends WorkflowEntrypoint<
             verify: (site) =>
               recorded("verify", async () => {
                 for (const [path, expected] of Object.entries(site.assets)) {
-                  const response = await fetch(`${SITE_ORIGIN}/r/${revision}/${path}`, {
+                  const response = await fetch(`${origin}/r/${revision}/${path}`, {
                     redirect: "manual",
                     signal: AbortSignal.timeout(10_000),
                   });
@@ -128,7 +130,7 @@ export class ContainerlessSiteWorkflow extends WorkflowEntrypoint<
                   )
                     throw new Error("Served bytes mismatch");
                 }
-                return `${SITE_ORIGIN}/r/${revision}/index.html`;
+                return `${origin}/r/${revision}/index.html`;
               }),
           }),
         ),
@@ -142,7 +144,7 @@ export class ContainerlessSiteWorkflow extends WorkflowEntrypoint<
     );
     return {
       revision,
-      siteUrl: `${SITE_ORIGIN}/r/${revision}/index.html`,
+      siteUrl: `${origin}/r/${revision}/index.html`,
       containers: 0,
       plan: result.plan,
     };

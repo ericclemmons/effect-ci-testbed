@@ -7,6 +7,7 @@
     "test": "node --test src/*.test.ts",
     "build": "cf build",
     "deploy": "cf deploy",
+    "dev": "wrangler dev",
     "verify:browser": "node verification/record-browser.ts",
     "proof:verify-published": "node verification/verify-published.ts"
   },
@@ -22,6 +23,7 @@
     "cf": "1.0.0-beta.12",
     "e2e": "0.19.0",
     "typescript": "^7.0.2",
-    "vite": "^7.1.12"
+    "vite": "^7.1.12",
+    "wrangler": "4.145.0"
   }
 }
