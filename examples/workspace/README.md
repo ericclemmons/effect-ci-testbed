@@ -20,4 +20,5 @@ including when the run fails. These are trusted local commands, not a sandbox.
 
 [Runner configuration](./.cloudflare/ci/workflow.ts#symbol=local "source")
 
-[CI.Source](../../packages/ci/SOURCE.md) · [CI.Workspace](../../packages/ci/WORKSPACE.md)
+[CI.Source](../../packages/ci/SOURCE.md) · [CI.Workspace](../../packages/ci/WORKSPACE.md) ·
+[GitHub Actions comparison](./.github/workflows/github.yml)

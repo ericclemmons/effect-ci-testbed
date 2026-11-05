@@ -1,0 +1,43 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# GitHub keeps each run attempt. "Re-run failed jobs" repeats a failed job and
+# its dependents and reuses the others, so each reusable step is its own job.
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: echo install
+
+  lint:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo lint
+
+  format:
+    needs: install
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - run: echo format
+
+  test:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo test
+
+  build:
+    needs: [lint, format, test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo build

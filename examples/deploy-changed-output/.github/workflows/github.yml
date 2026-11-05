@@ -1,0 +1,43 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Build
+        working-directory: app
+        run: node build.mjs
+      # Actions keeps no deployment baseline, so a cache entry stands in for one.
+      # It records that this output deployed once, not what is deployed now.
+      - name: Look up the built output
+        id: deployed
+        uses: actions/cache/restore@v5
+        with:
+          path: app/dist
+          key: deployed-site-${{ hashFiles('app/dist/**') }}
+          lookup-only: true
+      - name: Deploy changed output
+        if: steps.deployed.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .effect-ci/deployments/site
+          cp -R app/dist .effect-ci/deployments/site/
+      - name: Record the deployed output
+        if: steps.deployed.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: app/dist
+          key: deployed-site-${{ hashFiles('app/dist/**') }}

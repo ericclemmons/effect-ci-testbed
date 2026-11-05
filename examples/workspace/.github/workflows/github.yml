@@ -1,0 +1,27 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: inspect files
+        run: |
+          test -f app/input.txt
+          test "$(cat app/input.txt)" = original
+      # Actions has no workspace checkpoint, so an archive stands in for one.
+      - name: restore checkpoint
+        run: |
+          tar -C app -cf "$RUNNER_TEMP/before-edit.tar" .
+          printf changed > app/input.txt
+          rm -rf app && mkdir app
+          tar -C app -xf "$RUNNER_TEMP/before-edit.tar"
+          test "$(cat app/input.txt)" = original

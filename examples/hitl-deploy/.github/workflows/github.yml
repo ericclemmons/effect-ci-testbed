@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - uses: actions/upload-artifact@v4
+        if: ${{ !env.ACT }}
         with:
           name: build
           path: dist
@@ -28,7 +29,10 @@ jobs:
     environment: production
     steps:
       - uses: actions/download-artifact@v5
+        if: ${{ !env.ACT }}
         with:
           name: build
           path: dist
+      # act has no artifact service by default; its --bind jobs share the build's working tree.
+      - run: test -f dist/index.js
       - run: echo npx cf deploy

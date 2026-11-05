@@ -1,0 +1,31 @@
+name: GitHub Actions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+      - uses: actions/cache@v5
+        with:
+          path: app/.effect-ci/turbo/cache
+          key: turbo-ci-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-ci-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}-
+      # The same Turbo entrypoint Effect CI runs; Turbo schedules all five tasks here.
+      - run: npm run ci

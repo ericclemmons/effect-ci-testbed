@@ -17,4 +17,8 @@ effect-ci run
 See the [rerun code](./.cloudflare/ci/tests/immutable-attempts.test.ts) for retaining
 an attempt via `onAttempt` even when execution fails.
 
+In the [GitHub Actions comparison](./.github/workflows/github.yml), **Re-run failed
+jobs** keeps the earlier attempt and reuses jobs that passed. Reuse is per job, and
+each job starts from a fresh checkout.
+
 [Workflow](./.cloudflare/ci/workflow.ts)
