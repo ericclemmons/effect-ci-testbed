@@ -17,9 +17,25 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 | `effect-ci oidc -- <command>` | Run a child with temporary deployment credentials. |
 
 `AI_AGENT=demo` selects agent-friendly JSON. `--format=text|json` overrides detection;
-`plan` also supports `--format=mermaid|dot`. Both formats use the SDK's
-[Effect Graph view of the plan](../ci/WORKFLOW.md#inspect-a-plan). DOT labels
-dependency, ordering (`after`), and rollback edges separately.
+`plan` also supports `--format=mermaid|dot`.
+
+## Plan visualizations
+
+Plan the existing workflow without changing its definition or executing commands:
+
+```sh
+effect-ci plan --format=mermaid
+effect-ci plan --format=dot > plan.dot
+dot -Tsvg plan.dot > plan.svg
+```
+
+Rendering DOT as SVG requires Graphviz. DOT labels dependency, ordering (`after`),
+and rollback edges separately. Mermaid uses solid dependency arrows, dotted
+ordering arrows, and labeled rollback arrows. Both formats retain optional and
+conditional labels. Plans include discovered relationships; runtime branches may
+reveal more during execution.
+
+## Project discovery
 
 Without a workflow, every `package.json` script is an action. In Vite+ projects,
 tasks under `run.tasks` in `vite.config.ts` are actions too. Install the project's

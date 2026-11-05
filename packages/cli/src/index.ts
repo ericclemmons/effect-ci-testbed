@@ -18,6 +18,7 @@ import { cachedAccessToken, readRemoteProfile } from "./remote-auth.ts"
 import { readProjectOidc, readProjectRemote, resolveRemote } from "./remote-config.ts"
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 import { githubSourceComparison } from "./source-comparison.ts"
+import { formatPlanDot, formatPlanMermaid } from "./plan.ts"
 
 export type OutputFormat = "json" | "mermaid" | "dot" | "text"
 export type ExecutionLocation = "local" | "remote"
@@ -1090,9 +1091,9 @@ export const main = async (
         plan: result.plan,
       })
     } else if (format === "mermaid") {
-      console.log(CI.formatPlanMermaid(result.plan))
+      console.log(formatPlanMermaid(result.plan))
     } else if (format === "dot") {
-      console.log(CI.formatPlanDot(result.plan))
+      console.log(formatPlanDot(result.plan))
     }
 
     return ExitCode.success
