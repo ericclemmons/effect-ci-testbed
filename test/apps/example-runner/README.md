@@ -255,6 +255,11 @@ WOBS_LARGE_BATCH_INSTANCE=cf_97719d0328e9f9b97135b338b21bbf70c7e7ca94972a8d78b39
 
 ### Native healthy controller: fail-closed evidence
 
+The [native health contract and evidence review](./native-health-evidence.md)
+credits the implemented controller, reconciles the documented binding limits and
+records why #138 remains open. The retained four-phase HTTP success is real, but
+does not supply the missing supported native telemetry proof.
+
 `WobsHealthyWorkflow` applies the native adapter to all four guarded promotion
 phases. Each phase starts with an inconclusive ten-request cohort, then collects
 bounded independent cohorts and evaluates the pinned baseline/candidate windows.
