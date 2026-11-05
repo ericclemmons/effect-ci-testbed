@@ -13,7 +13,7 @@ test("the built homepage contains the completed snapshot without browser request
   assert.ok(html.includes(`${snapshot.total_count} completed checks`))
   assert.ok(html.includes(`datetime="${snapshot.fetchedAt}"`))
   assert.match(html, /aria-label="Run CI with npm · GitHub Actions: [^"]+"[^>]*>[✓×—]<\/a>/)
-  for (const label of ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare"]) assert.ok(html.includes(`>${label}</th>`))
+  for (const label of ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare", "cf ci"]) assert.ok(html.includes(`>${label}</th>`))
   assert.match(html, /Missing evidence does not mean unsupported/)
   assert.doesNotMatch(html, /⏳|data-pending|data-refresh|\/api\/readiness|Loading checks from main|Refreshes every/)
 })
