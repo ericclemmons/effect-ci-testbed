@@ -9,6 +9,7 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 | --- | --- |
 | `effect-ci list` | Runnable project goals. |
 | `effect-ci plan test build --format=mermaid` | Dependency graph; no execution. |
+| `effect-ci plan test build --format=dot` | Graphviz DOT graph; no execution. |
 | `effect-ci run test build` | Execute remotely after OIDC enrollment, locally otherwise. |
 | `effect-ci run test build --local` | Execute working-tree edits locally. |
 | `effect-ci run test build --remote` | Dispatch advertised goals to an enrolled host. |
@@ -16,7 +17,9 @@ Cloudflare CI app. Run `effect-ci --help` for execution and planning commands.
 | `effect-ci oidc -- <command>` | Run a child with temporary deployment credentials. |
 
 `AI_AGENT=demo` selects agent-friendly JSON. `--format=text|json` overrides detection;
-`plan` also supports `--format=mermaid`.
+`plan` also supports `--format=mermaid|dot`. Both formats use the SDK's
+[Effect Graph view of the plan](../ci/WORKFLOW.md#inspect-a-plan). DOT labels
+dependency, ordering (`after`), and rollback edges separately.
 
 Without a workflow, every `package.json` script is an action. In Vite+ projects,
 tasks under `run.tasks` in `vite.config.ts` are actions too. Install the project's

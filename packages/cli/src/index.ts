@@ -19,7 +19,7 @@ import { readProjectOidc, readProjectRemote, resolveRemote } from "./remote-conf
 import { remoteCommandDiagnostics, remoteErrorMessage } from "./remote-diagnostics.ts"
 import { githubSourceComparison } from "./source-comparison.ts"
 
-export type OutputFormat = "json" | "mermaid" | "text"
+export type OutputFormat = "json" | "mermaid" | "dot" | "text"
 export type ExecutionLocation = "local" | "remote"
 
 export type ActionTarget = () => Effect.Effect<unknown, unknown, any>
@@ -505,11 +505,11 @@ const parseInvocation = (
 
   const format = parsed.values.format ?? (parsed.values.agent ? "json" : detectedFormat())
 
-  if (format !== "json" && format !== "mermaid" && format !== "text") {
+  if (format !== "json" && format !== "mermaid" && format !== "dot" && format !== "text") {
     throw new CliFailure(
       "CI_USAGE_ERROR",
       ExitCode.usage,
-      `Unknown output format: ${format}. Expected text, json, or mermaid.`,
+      `Unknown output format: ${format}. Expected text, json, mermaid, or dot.`,
     )
   }
 
@@ -542,7 +542,7 @@ const parseInvocation = (
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
       `Use effect-ci run <compute goals...> --remote --rerun-from <run UUID>`)
 
-  if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid"))
+  if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid" || format === "dot"))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Use effect-ci doctor --remote [--format=text|json]; it checks access without running work`)
 
   if (command === "list" && targets.length) {
@@ -577,7 +577,7 @@ Usage:
   effect-ci                         Show this help and project targets
   effect-ci run [targets...] [--local|--remote] [--format=text|json]
   effect-ci run <compute goals...> --remote --rerun-from <run UUID>
-  effect-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid]
+  effect-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid|dot]
   effect-ci list [--format=text|json]
   effect-ci doctor --remote [--format=text|json]
   effect-ci run path/to/workflow.ts [target]
@@ -596,6 +596,7 @@ Examples:
   effect-ci run test build          Run both goals with their shared dependencies
   effect-ci plan                    Inspect the whole workflow without executing
   effect-ci plan --format=mermaid    Print its Mermaid graph
+  effect-ci plan --format=dot        Print its Graphviz DOT graph
   effect-ci list                    Discover exact commands to run
   AI_AGENT=demo effect-ci list       Preview automatic agent-friendly JSON
 
@@ -992,11 +993,11 @@ export const main = async (
     }
 
     if (invocation.command === "list") {
-      if (format === "mermaid") {
+      if (format === "mermaid" || format === "dot") {
         throw new CliFailure(
           "CI_USAGE_ERROR",
           ExitCode.usage,
-          "Mermaid output is available for plan, not list",
+          "Graph output is available for plan, not list",
         )
       }
       list(program, format)
@@ -1066,7 +1067,7 @@ export const main = async (
         return await CI.runPromise(localWorkflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
-          ...(format === "json" || format === "mermaid"
+          ...(format === "json" || format === "mermaid" || format === "dot"
             ? { output: "silent" as const }
             : configured.output
             ? { output: configured.output }
@@ -1090,6 +1091,8 @@ export const main = async (
       })
     } else if (format === "mermaid") {
       console.log(CI.formatPlanMermaid(result.plan))
+    } else if (format === "dot") {
+      console.log(CI.formatPlanDot(result.plan))
     }
 
     return ExitCode.success

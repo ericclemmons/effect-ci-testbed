@@ -2,6 +2,9 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
+import * as Graph from "effect/Graph"
+import * as Effect from "effect/Effect"
+import * as CI from "@effect-ci-testbed/ci"
 
 const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
 const repository = fileURLToPath(new URL("../../../", import.meta.url))
@@ -119,12 +122,60 @@ test("rejects an action that the workflow does not export", () => {
   assert.deepEqual(output.error.details.available, ["check"])
 })
 
-test("renders the planned action graph as Mermaid", () => {
+test("renders the planned action graph as Mermaid and DOT and exposes its dependencies", async () => {
   const result = run(["plan", "--format=mermaid"], example)
 
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /^flowchart LR/m)
   assert.match(result.stdout, /step_checkout --> step_check/)
+
+  const json = run(["plan", "--format=json"], example)
+  assert.equal(json.status, 0, json.stderr)
+  const { plan } = JSON.parse(json.stdout) as { plan: CI.WorkflowPlan }
+  const graph = CI.toPlanGraph(plan)
+  const check = Graph.findNode(graph, node => node.id === "check")
+  assert.equal(check._tag, "Some")
+  if (check._tag !== "Some") throw new Error("Missing check action")
+  assert.deepEqual(
+    Array.from(Graph.values(Graph.dfs(graph, { start: [check.value], direction: "incoming" })), node => node.id).sort(),
+    ["check", "checkout"],
+  )
+
+  const dot = run(["plan", "--format=dot"], example)
+  assert.equal(dot.status, 0, dot.stderr)
+  assert.equal(dot.stdout.trim(), CI.formatPlanDot(plan))
+  assert.match(dot.stdout, /^digraph "exported-actions" \{/)
+  assert.match(dot.stdout, /label="checkout"/)
+  assert.match(dot.stdout, /label="check"/)
+  const [, checkoutId] = dot.stdout.match(/"(\d+)" \[label="checkout"\]/) ?? []
+  const [, checkId] = dot.stdout.match(/"(\d+)" \[label="check"\]/) ?? []
+  assert.ok(dot.stdout.includes(`"${checkoutId}" -> "${checkId}" [label="dependency"]`))
+
+  for (const [recipe, edgeKind, label] of [
+    ["optional-checks", "dependency", /format \(optional\)/],
+    ["rollback-compensation", "rollback", /-\. rollback \.->/],
+    ["conditional-deploy", "dependency", /deploy \(conditional\)/],
+  ] as const) {
+    const cwd = fileURLToPath(new URL(`../../../examples/${recipe}/`, import.meta.url))
+    const mermaid = run(["plan", "--format=mermaid"], cwd)
+    assert.equal(mermaid.status, 0, mermaid.stderr)
+    assert.match(mermaid.stdout, label)
+    const dot = run(["plan", "--format=dot"], cwd)
+    assert.equal(dot.status, 0, dot.stderr)
+    assert.ok(dot.stdout.includes(`label="${edgeKind}"`))
+  }
+
+  const advisory = CI.action<void>("a-b", () => () => Effect.void)
+  const required = CI.action<void>("a_b", () => () => Effect.void)
+  const ordering = await CI.runPromise(CI.workflow("ordering", function* () {
+    yield* CI.optional(advisory())
+    yield* required()
+  }), { mode: "plan", output: "silent" })
+  const mermaid = CI.formatPlanMermaid(ordering.plan)
+  assert.match(mermaid, /step_a_b\["a-b \(optional\)"\]/)
+  assert.match(mermaid, /step_a_b_1\["a_b"\]/)
+  assert.match(mermaid, /step_a_b -\.-> step_a_b_1/)
+  assert.match(CI.formatPlanDot(ordering.plan), /label="after"/)
 })
 
 test("an empty ci.ts infers conventional package scripts", () => {
