@@ -1,12 +1,14 @@
 import * as CI from "@effect-ci-testbed/ci";
 import { additionalRunId, detailsUrl, type WorkerEnvironment, type WorkerOptions, type WorkflowParameters } from "@effect-ci-testbed/github-cloudflare/worker";
+import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts";
 import conditionalDeploy from "../../../examples/conditional-deploy/.cloudflare/ci/workflow.ts";
 import executionPolicy from "../../../examples/execution-policy/.cloudflare/ci/workflow.ts";
-import cachePolicy from "../../../examples/cache-policy/.cloudflare/ci/workflow.ts";
 import exportedActions from "../../../examples/exported-actions/.cloudflare/ci/workflow.ts";
 import matrix from "../../../examples/matrix/.cloudflare/ci/workflow.ts";
+import miseToolchain from "../../../examples/mise-toolchain/.cloudflare/ci/workflow.ts";
 import nodeNpm from "../../../examples/node-npm/.cloudflare/ci/workflow.ts";
 import nodePnpm from "../../../examples/node-pnpm/.cloudflare/ci/workflow.ts";
+import nodeVersion from "../../../examples/node-version/.cloudflare/ci/workflow.ts";
 import optionalChecks from "../../../examples/optional-checks/.cloudflare/ci/workflow.ts";
 import packageManagerCache from "../../../examples/package-manager-cache/.cloudflare/ci/workflow.ts";
 import portableArtifacts from "../../../examples/portable-artifacts/.cloudflare/ci/workflow.ts";
@@ -78,6 +80,8 @@ export const hostedExamples: ReadonlyArray<HostedExample> = [
   } },
   { recipe: "vite-plus-cache", workflow: vitePlusCache, cache: "discover" },
   { recipe: "turborepo-cache", workflow: turborepoCache, cache: "discover" },
+  { recipe: "node-version", workflow: nodeVersion },
+  { recipe: "mise-toolchain", workflow: miseToolchain },
 ];
 
 export const projectRoot = (example: HostedExample) => example.root ?? `examples/${example.recipe}`;
