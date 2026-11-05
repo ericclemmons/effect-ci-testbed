@@ -33,3 +33,11 @@ both branches in the plan.
 [Event condition](../../examples/ordered-deploy/.cloudflare/ci/workflow.ts#symbol=workflow "source")
 
 [Conditions](../../examples/conditional-deploy)
+
+## Inspect a plan
+
+Use the existing workflow with `effect-ci plan --format=mermaid` or
+`effect-ci plan --format=dot`. No workflow changes or separate planning function
+are required.
+
+[Plan visualizations](../cli/README.md#plan-visualizations)

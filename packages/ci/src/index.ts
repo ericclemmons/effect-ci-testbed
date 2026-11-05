@@ -2641,41 +2641,6 @@ export const formatPlan = (plan: WorkflowPlan): string => {
   return lines.join("\n")
 }
 
-const mermaidId = (id: string): string =>
-  `step_${id.replaceAll(/[^a-zA-Z0-9_]/g, "_")}`
-
-/** Render the inspectable dependency graph without coupling it to a CI provider UI. */
-export const formatPlanMermaid = (plan: WorkflowPlan): string => {
-  const lines = ["flowchart LR"]
-
-  for (const node of plan.nodes) {
-    const qualifiers = [
-      node.optional ? "optional" : undefined,
-      node.condition ? "conditional" : undefined,
-    ].filter((value): value is string => value !== undefined)
-    const label = qualifiers.length > 0
-      ? `${node.id} (${qualifiers.join(", ")})`
-      : node.id
-    lines.push(`  ${mermaidId(node.id)}[${JSON.stringify(label)}]`)
-  }
-
-  for (const node of plan.nodes) {
-    for (const dependency of node.dependencies) {
-      lines.push(`  ${mermaidId(dependency)} --> ${mermaidId(node.id)}`)
-    }
-    for (const predecessor of node.after) {
-      lines.push(`  ${mermaidId(predecessor)} -.-> ${mermaidId(node.id)}`)
-    }
-    if (node.rollbackFor) {
-      lines.push(
-        `  ${mermaidId(node.rollbackFor)} -. rollback .-> ${mermaidId(node.id)}`,
-      )
-    }
-  }
-
-  return lines.join("\n")
-}
-
 const interpret = <A>(
   workflowDefinition: Workflow<A>,
   mode: WorkflowPlan["mode"],

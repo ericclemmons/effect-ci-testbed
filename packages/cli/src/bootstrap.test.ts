@@ -68,7 +68,7 @@ test("bare CLI and --help describe commands without initializing or executing an
   }
 }))
 
-test("marker-free package supports list and full Mermaid planning without writing or executing", () => fixture(root => {
+test("marker-free package supports list and graph planning without writing or executing", () => fixture(root => {
   const bin = fileURLToPath(new URL("./effect-ci.ts", import.meta.url))
   const listed = spawnSync(process.execPath, [bin, "list", "--agent"], { cwd: root, encoding: "utf8" })
   assert.equal(listed.status, 0, listed.stderr)
@@ -77,6 +77,11 @@ test("marker-free package supports list and full Mermaid planning without writin
   assert.equal(planned.status, 0, planned.stderr)
   assert.match(planned.stdout, /step_checkout --> step_install/)
   assert.match(planned.stdout, /step_install --> step_lint/)
+  const dot = spawnSync(process.execPath, [bin, "plan", "--format=dot"], { cwd: root, encoding: "utf8" })
+  assert.equal(dot.status, 0, dot.stderr)
+  assert.match(dot.stdout, /^digraph "bootstrap-fixture" \{/)
+  assert.match(dot.stdout, /label="lint"/)
+  assert.match(dot.stdout, /label="dependency"/)
   assert.equal(existsSync(join(root, ".cloudflare")), false)
   assert.equal(existsSync(join(root, "checked.txt")), false)
 }))
