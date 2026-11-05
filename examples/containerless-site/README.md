@@ -23,6 +23,17 @@ cf workflows instances create effect-ci-containerless-site-build --body '{"insta
 
 The run returns a revision-specific URL. Older URLs retain their original bytes.
 
+## Run it locally
+
+```sh
+pnpm --filter @effect-ci-testbed/containerless-site dev
+pnpm --filter @effect-ci-testbed/containerless-site exec wrangler workflows trigger effect-ci-containerless-site-build '{"revision":"FULL_40_CHARACTER_COMMIT"}' --local
+```
+
+`wrangler dev` runs the same Worker, Dynamic Worker build, Durable Object and
+Workflow without Docker. The [local configuration](./wrangler.jsonc) verifies the
+revision served at `http://localhost:8787`. It is not a deployment config.
+
 This is a bounded JavaScript template build, not npm installation or arbitrary
 Vite support. [Static Assets](../static-assets-source) uses Cloudflare's Assets
 upload API instead of a Dynamic Worker/DO-backed site.
