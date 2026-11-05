@@ -1,4 +1,4 @@
-export const environments = ["GitHub Actions", "Effect CI Local", "Effect CI GitHub", "Effect CI Hosted"]
+export const environments = ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare"]
 
 // Reuse the maintained coverage catalog's ordering and applicability, never its manual colors.
 export function compatibility(coverage, readmes) {
@@ -31,7 +31,7 @@ export function compatibility(coverage, readmes) {
 export function checkNames(recipe, environment) {
   if (!recipe) return []
   if (environment === "GitHub Actions") return [recipe.startsWith("oidc-") ? `${recipe} / github / live deployment` : `${recipe} / github`]
-  if (environment === "Effect CI Local") return [`${recipe} / local / execute`, `${recipe} / Cloudflare local runtime`]
-  if (environment === "Effect CI GitHub") return [`${recipe} / effect-on-github / execute`]
+  if (environment === "Effect CI (local)") return [`${recipe} / local / execute`, `${recipe} / Cloudflare local runtime`]
+  if (environment === "Effect CI on GitHub Actions") return [`${recipe} / effect-on-github / execute`]
   return [`Cloudflare / ${recipe}`]
 }

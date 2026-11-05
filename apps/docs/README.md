@@ -37,10 +37,12 @@ OIDC deployment token after the static build passes.
 Green ✓ means the mapped check passed; red × means a recorded failure, timeout
 or required action. Missing, skipped, cancelled and neutral checks show a gray
 em dash (—), because they do not establish success or failure. Not-applicable
-cells also show an em dash and do not count toward progress. Local
-Cloudflare runtime checks count as local, and only native `Cloudflare / <recipe>`
-checks from the Effect CI App count as hosted. The page does not infer readiness
-from historical coverage ticks. The hosted column reports evidence for that exact
+cells also show an em dash and do not count toward progress. The columns are
+GitHub Actions, Effect CI (local), Effect CI on GitHub Actions, and Effect CI on
+Cloudflare. Local Cloudflare runtime checks count as Effect CI (local), and only
+native `Cloudflare / <recipe>` checks from the Effect CI App count as Effect CI on
+Cloudflare. The page does not infer readiness from historical coverage ticks. The
+Effect CI on Cloudflare column reports evidence for that exact
 commit, not whether a recipe is supported. For example, npm and pnpm workflows
 can run remotely even when that snapshot has no matching native check. Checks
 labeled `GitHub Actions / <recipe>` do not establish Cloudflare execution, even
