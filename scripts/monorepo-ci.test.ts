@@ -44,6 +44,23 @@ test("normal main push performs CD for platform apps, never tutorial, repair or 
   assert.ok(commands.every(c => !/scripts\/deploy|access-only|secret/.test(c.command)));
 });
 
+test("platform deployments get the full Workflows step budget for slow image preparation", async () => {
+  const budgets = new Map<string, unknown>();
+  await CI.runPromise(workflow, {
+    output: "silent",
+    event: { type: "push", ref: "refs/heads/main" },
+    source: { checkout: () => Effect.succeed(CI.Workspace.local("/repo")) },
+    executor: { execute: input => {
+      if (input.command === "./node_modules/.bin/cf deploy --prebuilt") budgets.set(input.stepId, input.options?.timeout);
+      return Effect.succeed({ exitCode: 0, stdout: "", stderr: "" });
+    } },
+  });
+  // A single Cloudflare image preparation took 11 minutes and timed out a
+  // 15-minute deploy. 30 minutes is the native Workflows step maximum.
+  assert.deepEqual(Object.fromEntries(budgets),
+    Object.fromEntries(platformApps.map(app => [`deploy ${app}`, "30 minutes"])));
+});
+
 test("failed trigger registration prevents rollout and every later app", async () => {
   const { commands, run } = await capture(workflow,
     "./node_modules/.bin/cf workers triggers deploy --prebuilt", { type: "push", ref: "refs/heads/main" });

@@ -48,7 +48,11 @@ const deployments = platformApps.map(app => CI.action(`deploy ${app}`, function*
     yield* workspace.exec("./node_modules/.bin/cf workers triggers deploy --prebuilt");
     return yield* workspace.exec("./node_modules/.bin/cf deploy --prebuilt");
   };
-}, { timeout: "15 minutes", retries: { limit: 0, delay: "1 second" } }));
+  // effect-ci pushes five fresh container images; Cloudflare prepares each one
+  // before the Worker upload. A deploy normally takes ~8.5 minutes, but one
+  // image preparation alone has taken 11 minutes. 30 minutes is the Workflows
+  // step maximum: https://developers.cloudflare.com/workflows/build/rules-of-workflows/#limit-timeouts-to-30-minutes-or-less
+}, { timeout: "30 minutes", retries: { limit: 0, delay: "1 second" } }));
 
 export const deploy = CI.action<void>("deploy", function* () {
   yield* validate();
