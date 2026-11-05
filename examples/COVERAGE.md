@@ -41,9 +41,9 @@ Change where inputs come from without changing actions; publish outputs separate
 | --- | :---: | :---: | :---: | :---: |
 | [Checkout from local files or Git](./source-providers) | — | ✅ | — | — |
 | [Checkout from GitLab](./gitlab-source) | — | ✅ | ✅ | ✅ |
-| [Checkout from R2](./r2-source) | 🔜 | ✅ | ✅ | ✅ |
+| [Checkout from R2](./r2-source) | — | ✅ | ✅ | ✅ |
 | [Checkout from Cloudflare Artifacts](./artifacts-source) | — | ✅ | ✅ | ✅ |
-| [Checkout from a Durable Object](./durable-object-source) | 🔜 | ✅ | ✅ | ✅ |
+| [Checkout from a Durable Object](./durable-object-source) | — | ✅ | ✅ | ✅ |
 | [Share build artifacts between jobs](./portable-artifacts) | ✅ | ✅ | ✅ | ✅ |
 
 ### Toolchains and container images
@@ -80,7 +80,7 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | --- | :---: | :---: | :---: | :---: |
 | [Run a group of actions only when a condition matches](./ordered-deploy#condition-the-whole-group) | ✅ | ✅ | ✅ | 🔜 |
 | [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ |
-| [Deploy only changed build output](./deploy-changed-output) | 🔜 | ✅ | — | 🔜 |
+| [Deploy only changed build output](./deploy-changed-output) | ✅ | ✅ | — | 🔜 |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ |
 | [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ |
@@ -102,9 +102,9 @@ Keep download caches, task caches, workspace checkpoints, and signed commit evid
 | [Cache tasks with Vite+](./vite-plus-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Cache tasks with Turborepo](./turborepo-cache) | ✅ | ✅ | ✅ | ✅ |
 | [Customize or disable caching](./cache-policy) | ✅ | ✅ | ✅ | ✅ |
-| [Reuse verified checks for a commit](./verification-evidence) | 🔜 | ✅ | ✅ | 🔜 |
+| [Reuse verified checks for a commit](./verification-evidence) | ✅ | ✅ | ✅ | 🔜 |
 | [Rerun only affected checks](./dependency-aware-reruns) | ✅ | ✅ | ✅ | 🔜 |
-| [Keep rerun history and reuse passed steps](./immutable-attempts) | 🔜 | ✅ | ✅ | 🔜 |
+| [Keep rerun history and reuse passed steps](./immutable-attempts) | ✅ | ✅ | ✅ | 🔜 |
 
 ### Secrets and outbound authentication
 
@@ -140,7 +140,7 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 | [Build or publish static files without a container](./static-assets-source) | — | — | — | ✅ · containerless |
 | [Build and serve a static site without a container](./containerless-site) | — | ✅ | — | ✅ · containerless |
 | [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | 🔜 |
-| [Migrate D1 before deploying a Worker](./d1-migration) | 🔜 | ✅ | ✅ | 🔜 |
+| [Migrate D1 before deploying a Worker](./d1-migration) | ✅ | ✅ | ✅ | 🔜 |
 | [Recover from a deploy failure after migration](./d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 |
 | [Roll out a Worker with health checks](./health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 |
 | [Review a rollout when health is uncertain](./health-mediated-approval) | — | 🔜 | — | 🔜 |

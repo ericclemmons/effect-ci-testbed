@@ -133,6 +133,13 @@ jobs:
           - deploy-hook
           - dependency-aware-reruns
           - workers-deploy
+          - workspace
+          - deploy-changed-output
+          - turbo-ci
+          - verification-evidence
+          - immutable-attempts
+          - hitl-deploy
+          - d1-migration
     steps:
       - uses: actions/checkout@v7
 
@@ -152,7 +159,7 @@ jobs:
       - name: Run examples/${{ matrix.example }}/.github/workflows/github.yml
         env:
           EXAMPLE: ${{ matrix.example }}
-          ACT_EVENT: ${{ matrix.example == 'deploy-hook' && 'workflow_dispatch' || 'pull_request' }}
+          ACT_EVENT: ${{ contains(fromJSON('["deploy-hook", "hitl-deploy"]'), matrix.example) && 'workflow_dispatch' || 'pull_request' }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           example_root="$RUNNER_TEMP/examples/$EXAMPLE"

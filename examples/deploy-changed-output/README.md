@@ -22,4 +22,8 @@ This example copies `dist` to a local directory. The
 bytes, executable bits, and destination configuration. Failed builds or
 publication do not advance the last-successful baseline.
 
+The [GitHub Actions comparison](./.github/workflows/github.yml) has no deployment
+baseline, so it keys a cache entry on the built output's hash. That records that
+an output deployed once, not what is deployed now.
+
 [Workflow](./.cloudflare/ci/workflow.ts) · [Vite+ build caching](../vite-plus-cache)

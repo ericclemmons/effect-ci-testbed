@@ -77,6 +77,9 @@ dependent builds/checks invalidate through the native graph. The command writes
 a native run summary under `app/.turbo/runs` and stores its cache under
 `app/.effect-ci/turbo/cache`.
 
+The [GitHub Actions comparison](./.github/workflows/github.yml) runs the same
+command and persists Turbo's cache with `actions/cache`.
+
 To run the same command through Effect CI:
 
 ```sh
