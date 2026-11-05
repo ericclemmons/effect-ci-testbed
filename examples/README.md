@@ -105,6 +105,7 @@ Each example starts with `cd examples/...`. The CLI discovers its workflow there
 - [Choose a runner](./runner-selection)
 - [Customize caching](./cache-policy)
 - [Customize the runner image](./custom-runner-image)
+- [Deploy a Worker](./workers-deploy)
 - [Deploy in order](./ordered-deploy)
 - [Deploy with cf OIDC](./oidc-cf)
 - [Deploy with Wrangler OIDC](./oidc-wrangler)
