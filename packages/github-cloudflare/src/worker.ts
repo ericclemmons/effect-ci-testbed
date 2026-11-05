@@ -13,11 +13,37 @@ export interface GitHubWorkflowParameters {
   readonly summaryCheckId: number
   /** Trusted host-selected dashboard link, never copied from webhook content. */
   readonly detailsUrl?: string
+  /** Trusted host-selected project directory, never copied from webhook content. */
+  readonly project?: RemoteProject
 }
 
-interface RemoteProject {
+export interface RemoteProject {
   readonly root: string
   readonly workflow?: string
+}
+
+/** One extra, independent run for the same signed check suite. */
+export interface GitHubAdditionalRun {
+  /** Stable suffix; the instance is `additionalRunId(deliveryId, key)`. */
+  readonly key: string
+  readonly workflow: Workflow<WorkflowParameters>
+  /** Initial check name. The reporter renames it to `Cloudflare / <workflow id>` when started. */
+  readonly checkName: string
+  readonly project?: RemoteProject
+  readonly detailsUrl?: string
+}
+
+export const additionalRunId = (deliveryId: string, key: string): string => `${deliveryId}-${key}`
+
+const relativeProjectPath = (value: unknown): value is string => typeof value === "string" &&
+  value.length <= 1024 && /^[a-zA-Z0-9_@./-]+$/.test(value) &&
+  value.split("/").every(part => part !== "" && part !== "." && part !== "..")
+
+const validProject = (project: unknown): project is RemoteProject => {
+  if (!project || typeof project !== "object" || Array.isArray(project)) return false
+  const selected = project as Record<string, unknown>
+  return (selected.root === "." || relativeProjectPath(selected.root)) &&
+    (selected.workflow === undefined || selected.workflow === "." || relativeProjectPath(selected.workflow))
 }
 
 export interface RemoteWorkflowParameters {
@@ -81,6 +107,12 @@ export interface WorkerOptions {
    * undefined keeps the default workflow for hosts without explicit enrollment. */
   readonly githubRun?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
     { readonly workflow: Workflow<WorkflowParameters>; readonly detailsUrl?: string } | false | undefined
+  /** Additional host-enrolled runs for each signed check suite, independent of
+   * `githubRun`. Each gets its own summary check and Workflow instance. A
+   * selection, check or start failure is isolated to that run; the primary
+   * run's dispatch and response are unchanged. */
+  readonly githubCheckSuiteRuns?: (identity: Omit<GitHubWorkflowParameters, "summaryCheckId" | "detailsUrl">, environment: WorkerEnvironment, context: ExecutionContext | undefined) =>
+    ReadonlyArray<GitHubAdditionalRun>
   readonly workflow?: (
     environment: WorkerEnvironment,
     context: ExecutionContext | undefined,
@@ -226,14 +258,9 @@ const readRemoteRun = async (request: Request): Promise<(RemoteRunRequest & { re
   if (record.target !== undefined && typeof record.target !== "string") return undefined
   let project: RemoteProject | undefined
   if (record.project !== undefined) {
-    if (!record.project || typeof record.project !== "object" || Array.isArray(record.project)) return undefined
-    const selected = record.project as Record<string, unknown>
-    const relativePath = (value: unknown): value is string => typeof value === "string" &&
-      value.length <= 1024 && /^[a-zA-Z0-9_@./-]+$/.test(value) &&
-      value.split("/").every(part => part !== "" && part !== "." && part !== "..")
-    if (selected.root !== "." && !relativePath(selected.root)) return undefined
-    if (selected.workflow !== undefined && selected.workflow !== "." && !relativePath(selected.workflow)) return undefined
-    project = { root: selected.root as string,
+    if (!validProject(record.project)) return undefined
+    const selected = record.project
+    project = { root: selected.root,
       ...(selected.workflow === undefined ? {} : { workflow: selected.workflow as string }) }
   }
   let selection: ReadonlyArray<string> | undefined
@@ -374,6 +401,26 @@ const resolveApproval = async (
   return new Response(`Release ${decision}. You can close this tab.`, {
     headers: { "content-type": "text/plain; charset=utf-8" },
   })
+}
+
+const assertDetailsUrl = (value: string) => {
+  const url = new URL(value)
+  if (url.protocol !== "https:" || url.username || url.password) throw new Error("Invalid host workflow details URL")
+}
+
+const validAdditionalRuns = (runs: ReadonlyArray<GitHubAdditionalRun>): ReadonlyArray<GitHubAdditionalRun> => {
+  // Each run is a separate instance, check and set of containers: keep the fan-out small.
+  if (!Array.isArray(runs) || runs.length > 16) throw new Error("Invalid additional check-suite runs")
+  const keys = new Set<string>()
+  for (const run of runs) {
+    // `${uuid}-${key}` stays within 64 characters and native instance ID syntax.
+    if (!/^[a-z0-9][a-z0-9-]{0,26}$/.test(run.key) || keys.has(run.key) || !run.workflow ||
+        typeof run.checkName !== "string" || !run.checkName.trim() || run.checkName.length > 128 ||
+        /[\x00-\x1f\x7f]/.test(run.checkName) || (run.project !== undefined && !validProject(run.project)))
+      throw new Error("Invalid additional check-suite run")
+    keys.add(run.key)
+  }
+  return runs
 }
 
 export const worker = (options: WorkerOptions = {}) => {
@@ -576,57 +623,106 @@ export const worker = (options: WorkerOptions = {}) => {
         return Response.json({ accepted: false, reason: "ignored event" }, { status: 202 })
       }
 
-      if (selection === false || event === "push" && selection === undefined) {
-        return Response.json({ accepted: false, reason: "workflow not enrolled" }, { status: 202 })
+      // Select extra runs before the primary dispatch, but never let a host
+      // selection bug decline or delay the primary run.
+      let additional: ReadonlyArray<GitHubAdditionalRun> = []
+      if (event === "check_suite" && options.githubCheckSuiteRuns) {
+        try { additional = validAdditionalRuns(options.githubCheckSuiteRuns(identity, environment, context)) }
+        catch { console.error("Additional check-suite run selection failed; primary dispatch continues") }
       }
-      const selectedWorkflow = selection?.workflow ?? workflow
-      const checkDetailsUrl = selection?.detailsUrl ?? detailsUrl(environment.EFFECT_CI_DETAILS_URL, deliveryId)
-      if (checkDetailsUrl) {
-        const url = new URL(checkDetailsUrl)
-        if (url.protocol !== "https:" || url.username || url.password) throw new Error("Invalid host workflow details URL")
-      }
-      if (await existingInstance(selectedWorkflow, deliveryId)) {
-        return Response.json({ accepted: true, duplicate: true, instanceId: deliveryId }, { status: 202 })
-      }
+      let installationToken: Promise<string> | undefined
+      const token = () => installationToken ??= github.createInstallationToken(credentials(environment), identity.installationId)
 
-      const token = await github.createInstallationToken(
-        credentials(environment),
-        identity.installationId,
-      )
-      const check = await github.createCheck({
-        token,
-        repository: identity.repositoryName,
-        sha: identity.revision,
-        name: "Effect CI / Cloudflare",
-        title: "Effect CI is queued on Cloudflare",
-        summary: "A native Cloudflare Workflow has been requested for this commit.",
-        status: "queued",
-        externalId: deliveryId,
-        ...(checkDetailsUrl ? { detailsUrl: checkDetailsUrl } : {}),
-      })
+      const primary = async (): Promise<Record<string, unknown>> => {
+        if (selection === false || event === "push" && selection === undefined) {
+          return { accepted: false, reason: "workflow not enrolled" }
+        }
+        const selectedWorkflow = selection?.workflow ?? workflow
+        const checkDetailsUrl = selection?.detailsUrl ?? detailsUrl(environment.EFFECT_CI_DETAILS_URL, deliveryId)
+        if (checkDetailsUrl) assertDetailsUrl(checkDetailsUrl)
+        if (await existingInstance(selectedWorkflow, deliveryId)) {
+          return { accepted: true, duplicate: true, instanceId: deliveryId }
+        }
 
-      try {
-        await selectedWorkflow.create({
-          id: deliveryId,
-          params: {
-            ...identity,
-            ...(selection?.detailsUrl ? { detailsUrl: selection.detailsUrl } : {}),
-            summaryCheckId: check.id,
-          },
-        })
-      } catch (error) {
-        await github.updateCheck({
-          token,
+        const installation = await token()
+        const check = await github.createCheck({
+          token: installation,
           repository: identity.repositoryName,
-          checkId: check.id,
-          title: "Effect CI failed to start on Cloudflare",
-          summary: error instanceof Error ? error.message : String(error),
-          conclusion: "failure",
+          sha: identity.revision,
+          name: "Effect CI / Cloudflare",
+          title: "Effect CI is queued on Cloudflare",
+          summary: "A native Cloudflare Workflow has been requested for this commit.",
+          status: "queued",
+          externalId: deliveryId,
+          ...(checkDetailsUrl ? { detailsUrl: checkDetailsUrl } : {}),
         })
-        throw error
+
+        try {
+          await selectedWorkflow.create({
+            id: deliveryId,
+            params: {
+              ...identity,
+              ...(selection?.detailsUrl ? { detailsUrl: selection.detailsUrl } : {}),
+              summaryCheckId: check.id,
+            },
+          })
+        } catch (error) {
+          await github.updateCheck({
+            token: installation,
+            repository: identity.repositoryName,
+            checkId: check.id,
+            title: "Effect CI failed to start on Cloudflare",
+            summary: error instanceof Error ? error.message : String(error),
+            conclusion: "failure",
+          })
+          throw error
+        }
+
+        return { accepted: true, instanceId: deliveryId }
       }
 
-      return Response.json({ accepted: true, instanceId: deliveryId }, { status: 202 })
+      const startAdditional = async (run: GitHubAdditionalRun) => {
+        const instanceId = additionalRunId(deliveryId, run.key)
+        if (await existingInstance(run.workflow, instanceId)) return { key: run.key, accepted: true, duplicate: true, instanceId }
+        const checkDetailsUrl = run.detailsUrl ?? detailsUrl(environment.EFFECT_CI_DETAILS_URL, instanceId)
+        if (checkDetailsUrl) assertDetailsUrl(checkDetailsUrl)
+        const installation = await token()
+        const check = await github.createCheck({
+          token: installation, repository: identity.repositoryName, sha: identity.revision,
+          name: run.checkName, title: `${run.key} is queued on Cloudflare`,
+          summary: "A native Cloudflare Workflow has been requested for this commit.",
+          status: "queued", externalId: instanceId,
+          ...(checkDetailsUrl ? { detailsUrl: checkDetailsUrl } : {}),
+        })
+        try {
+          await run.workflow.create({ id: instanceId, params: {
+            ...identity,
+            ...(run.project ? { project: run.project } : {}),
+            ...(run.detailsUrl ? { detailsUrl: run.detailsUrl } : {}),
+            summaryCheckId: check.id,
+          } })
+        } catch (error) {
+          await github.updateCheck({ token: installation, repository: identity.repositoryName, checkId: check.id,
+            title: `${run.key} failed to start on Cloudflare`,
+            summary: "The native Cloudflare Workflow could not be created.", conclusion: "failure" })
+          throw error
+        }
+        return { key: run.key, accepted: true, instanceId }
+      }
+
+      let primaryBody: Record<string, unknown>
+      let results: ReadonlyArray<Record<string, unknown>> = []
+      try {
+        primaryBody = await primary()
+      } finally {
+        // Additional runs never replace the primary outcome: each failure stays on its own check.
+        results = await Promise.all(additional.map(run => startAdditional(run).catch(() => {
+          console.error(`Additional check-suite run ${run.key} failed to start`)
+          return { key: run.key, accepted: false, reason: "failed to start" }
+        })))
+      }
+
+      return Response.json(results.length ? { ...primaryBody, additional: results } : primaryBody, { status: 202 })
     },
   }) satisfies ExportedHandler<WorkerEnvironment>
 }

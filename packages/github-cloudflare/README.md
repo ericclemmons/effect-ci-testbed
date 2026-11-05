@@ -1,5 +1,25 @@
 # Hosted workflow continuation
 
+## Additional check-suite runs
+
+`worker({ githubCheckSuiteRuns })` starts extra, host-enrolled Workflows for the
+same signed check suite, beside the run `githubRun` selects. Each run declares a
+stable `key`, a Workflow binding, its initial check name and an optional
+`project` directory. It gets its own queued check and the instance
+`additionalRunId(deliveryId, key)`; redelivery is deduplicated per run. A selection
+error, check failure or start failure is isolated to that run. The primary run's
+dispatch and response are unchanged except for an `additional` result list.
+
+Pair it with `workflowEntrypoint(definition, { root: parameters => ... })` to run
+from the host-selected `project.root`. The project is chosen by trusted host code,
+never copied from webhook content.
+
+[Additional run contract](./src/worker.ts#symbol=GitHubAdditionalRun "source")
+
+```sh
+node --test packages/github-cloudflare/src/github-routing.test.ts
+```
+
 ## Task-cache transport
 
 Both native workflow adapters preserve conventional Vite+, Turbo and package
