@@ -44,7 +44,8 @@ export function sidebar() {
   }
   return [
     { label: "Getting started", items: [
-      { label: "Features", link: "/" },
+      { label: "How it works", link: "/" },
+      { label: "Features", link: href("examples/features") },
       { label: "Walkthrough", link: href("walkthrough") },
     ] },
     { label: "Guides", items: [

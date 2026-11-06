@@ -19,7 +19,16 @@ The loader resolves repository links and source snippets before Nimbus renders
 them, so HTML, search, and Markdown exports share the same content. The committed
 `nimbus.json` records the reviewed starter version; `.nimbus/` is a generated cache.
 
-The homepage is a static feature compatibility matrix. Rows and applicability
+The homepage is an interactive "How it works" explainer. Pick where the graph runs
+and what changed, and it replays the walkthrough's real output: cache hits,
+Markdown-only skips, and the local approval gate. Scenarios live in
+`src/explainer.mjs`. The default scenario is rendered into the HTML, so the page
+works without JavaScript.
+
+[Explainer scenarios](./src/explainer.mjs "source")
+
+`/examples/features/` (`examples/FEATURES.md`) is a static feature compatibility
+matrix. Rows and applicability
 come from `examples/COVERAGE.md`; new example directories are included automatically.
 Colors come from a completed GitHub check snapshot for one `main` commit. The
 commit link and UTC capture time identify the evidence. The browser makes no
