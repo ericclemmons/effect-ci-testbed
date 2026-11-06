@@ -6,6 +6,28 @@ Terminal output is excerpted; hosted examples are illustrative. `<…>` values v
 - [ ] Inspect, cache, and run the build on Cloudflare.
 - [ ] Write `ci.ts`; skip Markdown-only changes and unchanged output.
 - [ ] Deploy with OIDC; notify Slack and gate publication.
+- [ ] Lint while you build; publish only from `main`.
+
+## How a run works
+
+An event starts every run. A push, pull request or manual dispatch reaches the
+host, which runs your workflow with that event. The workflow asks for
+capabilities with `yield*`, such as `CI.Source`, `CI.Approval` and
+`CI.WorkflowEvent`, and the host provides them. Your machine, GitHub Actions and
+a Cloudflare host each provide their own versions, so the same `ci.ts` runs on all
+three.
+
+```mermaid
+flowchart TD
+  event["Event<br/>push · pull_request · workflow_dispatch"] --> workflow["CI.workflow in ci.ts"]
+  workflow --> actions["Actions<br/>checkout → install → lint + build → publish"]
+  host["Host: your machine, GitHub Actions or Cloudflare<br/>provides CI.Source, CI.Approval, CI.WorkflowEvent, caches"] -. yield* .-> actions
+  actions --> result["Check, receipt and exit code"]
+```
+
+The steps below provide each capability locally first: `EFFECT_CI_APPROVAL`
+answers `CI.Approval`, `EFFECT_CI_EVENT` and `GITHUB_REF` describe the event, and
+the [source providers recipe](../source-providers) swaps `CI.Source`.
 
 ## 1. Make the CLI available
 
@@ -560,3 +582,99 @@ Live Slack buttons require a host approval adapter with an authorized reviewer
 list and verified callbacks. Generic repository runs on this host do not have
 that adapter. The webhook above only sends notifications; the local environment
 switch previews the gate.
+
+## 13. Lint while you build
+
+1. Add a lint check and run it beside the build:
+
+   [`.cloudflare/ci/ci.ts`](./tutorial/parallel.diff "source")
+
+2. Inspect the graph. Lint and build both wait only for install, and publication
+   waits for both:
+
+   ```console frame="terminal"
+   $ effect-ci plan
+   …
+   ○ install depends on checkout
+   ○ build depends on install
+   ○ lint depends on install
+   ○ publish local site depends on build, lint
+   ```
+
+3. Change the API response, then run. Both commands start together:
+
+   ```console frame="terminal"
+   $ EFFECT_CI_APPROVAL=approved effect-ci run --local
+   …
+   ✓ build depends on install
+
+   ✓ lint depends on install
+
+   ✓ publish local site depends on build, lint
+   ```
+
+4. Introduce a lint error, change the API response again and run:
+
+   ```console frame="terminal"
+   $ EFFECT_CI_APPROVAL=approved effect-ci run --local
+   …
+   Error [CI_COMMAND_FAILED]: Command failed (1): pnpm exec vp lint
+
+   $ echo $?
+   1
+   ```
+
+   Fix the lint error before continuing.
+
+- [ ] Lint and build run at the same time; install runs once.
+- [ ] A lint failure blocks publication.
+
+`lint` is a `CI.check`. A trusted host can skip a check that already passed for the
+same commit; see [reuse verified checks](../verification-evidence).
+
+## 14. Publish only from main
+
+The event that started the run is available to the workflow. `CI.when` records the
+condition in the plan, so you can see it before anything runs. For a runtime-only
+decision, read the event directly with `yield* CI.WorkflowEvent`.
+
+1. Publish only for pushes to `main`:
+
+   [`.cloudflare/ci/ci.ts`](./tutorial/event.diff "source")
+
+2. Inspect the condition:
+
+   ```console frame="terminal"
+   $ effect-ci plan
+   …
+   ○ publish local site depends on build, lint
+     if: event in [push] and ref in [refs/heads/main]
+     approval: Publish the walkthrough?
+   ```
+
+3. Change the API response. Simulate a push to a feature branch, then to `main`:
+
+   ```console frame="terminal"
+   $ EFFECT_CI_EVENT=push GITHUB_REF=refs/heads/feat/github-checks EFFECT_CI_APPROVAL=approved effect-ci run --local
+   …
+   ✓ lint depends on install
+
+   – publish local site depends on build, lint
+     if: event in [push] and ref in [refs/heads/main]
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <receipt-hash>  .effect-ci/deployed-site/current.json
+
+   $ EFFECT_CI_EVENT=push GITHUB_REF=refs/heads/main EFFECT_CI_APPROVAL=approved effect-ci run --local
+   …
+   ✓ publish local site depends on build, lint
+
+   $ shasum .effect-ci/deployed-site/current.json
+   <new-receipt-hash>  .effect-ci/deployed-site/current.json
+   ```
+
+- [ ] A feature-branch push builds and lints but does not publish.
+- [ ] A push to `main` publishes.
+
+On GitHub Actions, the runner sets `GITHUB_EVENT_NAME` and `GITHUB_REF`, so no
+variables are needed. Local runs without them skip publication.
