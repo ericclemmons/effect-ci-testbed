@@ -642,7 +642,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [node-npm, node-pnpm]
+        example: [node-npm, node-pnpm, matrix, optional-checks, snapshot-fanout]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

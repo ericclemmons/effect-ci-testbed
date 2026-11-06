@@ -82,14 +82,14 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ | — |
 | [Deploy only changed build output](./deploy-changed-output) | ✅ | ✅ | — | 🔜 | — |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ | — |
-| [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ | — |
+| [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ | — |
 | [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ | — |
 | [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ | — |
-| [Run every combination in a matrix](./matrix) | ✅ | ✅ | ✅ | ✅ | — |
+| [Run every combination in a matrix](./matrix) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ | — |
 | [Balance test shards using recorded timings](./timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ | — |
-| [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ | — |
+| [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | ✅ | 🔜 | — |
 | [Self-merge safe changes](./small-change) | — | ✅ | 🔜 | 🔜 | — |
 
