@@ -18,6 +18,26 @@ depends on test, which depends on lint. Shared installation runs once.
 Compare the [Effect workflow](./.cloudflare/ci/workflow.ts) with
 [GitHub Actions YAML](./.github/workflows/github.yml).
 
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs the same install, lint,
+test, and build with Cloudflare Workflows `step.runner()` (internal preview,
+allowlisted accounts only). It is a separate comparison, like the GitHub Actions
+YAML, and does not use Effect CI.
+
+cf ci reads the pipeline from the deployed Worker, not from the pushed commit.
+[`scripts/cf-ci.mjs`](../../scripts/cf-ci.mjs) deploys this directory's
+pipeline with `cf deploy`, tagged with the source commit, waits for the new
+Workflow version, pushes the recipe to the `cf-ci/node-npm` Artifacts repo, and
+fails unless the started run used that version and every check passed:
+
+```sh
+(cd examples/node-npm/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs node-npm
+```
+
+## Hosted runner
+
 Use the same workflow on your configured hosted runner with
 `effect-ci run --remote --workflow examples/node-npm/.cloudflare/ci/workflow.ts`
 from the repository root. No recipe-specific deployment is required. Remote

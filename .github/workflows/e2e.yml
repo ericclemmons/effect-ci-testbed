@@ -630,6 +630,32 @@ jobs:
       environment: ${{ matrix.environment || '' }}
     secrets: inherit
 
+  cf-ci:
+    name: ${{ matrix.example }} / cf-ci / execute
+    # Fork PRs get no secrets. Same-repository PRs deploy the recipe's pipeline.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    # Each recipe has one deployed pipeline; overlapping runs would replace each other's version.
+    concurrency:
+      group: cf-ci-${{ matrix.example }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [node-npm]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+        working-directory: examples/${{ matrix.example }}/.cloudflare/cf-ci
+      - run: node scripts/cf-ci.mjs ${{ matrix.example }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
   hitl-deploy:
     name: hitl-deploy / local / ${{ matrix.mode }}
     runs-on: ubuntu-latest
