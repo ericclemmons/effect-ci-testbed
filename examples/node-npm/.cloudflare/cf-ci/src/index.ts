@@ -44,23 +44,20 @@ export class CI extends WorkflowEntrypoint<Env> {
 		if (repoCharm === null) throw new Error('checkout saved no repo');
 
 		const npm = { NPM_CONFIG_UPDATE_NOTIFIER: 'false' };
-		const install = await step.runner('install', {
+		// node-npm has no dependencies, so npm ci creates no node_modules to hand to the checks.
+		await step.runner('install', {
 			image,
 			inputs: [repoCharm],
 			env: npm,
-			// npm ci creates no node_modules for a project without dependencies, and a missing output fails the step.
-			command: 'cd repo && npm ci && mkdir -p node_modules',
-			outputs: { modules: 'repo/node_modules' },
+			command: 'cd repo && npm ci',
 		});
-		const modules = install.outputs.modules;
-		if (modules === null) throw new Error('install saved no node_modules');
 
 		const names = Object.keys(CHECKS);
 		const results = await Promise.all(
 			names.map((name) =>
 				step.runner(name, {
 					image,
-					inputs: [repoCharm, modules],
+					inputs: [repoCharm],
 					env: npm,
 					command: `cd repo && ${CHECKS[name]}`,
 					allowFailure: true,
