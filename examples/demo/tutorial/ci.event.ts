@@ -62,10 +62,7 @@ export default CI.workflow("walkthrough", function* () {
   const workspace = yield* build();
   if (!(yield* workspace.changed(".cloudflare/output/**"))) return;
   return yield* CI.when(
-    CI.Condition.all(
-      CI.Condition.event("push"),
-      CI.Condition.ref("refs/heads/main"),
-    ),
+    CI.Condition.all(CI.Condition.event("push"), CI.Condition.ref("refs/heads/main")),
     deploy(),
   );
 });
