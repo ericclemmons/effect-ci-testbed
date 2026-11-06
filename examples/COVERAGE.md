@@ -25,8 +25,8 @@ Start with a conventional pipeline: install with npm or pnpm, pick a Node.js ver
 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| [Run CI with npm](./node-npm) | ✅ | ✅ | ✅ | ✅ | — |
-| [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ | — |
+| [Run CI with npm](./node-npm) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ | — |
 | [Cache dependency downloads](./package-manager-cache) | ✅ | ✅ | ✅ | ✅ | — |
 | [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ | — |
