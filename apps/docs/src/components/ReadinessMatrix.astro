@@ -32,7 +32,7 @@ const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").r
   <p>Every example, across the places it should work.</p>
   <div class="summary" data-summary>{passed} / {cells.length} passing · {Math.round(passed / cells.length * 100)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
   <progress max={cells.length} value={passed} aria-label="Passing feature and environment combinations"></progress>
-  <p class="note">Last completed main snapshot. ✓ passed; × failed; — no conclusive result or not applicable. Missing evidence does not mean unsupported. Effect CI (local) includes local Cloudflare runtime execution; Effect CI on Cloudflare requires a native Cloudflare check. cf ci is a planned Cloudflare CI product with no runner yet. Click a square for its evidence.</p>
+  <p class="note">Last completed main snapshot. ✓ passed; × failed; — no conclusive result or not applicable. Missing evidence does not mean unsupported. Effect CI (local) includes local Cloudflare runtime execution; Effect CI on Cloudflare requires a native Cloudflare check. cf ci runs a recipe's own Workflows step.runner() pipeline (internal preview). Click a square for its evidence.</p>
   <div class="matrix-scroll" tabindex="0" role="region" aria-label="Feature compatibility matrix">
     <table class="readiness-table">
       <caption class="sr-only">Feature compatibility on main, grouped by recipe</caption>

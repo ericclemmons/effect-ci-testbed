@@ -39,7 +39,15 @@ async function api(method, path, body) {
   return json.result
 }
 
-const latestWorkflowVersion = () => cfJson(["workflows", "versions", "list", "--workflow-name", workflow])[0]?.id
+function latestWorkflowVersion() {
+  try {
+    return cfJson(["workflows", "versions", "list", "--workflow-name", workflow])[0]?.id
+  } catch (error) {
+    // The first deploy of a recipe creates its Workflow.
+    if (String(error.stderr).includes("workflow.not_found")) return undefined
+    throw error
+  }
+}
 
 async function deploy() {
   const before = latestWorkflowVersion()
@@ -105,6 +113,14 @@ async function findInstance(commit, since) {
   throw new Error(`no Workflow instance started for pushed commit ${commit}`)
 }
 
+function terminate(id) {
+  try {
+    cf(["workflows", "instances", "terminate", id, "--workflow-name", workflow, "--status", "terminate", "--force"])
+  } catch (error) {
+    log(`could not terminate ${id}: ${String(error.stderr).trim()}`)
+  }
+}
+
 async function waitForResult(id) {
   const deadline = Date.now() + 10 * 60_000
   while (Date.now() < deadline) {
@@ -112,7 +128,7 @@ async function waitForResult(id) {
     if (["complete", "errored", "terminated"].includes(details.status)) return details
     await sleep(5000)
   }
-  cf(["workflows", "instances", "terminate", id, "--workflow-name", workflow, "--force"])
+  terminate(id)
   throw new Error(`instance ${id} did not finish within 10 minutes; terminated it`)
 }
 
@@ -133,7 +149,7 @@ for (let attempt = 1; attempt <= 4 && !instance; attempt++) {
   }
   // A push shortly after a deploy can still start the previous Workflow version.
   log(`instance ${found.id} ran stale version ${found.version_id}; expected ${expectedVersion}. Retrying.`)
-  cf(["workflows", "instances", "terminate", found.id, "--workflow-name", workflow, "--force"])
+  terminate(found.id)
   await sleep(15_000)
 }
 if (!instance) throw new Error(`every push started a stale Workflow version instead of ${expectedVersion}`)
@@ -141,11 +157,13 @@ if (!instance) throw new Error(`every push started a stale Workflow version inst
 log(`waiting for instance ${instance.id}`)
 const result = await waitForResult(instance.id)
 const output = result.output ?? {}
+const label = (name, check) => `${name}${check.optional ? " (optional)" : ""}`
+const status = (check) => check.skipped ? "⏭️ skipped" : `${check.exitCode === 0 ? "✅" : "❌"} ${check.exitCode}`
 for (const [name, check] of Object.entries(output.checks ?? {})) {
-  console.log(`\n=== ${name} (exit ${check.exitCode}) ===\n${check.log}`)
+  console.log(`\n=== ${label(name, check)}: ${status(check)} ===\n${check.log}`)
 }
 if (process.env.GITHUB_STEP_SUMMARY) {
-  const rows = Object.entries(output.checks ?? {}).map(([name, check]) => `| ${name} | ${check.exitCode === 0 ? "✅" : "❌"} ${check.exitCode} |`)
+  const rows = Object.entries(output.checks ?? {}).map(([name, check]) => `| ${label(name, check)} | ${status(check)} |`)
   writeFileSync(process.env.GITHUB_STEP_SUMMARY, [`### cf ci: ${recipe}`, `Instance \`${instance.id}\`, status \`${result.status}\``, "", "| Check | Exit |", "| --- | --- |", ...rows, ""].join("\n"), { flag: "a" })
 }
 if (result.status !== "complete") throw new Error(`instance ${instance.id} ended as ${result.status}: ${JSON.stringify(result.error ?? result.steps?.at(-1))}`)
