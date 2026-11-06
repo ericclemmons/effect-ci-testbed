@@ -6,9 +6,9 @@ import { join } from "node:path"
 import test from "node:test"
 import { cellResult, complete, loadReadiness, readSnapshot, snapshotPath, validateSnapshot } from "../src/readiness.mjs"
 
-test("the built homepage contains the completed snapshot without browser requests", async () => {
+test("the built features page contains the completed snapshot without browser requests", async () => {
   const snapshot = await loadReadiness()
-  const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
+  const html = await readFile(new URL("../dist/examples/features/index.html", import.meta.url), "utf8")
   assert.ok(html.includes(`/commit/${snapshot.sha}`))
   assert.ok(html.includes(`${snapshot.total_count} completed checks`))
   assert.ok(html.includes(`datetime="${snapshot.fetchedAt}"`))
