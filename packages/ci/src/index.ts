@@ -2121,6 +2121,8 @@ const makeRuntime = (
       addDependency: (parent, child) => Effect.gen(function* () {
         if (parent === "$workflow") {
           if (parallelSteps.delete(child)) return
+          // Reading a result from the current barrier adds no ordering.
+          if (workflowBarrier.dependencies.includes(child) || workflowBarrier.after.includes(child)) return
           for (const dependency of workflowBarrier.dependencies) {
             edges.add(`${child}->${dependency}`)
           }

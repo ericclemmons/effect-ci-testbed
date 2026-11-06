@@ -1,0 +1,15 @@
+--- a/.cloudflare/ci/ci.ts
++++ b/.cloudflare/ci/ci.ts
+@@ -61,5 +61,11 @@
+   yield* CI.parallel([lint(), build()]);
+   const workspace = yield* build();
+   if (!(yield* workspace.changed(".cloudflare/output/**"))) return;
+-  return yield* deploy();
++  return yield* CI.when(
++    CI.Condition.all(
++      CI.Condition.event("push"),
++      CI.Condition.ref("refs/heads/main"),
++    ),
++    deploy(),
++  );
+ });

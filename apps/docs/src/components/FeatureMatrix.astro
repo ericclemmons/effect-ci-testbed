@@ -1,0 +1,85 @@
+---
+import { getCollection } from "astro:content"
+import { compatibility } from "../compatibility.mjs"
+import { featureEvidence, features, featureStatus } from "../features.mjs"
+import { validateSnapshot } from "../readiness.mjs"
+import { documentationId, href, repository } from "../repository.mjs"
+import coverage from "../../../../examples/COVERAGE.md?raw"
+import readiness from "../../.cloudflare/state/readiness.json"
+const readmes = import.meta.glob("../../../../examples/*/README.md", { query: "?raw", import: "default", eager: true })
+const docs = new Set((await getCollection("docs")).map(page => page.id))
+const rows = compatibility(coverage, readmes).flatMap(group => group.rows)
+const snapshot = validateSnapshot(readiness)
+function recipeHref(recipe) {
+  const id = documentationId(`examples/${recipe}/README.md`)
+  if (!docs.has(id)) throw new Error(`Missing feature recipe: ${recipe}`)
+  return href(id)
+}
+const results = features.map(feature => ({
+  ...feature,
+  status: featureStatus(featureEvidence(feature, snapshot, rows)),
+  href: feature.walkthrough ? `${href("walkthrough")}#${feature.walkthrough}` : feature.recipes[0] && recipeHref(feature.recipes[0]),
+  proof: feature.recipes.map(recipe => ({ recipe, href: recipeHref(recipe), title: rows.find(row => row.recipe === recipe)?.title ?? recipe })),
+}))
+const green = results.filter(feature => feature.status.color === "green").length
+const ready = green === results.length
+---
+<section class="features" aria-labelledby="features-title" data-features>
+  <h2 id="features-title">Is Effect CI ready yet?</h2>
+  <p class="answer" data-ready={ready || undefined}>{ready ? "Yes" : "Not yet"}</p>
+  <p class="summary" data-feature-summary>{green} of {results.length} features green · main · <a href={`${repository}/commit/${snapshot.sha}`}>{snapshot.sha.slice(0, 7)}</a></p>
+  <div class="bar" role="img" aria-label={`${green} of ${results.length} features green`}>
+    {results.map(feature => <span data-color={feature.status.color} title={`${feature.title}: ${feature.status.label}`}></span>)}
+  </div>
+  <p class="note">Red means no passing check yet, or a failing one. Green means every conclusive check for the feature's recipes passed on main. Gray means the snapshot has no conclusive result. A feature without a walkthrough step is a documentation gap.</p>
+  <table class="feature-table">
+    <caption class="sr-only">Features and their evidence on main</caption>
+    <thead><tr><th scope="col"><span class="sr-only">Status</span></th><th scope="col">Feature</th><th scope="col">Checks</th><th scope="col">Walkthrough</th></tr></thead>
+    <tbody>
+      {results.map(feature => <tr data-feature={feature.title} data-color={feature.status.color}>
+        <td><span class="dot" data-color={feature.status.color} aria-label={feature.status.color}>{feature.status.color === "green" ? "✓" : feature.status.color === "red" ? "×" : "—"}</span></td>
+        <th scope="row">{feature.href ? <a href={feature.href}>{feature.title}</a> : feature.title}<span class="claim">{feature.claim}</span>
+          {feature.proof.length > 0 && <span class="proof">{feature.proof.map((proof, index) => <>{index > 0 && " · "}<a href={proof.href}>{proof.title}</a></>)}</span>}
+        </th>
+        <td class="state">{feature.status.label}</td>
+        <td>{feature.walkthrough ? <a href={`${href("walkthrough")}#${feature.walkthrough}`}>Step</a> : <span class="gap">Not yet</span>}</td>
+      </tr>)}
+    </tbody>
+  </table>
+</section>
+<style>
+  .features { margin-bottom: 3rem; }
+  h2 { margin: 0; font-size: 1.1rem; font-weight: 500; color: var(--nb-muted-foreground); }
+  .answer { margin: .25rem 0 0; font-size: 4.5rem; line-height: 1; font-weight: 700; letter-spacing: -.04em; color: #b91c1c; }
+  .answer[data-ready] { color: #15803d; }
+  .summary { margin: .9rem 0 .5rem; font-weight: 600; }
+  .summary a { color: var(--nb-brand); }
+  .bar { display: flex; gap: 3px; height: .9rem; margin-bottom: .6rem; }
+  .bar span { flex: 1; border-radius: 2px; background: var(--nb-border); }
+  .note { color: var(--nb-muted-foreground); font-size: .8rem; margin: .4rem 0 1.2rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th, td { padding: .6rem .4rem; border-bottom: 1px solid var(--nb-border); text-align: left; vertical-align: top; }
+  thead th { font-size: .7rem; font-weight: 500; color: var(--nb-muted-foreground); }
+  table { table-layout: fixed; }
+  thead th:nth-child(1) { width: 2.6rem; }
+  thead th:nth-child(3) { width: 8.5rem; }
+  thead th:nth-child(4) { width: 6rem; }
+  tbody th { font-weight: 600; white-space: normal; }
+  tbody th a, td a { color: var(--nb-brand); }
+  .claim { display: block; font-weight: 400; color: var(--nb-muted-foreground); font-size: .8rem; margin-top: .15rem; }
+  .state { font-weight: 500; white-space: nowrap; }
+  td:last-child { white-space: nowrap; }
+  .proof { display: block; font-weight: 400; font-size: .78rem; margin-top: .25rem; }
+  .gap { color: var(--nb-muted-foreground); }
+  .dot { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 3px; background: var(--nb-border); color: var(--nb-foreground); font-weight: 700; }
+  [data-color="green"].dot, .bar [data-color="green"] { background: #15803d; color: white; }
+  [data-color="red"].dot, .bar [data-color="red"] { background: #b91c1c; color: white; }
+  @media (max-width: 640px) {
+    .answer { font-size: 3.5rem; }
+    thead th:nth-child(1) { width: 2.2rem; }
+    thead th:nth-child(3) { width: 4.5rem; }
+    thead th:nth-child(4) { width: 3.5rem; }
+    .state { white-space: normal; font-size: .78rem; }
+  }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>

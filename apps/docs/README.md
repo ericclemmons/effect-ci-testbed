@@ -27,8 +27,16 @@ works without JavaScript.
 
 [Explainer scenarios](./src/explainer.mjs "source")
 
-`/examples/features/` (`examples/FEATURES.md`) is a static feature compatibility
-matrix. Rows and applicability
+`/examples/features/` (`examples/FEATURES.md`) opens with "Is Effect CI ready
+yet?": one red or green row per product feature. Each feature lists the recipes
+that prove it and its walkthrough step. It stays red until one of its checks
+passes in the snapshot, and turns red again when one fails. A feature with no
+recipes, such as "Fast checks", stays red until a check proves it. A missing
+walkthrough step shows "Not yet".
+
+[Features](./src/features.mjs#symbol=features "source")
+
+Below it is a static recipe compatibility matrix. Rows and applicability
 come from `examples/COVERAGE.md`; new example directories are included automatically.
 Colors come from a completed GitHub check snapshot for one `main` commit. The
 commit link and UTC capture time identify the evidence. The browser makes no
