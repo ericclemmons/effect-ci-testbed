@@ -27,7 +27,7 @@ Start with a conventional pipeline: install with npm or pnpm, pick a Node.js ver
 | --- | :---: | :---: | :---: | :---: | :---: |
 | [Run CI with npm](./node-npm) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ | — |
+| [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Cache dependency downloads](./package-manager-cache) | ✅ | ✅ | ✅ | ✅ | — |
 | [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ | — |
 | [Run a single check from the CLI](./exported-actions) | ✅ | ✅ | ✅ | ✅ | — |
@@ -53,7 +53,7 @@ Select runtimes and OS tools before adding a custom image. A runner image is not
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | [Install runtimes with Mise](./mise-toolchain) | ✅ | ✅ | ✅ | ✅ | — |
-| [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ | — |
+| [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ | — |
 | [Customize the CI container](./custom-runner-image) | — | ✅ | — | ✅ | — |
 | [Build and run Docker in CI](./docker-in-docker) | — | ✅ | — | 🔜 | — |
