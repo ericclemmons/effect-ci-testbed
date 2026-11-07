@@ -65,3 +65,17 @@ pnpm exec wrangler workflows instances describe effect-ci-matrix matrix-1 --json
 
 Use a pushed, full commit SHA. The hosted runner checks out that immutable source;
 it does not execute uncommitted local files. Each parallel action gets its own Container.
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs all four locale and
+currency combinations as parallel Cloudflare Workflows `step.runner()` steps,
+each in its own container, with no install. It does not use Effect CI.
+
+```sh
+(cd examples/matrix/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs matrix
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

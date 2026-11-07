@@ -9,5 +9,8 @@
   "include": [
     ".cloudflare/**/*.ts",
     "src/**/*.ts"
+  ],
+  "exclude": [
+    ".cloudflare/cf-ci"
   ]
 }
