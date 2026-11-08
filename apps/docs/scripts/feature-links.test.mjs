@@ -6,7 +6,7 @@ import { test } from "node:test"
 const output = resolve(import.meta.dirname, "../dist")
 const homepage = readFileSync(resolve(output, "index.html"), "utf8")
 const features = readFileSync(resolve(output, "examples/features/index.html"), "utf8")
-const links = [...features.matchAll(/<th scope="row"[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
+const links = [...features.matchAll(/<span class="feature-title"[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
   .map(([, href, title]) => ({ href, title }))
 
 test("feature links reach the relevant guides and sections", () => {

@@ -48,7 +48,8 @@ const pageHeadings = entry.id === "index"
   : entry.id === "examples/features"
   ? [{ depth: 2, slug: "readiness-title", text: "Is Effect CI ready yet?" }, ...headings]
   : headings;
-const toc = tocOn && tocConfig !== false ? getTOC(pageHeadings, tocConfig) : false;
+// The features comparison needs the full width for side-by-side code.
+const toc = tocOn && tocConfig !== false && entry.id !== "examples/features" ? getTOC(pageHeadings, tocConfig) : false;
 const socialImage = entry.data.socialImage ?? ogImageUrl;
 ---
 
