@@ -642,7 +642,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [node-npm, node-pnpm, matrix, optional-checks, snapshot-fanout, node-version, system-package]
+        example:
+          - node-npm
+          - node-pnpm
+          - matrix
+          - optional-checks
+          - snapshot-fanout
+          - node-version
+          - system-package
+          - zero-config
+          - exported-actions
+          - demo
+          - portable-artifacts
+          - mise-toolchain
+          - cloudflare-toolchain
+          - local-container
+          - cloudflare-runner
+          - runner-selection
+          - dynamic-worker-checks
+          - ordered-deploy
+          - conditional-deploy
+          - execution-policy
+          - rollback-compensation
+          - test-splitting
+          - verification-evidence
+          - dependency-aware-reruns
+          - workers-deploy
+          - d1-migration
+          - retry
+          - gitlab-source
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

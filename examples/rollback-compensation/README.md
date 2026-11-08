@@ -20,3 +20,18 @@ A filesystem snapshot cannot reverse a database migration or deployment—supply
 the appropriate recovery action.
 
 [Actions](./.cloudflare/ci/actions.ts) · [Health-gated rollout](../health-mediated-release)
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) records whether the deploy
+failed and runs the rollback only after a failure. The run still fails after a
+rollback. cf ci runs start from pushes, so the `fail-deploy` input is a constant
+in the pipeline. It does not use Effect CI.
+
+```sh
+(cd examples/rollback-compensation/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs rollback-compensation
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

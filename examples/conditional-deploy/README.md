@@ -36,3 +36,17 @@ publishes again. Failed publication keeps the previous successful baseline.
 For event/ref conditions that must appear in a plan, use
 [CI.when](./.cloudflare/ci/workflow.ts). Ordinary JavaScript branches do not
 serialize both paths during planning.
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only for pushes to
+`refs/heads/main`. `scripts/cf-ci.mjs` pushes `run/<commit>` branches, so its
+runs report the deploy as skipped. It does not use Effect CI.
+
+```sh
+(cd examples/conditional-deploy/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs conditional-deploy
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

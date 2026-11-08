@@ -110,7 +110,7 @@ async function findInstance(commit, since) {
     }
     await sleep(2000)
   }
-  throw new Error(`no Workflow instance started for pushed commit ${commit}`)
+  return undefined
 }
 
 function terminate(id) {
@@ -143,6 +143,11 @@ for (let attempt = 1; attempt <= 4 && !instance; attempt++) {
   const commit = push(dir, remote, attempt)
   log(`pushed ${commit}`)
   const found = await findInstance(commit, since)
+  // A push soon after a new repo or trigger is created can start nothing.
+  if (!found) {
+    log(`no Workflow instance started for ${commit}. Retrying.`)
+    continue
+  }
   if (found.version_id === expectedVersion) {
     instance = found
     break
@@ -152,7 +157,7 @@ for (let attempt = 1; attempt <= 4 && !instance; attempt++) {
   terminate(found.id)
   await sleep(15_000)
 }
-if (!instance) throw new Error(`every push started a stale Workflow version instead of ${expectedVersion}`)
+if (!instance) throw new Error(`no push started Workflow version ${expectedVersion}`)
 
 log(`waiting for instance ${instance.id}`)
 const result = await waitForResult(instance.id)

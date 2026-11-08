@@ -4,5 +4,6 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": [".cloudflare/**/*.ts", "verification/**/*.ts"]
+  "include": [".cloudflare/**/*.ts", "verification/**/*.ts"],
+  "exclude": [".cloudflare/cf-ci"]
 }
