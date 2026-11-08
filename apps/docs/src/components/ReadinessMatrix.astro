@@ -47,21 +47,17 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
 <section class="readiness" aria-label="Feature readiness" data-readiness>
   <div class="features" aria-label="Feature compatibility on main, grouped by recipe">
     <div class="feature-head" aria-hidden="true">
-      <span class="head-feature">
-        <span>Feature</span>
-        <a class="overall" href={`${repository}/commit/${snapshot.sha}`} title={`${passed} / ${cells.length} passing on main · ${snapshot.sha.slice(0, 7)} · ${snapshot.total_count} completed checks · ${checkedAt}`}>
-          <progress max={cells.length} value={passed}></progress>
-          <span class="environment-percent">{percent(passed, cells.length)}%</span>
-        </a>
-        <time hidden datetime={snapshot.fetchedAt}>{checkedAt}</time>
-      </span>
+      <span class="head-feature">Feature</span>
       <span class="head-product" style="grid-column: 2">GitHub Actions</span>
       <span class="head-product head-span" style="grid-column: 3 / span 3">Effect CI</span>
       <span class="head-product" style="grid-column: 6">cf ci</span>
-      {environments.map((_, index) => <span class="environment" style={`grid-column: ${index + 2}; grid-row: 2`}>
-        {environmentLabels[index] && <span>{environmentLabels[index]}</span>}
-        <span class="environment-percent">{percent(environmentCoverage[index], rows.length)}%</span>
-      </span>)}
+      {environments.map((_, index) => environmentLabels[index] && <span class="environment" style={`grid-column: ${index + 2}; grid-row: 2`}>{environmentLabels[index]}</span>)}
+      <a class="overall" href={`${repository}/commit/${snapshot.sha}`} title={`${passed} / ${cells.length} passing on main · ${snapshot.sha.slice(0, 7)} · ${snapshot.total_count} completed checks · ${checkedAt}`}>
+        <progress max={cells.length} value={passed}></progress>
+        <span class="environment-percent">{percent(passed, cells.length)}%</span>
+        <time hidden datetime={snapshot.fetchedAt}>{checkedAt}</time>
+      </a>
+      {environments.map((_, index) => <span class="environment-percent" style={`grid-column: ${index + 2}; grid-row: 3`}>{percent(environmentCoverage[index], rows.length)}%</span>)}
     </div>
     {rows.map(row => <details class="feature" data-recipe={row.recipe}>
         <summary>
@@ -69,7 +65,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
           {row.results.map((result, index) => <span class="cell">
             {result ? <a class="square" data-cell data-passing={result.passing || undefined} data-failing={result.failing || undefined}
               href={result.href} title={`${row.title} · ${environments[index]}: ${result.state}`}
-              aria-label={`${row.title} · ${environments[index]}: ${result.state}`}>{result.passing ? "✓" : result.failing ? "×" : "—"}</a> : <span class="square" data-na aria-label={`${row.title} · ${environments[index]}: not applicable`}>—</span>}
+              aria-label={`${row.title} · ${environments[index]}: ${result.state}`}>{result.passing ? "🟢" : result.failing ? "🔴" : "—"}</a> : <span class="square" data-na aria-label={`${row.title} · ${environments[index]}: not applicable`}>—</span>}
           </span>)}
         </summary>
         <div class="compare" data-pagefind-ignore>
@@ -93,8 +89,8 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   :global(#main-content > div:has([data-readiness])) { max-width: min(100%, 110rem); }
   .readiness { margin-bottom: 2.5rem; }
   p { margin: .6rem 0; }
-  .head-feature { grid-row: 1 / span 2; display: grid; gap: .3rem; align-self: end; padding-bottom: .1rem; }
-  .overall { display: flex; align-items: center; gap: .5rem; max-width: 20rem; text-decoration: none; }
+  .head-feature { grid-column: 1; grid-row: 1; }
+  .overall { grid-column: 1; grid-row: 3; display: flex; align-items: center; gap: .5rem; max-width: 20rem; text-decoration: none; }
   progress { display: block; flex: 1; height: .375rem; margin: 0; accent-color: #15803d; border: 0; border-radius: .25rem; overflow: hidden; background: var(--nb-border); }
   progress::-webkit-progress-bar { background: var(--nb-border); }
   progress::-webkit-progress-value { background: #15803d; }
@@ -104,11 +100,11 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
 
   .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
   .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
-  .feature-head { grid-template-rows: auto auto; row-gap: .15rem; position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
+  .feature-head { grid-template-rows: auto auto auto; row-gap: .2rem; align-items: end; position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
   .head-product { text-align: center; }
   .head-span { border-bottom: 1px solid var(--nb-border); padding-bottom: .15rem; }
-  .environment { display: grid; justify-items: center; text-align: center; gap: .1rem; }
-  .environment-percent { color: var(--nb-muted-foreground); font-weight: 500; }
+  .environment { text-align: center; }
+  .environment-percent { text-align: center; color: var(--nb-muted-foreground); font-weight: 500; }
   .feature { border-bottom: 1px solid var(--nb-border); }
   summary { padding: .45rem .3rem; cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
@@ -117,10 +113,8 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .feature-title::before { content: "▸"; color: var(--nb-muted-foreground); transition: transform .15s; }
   .feature[open] .feature-title::before { transform: rotate(90deg); }
   .cell { display: grid; place-items: center; }
-  .square { line-height: 1; display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: var(--nb-border); border-radius: 3px; color: var(--nb-foreground); text-decoration: none; font-weight: 600; }
-  .square[data-na] { background: transparent; color: var(--nb-muted-foreground); font-weight: 400; }
-  .square[data-passing] { background: #15803d; color: white; }
-  .square[data-failing] { background: #b91c1c; color: white; }
+  .square { line-height: 1; display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 999px; color: var(--nb-muted-foreground); text-decoration: none; font-size: .9rem; }
+  a.square:not([data-passing]):not([data-failing]) { color: var(--nb-foreground); font-weight: 600; }
   a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
 
   .compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 -1px; background: var(--nb-border); border-top: 1px solid var(--nb-border); box-shadow: inset 0 6px 8px -6px rgb(0 0 0 / .25); }

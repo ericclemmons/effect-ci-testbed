@@ -12,8 +12,8 @@ test("the built features page contains the completed snapshot without browser re
   assert.ok(html.includes(`/commit/${snapshot.sha}`))
   assert.ok(html.includes(`${snapshot.total_count} completed checks`))
   assert.ok(html.includes(`datetime="${snapshot.fetchedAt}"`))
-  assert.match(html, /aria-label="Run CI with npm · GitHub Actions: [^"]+"[^>]*>[✓×—]<\/a>/)
-  for (const label of ["Local", "GitHub Actions", "Hosted"]) assert.match(html, new RegExp(`class="environment"[^>]*>\s*<span[^>]*>${label}</span>`), label)
+  assert.match(html, /aria-label="Run CI with npm · GitHub Actions: [^"]+"[^>]*>(🟢|🔴|—)<\/a>/)
+  for (const label of ["Local", "GitHub Actions", "Hosted"]) assert.match(html, new RegExp(`class="environment"[^>]*>${label}</span>`), label)
   assert.doesNotMatch(html, /⏳|data-pending|data-refresh|\/api\/readiness|Loading checks from main|Refreshes every/)
 })
 
