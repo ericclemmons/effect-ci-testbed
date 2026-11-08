@@ -117,8 +117,8 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   a.square:not([data-passing]):not([data-failing]) { color: var(--nb-foreground); font-weight: 600; }
   a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
 
-  .compare { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 -1px; background: var(--nb-border); border-block: 1px solid var(--nb-border); }
-  .compare::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 10px 12px -10px rgb(0 0 0 / .22), inset 0 -10px 12px -10px rgb(0 0 0 / .14); }
+  .compare { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 .75rem; background: var(--nb-border); border: 1px solid var(--nb-border); }
+  .compare::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 2px 4px rgb(0 0 0 / .05); }
   .implementation { min-width: 0; display: flex; flex-direction: column; background: var(--nb-card); }
   .implementation-head { padding: .5rem .75rem 0; font-size: .8125rem; font-weight: 500; color: var(--nb-muted-foreground); }
   .implementation :global([data-nb-tabs]) { flex: 1; display: flex; flex-direction: column; min-height: 0; }
