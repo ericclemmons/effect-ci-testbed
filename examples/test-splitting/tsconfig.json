@@ -11,5 +11,6 @@
     ".cloudflare/**/*.ts",
     "app/scripts/*.mjs",
     "src/**/*.ts"
-  ]
+  ],
+  "exclude": [".cloudflare/cf-ci"]
 }

@@ -44,3 +44,17 @@ To deploy for real, remove `--dry-run` and give the deploy step Cloudflare
 credentials. Use [short-lived Wrangler credentials](../oidc-wrangler) or a
 `CLOUDFLARE_API_TOKEN` secret. To deploy only from `main`, wrap `deploy` in the
 condition from [Deploy only on matching branches or events](../conditional-deploy).
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs `npm ci`, test, build,
+and the recipe's dry-run deploy in order. Installed dependencies and the build
+output carry over as `step.runner()` outputs. It does not use Effect CI.
+
+```sh
+(cd examples/workers-deploy/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs workers-deploy
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

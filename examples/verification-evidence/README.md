@@ -24,3 +24,17 @@ receipts. Build-output caching and PR approval are separate decisions.
 
 [Actions](./.cloudflare/ci/actions.ts) ·
 [Check-cache API](../../packages/github/src/check-cache.ts)
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) repeats `node --check
+app/index.js` on every run. Like GitHub Actions, it has no trusted store for
+reusing a check. It does not use Effect CI.
+
+```sh
+(cd examples/verification-evidence/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs verification-evidence
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

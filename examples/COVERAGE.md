@@ -29,9 +29,9 @@ Start with a conventional pipeline: install with npm or pnpm, pick a Node.js ver
 | [Run CI with pnpm](./node-pnpm) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Choose a Node.js version](./node-version) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Cache dependency downloads](./package-manager-cache) | ✅ | ✅ | ✅ | ✅ | — |
-| [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ | — |
-| [Run a single check from the CLI](./exported-actions) | ✅ | ✅ | ✅ | ✅ | — |
-| [Check changes before pushing](./demo) | ✅ | ✅ | ✅ | ✅ | — |
+| [Discover actions automatically](./zero-config) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Run a single check from the CLI](./exported-actions) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Check changes before pushing](./demo) | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Checkout and build artifacts
 
@@ -40,11 +40,11 @@ Change where inputs come from without changing actions; publish outputs separate
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | [Checkout from local files or Git](./source-providers) | — | ✅ | — | — | — |
-| [Checkout from GitLab](./gitlab-source) | — | ✅ | ✅ | ✅ | — |
+| [Checkout from GitLab](./gitlab-source) | — | ✅ | ✅ | ✅ | ✅ |
 | [Checkout from R2](./r2-source) | — | ✅ | ✅ | ✅ | — |
 | [Checkout from Cloudflare Artifacts](./artifacts-source) | — | ✅ | ✅ | ✅ | — |
 | [Checkout from a Durable Object](./durable-object-source) | — | ✅ | ✅ | ✅ | — |
-| [Share build artifacts between jobs](./portable-artifacts) | ✅ | ✅ | ✅ | ✅ | — |
+| [Share build artifacts between jobs](./portable-artifacts) | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Toolchains and container images
 
@@ -52,9 +52,9 @@ Select runtimes and OS tools before adding a custom image. A runner image is not
 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| [Install runtimes with Mise](./mise-toolchain) | ✅ | ✅ | ✅ | ✅ | — |
+| [Install runtimes with Mise](./mise-toolchain) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Install system tools](./system-package) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ | — |
+| [Install Python on Cloudflare](./cloudflare-toolchain) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Customize the CI container](./custom-runner-image) | — | ✅ | — | ✅ | — |
 | [Build and run Docker in CI](./docker-in-docker) | — | ✅ | — | 🔜 | — |
 | [Build and publish a container image](./custom-container-image) | ✅ | ✅ | ✅ | 🔜 | — |
@@ -65,11 +65,11 @@ Choose where the same program runs, from local containers to durable Workflows a
 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| [Run CI in a local container](./local-container) | ✅ | ✅ | ✅ | — | — |
-| [Resume CI steps on Cloudflare](./cloudflare-runner) | ✅ | ✅ | ✅ | ✅ | — |
-| [Choose where CI runs](./runner-selection) | ✅ | ✅ | ✅ | — | — |
+| [Run CI in a local container](./local-container) | ✅ | ✅ | ✅ | — | ✅ |
+| [Resume CI steps on Cloudflare](./cloudflare-runner) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Choose where CI runs](./runner-selection) | ✅ | ✅ | ✅ | — | ✅ |
 | [Run CI on Blacksmith](./blacksmith) | 🔜 | ✅ | 🔜 | — | — |
-| [Format code without a container](./dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless | — |
+| [Format code without a container](./dynamic-worker-checks) | ✅ | ✅ | ✅ | ✅ · containerless | ✅ |
 | [Test untrusted code without a container](./dynamic-project-checks) | — | ✅ | — | ✅ · containerless | — |
 
 ### Control flow and recovery
@@ -79,15 +79,15 @@ Add inspectable routing, parallel checks, retry policy, and compensation one at 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | [Run a group of actions only when a condition matches](./ordered-deploy#condition-the-whole-group) | ✅ | ✅ | ✅ | ✅ | — |
-| [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ | — |
+| [Deploy only on matching branches or events](./conditional-deploy) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Deploy only changed build output](./deploy-changed-output) | ✅ | ✅ | — | 🔜 | — |
 | [Trigger CI from a deployment hook](./deploy-hook) | ✅ | ✅ | ✅ | ✅ | — |
 | [Run required and optional checks](./optional-checks) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ | — |
-| [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ | — |
-| [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ | — |
+| [Set retry and timeout limits](./execution-policy) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Retry a flaky test](./retry) | — | ✅ | ✅ | ✅ | ✅ |
+| [Roll back after a failed action](./rollback-compensation) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Run every combination in a matrix](./matrix) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ | — |
+| [Split tests across parallel jobs](./test-splitting) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Balance test shards using recorded timings](./timing-aware-splitting) | ✅ | ✅ | ✅ | ✅ | — |
 | [Run checks in parallel from one workspace](./snapshot-fanout) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Distribute a native Turbo task graph](./turbo-distributed) | — | ✅ | ✅ | 🔜 | — |
@@ -102,8 +102,8 @@ Keep download caches, task caches, workspace checkpoints, and signed commit evid
 | [Cache tasks with Vite+](./vite-plus-cache) | ✅ | ✅ | ✅ | ✅ | — |
 | [Cache tasks with Turborepo](./turborepo-cache) | ✅ | ✅ | ✅ | ✅ | — |
 | [Customize or disable caching](./cache-policy) | ✅ | ✅ | ✅ | ✅ | — |
-| [Reuse verified checks for a commit](./verification-evidence) | ✅ | ✅ | ✅ | 🔜 | — |
-| [Rerun only affected checks](./dependency-aware-reruns) | ✅ | ✅ | ✅ | 🔜 | — |
+| [Reuse verified checks for a commit](./verification-evidence) | ✅ | ✅ | ✅ | 🔜 | ✅ |
+| [Rerun only affected checks](./dependency-aware-reruns) | ✅ | ✅ | ✅ | 🔜 | ✅ |
 | [Keep rerun history and reuse passed steps](./immutable-attempts) | ✅ | ✅ | ✅ | 🔜 | — |
 
 ### Secrets and outbound authentication
@@ -136,11 +136,11 @@ Start with ordering and migrations, then study health gates and opt-in human rev
 
 | Recipe | GitHub Actions | Effect CI (local) | Effect CI on GitHub Actions | Effect CI on Cloudflare | cf ci |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| [Deploy an app to Cloudflare Workers](./workers-deploy) | ✅ | ✅ | ✅ | 🔜 | — |
+| [Deploy an app to Cloudflare Workers](./workers-deploy) | ✅ | ✅ | ✅ | 🔜 | ✅ |
 | [Build or publish static files without a container](./static-assets-source) | — | — | — | ✅ · containerless | — |
 | [Build and serve a static site without a container](./containerless-site) | — | ✅ | — | ✅ · containerless | — |
-| [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | ✅ | — |
-| [Migrate D1 before deploying a Worker](./d1-migration) | ✅ | ✅ | ✅ | 🔜 | — |
+| [Deploy apps in dependency order](./ordered-deploy) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Migrate D1 before deploying a Worker](./d1-migration) | ✅ | ✅ | ✅ | 🔜 | ✅ |
 | [Recover from a deploy failure after migration](./d1-migration#rollback-is-not-filesystem-rewind) | 🔜 | ✅ | 🔜 | 🔜 | — |
 | [Roll out a Worker with health checks](./health-mediated-release) | 🔜 | 🔜 | 🔜 | 🔜 | — |
 | [Review a rollout when health is uncertain](./health-mediated-approval) | — | 🔜 | — | 🔜 | — |

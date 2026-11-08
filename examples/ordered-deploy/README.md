@@ -29,3 +29,17 @@ The two Workers build with `cf build` and deploy with
 
 [Actions](./.cloudflare/ci/actions.ts) ·
 [GitHub Actions comparison](./.github/workflows/github.yml)
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) installs once, builds the
+backend then the frontend, and dry-runs their deploys in the same order. Each
+step restores the outputs of the steps before it. It does not use Effect CI.
+
+```sh
+(cd examples/ordered-deploy/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs ordered-deploy
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.

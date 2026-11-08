@@ -678,3 +678,18 @@ decision, read the event directly with `yield* CI.WorkflowEvent`.
 
 On GitHub Actions, the runner sets `GITHUB_EVENT_NAME` and `GITHUB_REF`, so no
 variables are needed. Local runs without them skip publication.
+
+## cf ci comparison
+
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs the App checks job:
+`pnpm install --frozen-lockfile`, then check, test, and build as separate steps.
+The install saves `node_modules` as a `step.runner()` output, and each later
+step restores it. It does not use Effect CI.
+
+```sh
+(cd examples/demo/.cloudflare/cf-ci && npm ci)
+node scripts/cf-ci.mjs demo
+```
+
+See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
+deploys the pipeline and checks the run.
