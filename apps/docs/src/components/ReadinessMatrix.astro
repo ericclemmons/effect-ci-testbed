@@ -117,15 +117,16 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   a.square:not([data-passing]):not([data-failing]) { color: var(--nb-foreground); font-weight: 600; }
   a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
 
-  .compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 -1px; background: var(--nb-border); border-top: 1px solid var(--nb-border); box-shadow: inset 0 6px 8px -6px rgb(0 0 0 / .25); }
-  .implementation { min-width: 0; display: flex; flex-direction: column; background: color-mix(in srgb, var(--nb-border) 25%, var(--nb-background, transparent)); }
+  .compare { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 -1px; background: var(--nb-border); border-block: 1px solid var(--nb-border); }
+  .compare::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 10px 12px -10px rgb(0 0 0 / .22), inset 0 -10px 12px -10px rgb(0 0 0 / .14); }
+  .implementation { min-width: 0; display: flex; flex-direction: column; background: var(--nb-card); }
   .implementation-head { padding: .5rem .75rem 0; font-size: .8125rem; font-weight: 500; color: var(--nb-muted-foreground); }
   .implementation :global([data-nb-tabs]) { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .implementation :global([data-nb-tabs-list]) { padding-inline: .25rem; }
   .implementation :global([data-nb-tabs] > .mt-3) { flex: 1; display: flex; flex-direction: column; margin-top: 0; }
   .implementation :global([data-nb-tabs-content]:not([hidden])) { flex: 1; display: flex; flex-direction: column; }
   .source { flex: 1; display: flex; flex-direction: column; }
-  .source :global(figure) { flex: 1; display: flex; flex-direction: column; margin: 0; }
+  .source :global(figure) { flex: 1; display: flex; flex-direction: column; margin: 0; border: 0; border-radius: 0; background: transparent; }
   .source :global(pre) { flex: 1; max-height: 32rem; overflow: auto; font-size: .75rem; line-height: 1.5; margin: 0; border: 0; border-radius: 0; }
   .source :global(pre .line) { display: inline; }
   .source :global(.nb-code-figure::before) { display: none; }
