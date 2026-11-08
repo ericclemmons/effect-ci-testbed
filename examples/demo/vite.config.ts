@@ -50,10 +50,6 @@ export default defineConfig({
       "build:source": { command: "vp build", cache: true },
     },
   },
-  // The cf ci comparison pipeline is a separate project with its own style.
-  fmt: {
-    ignorePatterns: [".cloudflare/**"],
-  },
   lint: {
     ignorePatterns: ["dist/**", ".cloudflare/**"],
     overrides: [{ files: ["src/app.ts"], env: { browser: true } }],
