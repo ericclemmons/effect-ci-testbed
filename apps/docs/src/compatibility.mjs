@@ -1,5 +1,27 @@
 export const environments = ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare", "cf ci"]
 
+// Implementations to compare side by side. `headline` is the environment whose coverage the product is judged by.
+export const products = [
+  { id: "github", label: "GitHub Actions", headline: "GitHub Actions" },
+  { id: "effect", label: "Effect CI", headline: "Effect CI on Cloudflare" },
+  { id: "cf-ci", label: "cf ci", headline: "cf ci" },
+]
+
+const effectOrder = ["workflow.ts", "ci.ts", "actions.ts"]
+
+// Source files that implement a recipe for each product, in reading order, from paths relative to examples/<recipe>/.
+export function implementationFiles(recipe, paths) {
+  const prefix = `examples/${recipe}/`
+  const own = paths.filter(path => path.startsWith(prefix)).map(path => path.slice(prefix.length))
+  const rank = name => (effectOrder.indexOf(name) + 1 || effectOrder.length + 1)
+  return {
+    github: own.filter(path => path === ".github/workflows/github.yml"),
+    effect: own.filter(path => /^\.cloudflare\/ci\/[^/]+\.ts$/.test(path))
+      .sort((a, b) => rank(a.split("/").at(-1)) - rank(b.split("/").at(-1)) || a.localeCompare(b)),
+    "cf-ci": own.filter(path => path === ".cloudflare/cf-ci/src/index.ts"),
+  }
+}
+
 // Reuse the maintained coverage catalog's ordering and applicability, never its manual colors.
 export function compatibility(coverage, readmes) {
   const groups = []

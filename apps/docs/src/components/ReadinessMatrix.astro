@@ -1,12 +1,23 @@
 ---
-import { compatibility, environments, checkNames } from "../compatibility.mjs"
-import { posix } from "node:path"
+import { compatibility, environments, checkNames, implementationFiles, products } from "../compatibility.mjs"
+import { join, posix } from "node:path"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { getCollection } from "astro:content"
 import { documentationId, href, repository } from "../repository.mjs"
 import coverage from "../../../../examples/COVERAGE.md?raw"
 import { cellResult, validateSnapshot } from "../readiness.mjs"
 import readiness from "../../.cloudflare/state/readiness.json"
+import { Code } from "./ui/code"
 const readmes = import.meta.glob("../../../../examples/*/README.md", { query: "?raw", import: "default", eager: true })
+// import.meta.glob skips dot-directories, so read implementation sources directly.
+const root = [process.cwd(), join(process.cwd(), "../..")].find(dir => existsSync(join(dir, "examples/COVERAGE.md")))!
+const sourceDirs = [".github/workflows", ".cloudflare/ci", ".cloudflare/cf-ci/src"]
+const sources = Object.fromEntries(readdirSync(join(root, "examples"), { withFileTypes: true }).filter(entry => entry.isDirectory())
+  .flatMap(entry => sourceDirs.flatMap(dir => {
+    const path = join(root, "examples", entry.name, dir)
+    return existsSync(path) ? readdirSync(path).filter(file => /\.(ya?ml|ts)$/.test(file)).map(file => `examples/${entry.name}/${dir}/${file}`) : []
+  }))
+  .map(path => [path, readFileSync(join(root, path), "utf8")]))
 const docs = new Set((await getCollection("docs")).map(page => page.id))
 const groups = compatibility(coverage, readmes)
 function featureHref(link) {
@@ -19,39 +30,107 @@ function featureHref(link) {
 const snapshot = validateSnapshot(readiness)
 const results = groups.map(group => ({ ...group, rows: group.rows.map(row => ({ ...row,
   results: row.cells.map((applicable, index) => applicable ? cellResult(snapshot, checkNames(row.recipe, environments[index]), index === 3 ? "effect-ci" : "github-actions") : undefined),
+  files: row.recipe ? implementationFiles(row.recipe, Object.keys(sources)) : { github: [], effect: [], "cf-ci": [] },
 })) }))
-const cells = results.flatMap(group => group.rows.flatMap(row => row.results)).filter(Boolean)
+const rows = results.flatMap(group => group.rows)
+const cells = rows.flatMap(row => row.results).filter(Boolean)
 const passed = cells.filter(cell => cell.passing).length
+const percent = (count, total) => Math.round(count / total * 100)
+const environmentCoverage = environments.map((_, index) => rows.filter(row => row.results[index]?.passing).length)
+const productCoverage = products.map(product => ({ ...product, passing: environmentCoverage[environments.indexOf(product.headline)] }))
 const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC")
+const language = (path) => path.endsWith(".yml") ? "yaml" : "ts"
+const productEnvironments = { github: [0], effect: [1, 2, 3], "cf-ci": [4] }
+const missing = { github: "No GitHub Actions comparison for this recipe.", effect: "No Effect CI workflow for this recipe.", "cf-ci": "Not ported to cf ci yet." }
 ---
 <section class="readiness" aria-labelledby="readiness-title" data-readiness>
   <div class="heading">
     <h2 id="readiness-title">Is Effect CI ready yet?</h2>
     <a data-revision href={`${repository}/commit/${snapshot.sha}`}>main · {snapshot.sha.slice(0, 7)}</a>
   </div>
-  <p>Every example, across the places it should work.</p>
-  <div class="summary" data-summary>{passed} / {cells.length} passing · {Math.round(passed / cells.length * 100)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
+  <p>Every example, across the places it should work. Expand a feature to compare its implementations.</p>
+  <div class="summary" data-summary>{passed} / {cells.length} passing · {percent(passed, cells.length)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
   <progress max={cells.length} value={passed} aria-label="Passing feature and environment combinations"></progress>
-  <p class="note">Last completed main snapshot. ✓ passed; × failed; — no conclusive result or not applicable. Missing evidence does not mean unsupported. Effect CI (local) includes local Cloudflare runtime execution; Effect CI on Cloudflare requires a native Cloudflare check. cf ci runs a recipe's own Workflows step.runner() pipeline (internal preview). Click a square for its evidence.</p>
-  <div class="matrix-scroll" tabindex="0" role="region" aria-label="Feature compatibility matrix">
-    <table class="readiness-table">
-      <caption class="sr-only">Feature compatibility on main, grouped by recipe</caption>
-      <thead><tr><th scope="col">Feature</th>{environments.map(environment => <th scope="col">{environment}</th>)}</tr></thead>
-      {results.map(group => <tbody>
-        <tr class="group"><th scope="rowgroup" colspan="5">{group.title}</th></tr>
-        {group.rows.map(row => <tr>
-          <th scope="row">{row.link ? <a href={featureHref(row.link)}>{row.title}</a> : row.title}</th>
-          {row.results.map((result, index) => <td>
+
+  <div class="products" role="group" aria-label="Implementations to compare">
+    {productCoverage.map(product => <button type="button" class="product" data-product={product.id} aria-pressed="true">
+      <span class="product-label">{product.label}</span>
+      <span class="product-percent">{percent(product.passing, rows.length)}%</span>
+      <span class="product-detail">{product.passing} / {rows.length} features{product.headline !== product.label ? ` · ${product.headline}` : ""}</span>
+      <span class="product-bar" style={`--coverage: ${percent(product.passing, rows.length)}%`}></span>
+    </button>)}
+  </div>
+  <p class="note">Select the implementations to show side by side. Every check stays visible. ✓ passed; × failed; — no conclusive result or not applicable. Missing evidence does not mean unsupported. Effect CI (local) includes local Cloudflare runtime execution; Effect CI on Cloudflare requires a native Cloudflare check. cf ci runs a recipe's own Workflows step.runner() pipeline (internal preview). Click a square for its evidence.</p>
+
+  <div class="features" aria-label="Feature compatibility on main, grouped by recipe">
+    <div class="feature-head" aria-hidden="true">
+      <span>Feature</span>
+      {environments.map((environment, index) => <span class="environment">
+        <span>{environment}</span>
+        <span class="environment-percent">{percent(environmentCoverage[index], rows.length)}%</span>
+      </span>)}
+    </div>
+    {results.map(group => <div class="group">
+      <h3 class="group-title">{group.title}</h3>
+      {group.rows.map(row => <details class="feature" data-recipe={row.recipe}>
+        <summary>
+          <span class="feature-title">{row.link ? <a href={featureHref(row.link)}>{row.title}</a> : row.title}</span>
+          {row.results.map((result, index) => <span class="cell">
             {result ? <a class="square" data-cell data-passing={result.passing || undefined} data-failing={result.failing || undefined}
               href={result.href} title={`${row.title} · ${environments[index]}: ${result.state}`}
-              aria-label={`${row.title} · ${environments[index]}: ${result.state}`}>{result.passing ? "✓" : result.failing ? "×" : "—"}</a> : <span aria-label="Not applicable">—</span>}
-          </td>)}
-        </tr>)}
-      </tbody>)}
-    </table>
+              aria-label={`${row.title} · ${environments[index]}: ${result.state}`}>{result.passing ? "✓" : result.failing ? "×" : "—"}</a> : <span class="square" data-na aria-label={`${row.title} · ${environments[index]}: not applicable`}>—</span>}
+          </span>)}
+        </summary>
+        <div class="compare" data-pagefind-ignore>
+          {products.map(product => <div class="implementation" data-product={product.id}>
+            <div class="implementation-head">
+              <strong>{product.label}</strong>
+              <span class="implementation-status">{productEnvironments[product.id].map(index => {
+                const result = row.results[index]
+                return <span class="mini" data-passing={result?.passing || undefined} data-failing={result?.failing || undefined}
+                  title={`${environments[index]}: ${result?.state ?? "not applicable"}`}>{result?.passing ? "✓" : result?.failing ? "×" : "—"}</span>
+              })}</span>
+            </div>
+            {row.files[product.id].length ? row.files[product.id].map(path => <div class="source">
+              <a class="source-link" href={`${repository}/blob/main/examples/${row.recipe}/${path}`}>{path}</a>
+              <Code code={sources[`examples/${row.recipe}/${path}`].trimEnd()} lang={language(path)} />
+            </div>) : <p class="missing">{missing[product.id]}</p>}
+          </div>)}
+        </div>
+      </details>)}
+    </div>)}
   </div>
 </section>
+<script>
+  const wide = window.matchMedia("(min-width: 1600px)")
+  const key = "effect-ci:compare"
+  function setup(section: HTMLElement) {
+    const buttons = [...section.querySelectorAll<HTMLButtonElement>("button[data-product]")]
+    const ids = buttons.map(button => button.dataset.product!)
+    let saved: string[] = []
+    try { saved = JSON.parse(localStorage.getItem(key) ?? "[]").filter((id: string) => ids.includes(id)) } catch {}
+    let selected = saved.length ? saved : wide.matches ? ids : ["effect", "cf-ci"]
+    const limit = () => wide.matches ? ids.length : 2
+    const render = () => {
+      selected = selected.slice(-limit())
+      for (const button of buttons) button.setAttribute("aria-pressed", String(selected.includes(button.dataset.product!)))
+      section.dataset.compare = selected.join(" ")
+      section.style.setProperty("--compare-columns", String(selected.length))
+    }
+    for (const button of buttons) button.addEventListener("click", () => {
+      const id = button.dataset.product!
+      selected = selected.includes(id) ? selected.filter(item => item !== id) : [...selected, id]
+      if (!selected.length) selected = [id]
+      render()
+      try { localStorage.setItem(key, JSON.stringify(selected)) } catch {}
+    })
+    wide.addEventListener("change", render)
+    render()
+  }
+  for (const section of document.querySelectorAll<HTMLElement>("[data-readiness]")) setup(section)
+</script>
 <style>
+  :global(#main-content > div:has([data-readiness])) { max-width: min(100%, 110rem); }
   .readiness { margin-bottom: 2.5rem; }
   .heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   .heading h2 { margin: 0; font-size: 1.7rem; color: var(--nb-foreground); line-height: 1.2; }
@@ -62,18 +141,53 @@ const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").r
   progress::-webkit-progress-value { background: #15803d; }
   progress::-moz-progress-bar { background: #15803d; }
   .note { color: var(--nb-muted-foreground); font-size: .8rem; }
-  .matrix-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  th, td { padding: .55rem .3rem; border-bottom: 1px solid var(--nb-border); }
-  thead th { font-size: .7rem; vertical-align: bottom; min-width: 4.5rem; }
-  .readiness th { text-align: left; font-weight: 500; white-space: normal; }
-  th:first-child { min-width: 13rem; }
-  td, thead th:not(:first-child) { text-align: center; }
-  .group th { padding-top: 1.5rem; padding-bottom: .6rem; font-weight: 700; color: var(--nb-foreground); }
   a { color: var(--nb-brand); }
-  .square { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: var(--nb-border); border-radius: 3px; color: var(--nb-foreground); text-decoration: none; font-weight: 700; }
+
+  .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; margin: 1.5rem 0 .5rem; }
+  .product { position: relative; display: grid; gap: .1rem; text-align: left; padding: .8rem .9rem 1.1rem; border: 1px solid var(--nb-border); border-radius: .5rem; background: transparent; color: var(--nb-foreground); cursor: pointer; overflow: hidden; }
+  .product[aria-pressed="true"] { border-color: var(--nb-brand); box-shadow: inset 0 0 0 1px var(--nb-brand); }
+  .product[aria-pressed="false"] { opacity: .6; }
+  .product:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 2px; }
+  .product-label { font-weight: 600; }
+  .product-percent { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+  .product-detail { font-size: .75rem; color: var(--nb-muted-foreground); }
+  .product-bar { position: absolute; left: 0; bottom: 0; height: .3rem; width: var(--coverage); background: #15803d; }
+
+  .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .85rem; }
+  .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
+  .feature-head { position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
+  .environment { display: grid; justify-items: center; text-align: center; gap: .1rem; }
+  .environment-percent { color: var(--nb-muted-foreground); font-weight: 500; }
+  .group-title { margin: 1.5rem 0 0; padding: 0 .3rem .5rem; font-size: .9rem; font-weight: 700; color: var(--nb-foreground); border-bottom: 1px solid var(--nb-border); }
+  .feature { border-bottom: 1px solid var(--nb-border); }
+  summary { padding: .45rem .3rem; cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { background: color-mix(in srgb, var(--nb-border) 35%, transparent); }
+  .feature-title { display: flex; align-items: center; gap: .45rem; }
+  .feature-title::before { content: "▸"; color: var(--nb-muted-foreground); transition: transform .15s; }
+  .feature[open] .feature-title::before { transform: rotate(90deg); }
+  .cell { display: grid; place-items: center; }
+  .square { line-height: 1; display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: var(--nb-border); border-radius: 3px; color: var(--nb-foreground); text-decoration: none; font-weight: 700; }
+  .square[data-na] { background: transparent; color: var(--nb-muted-foreground); font-weight: 400; }
   .square[data-passing] { background: #15803d; color: white; }
   .square[data-failing] { background: #b91c1c; color: white; }
-  .square:hover, .square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
+
+  .compare { display: grid; grid-template-columns: repeat(var(--compare-columns, 3), minmax(0, 1fr)); gap: 1rem; padding: .5rem .3rem 1.25rem; }
+  .readiness:not([data-compare~="github"]) .implementation[data-product="github"],
+  .readiness:not([data-compare~="effect"]) .implementation[data-product="effect"],
+  .readiness:not([data-compare~="cf-ci"]) .implementation[data-product="cf-ci"] { display: none; }
+  .readiness:not([data-compare]) .compare { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
+  .implementation { min-width: 0; }
+  .implementation-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-bottom: .4rem; }
+  .implementation-status { display: flex; gap: .2rem; }
+  .mini { line-height: 1; display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 3px; font-size: .7rem; font-weight: 700; background: var(--nb-border); }
+  .mini[data-passing] { background: #15803d; color: white; }
+  .mini[data-failing] { background: #b91c1c; color: white; }
+  .source { margin-bottom: .75rem; }
+  .source-link { display: block; font-family: var(--nb-font-mono, monospace); font-size: .75rem; margin-bottom: .25rem; }
+  .source :global(pre) { max-height: 32rem; overflow: auto; font-size: .75rem; line-height: 1.5; margin: 0; }
+  .source :global(pre .line) { display: inline; }
+  .missing { color: var(--nb-muted-foreground); font-style: italic; }
+  @media (max-width: 48rem) { .features { overflow-x: auto; } .compare { grid-template-columns: minmax(0, 1fr); } }
 </style>
