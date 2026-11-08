@@ -8,6 +8,7 @@ import coverage from "../../../../examples/COVERAGE.md?raw"
 import { cellResult, validateSnapshot } from "../readiness.mjs"
 import readiness from "../../.cloudflare/state/readiness.json"
 import { Code } from "./ui/code"
+import { TabItem, Tabs } from "./ui/tabs"
 const readmes = import.meta.glob("../../../../examples/*/README.md", { query: "?raw", import: "default", eager: true })
 // import.meta.glob skips dot-directories, so read implementation sources directly.
 const root = [process.cwd(), join(process.cwd(), "../..")].find(dir => existsSync(join(dir, "examples/COVERAGE.md")))!
@@ -91,7 +92,14 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
                   title={`${environments[index]}: ${result?.state ?? "not applicable"}`}>{result?.passing ? "✓" : result?.failing ? "×" : "—"}</span>
               })}</span>
             </div>
-            {row.files[product.id].length ? row.files[product.id].map(path => <div class="source">
+            {row.files[product.id].length > 1 ? <Tabs syncKey="effect-ci-files" class="source-tabs">
+              {row.files[product.id].map(path => <TabItem label={posix.basename(path)}>
+                <div class="source">
+                  <a class="source-link" href={`${repository}/blob/main/examples/${row.recipe}/${path}`}>{path}</a>
+                  <Code code={sources[`examples/${row.recipe}/${path}`].trimEnd()} lang={language(path)} />
+                </div>
+              </TabItem>)}
+            </Tabs> : row.files[product.id].length ? row.files[product.id].map(path => <div class="source">
               <a class="source-link" href={`${repository}/blob/main/examples/${row.recipe}/${path}`}>{path}</a>
               <Code code={sources[`examples/${row.recipe}/${path}`].trimEnd()} lang={language(path)} />
             </div>) : <p class="missing">{missing[product.id]}</p>}
@@ -149,16 +157,16 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .product[aria-pressed="false"] { opacity: .6; }
   .product:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 2px; }
   .product-label { font-weight: 600; }
-  .product-percent { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+  .product-percent { font-size: 1.6rem; font-weight: 600; line-height: 1.2; }
   .product-detail { font-size: .75rem; color: var(--nb-muted-foreground); }
   .product-bar { position: absolute; left: 0; bottom: 0; height: .3rem; width: var(--coverage); background: #15803d; }
 
-  .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .85rem; }
+  .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
   .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
   .feature-head { position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
   .environment { display: grid; justify-items: center; text-align: center; gap: .1rem; }
   .environment-percent { color: var(--nb-muted-foreground); font-weight: 500; }
-  .group-title { margin: 1.5rem 0 0; padding: 0 .3rem .5rem; font-size: .9rem; font-weight: 700; color: var(--nb-foreground); border-bottom: 1px solid var(--nb-border); }
+  .group-title { margin: 1.5rem 0 0; padding: 0 .3rem .5rem; font-size: .9rem; font-weight: 600; color: var(--nb-foreground); border-bottom: 1px solid var(--nb-border); }
   .feature { border-bottom: 1px solid var(--nb-border); }
   summary { padding: .45rem .3rem; cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
@@ -167,7 +175,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .feature-title::before { content: "▸"; color: var(--nb-muted-foreground); transition: transform .15s; }
   .feature[open] .feature-title::before { transform: rotate(90deg); }
   .cell { display: grid; place-items: center; }
-  .square { line-height: 1; display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: var(--nb-border); border-radius: 3px; color: var(--nb-foreground); text-decoration: none; font-weight: 700; }
+  .square { line-height: 1; display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; background: var(--nb-border); border-radius: 3px; color: var(--nb-foreground); text-decoration: none; font-weight: 600; }
   .square[data-na] { background: transparent; color: var(--nb-muted-foreground); font-weight: 400; }
   .square[data-passing] { background: #15803d; color: white; }
   .square[data-failing] { background: #b91c1c; color: white; }
@@ -181,7 +189,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .implementation { min-width: 0; }
   .implementation-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-bottom: .4rem; }
   .implementation-status { display: flex; gap: .2rem; }
-  .mini { line-height: 1; display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 3px; font-size: .7rem; font-weight: 700; background: var(--nb-border); }
+  .mini { line-height: 1; display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 3px; font-size: .7rem; font-weight: 600; background: var(--nb-border); }
   .mini[data-passing] { background: #15803d; color: white; }
   .mini[data-failing] { background: #b91c1c; color: white; }
   .source { margin-bottom: .75rem; }
