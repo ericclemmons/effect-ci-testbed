@@ -44,18 +44,17 @@ const language = (path) => path.endsWith(".yml") ? "yaml" : "ts"
 const environmentLabels = ["", "Local", "GitHub Actions", "Hosted", ""]
 const missing = { github: "No GitHub Actions comparison for this recipe.", effect: "No Effect CI workflow for this recipe.", "cf-ci": "Not ported to cf ci yet." }
 ---
-<section class="readiness" aria-labelledby="readiness-title" data-readiness>
-  <div class="heading">
-    <h2 id="readiness-title">Is Effect CI ready yet?</h2>
-    <a data-revision href={`${repository}/commit/${snapshot.sha}`}>main · {snapshot.sha.slice(0, 7)}</a>
-  </div>
-  <p>Every example, across the places it should work. Expand a feature to compare its implementations.</p>
-  <div class="summary" data-summary>{passed} / {cells.length} passing · {percent(passed, cells.length)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
-  <progress max={cells.length} value={passed} aria-label="Passing feature and environment combinations"></progress>
-
+<section class="readiness" aria-label="Feature readiness" data-readiness>
   <div class="features" aria-label="Feature compatibility on main, grouped by recipe">
     <div class="feature-head" aria-hidden="true">
-      <span class="head-feature">Feature</span>
+      <span class="head-feature">
+        <span>Feature</span>
+        <a class="overall" href={`${repository}/commit/${snapshot.sha}`} title={`${passed} / ${cells.length} passing on main · ${snapshot.sha.slice(0, 7)} · ${snapshot.total_count} completed checks · ${checkedAt}`}>
+          <progress max={cells.length} value={passed}></progress>
+          <span class="environment-percent">{percent(passed, cells.length)}%</span>
+        </a>
+        <time hidden datetime={snapshot.fetchedAt}>{checkedAt}</time>
+      </span>
       <span class="head-product" style="grid-column: 2">GitHub Actions</span>
       <span class="head-product head-span" style="grid-column: 3 / span 3">Effect CI</span>
       <span class="head-product" style="grid-column: 6">cf ci</span>
@@ -64,9 +63,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
         <span class="environment-percent">{percent(environmentCoverage[index], rows.length)}%</span>
       </span>)}
     </div>
-    {results.map(group => <div class="group">
-      <h3 class="group-title">{group.title}</h3>
-      {group.rows.map(row => <details class="feature" data-recipe={row.recipe}>
+    {rows.map(row => <details class="feature" data-recipe={row.recipe}>
         <summary>
           <span class="feature-title">{row.link ? <a href={featureHref(row.link)}>{row.title}</a> : row.title}</span>
           {row.results.map((result, index) => <span class="cell">
@@ -90,17 +87,15 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
           </div>)}
         </div>
       </details>)}
-    </div>)}
   </div>
 </section>
 <style>
   :global(#main-content > div:has([data-readiness])) { max-width: min(100%, 110rem); }
   .readiness { margin-bottom: 2.5rem; }
-  .heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .heading h2 { margin: 0; font-size: 1.7rem; color: var(--nb-foreground); line-height: 1.2; }
   p { margin: .6rem 0; }
-  .summary { font-weight: 600; margin-top: 1.4rem; }
-  progress { display: block; width: 100%; height: 1rem; margin: .6rem 0; accent-color: #15803d; border: 0; border-radius: .25rem; overflow: hidden; background: var(--nb-border); }
+  .head-feature { grid-row: 1 / span 2; display: grid; gap: .3rem; align-self: end; padding-bottom: .1rem; }
+  .overall { display: flex; align-items: center; gap: .5rem; max-width: 20rem; text-decoration: none; }
+  progress { display: block; flex: 1; height: .375rem; margin: 0; accent-color: #15803d; border: 0; border-radius: .25rem; overflow: hidden; background: var(--nb-border); }
   progress::-webkit-progress-bar { background: var(--nb-border); }
   progress::-webkit-progress-value { background: #15803d; }
   progress::-moz-progress-bar { background: #15803d; }
@@ -110,12 +105,10 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
   .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
   .feature-head { grid-template-rows: auto auto; row-gap: .15rem; position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
-  .head-feature { grid-row: 1 / span 2; }
   .head-product { text-align: center; }
   .head-span { border-bottom: 1px solid var(--nb-border); padding-bottom: .15rem; }
   .environment { display: grid; justify-items: center; text-align: center; gap: .1rem; }
   .environment-percent { color: var(--nb-muted-foreground); font-weight: 500; }
-  .group-title { margin: 1.5rem 0 0; padding: 0 .3rem .5rem; font-size: .9rem; font-weight: 600; color: var(--nb-foreground); border-bottom: 1px solid var(--nb-border); }
   .feature { border-bottom: 1px solid var(--nb-border); }
   summary { padding: .45rem .3rem; cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
