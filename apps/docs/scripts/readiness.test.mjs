@@ -13,17 +13,17 @@ test("the built features page contains the completed snapshot without browser re
   assert.ok(html.includes(`${snapshot.total_count} completed checks`))
   assert.ok(html.includes(`datetime="${snapshot.fetchedAt}"`))
   assert.match(html, /aria-label="Run CI with npm · GitHub Actions: [^"]+"[^>]*>[✓×—]<\/a>/)
-  for (const label of ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare", "cf ci"]) assert.match(html, new RegExp(`class="environment"[^>]*>\\s*<span[^>]*>${label.replace(/[()]/g, "\\$&")}</span>`), label)
+  for (const label of ["Local", "GitHub Actions", "Hosted"]) assert.match(html, new RegExp(`class="environment"[^>]*>\s*<span[^>]*>${label}</span>`), label)
   assert.doesNotMatch(html, /⏳|data-pending|data-refresh|\/api\/readiness|Loading checks from main|Refreshes every/)
 })
 
 test("each feature expands to compare GitHub Actions, Effect CI and cf ci side by side", async () => {
   const html = await readFile(new URL("../dist/examples/features/index.html", import.meta.url), "utf8")
-  for (const label of ["GitHub Actions", "Effect CI", "cf ci"]) assert.match(html, new RegExp(`data-switch="[^"]+"[^>]*>${label}</button>`), label)
-  assert.match(html, /class="environment"[^>]*>\s*<span[^>]*>cf ci<\/span>\s*<span class="environment-percent"[^>]*>\d+%<\/span>/)
+  for (const label of ["GitHub Actions", "Effect CI", "cf ci"]) assert.match(html, new RegExp(`class="head-product[^"]*"[^>]*>${label}</span>`), label)
+  assert.match(html, /class="environment-percent"[^>]*>\d+%<\/span>/)
   const npm = html.slice(html.indexOf('data-recipe="node-npm"'), html.indexOf("</details>", html.indexOf('data-recipe="node-npm"')))
   assert.match(npm, /<summary/)
-  for (const path of [".github/workflows/github.yml", ".cloudflare/ci/workflow.ts", ".cloudflare/cf-ci/src/index.ts"]) assert.ok(npm.includes(`examples/node-npm/${path}`), path)
+  for (const file of ["github.yml", "workflow.ts", "actions.ts", "index.ts"]) assert.ok(npm.includes(`data-nb-tab-label="${file}"`), file)
   assert.ok(npm.includes("astro-code"), "implementations are highlighted at build time")
 })
 
