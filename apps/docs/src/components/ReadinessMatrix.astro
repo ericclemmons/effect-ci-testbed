@@ -38,10 +38,8 @@ const cells = rows.flatMap(row => row.results).filter(Boolean)
 const passed = cells.filter(cell => cell.passing).length
 const percent = (count, total) => Math.round(count / total * 100)
 const environmentCoverage = environments.map((_, index) => rows.filter(row => row.results[index]?.passing).length)
-const productCoverage = products.map(product => ({ ...product, passing: environmentCoverage[environments.indexOf(product.headline)] }))
 const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC")
 const language = (path) => path.endsWith(".yml") ? "yaml" : "ts"
-const productEnvironments = { github: [0], effect: [1, 2, 3], "cf-ci": [4] }
 const missing = { github: "No GitHub Actions comparison for this recipe.", effect: "No Effect CI workflow for this recipe.", "cf-ci": "Not ported to cf ci yet." }
 ---
 <section class="readiness" aria-labelledby="readiness-title" data-readiness>
@@ -52,16 +50,6 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   <p>Every example, across the places it should work. Expand a feature to compare its implementations.</p>
   <div class="summary" data-summary>{passed} / {cells.length} passing · {percent(passed, cells.length)}% · {snapshot.total_count} completed checks · Snapshot <time datetime={snapshot.fetchedAt}>{checkedAt}</time></div>
   <progress max={cells.length} value={passed} aria-label="Passing feature and environment combinations"></progress>
-
-  <div class="products" role="group" aria-label="Implementations to compare">
-    {productCoverage.map(product => <button type="button" class="product" data-product={product.id} aria-pressed="true">
-      <span class="product-label">{product.label}</span>
-      <span class="product-percent">{percent(product.passing, rows.length)}%</span>
-      <span class="product-detail">{product.passing} / {rows.length} features{product.headline !== product.label ? ` · ${product.headline}` : ""}</span>
-      <span class="product-bar" style={`--coverage: ${percent(product.passing, rows.length)}%`}></span>
-    </button>)}
-  </div>
-  <p class="note">Select the implementations to show side by side. Every check stays visible. ✓ passed; × failed; — no conclusive result or not applicable. Missing evidence does not mean unsupported. Effect CI (local) includes local Cloudflare runtime execution; Effect CI on Cloudflare requires a native Cloudflare check. cf ci runs a recipe's own Workflows step.runner() pipeline (internal preview). Click a square for its evidence.</p>
 
   <div class="features" aria-label="Feature compatibility on main, grouped by recipe">
     <div class="feature-head" aria-hidden="true">
@@ -84,25 +72,19 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
         </summary>
         <div class="compare" data-pagefind-ignore>
           {products.map(product => <div class="implementation" data-product={product.id}>
-            <div class="implementation-head">
-              <strong>{product.label}</strong>
-              <span class="implementation-status">{productEnvironments[product.id].map(index => {
-                const result = row.results[index]
-                return <span class="mini" data-passing={result?.passing || undefined} data-failing={result?.failing || undefined}
-                  title={`${environments[index]}: ${result?.state ?? "not applicable"}`}>{result?.passing ? "✓" : result?.failing ? "×" : "—"}</span>
-              })}</span>
+            <div class="implementation-head" role="group" aria-label="Implementation to show">
+              {products.map(choice => <button type="button" class="switch" data-switch={choice.id} aria-pressed={String(choice.id === product.id)}>{choice.label}</button>)}
             </div>
-            {row.files[product.id].length > 1 ? <Tabs syncKey="effect-ci-files" class="source-tabs">
-              {row.files[product.id].map(path => <TabItem label={posix.basename(path)}>
+            <Tabs syncKey="effect-ci-files" class="source-tabs">
+              {row.files[product.id].length ? row.files[product.id].map(path => <TabItem label={posix.basename(path)}>
                 <div class="source">
                   <a class="source-link" href={`${repository}/blob/main/examples/${row.recipe}/${path}`}>{path}</a>
                   <Code code={sources[`examples/${row.recipe}/${path}`].trimEnd()} lang={language(path)} />
                 </div>
-              </TabItem>)}
-            </Tabs> : row.files[product.id].length ? row.files[product.id].map(path => <div class="source">
-              <a class="source-link" href={`${repository}/blob/main/examples/${row.recipe}/${path}`}>{path}</a>
-              <Code code={sources[`examples/${row.recipe}/${path}`].trimEnd()} lang={language(path)} />
-            </div>) : <p class="missing">{missing[product.id]}</p>}
+              </TabItem>) : <TabItem label="None">
+                <p class="missing">{missing[product.id]}</p>
+              </TabItem>}
+            </Tabs>
           </div>)}
         </div>
       </details>)}
@@ -113,24 +95,30 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   const wide = window.matchMedia("(min-width: 1600px)")
   const key = "effect-ci:compare"
   function setup(section: HTMLElement) {
-    const buttons = [...section.querySelectorAll<HTMLButtonElement>("button[data-product]")]
-    const ids = buttons.map(button => button.dataset.product!)
-    let saved: string[] = []
-    try { saved = JSON.parse(localStorage.getItem(key) ?? "[]").filter((id: string) => ids.includes(id)) } catch {}
-    let selected = saved.length ? saved : wide.matches ? ids : ["effect", "cf-ci"]
-    const limit = () => wide.matches ? ids.length : 2
+    const ids = [...new Set([...section.querySelectorAll<HTMLButtonElement>("button[data-switch]")].map(button => button.dataset.switch!))]
+    let selected = ["effect", "cf-ci"]
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) ?? "[]")
+      if (Array.isArray(saved) && saved.length === 2 && saved[0] !== saved[1] && saved.every(id => ids.includes(id))) selected = saved
+    } catch {}
     const render = () => {
-      selected = selected.slice(-limit())
-      for (const button of buttons) button.setAttribute("aria-pressed", String(selected.includes(button.dataset.product!)))
-      section.dataset.compare = selected.join(" ")
-      section.style.setProperty("--compare-columns", String(selected.length))
+      const shown = wide.matches ? [...selected, ...ids.filter(id => !selected.includes(id))] : selected
+      section.dataset.compare = shown.join(" ")
+      section.style.setProperty("--compare-columns", String(shown.length))
+      for (const id of ids) section.style.setProperty(`--order-${id}`, String(Math.max(shown.indexOf(id), 0)))
     }
-    for (const button of buttons) button.addEventListener("click", () => {
-      const id = button.dataset.product!
-      selected = selected.includes(id) ? selected.filter(item => item !== id) : [...selected, id]
-      if (!selected.length) selected = [id]
-      render()
+    section.addEventListener("click", event => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-switch]")
+      if (!button || !section.contains(button)) return
+      const pane = button.closest<HTMLElement>(".implementation")!.dataset.product!
+      const choice = button.dataset.switch!
+      const slot = selected.indexOf(pane)
+      if (slot === -1 || choice === pane) return
+      const other = selected.indexOf(choice)
+      if (other !== -1) selected[other] = pane
+      selected[slot] = choice
       try { localStorage.setItem(key, JSON.stringify(selected)) } catch {}
+      render()
     })
     wide.addEventListener("change", render)
     render()
@@ -148,18 +136,8 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   progress::-webkit-progress-bar { background: var(--nb-border); }
   progress::-webkit-progress-value { background: #15803d; }
   progress::-moz-progress-bar { background: #15803d; }
-  .note { color: var(--nb-muted-foreground); font-size: .8rem; }
   a { color: var(--nb-brand); }
 
-  .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; margin: 1.5rem 0 .5rem; }
-  .product { position: relative; display: grid; gap: .1rem; text-align: left; padding: .8rem .9rem 1.1rem; border: 1px solid var(--nb-border); border-radius: .5rem; background: transparent; color: var(--nb-foreground); cursor: pointer; overflow: hidden; }
-  .product[aria-pressed="true"] { border-color: var(--nb-brand); box-shadow: inset 0 0 0 1px var(--nb-brand); }
-  .product[aria-pressed="false"] { opacity: .6; }
-  .product:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 2px; }
-  .product-label { font-weight: 600; }
-  .product-percent { font-size: 1.6rem; font-weight: 600; line-height: 1.2; }
-  .product-detail { font-size: .75rem; color: var(--nb-muted-foreground); }
-  .product-bar { position: absolute; left: 0; bottom: 0; height: .3rem; width: var(--coverage); background: #15803d; }
 
   .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
   .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
@@ -181,21 +159,28 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   .square[data-failing] { background: #b91c1c; color: white; }
   a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
 
-  .compare { display: grid; grid-template-columns: repeat(var(--compare-columns, 3), minmax(0, 1fr)); gap: 1rem; padding: .5rem .3rem 1.25rem; }
+  .compare { display: grid; grid-template-columns: repeat(var(--compare-columns, 2), minmax(0, 1fr)); gap: 1px; margin: 0 0 -1px; background: var(--nb-border); border-top: 1px solid var(--nb-border); box-shadow: inset 0 6px 8px -6px rgb(0 0 0 / .25); }
   .readiness:not([data-compare~="github"]) .implementation[data-product="github"],
   .readiness:not([data-compare~="effect"]) .implementation[data-product="effect"],
   .readiness:not([data-compare~="cf-ci"]) .implementation[data-product="cf-ci"] { display: none; }
-  .readiness:not([data-compare]) .compare { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
-  .implementation { min-width: 0; }
-  .implementation-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-bottom: .4rem; }
-  .implementation-status { display: flex; gap: .2rem; }
-  .mini { line-height: 1; display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 3px; font-size: .7rem; font-weight: 600; background: var(--nb-border); }
-  .mini[data-passing] { background: #15803d; color: white; }
-  .mini[data-failing] { background: #b91c1c; color: white; }
-  .source { margin-bottom: .75rem; }
-  .source-link { display: block; font-family: var(--nb-font-mono, monospace); font-size: .75rem; margin-bottom: .25rem; }
-  .source :global(pre) { max-height: 32rem; overflow: auto; font-size: .75rem; line-height: 1.5; margin: 0; }
+  .implementation { min-width: 0; display: flex; flex-direction: column; order: 0; padding: .6rem .75rem 0; background: color-mix(in srgb, var(--nb-border) 25%, var(--nb-background, transparent)); }
+  .implementation[data-product="github"] { order: var(--order-github); }
+  .implementation[data-product="effect"] { order: var(--order-effect); }
+  .implementation[data-product="cf-ci"] { order: var(--order-cf-ci); }
+  .implementation-head { display: flex; flex-wrap: wrap; gap: .25rem; }
+  .switch { padding: .2rem .6rem; border: 1px solid transparent; border-radius: .375rem; background: transparent; color: var(--nb-muted-foreground); font: inherit; font-size: .8125rem; cursor: pointer; }
+  .switch:hover { color: var(--nb-foreground); }
+  .switch[aria-pressed="true"] { border-color: var(--nb-border); background: var(--nb-background, transparent); color: var(--nb-foreground); font-weight: 500; }
+  .readiness[data-compare~="github"][data-compare~="effect"][data-compare~="cf-ci"] .switch[aria-pressed="false"] { display: none; }
+  .readiness[data-compare~="github"][data-compare~="effect"][data-compare~="cf-ci"] .switch { pointer-events: none; }
+  .implementation :global([data-nb-tabs]) { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .implementation :global([data-nb-tabs] > .mt-3) { flex: 1; display: flex; flex-direction: column; margin-top: .5rem; }
+  .implementation :global([data-nb-tabs-content]:not([hidden])) { flex: 1; display: flex; flex-direction: column; }
+  .source { flex: 1; display: flex; flex-direction: column; }
+  .source-link { display: block; font-family: var(--nb-font-mono, monospace); font-size: .75rem; margin-bottom: .35rem; }
+  .source :global(figure) { flex: 1; display: flex; flex-direction: column; margin: 0; }
+  .source :global(pre) { flex: 1; max-height: 32rem; overflow: auto; font-size: .75rem; line-height: 1.5; margin: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
   .source :global(pre .line) { display: inline; }
-  .missing { color: var(--nb-muted-foreground); font-style: italic; }
+  .missing { color: var(--nb-muted-foreground); font-style: italic; margin: 0; padding-bottom: 1rem; }
   @media (max-width: 48rem) { .features { overflow-x: auto; } .compare { grid-template-columns: minmax(0, 1fr); } }
 </style>
