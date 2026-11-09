@@ -19,13 +19,24 @@ The loader resolves repository links and source snippets before Nimbus renders
 them, so HTML, search, and Markdown exports share the same content. The committed
 `nimbus.json` records the reviewed starter version; `.nimbus/` is a generated cache.
 
-The homepage is an interactive "How it works" explainer. Pick where the graph runs
-and what changed, and it replays the walkthrough's real output: cache hits,
-Markdown-only skips, and the local approval gate. Scenarios live in
-`src/explainer.mjs`. The default scenario is rendered into the HTML, so the page
-works without JavaScript.
+The homepage's "How it works" section is a continuous software-factory
+simulation. A team of people each work through agents. Agents iterate with
+`effect-ci run --local`, then `effect-ci run check` has the hosted runner check
+and sign the commit; a failing check sends the agent back to fix it. Agents push
+and open a pull request on GitHub, which stays the source of truth. People
+review and merge, and `main` reuses the signed checks and only runs the deploy.
+The hosted runner is split into Workers (lint, format, verify; millisecond
+startup) and Containers (build, test, deploy). Errors in the sample app raise an
+event that dispatches a free agent, which opens a fix for review. Hovering a
+machine selects its tab in the terminal below the diagram. Signed check reuse,
+the Workers/Containers split and the error-to-agent loop are illustrative, not
+shipped features.
 
-[Explainer scenarios](./src/explainer.mjs "source")
+The simulation is deterministic, so the build renders a moment of it into the
+HTML and the browser replays to the same moment before continuing. It pauses off
+screen and starts paused when reduced motion is preferred.
+
+[Factory simulation](./src/factory.mjs#symbol=createFactory "source")
 
 `/examples/features/` (`examples/FEATURES.md`) is a static feature compatibility
 matrix. Rows and applicability
