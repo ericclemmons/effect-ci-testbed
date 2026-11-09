@@ -1,13 +1,24 @@
 ---
-import { approvals, changes, defaults, runners, scenario, steps } from "../explainer.mjs"
-const initial = scenario(defaults)
-const marks = { passed: "✓", cached: "◉", skipped: "—", waiting: "⏸", failed: "×" }
+import { agents, app, appHealth, checkMark, createFactory, github, githubText, humans, poolStats, runText, runner, runnerStats, team, tokenize, view, wires } from "../factory.mjs"
+// Render a moment of the stream into the HTML; the client replays to the same moment and continues.
+const snapshotAt = 26000
+const factory = createFactory()
+factory.advance(snapshotAt)
+const { state } = factory
+const box = ({ x, y, w, h }: { x: number, y: number, w: number, h: number }) =>
+  `left:${(x / view.width) * 100}%;top:${(y / view.height) * 100}%;width:${(w / view.width) * 100}%;height:${(h / view.height) * 100}%`
+const tabs = [["me", "You"], ["teammate", "Teammate"], ["a1", "Agent 1"], ["a2", "Agent 2"], ["a3", "Agent 3"], ["github", "GitHub"], ["runner", "Runner"], ["app", "dash"]]
+const lines = 12
+const legend = [["source", "commit"], ["pr", "pull request"], ["review", "review"], ["pass", "check"], ["deploy", "deploy"], ["error", "error event"], ["dispatch", "agent dispatch"]]
+const pools = [["worker", "Workers", "lint · format · verify · ms startup"], ["container", "Containers", "build · test · deploy"]]
+const slots = state.slots.map((slot, index) => ({ ...slot, index }))
 const stages = [
   { n: 1, title: "Describe", body: "Start from package scripts, or write a typed ci.ts graph.", code: "ci.ts" },
   { n: 2, title: "Inspect", body: "Humans and agents see the same plan before anything runs.", code: "effect-ci plan" },
   { n: 3, title: "Run anywhere", body: "The same graph runs on your machine, GitHub Actions, or a Cloudflare host.", code: "effect-ci run" },
   { n: 4, title: "Reuse and report", body: "Cache hits replay, unchanged work is skipped, and checks report back.", code: "gh pr checks" },
 ]
+const line = (text: string) => tokenize(text)
 ---
 <section class="hiw" aria-labelledby="how-it-works" data-hiw>
   <p class="lead">One CI graph you can inspect, run locally, and then run unchanged on a host. It skips work that a change cannot affect.</p>
@@ -21,121 +32,277 @@ const stages = [
     {stages.map(stage => <li><span class="n">{stage.n}</span><strong>{stage.title}</strong><span>{stage.body}</span><code>{stage.code}</code></li>)}
   </ol>
 
-  <div class="sim" data-sim data-runner={defaults.runner} data-change={defaults.change} data-approval={defaults.approval}>
-    <div class="controls" data-controls hidden>
-      <fieldset>
-        <legend>Run on</legend>
-        {Object.entries(runners).map(([id, runner]) => <button type="button" data-set="runner" data-value={id} aria-pressed={String(id === defaults.runner)}>{runner.label}</button>)}
-      </fieldset>
-      <fieldset>
-        <legend>Then change</legend>
-        {Object.entries(changes).map(([id, change]) => <button type="button" data-set="change" data-value={id} aria-pressed={String(id === defaults.change)}><code>{change.label}</code></button>)}
-      </fieldset>
-    </div>
-
-    <div class="stage" role="img" aria-label="CI graph: ci.ts plans checkout, install, build and publish, then reports a check" data-stage>
-      <div class="chip source"><span class="kicker">input</span>ci.ts</div>
-      <span class="edge" data-edge></span>
-      <div class="runner">
-        <span class="runner-label" data-runner-label>{runners[defaults.runner].label}</span>
-        <div class="graph">
-          {steps.map((step, index) => <Fragment>
-            {index > 0 && <span class="edge" data-edge></span>}
-            <div class="node" data-node={step.id} data-state={initial.nodes[step.id].state}>
-              <span class="mark" data-mark>{marks[initial.nodes[step.id].state]}</span>
-              <span class="name">{step.label}</span>
-              <span class="note" data-note>{initial.nodes[step.id].note}</span>
-            </div>
+  <div class="factory" data-factory data-snapshot={snapshotAt} data-lines={lines}>
+    <div class="scroller">
+      <div class="stage" role="group" aria-label="A team of people each work through agents. Agents run checks locally, then have the hosted runner check and sign each commit before they open a pull request on GitHub. People review and merge; main reuses the signed checks and only deploys to dash.cloudflare.com. Errors there dispatch an agent, which opens a fix for review." data-stage>
+        <div class="team" style={box(team)}><span>Team</span></div>
+        <svg viewBox={`0 0 ${view.width} ${view.height}`} aria-hidden="true">
+          {Object.entries(wires).map(([id, wire]) => <Fragment>
+            <path class="wire" d={wire.d} data-wire={id} data-tone={wire.tone} />
+            {wire.label && <text class="wire-label" x={wire.lx} y={wire.ly} data-tone={wire.tone}>{wire.label}</text>}
           </Fragment>)}
+          <g data-packets></g>
+        </svg>
+
+        {Object.entries(humans).map(([id, human]) => <div class="node human" data-node={id} data-tone={state.humans[id].tone} tabindex="0" style={box(human)} aria-label={human.label}>
+          <span class="avatar">{human.label[0]}</span>
+          <span class="who"><strong>{human.label}</strong><span class="status" data-status>{state.humans[id].status}</span></span>
+        </div>)}
+
+        {Object.entries(agents).map(([id, agent]) => <div class="node agent" data-node={id} data-tone={state.agents[id].tone} tabindex="0" style={box(agent)} aria-label={`${agent.label}, ${agent.tag}`}>
+          <div class="head"><span class="avatar">✦</span><strong>{agent.label}</strong><span class="tag">{agent.tag}</span><code data-sha>{state.agents[id].sha}</code></div>
+          <div class="status" data-status>{state.agents[id].status}</div>
+          <div class="bar"><i data-progress></i></div>
+        </div>)}
+
+        <div class="node remote" data-node="github" data-check={state.github.check} tabindex="0" style={box(github)} aria-label="GitHub, the source of truth">
+          <strong>{github.label}</strong>
+          <span class="ref" data-ref>{githubText(state.github)}</span>
+          <span class="mark" data-mark>{checkMark(state.github.check)}</span>
+        </div>
+
+        <div class="node runner" data-node="runner" tabindex="0" style={box(runner)} aria-label="Hosted runner on Cloudflare">
+          <div class="head"><strong>{runner.label}</strong><span class="role">{runner.role}</span><span class="stats" data-stats>{runnerStats(state)}</span></div>
+          {pools.map(([pool, label, note]) => <div class="pool" data-pool={pool}>
+            <div class="pool-head"><strong>{label}</strong><span>{note}</span><span class="stats" data-pool-stats={pool}>{poolStats(state, pool)}</span></div>
+            <div class="slots">
+              {slots.filter(slot => slot.pool === pool).map(slot => <div class="slot" data-node={`slot-${slot.index}`} data-state={slot.state} data-warm={String(slot.warm)} tabindex="0" aria-label={`${label} slot`}>
+                <span class="task" data-task>{slot.task || "·"}</span>
+                <span class="sha" data-sha>{slot.sha}</span>
+                <i data-progress></i>
+              </div>)}
+            </div>
+          </div>)}
+          <ol class="runs" data-runs>
+            {state.runs.map(run => <li data-status={run.status}><span>{run.id}</span><span>{run.ref} {run.sha}</span><span>{runText(run)}</span></li>)}
+          </ol>
+        </div>
+
+        <div class="node app" data-node="app" data-health={state.app.incidents.length ? "error" : "ok"} tabindex="0" style={box(app)} aria-label="dash.cloudflare.com in production">
+          <div class="chrome"><i></i><i></i><i></i><span>{app.label}</span></div>
+          <div class="body">
+            <div class="row"><strong data-version>v{state.app.version}</strong> <code data-sha>{state.app.sha}</code></div>
+            <span class="health" data-health-text>{appHealth(state.app)}</span>
+            <div class="spark" data-spark>{state.app.bars.map(bar => <i data-error={String(bar.error)} style={`transform:scaleY(${bar.h})`}></i>)}</div>
+          </div>
         </div>
       </div>
-      <span class="edge" data-edge></span>
-      <div class="chip check" data-check={initial.check}><span class="kicker">reports</span>check</div>
     </div>
-
-    <div class="gate" data-gate hidden={!initial.gate}>
-      <span>Publish the walkthrough?</span>
-      {Object.entries(approvals).filter(([id]) => id !== "pending").map(([id, approval]) => <button type="button" data-set="approval" data-value={id} hidden>{approval.label}</button>)}
-      <button type="button" data-set="approval" data-value="pending" data-reset hidden>Reset</button>
+    <div class="below">
+      <ul class="legend" aria-label="Legend">
+        {legend.map(([kind, label]) => <li><i data-kind={kind}></i>{label}</li>)}
+      </ul>
+      <button type="button" class="toggle" data-toggle hidden aria-pressed="false">Pause</button>
     </div>
-
-    <p class="summary" data-summary aria-live="polite">{initial.summary}</p>
-    <pre class="terminal" data-terminal aria-label="Terminal output">{initial.lines.join("\n")}</pre>
-    <p class="fine">Output excerpted from the <a href="/walkthrough/">walkthrough</a>. Approval and the publication receipt run locally today; hosted runs build and report checks.</p>
+    <div class="terminal">
+      <div class="tabs">
+        <div role="tablist" aria-label="Terminals">
+          {tabs.map(([id, label]) => <button type="button" role="tab" data-tab={id} aria-selected={String(id === "a1")} aria-controls="factory-log">{label}</button>)}
+          <button type="button" role="tab" data-tab="slot" aria-selected="false" aria-controls="factory-log" disabled title="Hover a Worker or Container">slot</button>
+        </div>
+      </div>
+      <pre id="factory-log" role="tabpanel" data-log>{(state.logs.a1 ?? []).slice(-lines).map(text => <span class="line">{line(text).map(([kind, value]) => kind ? <span class={`t-${kind}`}>{value}</span> : value)}</span>)}</pre>
+    </div>
   </div>
 </section>
 
 <script>
   import { mount } from "@cloudflare/nimbus-docs/client"
-  import { runners, scenario } from "../explainer.mjs"
+  import { appHealth, checkMark, createFactory, githubText, poolStats, runText, runnerStats, slotIds, slotName, tokenize } from "../factory.mjs"
 
-  const marks: Record<string, string> = { passed: "✓", cached: "◉", skipped: "—", waiting: "⏸", failed: "×" }
+  const svg = "http://www.w3.org/2000/svg"
 
-  mount("[data-sim]", (root) => {
-    const controller = new AbortController()
-    const timers: number[] = []
-    const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches
-    const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!
-    const $$ = <T extends Element>(selector: string) => [...root.querySelectorAll<T>(selector)]
-    const nodes = $$<HTMLElement>("[data-node]")
-    const edges = $$<HTMLElement>("[data-edge]")
+  mount("[data-factory]", (root) => {
+    const factory = createFactory()
+    factory.advance(Number(root.dataset.snapshot))
+    const { state } = factory
+    const $ = <T extends Element>(selector: string, scope: ParentNode = root) => scope.querySelector<T>(selector)!
+    const nodes = new Map([...root.querySelectorAll<HTMLElement>("[data-stage] [data-node]")].map(element => [element.dataset.node!, element]))
+    const node = (id: string) => nodes.get(id)!
+    const paths = Object.fromEntries([...root.querySelectorAll<SVGPathElement>("[data-wire]")].map(path => [path.dataset.wire!, { path, length: path.getTotalLength() }]))
+    const layer = $<SVGGElement>("[data-packets]")
+    const log = $<HTMLElement>("[data-log]")
+    const slotTab = $<HTMLButtonElement>('[data-tab="slot"]')
+    const lines = Number(root.dataset.lines)
+    const toggle = $<HTMLButtonElement>("[data-toggle]")
+    const packets = new Map<number, { group: SVGGElement, head: SVGGElement, trail: SVGPathElement }>()
+    const bars = new Map<string, { element: HTMLElement, value: number }>()
+    for (const id of [...Object.keys(state.agents), ...slotIds()]) bars.set(id, { element: $<HTMLElement>("[data-progress]", node(id)), value: -1 })
+    const setBar = (id: string, value: number) => {
+      const bar = bars.get(id)!
+      const rounded = Math.round(value * 200) / 200
+      if (bar.value !== rounded) { bar.value = rounded; bar.element.style.transform = `scaleX(${rounded})` }
+    }
+    let runsKey = ""
+    let selected = "a1"
+    let paused = matchMedia("(prefers-reduced-motion: reduce)").matches
+    let visible = true
+    let frame = 0
+    let last = 0
 
-    const syncGate = () => $$<HTMLButtonElement>("[data-gate] [data-value]").forEach(button => {
-      button.hidden = button.hasAttribute("data-reset") ? root.dataset.approval === "pending" : root.dataset.approval !== "pending"
-    })
-    $("[data-controls]").hidden = false
-    syncGate()
+    const text = (element: Element, value: string) => { if (element.textContent !== value) element.textContent = value }
 
-    function render() {
-      timers.splice(0).forEach(clearTimeout)
-      const state = { runner: root.dataset.runner, change: root.dataset.change, approval: root.dataset.approval } as Parameters<typeof scenario>[0]
-      const result = scenario(state)
-      $$<HTMLButtonElement>("[data-set]").forEach(button => {
-        if (button.dataset.set !== "approval") button.setAttribute("aria-pressed", String(root.dataset[button.dataset.set!] === button.dataset.value))
-      })
-      syncGate()
-      $("[data-runner-label]").textContent = runners[state!.runner as keyof typeof runners].label
-      $("[data-gate]").hidden = !result.gate
-      $("[data-summary]").textContent = result.summary
-      const terminal = $("[data-terminal]")
-      const check = $<HTMLElement>("[data-check]")
-      const apply = (node: HTMLElement) => {
-        const next = result.nodes[node.dataset.node as keyof typeof result.nodes]
-        node.dataset.state = next.state
-        node.querySelector("[data-mark]")!.textContent = marks[next.state]
-        node.querySelector("[data-note]")!.textContent = next.note
-      }
-      if (reduced()) {
-        nodes.forEach(apply)
-        check.dataset.check = result.check
-        terminal.textContent = result.lines.join("\n")
-        return
-      }
-      // Replay the run: each step lights up in order and the terminal streams.
-      nodes.forEach(node => { node.dataset.state = "queued"; node.querySelector("[data-mark]")!.textContent = "○" })
-      check.dataset.check = "queued"
-      edges.forEach(edge => edge.removeAttribute("data-flow"))
-      terminal.textContent = ""
-      const sequence = [edges[0], ...nodes.flatMap((node, index) => [node, edges[index + 1]])]
-      sequence.forEach((element, index) => timers.push(window.setTimeout(() => {
-        if (element.dataset.node) apply(element)
-        else element.setAttribute("data-flow", "")
-      }, 140 + index * 190)))
-      timers.push(window.setTimeout(() => (check.dataset.check = result.check), 140 + sequence.length * 190))
-      result.lines.forEach((line, index) => timers.push(window.setTimeout(() => {
-        terminal.textContent += (index ? "\n" : "") + line
-      }, 80 + index * 110)))
+    function render(id: string) {
+      if (id in state.humans) {
+        const human = state.humans[id as keyof typeof state.humans], element = node(id)
+        element.dataset.tone = human.tone
+        text($("[data-status]", element), human.status)
+      } else if (id in state.agents) {
+        const agent = state.agents[id as keyof typeof state.agents], element = node(id)
+        element.dataset.tone = agent.tone
+        text($("[data-status]", element), agent.status)
+        text($("[data-sha]", element), agent.sha)
+      } else if (id === "github") {
+        const element = node(id)
+        element.dataset.check = state.github.check
+        text($("[data-ref]", element), githubText(state.github))
+        text($("[data-mark]", element), checkMark(state.github.check))
+      } else if (id.startsWith("slot-")) {
+        const slot = state.slots[Number(id.slice(5))], element = node(id)
+        element.dataset.state = slot.state
+        element.dataset.warm = String(slot.warm)
+        text($("[data-task]", element), slot.task || "·")
+        text($("[data-sha]", element), slot.sha)
+      } else if (id === "runner") {
+        text($("[data-stats]"), runnerStats(state))
+        for (const pool of ["worker", "container"]) text($(`[data-pool-stats="${pool}"]`), poolStats(state, pool))
+        const key = state.runs.map(run => `${run.id}${run.status}${run.done}`).join()
+        if (key === runsKey) return
+        runsKey = key
+        $("[data-runs]").replaceChildren(...state.runs.map(run => {
+          const item = document.createElement("li")
+          item.dataset.status = run.status
+          for (const value of [run.id, `${run.ref} ${run.sha}`, runText(run)]) item.append(Object.assign(document.createElement("span"), { textContent: value }))
+          return item
+        }))
+      } else if (id === "app") {
+        const element = node("app")
+        element.dataset.health = state.app.incidents.length ? "error" : "ok"
+        text($("[data-version]", element), `v${state.app.version}`)
+        text($("[data-sha]", element), state.app.sha)
+        text($("[data-health-text]", element), appHealth(state.app))
+        ;[...$("[data-spark]", element).children].forEach((bar, index) => {
+          const { h, error } = state.app.bars[index]
+          ;(bar as HTMLElement).style.transform = `scaleY(${h})`
+          ;(bar as HTMLElement).dataset.error = String(error)
+        })
+      } else if (id === "packets") syncPackets()
     }
 
-    root.addEventListener("click", (event) => {
-      const button = (event.target as Element).closest<HTMLButtonElement>("[data-set]")
-      if (!button) return
-      root.dataset[button.dataset.set!] = button.dataset.value
-      if (button.dataset.set !== "approval") root.dataset.approval = "pending"
-      render()
-    }, { signal: controller.signal })
+    function syncPackets() {
+      const live = new Set(state.packets.map(packet => packet.id))
+      for (const [id, view] of packets) if (!live.has(id)) { view.group.remove(); packets.delete(id) }
+      for (const packet of state.packets) {
+        if (packets.has(packet.id)) continue
+        const group = document.createElementNS(svg, "g")
+        group.setAttribute("class", "packet")
+        group.dataset.kind = packet.kind
+        const trail = document.createElementNS(svg, "path")
+        trail.setAttribute("class", "trail")
+        trail.setAttribute("d", paths[packet.wire].path.getAttribute("d")!)
+        const head = document.createElementNS(svg, "g")
+        const dot = document.createElementNS(svg, "circle")
+        dot.setAttribute("r", packet.kind === "dispatch" || packet.kind === "error" ? "7" : "6")
+        const label = document.createElementNS(svg, "text")
+        label.setAttribute("x", "10")
+        label.setAttribute("y", "-8")
+        label.textContent = packet.label
+        head.append(dot, label)
+        group.append(trail, head)
+        layer.append(group)
+        packets.set(packet.id, { group, head, trail })
+      }
+      for (const [id, { path }] of Object.entries(paths)) path.toggleAttribute("data-hot", state.packets.some(packet => packet.wire === id))
+    }
 
-    return () => { controller.abort(); timers.forEach(clearTimeout) }
+    function animate() {
+      for (const packet of state.packets) {
+        const view = packets.get(packet.id)
+        if (!view) continue
+        const { path, length } = paths[packet.wire]
+        const progress = Math.min(1, (state.now - packet.start) / packet.duration)
+        const at = packet.reverse ? length * (1 - progress) : length * progress
+        const point = path.getPointAtLength(at)
+        view.head.setAttribute("transform", `translate(${point.x} ${point.y})`)
+        const tail = Math.min(70, length * progress)
+        view.trail.style.strokeDasharray = `${tail} ${length + 80}`
+        view.trail.style.strokeDashoffset = String(packet.reverse ? -at : tail - at)
+      }
+      for (const [id, agent] of Object.entries(state.agents)) setBar(id, agent.progress ? Math.min(1, (state.now - agent.progress.start) / agent.progress.duration) : 0)
+      state.slots.forEach((slot, index) => {
+        const active = slot.state === "run" || slot.state === "boot"
+        setBar(`slot-${index}`, active ? Math.min(1, (state.now - slot.start) / slot.duration) : slot.state === "idle" ? 0 : 1)
+      })
+    }
+
+    function flush() {
+      const changed = factory.drain()
+      changed.forEach(render)
+      if (changed.has(selected)) showLog()
+    }
+
+    function loop(time: number) {
+      frame = 0
+      if (paused || !visible) return
+      factory.tick(last ? Math.min(100, time - last) : 16)
+      last = time
+      flush()
+      animate()
+      frame = requestAnimationFrame(loop)
+    }
+    const start = () => { if (!frame && !paused && visible) { last = 0; frame = requestAnimationFrame(loop) } }
+    const stop = () => { cancelAnimationFrame(frame); frame = 0 }
+
+    function showLog() {
+      const history = state.logs[selected] ?? []
+      log.replaceChildren(...(history.length ? history.slice(-lines) : ["idle · waiting for work"]).map(line => {
+        const row = document.createElement("span")
+        row.className = "line"
+        for (const [kind, value] of tokenize(line)) row.append(kind ? Object.assign(document.createElement("span"), { className: `t-${kind}`, textContent: value }) : value)
+        return row
+      }))
+    }
+
+    function select(id: string | undefined) {
+      if (!id || id === selected) return
+      node(selected)?.removeAttribute("data-selected")
+      selected = id
+      node(id)?.setAttribute("data-selected", "")
+      const slot = id.startsWith("slot-")
+      if (slot) {
+        slotTab.dataset.slot = id
+        slotTab.disabled = false
+        slotTab.textContent = slotName(state, id)
+      }
+      root.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(tab => tab.setAttribute("aria-selected", String(tab.dataset.tab === id || (slot && tab === slotTab))))
+      showLog()
+    }
+
+    // Full sync from the replayed state, then start streaming.
+    for (const id of [...Object.keys(state.humans), ...Object.keys(state.agents), "github", ...slotIds(), "runner", "app", "packets"]) render(id)
+    factory.drain()
+    node(selected).setAttribute("data-selected", "")
+    showLog()
+    animate()
+    toggle.hidden = false
+    const syncToggle = () => { toggle.textContent = paused ? "Play" : "Pause"; toggle.setAttribute("aria-pressed", String(paused)) }
+    syncToggle()
+
+    const controller = new AbortController()
+    const { signal } = controller
+    toggle.addEventListener("click", () => { paused = !paused; syncToggle(); paused ? stop() : start() }, { signal })
+    const target = (event: Event) => (event.target as Element).closest<HTMLElement>("[data-stage] [data-node]")?.dataset.node
+    root.addEventListener("pointerover", event => select(target(event)), { signal })
+    root.addEventListener("focusin", event => select(target(event)), { signal })
+    root.addEventListener("click", event => {
+      const tab = (event.target as Element).closest<HTMLButtonElement>("[data-tab]")
+      if (tab) select(tab === slotTab ? tab.dataset.slot : tab.dataset.tab)
+    }, { signal })
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; visible ? start() : stop() })
+    observer.observe(root)
+    start()
+
+    return () => { controller.abort(); observer.disconnect(); stop() }
   })
 </script>
 
@@ -155,62 +322,171 @@ const stages = [
   .stages code { margin-top: auto; align-self: flex-start; font-size: .72rem; }
   .n { display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 999px; background: var(--nb-brand-wash); color: var(--nb-brand); font-weight: 700; font-size: .72rem; }
 
-  .sim { border: 1px solid var(--nb-border); border-radius: calc(var(--nb-radius) * 1.5); background: var(--nb-card); padding: 1rem; box-shadow: var(--nb-shadow-sm); }
-  .controls { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-bottom: 1rem; }
-  fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
-  legend { float: left; margin-right: .4rem; font-size: .72rem; font-family: var(--nb-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--nb-muted-foreground); }
-  button { font: inherit; font-size: .8rem; padding: .3rem .6rem; border-radius: 999px; border: 1px solid var(--nb-border-strong); background: var(--nb-background); color: var(--nb-foreground); cursor: pointer; }
-  button code { font-size: .75rem; background: none; padding: 0; }
-  button:hover { border-color: var(--nb-foreground); }
-  button[aria-pressed="true"] { background: var(--nb-primary); color: var(--nb-primary-foreground); border-color: var(--nb-primary); }
-  button:focus-visible { outline: 2px solid var(--nb-ring); outline-offset: 2px; }
+  /* Packet and state colors. */
+  .factory {
+    --k-source: var(--nb-foreground); --k-cached: var(--nb-info); --k-docs: var(--nb-muted-foreground);
+    --k-pass: var(--nb-success); --k-fail: var(--nb-danger); --k-skip: var(--nb-muted-foreground);
+    --k-deploy: oklch(0.7 0.18 50); --k-error: var(--nb-danger); --k-dispatch: oklch(0.6 0.2 300);
+    --k-pr: var(--nb-info); --k-review: oklch(0.72 0.15 85);
+    position: relative; border: 1px solid var(--nb-border); border-radius: calc(var(--nb-radius) * 1.5); background: var(--nb-card); padding: 1rem; box-shadow: var(--nb-shadow-sm);
+  }
+  button:focus-visible, .node:focus-visible { outline: 2px solid var(--nb-ring); outline-offset: 2px; }
 
-  .stage { display: flex; align-items: center; gap: 0; padding: .25rem 0 .5rem; overflow-x: auto; }
-  .chip { flex: none; display: flex; flex-direction: column; align-items: center; padding: .5rem .7rem; border-radius: var(--nb-radius); border: 1.5px solid var(--nb-border-strong); background: var(--nb-background); font-family: var(--nb-font-mono); font-size: .8rem; font-weight: 600; color: var(--nb-foreground); }
-  .kicker { font-size: .6rem; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--nb-muted-foreground); }
-  .check[data-check="passed"] { border-color: var(--nb-success); background: var(--nb-success-muted); }
-  .check[data-check="failed"] { border-color: var(--nb-danger); background: var(--nb-danger-muted); }
-  .check[data-check="waiting"] { border-color: var(--nb-warning); background: var(--nb-warning-muted); }
-  .check[data-check="skipped"], .check[data-check="queued"] { border-style: dashed; }
+  .scroller { overflow-x: auto; }
+  .stage { position: relative; container-type: inline-size; aspect-ratio: 1000 / 860; min-width: 34rem; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .wire { fill: none; stroke: var(--nb-border-strong); stroke-width: 2; transition: stroke .3s; }
+  .wire[data-tone] { stroke-dasharray: 5 5; }
+  .wire[data-hot] { stroke: color-mix(in oklch, var(--nb-foreground) 45%, var(--nb-border-strong)); }
+  .wire-label { font-family: var(--nb-font-mono); font-size: 15px; fill: var(--nb-muted-foreground); }
+  .wire-label[data-tone="danger"] { fill: var(--nb-danger); }
+  .wire-label[data-tone="agent"] { fill: var(--k-dispatch); }
+  :global(.packet) { --k: var(--k-source); }
+  :global(.packet[data-kind="cached"]) { --k: var(--k-cached); }
+  :global(.packet[data-kind="docs"]), :global(.packet[data-kind="skip"]) { --k: var(--k-docs); }
+  :global(.packet[data-kind="pass"]) { --k: var(--k-pass); }
+  :global(.packet[data-kind="fail"]), :global(.packet[data-kind="error"]) { --k: var(--k-error); }
+  :global(.packet[data-kind="deploy"]) { --k: var(--k-deploy); }
+  :global(.packet[data-kind="dispatch"]) { --k: var(--k-dispatch); }
+  :global(.packet[data-kind="pr"]) { --k: var(--k-pr); }
+  :global(.packet[data-kind="review"]) { --k: var(--k-review); }
+  :global(.packet[data-kind="merge"]) { --k: var(--k-pass); }
+  :global(.packet .trail) { fill: none; stroke: var(--k); stroke-width: 4; stroke-linecap: round; opacity: .55; }
+  :global(.packet circle) { fill: var(--k); stroke: var(--nb-card); stroke-width: 2; }
+  :global(.packet[data-kind="docs"] circle), :global(.packet[data-kind="skip"] circle) { fill: var(--nb-card); stroke: var(--k); stroke-dasharray: 3 2; }
+  :global(.packet[data-kind="docs"] .trail), :global(.packet[data-kind="skip"] .trail) { stroke-width: 2; }
+  :global(.packet text) { font-family: var(--nb-font-mono); font-size: 17px; font-weight: 600; fill: var(--k); paint-order: stroke; stroke: var(--nb-card); stroke-width: 4px; }
 
-  .runner { flex: 1; min-width: 0; position: relative; border: 1.5px dashed var(--nb-border-strong); border-radius: calc(var(--nb-radius) * 1.25); padding: 1.75rem .6rem .6rem; background: color-mix(in oklch, var(--nb-brand) 3%, transparent); }
-  .runner-label { position: absolute; top: .45rem; left: .65rem; font-family: var(--nb-font-mono); font-size: .62rem; line-height: 1; text-transform: uppercase; letter-spacing: .12em; color: var(--nb-muted-foreground); }
-  .graph { display: flex; align-items: stretch; }
-  .node { flex: 1 1 0; min-width: 5.5rem; display: flex; flex-direction: column; gap: .15rem; padding: .5rem .55rem; border-radius: var(--nb-radius); border: 1.5px solid var(--nb-border-strong); background: var(--nb-card); transition: border-color .2s, background-color .2s, opacity .2s, transform .2s; }
-  .node .mark { font-weight: 700; font-size: .9rem; line-height: 1; }
-  .node .name { font-family: var(--nb-font-mono); font-size: .78rem; font-weight: 600; color: var(--nb-foreground); }
-  .node .note { font-size: .68rem; line-height: 1.3; color: var(--nb-muted-foreground); }
-  .node[data-state="passed"] { border-color: var(--nb-success); } .node[data-state="passed"] .mark { color: var(--nb-success); }
-  .node[data-state="cached"] { border-color: var(--nb-info); background: var(--nb-info-muted); } .node[data-state="cached"] .mark { color: var(--nb-info); }
-  .node[data-state="waiting"] { border-color: var(--nb-warning); background: var(--nb-warning-muted); } .node[data-state="waiting"] .mark { color: var(--nb-warning-foreground); }
-  .node[data-state="failed"] { border-color: var(--nb-danger); background: var(--nb-danger-muted); } .node[data-state="failed"] .mark { color: var(--nb-danger); }
-  .node[data-state="skipped"] { border-style: dashed; opacity: .6; }
-  .node[data-state="queued"] { opacity: .45; }
+  .node { position: absolute; box-sizing: border-box; border: 1.5px solid var(--nb-border-strong); border-radius: 1cqw; background: var(--nb-background); color: var(--nb-foreground); font-size: 2cqw; line-height: 1.3; cursor: default; transition: border-color .25s, background-color .25s, box-shadow .25s; }
+  .node:hover { box-shadow: 0 0 0 .3cqw color-mix(in oklch, var(--nb-foreground) 12%, transparent); }
+  .role, .stats { font-family: var(--nb-font-mono); font-size: 1.5cqw; color: var(--nb-muted-foreground); text-transform: uppercase; letter-spacing: .06em; }
+  .stage code { font-size: 1.6cqw; }
 
-  .edge { flex: 0 0 1.1rem; align-self: center; height: 2px; position: relative; background: var(--nb-border-strong); overflow: hidden; }
-  .edge[data-flow]::after { content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--nb-brand); animation: flow .5s ease-out forwards; }
-  @keyframes flow { to { left: 100%; } }
+  .team { position: absolute; box-sizing: border-box; border: 1.5px dashed var(--nb-border-strong); border-radius: 1.4cqw; background: color-mix(in oklch, var(--k-dispatch) 3%, transparent); }
+  .team span { position: absolute; bottom: 1.2cqw; left: 0; right: 0; text-align: center; font-family: var(--nb-font-mono); font-size: 1.4cqw; text-transform: uppercase; letter-spacing: .12em; color: var(--nb-muted-foreground); }
+  .avatar { flex: none; display: inline-grid; place-items: center; width: 3.2cqw; height: 3.2cqw; border-radius: 999px; background: var(--nb-brand-wash); color: var(--nb-brand); font-weight: 700; font-size: 1.7cqw; }
+  .human { display: flex; align-items: center; gap: 1cqw; padding: 0 1.4cqw; white-space: nowrap; }
+  .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .human strong { font-size: 1.9cqw; }
+  .human .status { overflow: hidden; text-overflow: ellipsis; font-family: var(--nb-font-mono); font-size: 1.45cqw; color: var(--nb-muted-foreground); }
+  .human[data-tone="edit"] { border-color: var(--nb-info); }
+  .human[data-tone="review"] { border-color: var(--k-review); background: color-mix(in oklch, var(--k-review) 10%, var(--nb-background)); } .human[data-tone="review"] .status { color: var(--nb-foreground); }
+  .human[data-tone="pass"] { border-color: var(--nb-success); }
+  .agent { display: flex; flex-direction: column; justify-content: space-between; gap: .6cqw; padding: 1.3cqw 1.6cqw; }
+  .agent .head { display: flex; align-items: center; gap: .8cqw; white-space: nowrap; }
+  .agent .head strong { font-size: 2.2cqw; }
+  .agent .avatar { background: color-mix(in oklch, var(--k-dispatch) 18%, transparent); color: var(--k-dispatch); }
+  .tag { font-family: var(--nb-font-mono); font-size: 1.35cqw; padding: .1cqw .7cqw; border-radius: 999px; border: 1px solid var(--nb-border); color: var(--nb-muted-foreground); }
+  .agent .head code { margin-left: auto; overflow: hidden; color: var(--nb-muted-foreground); background: none; padding: 0; }
+  .agent .status { flex: 1; max-height: 2.6em; font-family: var(--nb-font-mono); font-size: 1.75cqw; line-height: 1.3; color: var(--nb-muted-foreground); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .bar { flex: none; height: .6cqw; border-radius: 999px; background: var(--nb-muted); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--nb-info); transform: scaleX(0); transform-origin: left; }
+  .agent[data-tone="run"] { border-color: var(--nb-info); }
+  .agent[data-tone="push"] .status { color: var(--nb-foreground); }
+  .agent[data-tone="pass"] { border-color: var(--nb-success); }
+  .agent[data-tone="fail"] { border-color: var(--nb-danger); background: var(--nb-danger-muted); }
+  .agent[data-tone="fix"] { border-color: var(--k-dispatch); background: color-mix(in oklch, var(--k-dispatch) 8%, var(--nb-background)); }
 
-  .gate { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .6rem; padding: .5rem .7rem; border-radius: var(--nb-radius); background: var(--nb-warning-muted); border: 1px solid color-mix(in oklch, var(--nb-warning) 35%, transparent); font-size: .82rem; }
-  .gate span { margin-right: auto; font-weight: 500; }
-  .gate[hidden], [hidden] { display: none; }
+  .remote { display: grid; grid-template-columns: 1fr auto; align-content: center; column-gap: 1cqw; padding: .8cqw 1.4cqw; }
+  .remote strong { font-size: 2.2cqw; }
+  .remote .ref { grid-column: 1; font-family: var(--nb-font-mono); font-size: 1.5cqw; color: var(--nb-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .remote .mark { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: 700; font-size: 2.6cqw; }
+  .remote[data-check="passed"] { border-color: var(--nb-success); } .remote[data-check="passed"] .mark { color: var(--nb-success); }
+  .remote[data-check="failed"] { border-color: var(--nb-danger); } .remote[data-check="failed"] .mark { color: var(--nb-danger); }
+  .remote[data-check="pending"] .mark { color: var(--nb-warning); animation: pulse 1s ease-in-out infinite; }
+  .remote[data-check="skipped"] { border-style: dashed; } .remote[data-check="skipped"] .mark { color: var(--nb-muted-foreground); }
 
-  .summary { margin: .8rem 0 .5rem; font-weight: 600; font-size: .92rem; color: var(--nb-foreground); }
-  .terminal { margin: 0; min-height: 13.5em; padding: .8rem 1rem; border-radius: var(--nb-radius); background: oklch(0.18 0 0); color: oklch(0.92 0 0); font-family: var(--nb-font-mono); font-size: .74rem; line-height: 1.5; white-space: pre-wrap; overflow-x: auto; }
-  .fine { margin: .6rem 0 0; font-size: .75rem; color: var(--nb-muted-foreground); }
-  .fine a { color: var(--nb-brand); }
+  .runner { display: flex; flex-direction: column; gap: 1cqw; padding: 1.2cqw 1.4cqw; border-style: dashed; background: color-mix(in oklch, var(--k-deploy) 4%, var(--nb-background)); }
+  .runner .head { display: flex; align-items: baseline; gap: .8cqw; }
+  .runner .head strong { font-size: 2.3cqw; }
+  .runner .stats { margin-left: auto; text-transform: none; letter-spacing: 0; }
+  .pool { display: flex; flex-direction: column; gap: .7cqw; padding: 1cqw; border: 1px solid var(--nb-border); border-radius: .9cqw; background: var(--nb-card); }
+  .pool-head { display: flex; align-items: baseline; gap: 1cqw; font-size: 1.5cqw; white-space: nowrap; }
+  .pool-head strong { font-size: 1.8cqw; }
+  .pool-head span { font-family: var(--nb-font-mono); color: var(--nb-muted-foreground); overflow: hidden; text-overflow: ellipsis; }
+  .pool-head .stats { margin-left: auto; font-size: 1.4cqw; }
+  .slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: 8.2cqw; gap: .8cqw; }
+  .pool[data-pool="worker"] .slots { grid-template-columns: repeat(8, minmax(0, 1fr)); grid-auto-rows: 7.5cqw; }
+  .pool[data-pool="worker"] .slot { border-radius: 2cqw; }
+  .slot { position: relative; display: flex; flex-direction: column; justify-content: center; gap: .2cqw; padding: 0 .8cqw; border: 1.5px dashed var(--nb-border); border-radius: .7cqw; background: var(--nb-background); overflow: hidden; font-family: var(--nb-font-mono); transition: border-color .2s, background-color .2s, opacity .2s; }
+  .slot .task { font-size: 1.6cqw; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .sha { font-size: 1.45cqw; color: var(--nb-muted-foreground); min-height: 1.3em; }
+  .slot i { position: absolute; left: 0; right: 0; bottom: 0; height: .5cqw; background: var(--k-source); transform: scaleX(0); transform-origin: left; }
+  .slot[data-state="idle"] { opacity: .55; } .slot[data-state="idle"][data-warm="true"] { opacity: .8; border-style: solid; }
+  .slot[data-state="idle"] .task { color: var(--nb-muted-foreground); font-weight: 400; }
+  .slot[data-state="boot"] { border-style: solid; border-color: var(--k-deploy); animation: pulse .6s ease-in-out infinite; } .slot[data-state="boot"] i { background: var(--k-deploy); }
+  .slot[data-state="run"] { border-style: solid; border-color: var(--nb-foreground); }
+  .slot[data-state="cached"] { border-style: solid; border-color: var(--nb-info); background: var(--nb-info-muted); } .slot[data-state="cached"] i { background: var(--nb-info); }
+  .slot[data-state="passed"] { border-style: solid; border-color: var(--nb-success); background: var(--nb-success-muted); } .slot[data-state="passed"] i { background: var(--nb-success); }
+  .slot[data-state="failed"] { border-style: solid; border-color: var(--nb-danger); background: var(--nb-danger-muted); } .slot[data-state="failed"] i { background: var(--nb-danger); }
+  .runs { list-style: none; margin: auto 0 0; padding: .8cqw 0 0; border-top: 1px solid var(--nb-border); display: grid; gap: .6cqw; font-family: var(--nb-font-mono); font-size: 1.7cqw; }
+  .runs :global(li) { display: grid; grid-template-columns: 12cqw 1fr auto; gap: 1.5cqw; margin: 0; padding: 0; color: var(--nb-muted-foreground); }
+  .runs :global(li span:last-child) { color: var(--nb-foreground); }
+  .runs :global(li[data-status="passed"] span:last-child) { color: var(--nb-success); }
+  .runs :global(li[data-status="failed"] span:last-child) { color: var(--nb-danger); }
+
+  .app { display: flex; flex-direction: column; overflow: hidden; }
+  .chrome { display: flex; align-items: center; gap: .5cqw; padding: .8cqw 1cqw; border-bottom: 1px solid var(--nb-border); background: var(--nb-muted); }
+  .chrome i { width: 1cqw; height: 1cqw; border-radius: 999px; background: var(--nb-border-strong); }
+  .chrome span { margin-left: .5cqw; font-family: var(--nb-font-mono); font-size: 1.6cqw; color: var(--nb-muted-foreground); white-space: nowrap; }
+  .app .body { flex: 1; display: flex; flex-direction: column; gap: .6cqw; padding: .8cqw 1.2cqw 1cqw; min-height: 0; }
+  .app .row { display: flex; align-items: baseline; gap: .8cqw; white-space: nowrap; min-width: 0; }
+
+  .app strong { font-size: 2.8cqw; }
+  .app code { background: none; padding: 0; color: var(--nb-muted-foreground); }
+  .health { font-family: var(--nb-font-mono); font-size: 1.6cqw; color: var(--nb-success); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .spark { flex: 1; display: flex; align-items: flex-end; gap: .25cqw; min-height: 3cqw; }
+  .spark i { flex: 1; align-self: stretch; background: color-mix(in oklch, var(--nb-success) 70%, transparent); border-radius: .2cqw .2cqw 0 0; transform-origin: bottom; transition: transform .3s; }
+  .spark i[data-error="true"] { background: var(--nb-danger); }
+  .app[data-health="error"] { border-color: var(--nb-danger); box-shadow: 0 0 0 .4cqw color-mix(in oklch, var(--nb-danger) 18%, transparent); }
+  .app[data-health="error"] .health { color: var(--nb-danger); }
+
+  /* Matches the site's Shiki code blocks (github-light / github-dark). */
+  .terminal { --c-fn: #6f42c1; --c-str: #032f62; --c-kw: #d73a49; --c-const: #005cc5; --c-dim: #6a737d; margin-top: .75rem; border: 1px solid var(--nb-border); border-radius: var(--nb-radius); background: var(--nb-card); overflow: hidden; }
+  :global([data-mode="dark"]) .terminal { --c-fn: #b392f0; --c-str: #9ecbff; --c-kw: #f97583; --c-const: #79b8ff; --c-dim: #959da5; }
+  .tabs { display: flex; align-items: flex-end; padding: 0 .5rem; border-bottom: 1px solid var(--nb-border); background: color-mix(in oklch, var(--nb-muted) 50%, var(--nb-card)); }
+  .tabs [role="tablist"] { display: flex; gap: .1rem; flex: 1; overflow-x: auto; scrollbar-width: none; }
+  .tabs button { flex: none; font: inherit; font-family: var(--nb-font-mono); font-size: .72rem; padding: .5rem .6rem; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--nb-muted-foreground); cursor: pointer; white-space: nowrap; }
+  .tabs button:hover { color: var(--nb-foreground); }
+  .tabs [aria-selected="true"] { color: var(--nb-foreground); border-bottom-color: var(--nb-foreground); }
+  .tabs button:disabled { cursor: default; opacity: .45; }
+  .below { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .75rem; }
+  .toggle { flex: none; font: inherit; font-size: .75rem; padding: .2rem .7rem; border-radius: 999px; border: 1px solid var(--nb-border-strong); background: var(--nb-background); color: var(--nb-foreground); cursor: pointer; }
+  .toggle:hover { border-color: var(--nb-foreground); }
+  .terminal pre { margin: 0; padding: .75rem 1rem; height: 19.5rem; overflow: hidden; font-family: var(--nb-font-mono); font-size: .8rem; line-height: 1.5rem; color: var(--nb-foreground); background: none; border: 0; border-radius: 0; contain: strict; }
+  .terminal pre :global(.line) { display: block; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .terminal pre :global(.line:last-child)::after { content: "▍"; color: var(--nb-muted-foreground); animation: pulse 1s steps(2) infinite; }
+  .terminal pre :global(.t-prompt), .terminal pre :global(.t-comment) { color: var(--c-dim); }
+  .terminal pre :global(.t-command) { color: var(--c-fn); }
+  .terminal pre :global(.t-flag), .terminal pre :global(.t-sha) { color: var(--c-const); }
+  .terminal pre :global(.t-string) { color: var(--c-str); }
+  .terminal pre :global(.t-error) { color: var(--c-kw); }
+  .terminal pre :global(.t-ok) { color: var(--nb-success); }
+  .terminal pre :global(.t-cache) { color: var(--nb-info); }
+  .terminal pre :global(.t-miss) { color: var(--nb-warning); }
+  .node[data-selected], .slot[data-selected] { outline: 2px solid var(--nb-info); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; list-style: none; margin: 0; padding: 0; font-size: .75rem; color: var(--nb-muted-foreground); }
+  .legend li { display: flex; align-items: center; gap: .35rem; margin: 0; }
+  .legend i { width: .6rem; height: .6rem; border-radius: 999px; background: var(--k-source); }
+  .legend [data-kind="cached"] { background: var(--k-cached); }
+  .legend [data-kind="docs"] { background: none; border: 1.5px dashed var(--k-docs); }
+  .legend [data-kind="pass"] { background: var(--k-pass); }
+  .legend [data-kind="deploy"] { background: var(--k-deploy); }
+  .legend [data-kind="error"] { background: var(--k-error); }
+  .legend [data-kind="dispatch"] { background: var(--k-dispatch); }
+  .legend [data-kind="pr"] { background: var(--k-pr); }
+  .legend [data-kind="review"] { background: var(--k-review); }
+
+  @keyframes pulse { 50% { opacity: .45; } }
 
   @media (max-width: 40rem) {
     .stages { grid-template-columns: 1fr 1fr; }
     .stages li + li::before { display: none; }
-    .stage { flex-direction: column; align-items: stretch; }
-    .stage > .edge { flex-basis: 1rem; width: 2px; height: 1rem; }
-    .graph { flex-direction: column; }
-    .graph > .edge { width: 2px; height: .8rem; flex-basis: .8rem; }
-    .chip { flex-direction: row; gap: .5rem; justify-content: center; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .node { transition: none; }
-    .edge[data-flow]::after { animation: none; }
+    .node, .slot, .wire, .spark i { transition: none; }
+    .slot[data-state="boot"], .remote[data-check="pending"] .mark, .terminal pre :global(.line)::after { animation: none; }
   }
 </style>
