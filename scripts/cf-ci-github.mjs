@@ -74,8 +74,9 @@ async function pipelineOf(id) {
   for (let attempt = 0; attempt < 60; attempt++) {
     const details = await api("GET", `/workflows/${workflow}/instances/${id}`)
     const steps = details.steps ?? []
-    const step = steps.find((candidate) => candidate.name === "pipeline version")
-    if (step && step.output !== undefined && step.output !== null) return String(step.output)
+    // The API suffixes step names with their call count, such as "pipeline version-1".
+    const step = steps.find((candidate) => /^pipeline version(-\d+)?$/.test(candidate.name ?? ""))
+    if (step && step.output !== undefined && step.output !== null) return typeof step.output === "string" ? step.output : JSON.stringify(step.output)
     if (!step && steps.some((candidate) => candidate.type === "step" || candidate.name)) return `older code (first step ${steps[0]?.name})`
     if (["complete", "errored", "terminated"].includes(details.status)) return `ended as ${details.status}`
     await sleep(2000)
