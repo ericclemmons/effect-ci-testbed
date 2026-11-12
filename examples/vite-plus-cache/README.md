@@ -17,6 +17,18 @@ effect-ci run
 
 The second run reports a cache hit. Change a file the build reads and it rebuilds.
 
+`CI.VitePlus.run` first asks Vite+ for its run plan (`vp run --dry-run --json -v`)
+and notes under the step whether it was cached, and why not:
+
+```text
+✓ build depends on install
+  vite+ examples/vite-plus-cache/app#build: not cached: 'examples/vite-plus-cache/app/src/message.js' changed
+```
+
+The run itself uses `-v`, so its log lists every reason for a miss.
+
+[Vite+ run helper](../../packages/ci/src/index.ts#symbol=vitePlusRun "source")
+
 The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,
 including the nested app's cache. No cache key or paths are needed in the workflow.
 Your build remains an ordinary package script; network, time, and environment

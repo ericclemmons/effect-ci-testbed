@@ -17,7 +17,5 @@ export const install = CI.action("install", () => function* () {
 export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
 
-  return yield* workspace.exec(
-    "cd app && npx vp run --cache build",
-  )
+  return yield* CI.VitePlus.run(workspace.directory("app"), "--cache build", { vp: "npx vp" })
 })

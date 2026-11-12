@@ -15,6 +15,7 @@ import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnos
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./paths.ts"
 import { makeTurboToolchain } from "./turbo.ts"
+import { vitePlusCacheNotes } from "./vite-plus.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -111,6 +112,8 @@ export interface PlanNode {
   readonly options: InternalStepOptions
   /** Secret names required by the step. Values are never part of the plan. */
   readonly secrets: ReadonlyArray<string>
+  /** Short findings the step recorded while running, such as a tool's cache status. */
+  readonly notes?: ReadonlyArray<string>
   readonly status:
     | "planned"
     | "queued"
@@ -295,6 +298,7 @@ interface RuntimeNode {
   condition?: Condition
   rollbackFor?: string
   readonly secrets: Set<string>
+  readonly notes: Array<string>
   executedCommands: number
   verifiedCommands: number
   status: PlanNode["status"]
@@ -325,6 +329,7 @@ interface RuntimeShape {
   ) => Effect.Effect<void, unknown, any>
   readonly unwind: (original: unknown) => Effect.Effect<undefined, RollbackError>
   readonly requireSecret: (stepId: string, name: string) => Effect.Effect<void>
+  readonly note: (stepId: string, text: string) => Effect.Effect<void>
   readonly recordArtifact: (
     stepId: string,
     artifact: {
@@ -410,13 +415,18 @@ export class Attempt extends Context.Service<Attempt, number>()("@effect-ci-test
 export const executionMode = Effect.gen(function* () {
   return (yield* Runtime).mode
 })
+
+/** Records a short finding on the current step; plans and summaries show it under the step. */
+export const note = (text: string) => Effect.gen(function* () {
+  yield* (yield* Runtime).note(yield* CurrentStep, text)
+})
 class PolicyBody extends Context.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
 
 export interface ActionExecutionResult {
   readonly value: unknown
   readonly commands: ReadonlyArray<PlannedCommand>
   readonly events?: ReadonlyArray<RuntimeEvent>
-  readonly metadata?: Pick<PlanNode, "artifacts" | "secrets" | "approval">
+  readonly metadata?: Pick<PlanNode, "artifacts" | "secrets" | "approval" | "notes">
 }
 
 /** Runner boundary for a policy-bearing leaf body, after dependencies resolve. */
@@ -1217,6 +1227,31 @@ const Turbo = (workspace: Workspace) => Effect.gen(function* () {
 
 export const Toolchain = { Node, Mise, Turbo } as const
 
+export interface VitePlusRunOptions {
+  /** How to start Vite+, such as `npx vp` or `pnpm exec vp`. Defaults to `vp`. */
+  readonly vp?: string
+}
+
+/** Runs `vp run -v <args>` after a dry run notes whether each step would hit the Vite+ cache, and why not. */
+const vitePlusRun = (workspace: Workspace, args: string, options: VitePlusRunOptions = {}) => Effect.gen(function* () {
+  const vp = options.vp ?? "vp"
+  if ((yield* executionMode) === "execute") {
+    // Under node_modules so the plan file is never an input of the tasks it describes.
+    const file = "node_modules/.effect-ci/vite-plus-run-plan.json"
+    yield* workspace.exec(`mkdir -p node_modules/.effect-ci && ${vp} run --dry-run --json -v ${args} > ${file}`)
+    const body = yield* workspace.readFile(file)
+    // Cache status is a diagnostic: without a readable plan, note that and still run.
+    const notes = yield* Effect.try({
+      try: () => body === undefined ? ["vite+: no run plan to read cache status from"] : vitePlusCacheNotes(body),
+      catch: error => error,
+    }).pipe(Effect.catch(() => Effect.succeed(["vite+: unreadable run plan; cache status unknown"])))
+    for (const text of notes) yield* note(text)
+  }
+  return yield* workspace.exec(`${vp} run -v ${args}`)
+})
+
+export const VitePlus = { run: vitePlusRun } as const
+
 export interface SourceService {
   /** Acquire the repository and immutable revision selected by the initiating event. */
   readonly checkout: () => Effect.Effect<Workspace, unknown>
@@ -1894,6 +1929,7 @@ const makeRuntime = (
           ? { rollbackFor: previousNode.rollbackFor }
           : {}),
         secrets: new Set(previousNode.secrets ?? []),
+        notes: [...(previousNode.notes ?? [])],
         executedCommands: 0,
         verifiedCommands: 0,
         status: "reused",
@@ -1922,6 +1958,7 @@ const makeRuntime = (
           artifacts: [],
           commands: [],
           secrets: new Set(),
+          notes: [],
           executedCommands: 0,
           verifiedCommands: 0,
           status: "planned" as const,
@@ -1973,12 +2010,13 @@ const makeRuntime = (
               options: definition.options,
               run: (attempt) => Effect.sync(() => {
                 node.commands.length = 0
+                node.notes.length = 0
                 bufferedEvents.set(id, [])
               }).pipe(
                 Effect.andThen(leaf),
                 Effect.flatMap(commit),
                 Effect.map((value) => ({ value, commands: [...node.commands], events: [...bufferedEvents.get(id)!],
-                  metadata: { artifacts: [...node.artifacts], secrets: [...node.secrets],
+                  metadata: { artifacts: [...node.artifacts], secrets: [...node.secrets], notes: [...node.notes],
                     ...(node.approval ? { approval: node.approval } : {}) } })),
                 Effect.provideService(Attempt, attempt),
                 Effect.provideService(PolicyBody, true),
@@ -1993,6 +2031,7 @@ const makeRuntime = (
                 node.secrets.clear()
                 for (const secret of result.metadata.secrets) node.secrets.add(secret)
                 if (result.metadata.approval) node.approval = result.metadata.approval
+                node.notes.splice(0, node.notes.length, ...(result.metadata.notes ?? []))
               }
               return result.value
             }))
@@ -2173,6 +2212,7 @@ const makeRuntime = (
           artifacts: [],
           commands: [],
           secrets: new Set(),
+          notes: [],
           executedCommands: 0,
           verifiedCommands: 0,
           status: "skipped" as const,
@@ -2195,6 +2235,7 @@ const makeRuntime = (
           artifacts: [],
           commands: [],
           secrets: new Set(),
+          notes: [],
           executedCommands: 0,
           verifiedCommands: 0,
           status: mode === "plan" ? "planned" as const : "skipped" as const,
@@ -2264,6 +2305,11 @@ const makeRuntime = (
         const node = nodes.get(stepId)
         if (!node) throw new Error(`Missing plan node for ${stepId}`)
         node.secrets.add(name)
+      }),
+      note: (stepId, text) => Effect.sync(() => {
+        const node = nodes.get(stepId)
+        if (!node) throw new Error(`Missing plan node for ${stepId}`)
+        node.notes.push(text)
       }),
       recordArtifact: (stepId, artifact) => Effect.sync(() => {
         const node = nodes.get(stepId)
@@ -2572,6 +2618,7 @@ const toPlan = (
       optional: runtime.optionalSteps.has(node.id),
       options: runtime.definitions.get(node.id)?.options ?? {},
       secrets: [...node.secrets].sort(),
+      ...(node.notes.length > 0 ? { notes: [...node.notes] } : {}),
       status: node.status,
     })),
   }
@@ -2625,6 +2672,7 @@ export const formatPlan = (plan: WorkflowPlan): string => {
     if (node.condition) {
       lines.push(`  if: ${formatCondition(node.condition)}`)
     }
+    for (const note of node.notes ?? []) lines.push(`  ${note}`)
     if (plan.mode === "plan") {
       if (node.approval) {
         lines.push(`  approval: ${node.approval.title}`)
