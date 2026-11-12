@@ -8,8 +8,10 @@ const changes = ['input', 'unchanged', 'missing', 'tampered', 'program', 'runtim
 
 // One comparison job. Its steps share runner-local files, so they run in one container. The script writes
 // its step outputs to GITHUB_OUTPUT, which this shell reads back to choose the affected steps.
+// The GitHub tarball has no Git history, so start an empty repository for the pinned fixture fetches.
 const job = `set -e
 cd repo
+git init -q
 export GITHUB_OUTPUT="$(mktemp)"
 node verification/conventional.mjs prepare "$CHANGE"
 . "$GITHUB_OUTPUT"
