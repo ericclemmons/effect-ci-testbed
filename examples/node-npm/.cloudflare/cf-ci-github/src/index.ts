@@ -1,6 +1,6 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 
-import { DOWNLOAD_SOURCE, commentOnPullRequest, pullRequestHead, serveSource, sourceUrl, writeCheck } from "./github";
+import { DOWNLOAD_SOURCE, commentOnPullRequest, pullRequestHead, sourceUrl, writeCheck } from "./github";
 import type { InternalWorkflowStep } from "./workflows-internal";
 
 // Started by `wrangler workflows trigger` or scripts/cf-ci-github.mjs. GitHub push and pull request triggers do not exist yet.
@@ -29,12 +29,10 @@ export class CI extends WorkflowEntrypoint<Env, Params> {
 
 		await step.do("start check", () => writeCheck(this.env, sha, CHECK, { status: "in_progress" }));
 
-		const source = await step.do("sign source URL", { sensitive: "output" }, () => sourceUrl(this.env, sha));
-
 		// The tarball holds the whole repository; later steps only need this recipe.
 		const checkout = await step.runner("checkout", {
 			image,
-			env: { SOURCE_URL: source },
+			env: { SOURCE_URL: sourceUrl(this.env, sha) },
 			command: DOWNLOAD_SOURCE,
 			outputs: { recipe: "repo/examples/node-npm" },
 		});
@@ -97,5 +95,5 @@ export class CI extends WorkflowEntrypoint<Env, Params> {
 }
 
 export default {
-	fetch: serveSource,
+	fetch: () => new Response("Runs cf ci for examples/node-npm on GitHub commits and pull requests."),
 } satisfies ExportedHandler<Env>;

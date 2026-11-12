@@ -55,8 +55,11 @@ pipeline with Wrangler and starts a run on a pushed commit:
 node scripts/cf-ci-github.mjs node-npm --sha "$(git rev-parse HEAD)" --mr 123
 ```
 
-The Cloudflare GitHub app must be installed on the repository. Runners get a
-tarball without Git history, so commands such as `git log` do not work.
+The Cloudflare GitHub app must be installed on the repository. Runners download
+the commit's tarball straight from GitHub, which works because this repository
+is public. The guide's signed workers.dev download fails on this account because
+Cloudflare Access blocks unmatched workers.dev hosts. The tarball has no Git
+history, so commands such as `git log` do not work.
 
 ## Hosted runner
 

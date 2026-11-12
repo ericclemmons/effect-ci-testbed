@@ -5,7 +5,6 @@
 // Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, the Cloudflare GitHub app on the repository,
 // and `npm ci` in the recipe's .cloudflare/cf-ci-github.
 import { execFileSync } from "node:child_process"
-import { randomBytes } from "node:crypto"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -49,17 +48,12 @@ async function latestVersion() {
 }
 
 async function deploy() {
-  const { subdomain } = await api("GET", "/workers/subdomain")
   const before = await latestVersion()
+  log(`deploying pipeline ${pipelineSha}`)
+  // A secret rather than --var, so the value stays out of wrangler.jsonc and the deploy log.
   const dir = mkdtempSync(join(tmpdir(), `${workflow}-`))
   const secrets = join(dir, "secrets.json")
-  // A fresh signing secret per deploy. Concurrent runs of one recipe are serialized by the caller.
-  writeFileSync(secrets, JSON.stringify({
-    SOURCE_ORIGIN: `https://${workflow}.${subdomain}.workers.dev`,
-    SOURCE_SECRET: randomBytes(32).toString("hex"),
-    PIPELINE_SHA: pipelineSha,
-  }))
-  log(`deploying pipeline ${pipelineSha}`)
+  writeFileSync(secrets, JSON.stringify({ PIPELINE_SHA: pipelineSha }))
   try {
     execFileSync(join(pipelineDir, "node_modules", ".bin", "wrangler"), ["deploy", "--secrets-file", secrets, "--tag", pipelineSha.slice(0, 25)], {
       cwd: pipelineDir, stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId },

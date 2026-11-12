@@ -30,7 +30,5 @@ interface Env {
 	REPO: ScmRepository;
 	CI_WORKFLOW: Workflow;
 	GITHUB_REPO: string;
-	SOURCE_ORIGIN: string;
-	SOURCE_SECRET: string;
 	PIPELINE_SHA: string;
 }
