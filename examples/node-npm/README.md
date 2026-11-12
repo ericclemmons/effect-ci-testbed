@@ -36,6 +36,28 @@ fails unless the started run used that version and every check passed:
 node scripts/cf-ci.mjs node-npm
 ```
 
+### From GitHub
+
+This pipeline runs the same checks on this GitHub repository instead of an
+Artifacts copy:
+
+[GitHub-source pipeline](./.cloudflare/cf-ci-github/src/index.ts#symbol=CI "source")
+
+It
+follows the [cf ci get started guide](https://developers.cloudflare.com/ci/get-started/):
+an `scm` binding reads the commit, writes a `node-npm / cf-ci-github` check on
+it, and comments on the pull request. GitHub cannot start runs yet, so
+[`scripts/cf-ci-github.mjs`](../../scripts/cf-ci-github.mjs) deploys the
+pipeline with Wrangler and starts a run on a pushed commit:
+
+```sh
+(cd examples/node-npm/.cloudflare/cf-ci-github && npm ci)
+node scripts/cf-ci-github.mjs node-npm --sha "$(git rev-parse HEAD)" --mr 123
+```
+
+The Cloudflare GitHub app must be installed on the repository. Runners get a
+tarball without Git history, so commands such as `git log` do not work.
+
 ## Hosted runner
 
 Use the same workflow on your configured hosted runner with

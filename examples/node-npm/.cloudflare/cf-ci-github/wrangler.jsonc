@@ -1,0 +1,23 @@
+{
+	"name": "cf-ci-github-node-npm",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-01",
+	// Runners download the commit from this Worker's workers.dev URL.
+	"workers_dev": true,
+	"preview_urls": false,
+	"workflows": [{ "name": "cf-ci-github-node-npm", "binding": "CI_WORKFLOW", "class_name": "CI" }],
+	// scripts/cf-ci-github.mjs sets SOURCE_ORIGIN, SOURCE_SECRET, and PIPELINE_SHA with --secrets-file on each deploy.
+	"vars": { "GITHUB_REPO": "ericclemmons/effect-ci-testbed" },
+	"unsafe": {
+		"bindings": [
+			{
+				"type": "scm",
+				"name": "REPO",
+				"provider": "github",
+				"repo": "ericclemmons/effect-ci-testbed",
+				"scopes": ["contents:read", "checks:write", "comments:write", "merge_requests:read", "outbound:read"]
+			}
+		]
+	},
+	"observability": { "enabled": true }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "cf-ci-github-node-npm",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261028.1",
+    "typescript": "^7.0.2",
+    "wrangler": "4.161.0"
+  }
+}
