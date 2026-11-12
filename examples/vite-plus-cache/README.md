@@ -38,6 +38,19 @@ filesystem observation cannot capture them.
 
 [Vite+ task](./app/vite.config.ts "source")
 
+## Speed up an existing workflow
+
+Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
+your coding agent:
+
+```text
+Move the build, lint and test commands this workflow runs with workspace.exec or
+package.json scripts into Vite+ tasks in vite.config.ts. Run them with
+VitePlus(workspace).run(task) from @effect-ci-testbed/ci/vite-plus. Leave deploy
+and publish steps as they are. Then run `effect-ci run -v` twice and check that the
+second run reports each task as cached.
+```
+
 [Automatic data tracking](https://viteplus.dev/guide/automatic-data-tracking)
 owns input/output discovery. Cache-enabled tasks track file reads and writes;
 arbitrary commands may still need explicit environment-variable configuration.

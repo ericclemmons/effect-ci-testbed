@@ -5,7 +5,8 @@ RUN apt-get update \
   && apt-get install --yes --no-install-recommends bash ca-certificates git python3 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
+# vp is a global CLI; its task runner reads the run plan format, so keep it at the projects' Vite+ version.
+RUN npm install --global pnpm@12.8.1 vite-plus@1.6.0 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
 
 # Prepared from locked production packages by the Vite build.
 # Root-owned runtime is separate from the project-writable checkout.

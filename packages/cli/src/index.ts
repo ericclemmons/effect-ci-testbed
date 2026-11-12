@@ -479,13 +479,26 @@ interface ParsedInvocation {
   readonly verbose: number
 }
 
-// stderr keeps --format=json stdout parseable. Each line names the step that logged it.
-const stepLogger = Logger.layer([Logger.make(options => {
+interface StepLog {
+  readonly step?: string
+  readonly level: string
+  readonly message: string
+}
+
+// Text goes to stderr, prefixed with the step; JSON collects entries for the document.
+const stepLogger = (sink: (log: StepLog) => void) => Logger.layer([Logger.make(options => {
   const step = options.fiber.getRef(CurrentLogAnnotations)["ci.step"]
   const messages = Array.isArray(options.message) ? options.message : [options.message]
-  const text = messages.map(message => typeof message === "string" ? message : JSON.stringify(message)).join(" ")
-  process.stderr.write(`${step === undefined ? "" : `[${String(step)}] `}${text}\n`)
+  sink({
+    ...(step === undefined ? {} : { step: String(step) }),
+    level: options.logLevel,
+    message: messages.map(message => typeof message === "string" ? message : JSON.stringify(message)).join(" "),
+  })
 })])
+
+const printStepLog = (log: StepLog) => {
+  process.stderr.write(`${log.step === undefined ? "" : `[${log.step}] `}${log.message}\n`)
+}
 
 const parseInvocation = (
   args: ReadonlyArray<string>,
@@ -609,7 +622,7 @@ Commands:
 Examples:
   effect-ci run                     Execute the whole default workflow
   effect-ci run test build          Run both goals with their shared dependencies
-  effect-ci run build -v            Also log step details to stderr; -vv adds debug details
+  effect-ci run build -v            Also log step details (stderr, or "logs" in JSON); -vv adds debug
   effect-ci plan                    Inspect the whole workflow without executing
   effect-ci plan --format=mermaid    Print its Mermaid graph
   effect-ci plan --format=dot        Print its Graphviz DOT graph
@@ -996,6 +1009,7 @@ export const main = async (
   workflowPath: string = resolve(process.cwd(), ".cloudflare/ci/workflow.ts"),
 ): Promise<ExitCode> => {
   let format: OutputFormat = detectedFormat()
+  const logs: StepLog[] = []
 
   try {
     const invocation = parseInvocation(args, value => { format = value }, projectRoot(workflowPath))
@@ -1080,7 +1094,7 @@ export const main = async (
     const localWorkflow = { ...workflow, effect: workflow.effect.pipe(
       Effect.provideService(ProjectChecks, isolate.service),
       Effect.provideService(MinimumLogLevel, invocation.verbose >= 2 ? "Debug" : invocation.verbose === 1 ? "Info" : "Warn"),
-      Effect.provide(stepLogger),
+      Effect.provide(stepLogger(log => format === "json" ? logs.push(log) : printStepLog(log))),
     ) }
     const result = await (async () => {
       try {
@@ -1108,6 +1122,7 @@ export const main = async (
         ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
         workflow: workflow.id,
         plan: result.plan,
+        ...(logs.length ? { logs } : {}),
       })
     } else if (format === "mermaid") {
       console.log(formatPlanMermaid(result.plan))
@@ -1128,6 +1143,7 @@ export const main = async (
           message: failure.message,
           ...(failure.details === undefined ? {} : { details: failure.details }),
         },
+        ...(logs.length ? { logs } : {}),
       })
     } else {
       console.error(`Error [${failure.code}]: ${failure.message}`)

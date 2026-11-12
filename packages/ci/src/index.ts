@@ -957,7 +957,7 @@ export const JavaScript = (
             workspace,
             install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
             run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
-            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : owner.name === "npm" ? "npm exec --" : `${owner.name} exec`} ${command}`),
+            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : `${owner.name} exec`} ${command}`),
           }
         }
       }
@@ -1029,11 +1029,8 @@ export const JavaScript = (
         case "run":
           return `${executable} run ${JSON.stringify(value)}`
         case "exec":
-          // npm reads flags after the command, such as --json and -v, as its own.
           return name === "bun"
             ? `bunx ${value}`
-            : name === "npm"
-            ? `npm exec -- ${value}`
             : `${executable} exec ${value}`
       }
     }
