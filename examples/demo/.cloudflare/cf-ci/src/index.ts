@@ -23,7 +23,9 @@ const env = { COREPACK_ENABLE_DOWNLOAD_PROMPT: "0", COREPACK_ENABLE_AUTO_PIN: "0
 
 export class CI extends WorkflowEntrypoint<Env, Params> {
   async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
-    return reportToGitHub(this.env, event, step, "demo / cf-ci", () => this.pipeline(event, step as InternalWorkflowStep));
+    return reportToGitHub(this.env, event, step, "demo / cf-ci", () =>
+      this.pipeline(event, step as InternalWorkflowStep),
+    );
   }
 
   private async pipeline(event: WorkflowEvent<Params>, step: InternalWorkflowStep) {
