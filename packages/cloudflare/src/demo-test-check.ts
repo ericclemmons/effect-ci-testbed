@@ -22,8 +22,8 @@ export const testNotesRef = "refs/notes/effect-ci-demo-tests-v1";
 export const testCommand =
   "env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp CI=true ./node_modules/.bin/vp test --run";
 export const testFixedInputs: Record<string, string> = {
-  "package.json": "bd0aa77c441205496b09a5a5ac9b0bd591b95cf8bffae755f1a41cc4ea84aead",
-  "package-lock.json": "257ebfccb79d64b8b50667465aefec8da77bf4a5220e17b67e2fed9a14c7a5f8",
+  "package.json": "3df9f297a36a28322f782aedbd03587043bc39cf36f31ba3fd89dc7d57333903",
+  "package-lock.json": "4814790bc70591e3e6cf3d2c1e3b04807b5ad4f5fc150ac10e380d1ffc6f9555",
   "vite.config.ts": "7bc09977035bc1a7542df0053a8ecaf6e61b111c443b302518210cd7754bf14e",
   "tsconfig.json": "0b416efba95d4742f4bfbcae9af3d25342caa622f4401e711d2d0fe62eb1864e",
   "src/app.ts": "04b8af3ea0986e7719a2155bd6c4fd5f909a9fc8a87e6cb5cd9875c1b497c0d4",

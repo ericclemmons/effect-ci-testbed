@@ -46,6 +46,7 @@ for (const [name, workflow, expected] of [
       ["Node version", "node-version"],
       ["Mise toolchain", "mise-toolchain"],
       ["source-only checks", "dynamic-worker-checks"],
+      ["Vite+ cache", "vite-plus-cache"],
     ]).get(name)
     const result = await CI.runPromise<unknown>(workflow, {
       mode: "plan",

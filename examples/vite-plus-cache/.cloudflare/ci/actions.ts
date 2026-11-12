@@ -1,4 +1,5 @@
 import * as CI from "@effect-ci-testbed/ci"
+import { VitePlus } from "@effect-ci-testbed/ci/vite-plus"
 
 export const checkout = CI.action("checkout", function* () {
   const source = yield* CI.Source
@@ -16,6 +17,7 @@ export const install = CI.action("install", () => function* () {
 
 export const build = CI.action("build", () => function* () {
   const workspace = yield* install()
+  const vp = yield* VitePlus(workspace.directory("app"))
 
-  return yield* CI.VitePlus.run(workspace.directory("app"), "--cache build", { vp: "npx vp" })
+  return yield* vp.run("build")
 })

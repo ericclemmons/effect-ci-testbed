@@ -45,6 +45,9 @@ test(
           results: [{ file: `tests/${index}.test.mjs`, durationMs: 1, passed: true }] });
       }
     }
+    // The Vite+ dry run writes its run plan before the real run.
+    files["examples/vite-plus-cache/app/node_modules/.effect-ci-vite-plus-run-plan.json"] = JSON.stringify({ version: 1,
+      plan: { "examples/vite-plus-cache/app#build": { steps: [{ cache: { status: "noBaseline" } }] } } });
     const bundle = await build({
       stdin: {
         resolveDir: new URL(".", import.meta.url).pathname,

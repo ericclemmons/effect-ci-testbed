@@ -10,6 +10,8 @@ import { projectEnvironment } from "./project-env.ts"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import * as Logger from "effect/Logger"
+import { CurrentLogAnnotations, MinimumLogLevel } from "effect/References"
 import * as Schema from "effect/Schema"
 import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/project-service"
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
@@ -473,7 +475,17 @@ interface ParsedInvocation {
   readonly target?: string
   readonly targets: ReadonlyArray<string>
   readonly rerunFrom?: string
+  /** Number of `-v` flags: 1 logs step details, 2 or more also logs debug details. */
+  readonly verbose: number
 }
+
+// stderr keeps --format=json stdout parseable. Each line names the step that logged it.
+const stepLogger = Logger.layer([Logger.make(options => {
+  const step = options.fiber.getRef(CurrentLogAnnotations)["ci.step"]
+  const messages = Array.isArray(options.message) ? options.message : [options.message]
+  const text = messages.map(message => typeof message === "string" ? message : JSON.stringify(message)).join(" ")
+  process.stderr.write(`${step === undefined ? "" : `[${String(step)}] `}${text}\n`)
+})])
 
 const parseInvocation = (
   args: ReadonlyArray<string>,
@@ -493,6 +505,7 @@ const parseInvocation = (
         local: { type: "boolean" },
         remote: { type: "boolean" },
         "rerun-from": { type: "string" },
+        verbose: { short: "v", type: "boolean", multiple: true },
       },
       strict: true,
     })
@@ -565,6 +578,7 @@ const parseInvocation = (
     help: parsed.values.help === true,
     location,
     targets,
+    verbose: (parsed.values.verbose as boolean[] | undefined)?.length ?? 0,
     ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
   }
@@ -595,6 +609,7 @@ Commands:
 Examples:
   effect-ci run                     Execute the whole default workflow
   effect-ci run test build          Run both goals with their shared dependencies
+  effect-ci run build -v            Also log step details to stderr; -vv adds debug details
   effect-ci plan                    Inspect the whole workflow without executing
   effect-ci plan --format=mermaid    Print its Mermaid graph
   effect-ci plan --format=dot        Print its Graphviz DOT graph
@@ -1062,7 +1077,11 @@ export const main = async (
       : program.local ?? {}
     const configured: CI.RunConfiguration = { ...defaults, ...overrides }
     const isolate = makeLocalProjectChecks()
-    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(Effect.provideService(ProjectChecks, isolate.service)) }
+    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(
+      Effect.provideService(ProjectChecks, isolate.service),
+      Effect.provideService(MinimumLogLevel, invocation.verbose >= 2 ? "Debug" : invocation.verbose === 1 ? "Info" : "Warn"),
+      Effect.provide(stepLogger),
+    ) }
     const result = await (async () => {
       try {
         return await CI.runPromise(localWorkflow, {

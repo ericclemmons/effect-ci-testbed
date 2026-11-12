@@ -17,22 +17,26 @@ effect-ci run
 
 The second run reports a cache hit. Change a file the build reads and it rebuilds.
 
-`CI.VitePlus.run` first asks Vite+ for its run plan (`vp run --dry-run --json -v`)
-and notes under the step whether it was cached, and why not:
+With `-v`, Effect CI logs whether each Vite+ step would hit the cache, and every
+change behind a miss, before it runs. `-vv` also lists the cached run's inputs and outputs.
 
 ```text
-✓ build depends on install
-  vite+ examples/vite-plus-cache/app#build: not cached: 'examples/vite-plus-cache/app/src/message.js' changed
+$ effect-ci run -v
+[build] vite+ examples/vite-plus-cache/app#build: not cached
+[build]   'examples/vite-plus-cache/app/src/message.js' changed
 ```
 
-The run itself uses `-v`, so its log lists every reason for a miss.
+The task runs with `vp run -v`, so its own summary lists every reason for a miss too.
 
-[Vite+ run helper](../../packages/ci/src/index.ts#symbol=vitePlusRun "source")
+[Vite+ toolchain](../../packages/ci/src/vite-plus.ts#symbol=VitePlus "source")
 
 The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,
 including the nested app's cache. No cache key or paths are needed in the workflow.
-Your build remains an ordinary package script; network, time, and environment
-dependencies need explicit tracking when filesystem observation cannot capture them.
+The build is an ordinary Vite+ task, cached by default, with no input or output
+lists; network, time, and environment dependencies need explicit tracking when
+filesystem observation cannot capture them.
+
+[Vite+ task](./app/vite.config.ts "source")
 
 [Automatic data tracking](https://viteplus.dev/guide/automatic-data-tracking)
 owns input/output discovery. Cache-enabled tasks track file reads and writes;

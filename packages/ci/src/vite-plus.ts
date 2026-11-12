@@ -1,10 +1,17 @@
-/** The parts of `vp run --dry-run --json` (Vite+ 1.6 run plan, version 1) that notes use. */
+import * as Effect from "effect/Effect"
+import { MinimumLogLevel } from "effect/References"
+import * as CI from "./index.ts"
+
+/** The parts of a `vp run --dry-run --json` run plan (version 1, Vite+ 1.6) that the log uses. */
 interface RunPlanStep {
-  readonly expandedFrom?: string
   readonly plan?: RunPlan["plan"]
   readonly cache?: {
     readonly status: "hit" | "changed" | "unknown" | "noBaseline" | "error" | "disabled"
-    readonly baseline?: { readonly durationMs: number }
+    readonly baseline?: {
+      readonly durationMs: number
+      readonly fingerprint?: { readonly env?: ReadonlyArray<string>; readonly inputs?: Readonly<Record<string, { readonly type: string }>> }
+      readonly outputs?: ReadonlyArray<string> | "notDownloaded"
+    }
     readonly changes?: ReadonlyArray<
       | { readonly kind: "program" | "args" | "cwd" }
       | { readonly kind: "config"; readonly setting: string }
@@ -21,9 +28,14 @@ interface RunPlan {
   readonly plan: Readonly<Record<string, { readonly steps: ReadonlyArray<RunPlanStep> }>>
 }
 
-const shownChanges = 5
+export interface CacheLogLine {
+  readonly level: "Info" | "Debug"
+  readonly message: string
+}
 
-const describeChange = (change: NonNullable<NonNullable<RunPlanStep["cache"]>["changes"]>[number]): string => {
+type Change = NonNullable<NonNullable<RunPlanStep["cache"]>["changes"]>[number]
+
+const describeChange = (change: Change): string => {
   switch (change.kind) {
     case "file": return `'${change.path}' ${change.change}`
     case "env": return `env '${change.name}' ${change.change}`
@@ -32,43 +44,75 @@ const describeChange = (change: NonNullable<NonNullable<RunPlanStep["cache"]>["c
   }
 }
 
-const describeCache = (cache: RunPlanStep["cache"]): string => {
-  if (!cache) return "not cached"
-  switch (cache.status) {
+const describeStatus = (cache: RunPlanStep["cache"]): string => {
+  switch (cache?.status) {
+    case undefined: return "not cached"
     case "hit": return `cached${cache.baseline ? ` (saves ${cache.baseline.durationMs}ms)` : ""}`
+    case "changed": return "not cached"
+    case "unknown": return "cache unknown: an earlier step writes files first"
     case "noBaseline": return "not cached: no earlier run to reuse"
     case "disabled": return "not cached: caching is off"
     case "error": return `not cached: ${cache.message ?? "cache unreadable"}`
-    case "changed":
-    case "unknown": {
-      const changes = (cache.changes ?? []).map(describeChange)
-      const more = changes.length > shownChanges ? `, ${changes.length - shownChanges} more` : ""
-      const partial = cache.changesPartial ? ", maybe more" : ""
-      const reasons = changes.length ? `${changes.slice(0, shownChanges).join(", ")}${more}${partial}` : ""
-      return cache.status === "changed"
-        ? `not cached: ${reasons}`
-        : `cache unknown: an earlier step writes files first${reasons ? `; today ${reasons}` : ""}`
-    }
   }
 }
 
-/** One note per step of a Vite+ run plan, such as `vite+ app#build: cached (saves 166ms)`. */
-export const vitePlusCacheNotes = (body: string): string[] => {
+/**
+ * Turns a Vite+ run plan into log lines: each step's cache status and every change at Info,
+ * and, from a `-vv` plan, the inputs and outputs of the cached run at Debug.
+ */
+export const cacheLog = (body: string): CacheLogLine[] => {
   const plan = JSON.parse(body) as RunPlan
   if (plan.version !== 1 || typeof plan.plan !== "object" || plan.plan === null) {
     throw new Error("Expected a version 1 Vite+ run plan from `vp run --dry-run --json`")
   }
-  const notes: string[] = []
+  const lines: CacheLogLine[] = []
   const visit = (tasks: RunPlan["plan"], prefix: string) => {
     for (const [id, task] of Object.entries(tasks)) {
-      const single = task.steps.length === 1
       task.steps.forEach((step, index) => {
-        const label = `${prefix}${id}${single ? "" : ` step ${index + 1}`}`
-        if (step.plan) visit(step.plan, `${label} › `)
-        else notes.push(`vite+ ${label}: ${describeCache(step.cache)}`)
+        const label = `${prefix}${id}${task.steps.length === 1 ? "" : ` step ${index + 1}`}`
+        if (step.plan) return visit(step.plan, `${label} › `)
+        const cache = step.cache
+        lines.push({ level: "Info", message: `vite+ ${label}: ${describeStatus(cache)}` })
+        for (const change of cache?.changes ?? []) lines.push({ level: "Info", message: `  ${describeChange(change)}` })
+        if (cache?.changesPartial) lines.push({ level: "Info", message: "  other files may have changed too" })
+        for (const name of cache?.baseline?.fingerprint?.env ?? []) lines.push({ level: "Debug", message: `  input env '${name}'` })
+        for (const [path, input] of Object.entries(cache?.baseline?.fingerprint?.inputs ?? {})) {
+          lines.push({ level: "Debug", message: `  input '${path}'${input.type === "file" ? "" : ` (${input.type})`}` })
+        }
+        const outputs = cache?.baseline?.outputs
+        if (outputs === "notDownloaded") lines.push({ level: "Debug", message: "  outputs not downloaded" })
+        else for (const path of outputs ?? []) lines.push({ level: "Debug", message: `  output '${path}'` })
       })
     }
   }
   visit(plan.plan, "")
-  return notes
+  return lines
 }
+
+const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
+
+/** Vite+ in a JavaScript project, started through the project's package manager. */
+export const VitePlus = (workspace: CI.Workspace) => Effect.gen(function* () {
+  const packageManager = yield* CI.PackageManager.JavaScript(workspace)
+  return {
+    workspace,
+    /**
+     * Runs a Vite+ task with `vp run -v`. A dry run first logs whether each step would hit the
+     * cache, and every change behind a miss; `-vv` also logs the cached run's inputs and outputs.
+     */
+    run: (task: string) => Effect.gen(function* () {
+      if ((yield* CI.executionMode) === "execute") {
+        const level = yield* MinimumLogLevel
+        const verbose = level === "Debug" || level === "Trace" || level === "All" ? "-vv" : "-v"
+        // In node_modules, so the plan is never an input of the task it describes.
+        const file = "node_modules/.effect-ci-vite-plus-run-plan.json"
+        yield* packageManager.exec(`vp run --dry-run --json ${verbose} ${quote(task)} > ${file}`)
+        const body = yield* workspace.readFile(file)
+        if (body === undefined) return yield* Effect.fail(new Error(`Vite+ wrote no run plan to ${file}`))
+        const lines = yield* Effect.try({ try: () => cacheLog(body), catch: error => error })
+        for (const line of lines) yield* line.level === "Info" ? Effect.logInfo(line.message) : Effect.logDebug(line.message)
+      }
+      return yield* packageManager.exec(`vp run -v ${quote(task)}`)
+    }),
+  }
+})

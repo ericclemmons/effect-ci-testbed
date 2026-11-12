@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "vite-plus": "1.0.0",
+    "vite-plus": "1.6.0",
     "wrangler": "4.145.0"
   },
   "engines": {
