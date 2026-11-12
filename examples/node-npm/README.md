@@ -25,41 +25,28 @@ test, and build with Cloudflare Workflows `step.runner()` (internal preview,
 allowlisted accounts only). It is a separate comparison, like the GitHub Actions
 YAML, and does not use Effect CI.
 
-cf ci reads the pipeline from the deployed Worker, not from the pushed commit.
-[`scripts/cf-ci.mjs`](../../scripts/cf-ci.mjs) deploys this directory's
-pipeline with `cf deploy`, tagged with the source commit, waits for the new
-Workflow version, pushes the recipe to the `cf-ci/node-npm` Artifacts repo, and
-fails unless the started run used that version and every check passed:
+cf ci reads the pipeline from the deployed Worker, not from the commit. Each
+recipe's pipeline follows the
+[cf ci get started guide](https://developers.cloudflare.com/ci/get-started/):
+an `scm` binding gives it this GitHub repository, and
+[`reportToGitHub`](./.cloudflare/cf-ci/src/github.ts) writes one
+`<recipe> / cf-ci` check on the commit. GitHub cannot start runs yet, so
+[`scripts/cf-ci.mjs`](../../scripts/cf-ci.mjs) deploys the pipeline with
+Wrangler, starts a run on a pushed commit, retries runs that executed the
+previous pipeline, and fails unless every check passed. With `--mr`, the
+pipeline also comments on the pull request:
 
 ```sh
 (cd examples/node-npm/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs node-npm
-```
-
-### From GitHub
-
-This pipeline runs the same checks on this GitHub repository instead of an
-Artifacts copy:
-
-[GitHub-source pipeline](./.cloudflare/cf-ci-github/src/index.ts#symbol=CI "source")
-
-It
-follows the [cf ci get started guide](https://developers.cloudflare.com/ci/get-started/):
-an `scm` binding reads the commit, writes a `node-npm / cf-ci-github` check on
-it, and comments on the pull request. GitHub cannot start runs yet, so
-[`scripts/cf-ci-github.mjs`](../../scripts/cf-ci-github.mjs) deploys the
-pipeline with Wrangler and starts a run on a pushed commit:
-
-```sh
-(cd examples/node-npm/.cloudflare/cf-ci-github && npm ci)
-node scripts/cf-ci-github.mjs node-npm --sha "$(git rev-parse HEAD)" --mr 123
+node scripts/cf-ci.mjs node-npm --sha "$(git rev-parse HEAD)" --mr 123
 ```
 
 The Cloudflare GitHub app must be installed on the repository. Runners download
-the commit's tarball straight from GitHub, which works because this repository
-is public. The guide's signed workers.dev download fails on this account because
-Cloudflare Access blocks unmatched workers.dev hosts. The tarball has no Git
-history, so commands such as `git log` do not work.
+the commit's tarball straight from GitHub and keep only `examples/<recipe>`,
+which works because this repository is public. The guide's signed workers.dev
+download fails on this account because Cloudflare Access blocks unmatched
+workers.dev hosts. The tarball has no Git history, so commands such as
+`git log` do not work.
 
 ## Hosted runner
 

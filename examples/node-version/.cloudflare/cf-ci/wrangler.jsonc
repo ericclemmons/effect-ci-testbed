@@ -1,0 +1,23 @@
+{
+	"name": "cf-ci-node-version",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-01",
+	"workers_dev": false,
+	"preview_urls": false,
+	"workflows": [{ "name": "cf-ci-node-version", "binding": "CI_WORKFLOW", "class_name": "CI" }],
+	// scripts/cf-ci.mjs sets PIPELINE_SHA with --secrets-file on each deploy.
+	"vars": { "GITHUB_REPO": "ericclemmons/effect-ci-testbed" },
+	// Wrangler does not support the scm binding yet.
+	"unsafe": {
+		"bindings": [
+			{
+				"type": "scm",
+				"name": "REPO",
+				"provider": "github",
+				"repo": "ericclemmons/effect-ci-testbed",
+				"scopes": ["contents:read", "checks:write", "comments:write", "merge_requests:read", "outbound:read"]
+			}
+		]
+	},
+	"observability": { "enabled": true }
+}

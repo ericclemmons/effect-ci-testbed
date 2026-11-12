@@ -5,5 +5,5 @@
     "types": ["node"]
   },
   "include": [".cloudflare/**/*.ts"],
-  "exclude": [".cloudflare/cf-ci", ".cloudflare/cf-ci-github"]
+  "exclude": [".cloudflare/cf-ci"]
 }
