@@ -39,7 +39,8 @@ export const EffectCIWorkflow = GitHubCloudflare.workflowEntrypoint(
     const targets = parameters.trigger === "remote"
       ? parameters.targets ?? (parameters.target ? [parameters.target] : []) : [];
     const project = projectSelection(parameters);
-    return standaloneProgram(project?.root ?? root, targets, project?.workflow).workflow;
+    const verbose = parameters.trigger === "remote" ? parameters.verbose : undefined;
+    return standaloneProgram(project?.root ?? root, targets, project?.workflow, verbose).workflow;
   },
   {
     remoteGitHubCheckout: true,

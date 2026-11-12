@@ -34,6 +34,8 @@ export interface Invocation {
   readonly target?: string
   readonly targets?: ReadonlyArray<string>
   readonly rerunFrom?: string
+  /** `-v` (1) or `-vv` (2); remote hosts pass it to the project's CLI. */
+  readonly verbose?: 1 | 2
   readonly workflow: CI.Workflow<unknown>
 }
 
@@ -364,7 +366,8 @@ const builtInRemote = async (
     headers: await connection.requestHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
       ...(project ? { project } : {}),
-      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
+      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
+      ...(invocation.verbose ? { verbose: invocation.verbose } : {}) }),
   })
 
   if (!response.ok) {
@@ -1058,6 +1061,7 @@ export const main = async (
       ...(invocation.target ? { target: invocation.target } : {}),
       ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
+      ...(invocation.verbose ? { verbose: Math.min(invocation.verbose, 2) as 1 | 2 } : {}),
       workflow,
     }
 

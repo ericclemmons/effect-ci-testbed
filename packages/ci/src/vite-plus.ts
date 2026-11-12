@@ -38,9 +38,9 @@ type Change = NonNullable<NonNullable<RunPlanStep["cache"]>["changes"]>[number]
 // Under a "changes:" heading, so only additions and removals are spelled out.
 const describeChange = (change: Change): string => {
   switch (change.kind) {
-    case "file": return `'${change.path}'${change.change === "changed" ? "" : ` (${change.change})`}`
-    case "env": return `env '${change.name}'${change.change === "changed" ? "" : ` (${change.change})`}`
-    case "config": return `config '${change.setting}'`
+    case "file": return `${change.path}${change.change === "changed" ? "" : ` (${change.change})`}`
+    case "env": return `env ${change.name}${change.change === "changed" ? "" : ` (${change.change})`}`
+    case "config": return `config ${change.setting}`
     default: return change.kind
   }
 }
@@ -76,13 +76,13 @@ export const cacheLog = (body: string): CacheLogLine[] => {
         lines.push({ level: "Info", message: `vite+ ${label}${describeStatus(cache)}` })
         for (const change of cache?.changes ?? []) lines.push({ level: "Info", message: `  ${describeChange(change)}` })
         if (cache?.changesPartial) lines.push({ level: "Info", message: "  and maybe more" })
-        for (const name of cache?.baseline?.fingerprint?.env ?? []) lines.push({ level: "Debug", message: `  input env '${name}'` })
+        for (const name of cache?.baseline?.fingerprint?.env ?? []) lines.push({ level: "Debug", message: `  input env ${name}` })
         for (const [path, input] of Object.entries(cache?.baseline?.fingerprint?.inputs ?? {})) {
-          lines.push({ level: "Debug", message: `  input '${path}'${input.type === "file" ? "" : ` (${input.type})`}` })
+          lines.push({ level: "Debug", message: `  input ${path}${input.type === "file" ? "" : ` (${input.type})`}` })
         }
         const outputs = cache?.baseline?.outputs
         if (outputs === "notDownloaded") lines.push({ level: "Debug", message: "  outputs not downloaded" })
-        else for (const path of outputs ?? []) lines.push({ level: "Debug", message: `  output '${path}'` })
+        else for (const path of outputs ?? []) lines.push({ level: "Debug", message: `  output ${path}` })
       })
     }
   }
