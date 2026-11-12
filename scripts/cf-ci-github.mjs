@@ -69,14 +69,18 @@ async function deploy() {
   throw new Error("wrangler deploy finished but no new Workflow version appeared")
 }
 
-async function versionOf(id) {
-  for (let attempt = 0; attempt < 15; attempt++) {
-    const instances = await api("GET", `/workflows/${workflow}/instances?per_page=25`)
-    const instance = instances.find((candidate) => candidate.id === id)
-    if (instance?.version_id) return instance.version_id
+// The first step reports the PIPELINE_SHA the run executes. Other steps first means older code.
+async function pipelineOf(id) {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const details = await api("GET", `/workflows/${workflow}/instances/${id}`)
+    const steps = details.steps ?? []
+    const step = steps.find((candidate) => candidate.name === "pipeline version")
+    if (step && step.output !== undefined && step.output !== null) return String(step.output)
+    if (!step && steps.some((candidate) => candidate.type === "step" || candidate.name)) return `older code (first step ${steps[0]?.name})`
+    if (["complete", "errored", "terminated"].includes(details.status)) return `ended as ${details.status}`
     await sleep(2000)
   }
-  return undefined
+  return "unknown"
 }
 
 async function terminate(id) {
@@ -102,19 +106,19 @@ const expectedVersion = await deploy()
 const params = mr ? { sha, mr } : { sha }
 
 let instance
-for (let attempt = 1; attempt <= 6 && !instance; attempt++) {
+for (let attempt = 1; attempt <= 10 && !instance; attempt++) {
   const { id } = await api("POST", `/workflows/${workflow}/instances`, { params })
-  const version = await versionOf(id)
-  if (version === expectedVersion) {
+  const ran = await pipelineOf(id)
+  if (ran === pipelineSha) {
     instance = id
     break
   }
-  // A run started shortly after a deploy can still use the previous Workflow version.
-  log(`instance ${id} ran version ${version}; expected ${expectedVersion}. Retrying.`)
+  // Runs started in the first minutes after a deploy can execute the previous pipeline.
+  log(`instance ${id} ran pipeline ${ran}; expected ${pipelineSha} (version ${expectedVersion}). Retrying.`)
   await terminate(id)
-  await sleep(15_000)
+  await sleep(30_000)
 }
-if (!instance) throw new Error(`no run started Workflow version ${expectedVersion}`)
+if (!instance) throw new Error(`no run executed pipeline ${pipelineSha}`)
 
 log(`started instance ${instance} on ${sha}${mr ? ` (pull request #${mr})` : ""}`)
 const result = await waitForResult(instance)

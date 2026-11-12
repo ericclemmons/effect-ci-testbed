@@ -21,6 +21,10 @@ export class CI extends WorkflowEntrypoint<Env, Params> {
 		const step = workflowStep as InternalWorkflowStep;
 		const { mr } = event.payload;
 
+		// Runs started soon after a deploy can execute the previous code, even when the instance reports
+		// the new version. scripts/cf-ci-github.mjs reads this step and retries stale runs.
+		await step.do("pipeline version", async () => this.env.PIPELINE_SHA);
+
 		const sha = await step.do("resolve commit", async () => {
 			if (event.payload.sha) return event.payload.sha;
 			if (!mr) throw new Error("Pass a sha or an mr");
