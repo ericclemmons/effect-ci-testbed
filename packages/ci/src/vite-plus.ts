@@ -35,12 +35,13 @@ export interface CacheLogLine {
 
 type Change = NonNullable<NonNullable<RunPlanStep["cache"]>["changes"]>[number]
 
+// Under a "changes:" heading, so only additions and removals are spelled out.
 const describeChange = (change: Change): string => {
   switch (change.kind) {
-    case "file": return `'${change.path}' ${change.change}`
-    case "env": return `env '${change.name}' ${change.change}`
-    case "config": return `config '${change.setting}' changed`
-    default: return `${change.kind} changed`
+    case "file": return `'${change.path}'${change.change === "changed" ? "" : ` (${change.change})`}`
+    case "env": return `env '${change.name}'${change.change === "changed" ? "" : ` (${change.change})`}`
+    case "config": return `config '${change.setting}'`
+    default: return change.kind
   }
 }
 
