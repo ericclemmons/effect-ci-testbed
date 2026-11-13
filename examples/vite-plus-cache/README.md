@@ -22,8 +22,8 @@ change behind a miss, before it runs. `-vv` also lists the cached run's inputs a
 
 ```text
 $ effect-ci run -v
-[build] vite+ examples/vite-plus-cache/app#build: not cached
-[build]   'examples/vite-plus-cache/app/src/message.js' changed
+[build] vite+ examples/vite-plus-cache/app#build changes:
+[build]   ± examples/vite-plus-cache/app/src/message.js
 ```
 
 The task runs with `vp run -v`, so its own summary lists every reason for a miss too.

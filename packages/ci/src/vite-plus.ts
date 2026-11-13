@@ -35,13 +35,15 @@ export interface CacheLogLine {
 
 type Change = NonNullable<NonNullable<RunPlanStep["cache"]>["changes"]>[number]
 
-// Under a "changes:" heading, so only additions and removals are spelled out.
+// Diff-style markers: + added, - removed, ± changed.
+const marker = (change: string) => change === "added" ? "+" : change === "removed" ? "-" : "±"
+
 const describeChange = (change: Change): string => {
   switch (change.kind) {
-    case "file": return `${change.path}${change.change === "changed" ? "" : ` (${change.change})`}`
-    case "env": return `env ${change.name}${change.change === "changed" ? "" : ` (${change.change})`}`
-    case "config": return `config ${change.setting}`
-    default: return change.kind
+    case "file": return `${marker(change.change)} ${change.path}`
+    case "env": return `${marker(change.change)} env ${change.name}`
+    case "config": return `± config ${change.setting}`
+    default: return `± ${change.kind}`
   }
 }
 
