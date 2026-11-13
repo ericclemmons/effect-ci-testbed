@@ -39,9 +39,9 @@ serialize both paths during planning.
 
 ## cf ci comparison
 
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only for pushes to
-`refs/heads/main`. `scripts/cf-ci.mjs` pushes `run/<commit>` branches, so its
-runs report the deploy as skipped. It does not use Effect CI.
+[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only when the run's ref is
+`refs/heads/main`. `scripts/cf-ci.mjs` passes `GITHUB_REF`, so pull request
+runs report the deploy as skipped and pushes to `main` deploy. It does not use Effect CI.
 
 ```sh
 (cd examples/conditional-deploy/.cloudflare/cf-ci && npm ci)
