@@ -13,7 +13,8 @@
     "./directory-deployment": "./src/directory-deployment.ts",
     "./source-changes": "./src/source-changes.ts",
     "./task-cache": "./src/task-cache.ts",
-    "./paths": "./src/paths.ts"
+    "./paths": "./src/paths.ts",
+    "./vite-plus": "./src/vite-plus.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

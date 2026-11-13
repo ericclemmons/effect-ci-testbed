@@ -8,7 +8,7 @@ export const standaloneContainerOptions = {
 
 /** Host chooses checkout/root; authored workflow discovery and execution happen
  * only in the unprivileged workspace through the same CLI used locally. */
-export function standaloneProgram(root: string, targets: ReadonlyArray<string> = [], workflow?: string) {
+export function standaloneProgram(root: string, targets: ReadonlyArray<string> = [], workflow?: string, verbose?: 1 | 2, force?: true) {
   const relativePath = (value: string) => value.length <= 1024 && /^[a-zA-Z0-9_@./-]+$/.test(value) &&
     value.split("/").every(part => part !== "" && part !== "." && part !== "..");
   if ((root !== "." && !relativePath(root)) || (workflow !== undefined && workflow !== "." && !relativePath(workflow))) {
@@ -46,6 +46,9 @@ export function standaloneProgram(root: string, targets: ReadonlyArray<string> =
     // Explicit local execution cannot recurse into the host's remote endpoint.
     return yield* workspace.exec(["node /opt/effect-ci/src/hosted.ts run", ...targets,
       ...(workflow ? [`--workflow=${workflow}`] : []),
+      // Its stderr logs return in this step's output, in order, on the remote event stream.
+      ...(verbose === 2 ? ["-vv"] : verbose === 1 ? ["-v"] : []),
+      ...(force ? ["--force"] : []),
       "--local --format=text"].join(" "));
   });
   return {

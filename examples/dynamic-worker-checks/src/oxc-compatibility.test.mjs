@@ -43,8 +43,8 @@ const runtime = () => new Miniflare({ workers: [{ config: {
   exports: {},
 } }] });
 
-test("Oxfmt 0.70.0 public format API cannot initialize unchanged in local workerd", { timeout: 30000 }, async t => {
-  const { entry } = artifact("oxfmt", "0.70.0");
+test("Oxfmt 0.78.0 public format API cannot initialize unchanged in local workerd", { timeout: 30000 }, async t => {
+  const { entry } = artifact("oxfmt", "0.78.0");
   const code = await compile(`import{format}from${JSON.stringify(entry)};
     export default{async fetch(){return Response.json(await format('input.js','const  value=1',{}))}}`);
   const worker = runtime();
@@ -58,8 +58,8 @@ test("Oxfmt 0.70.0 public format API cannot initialize unchanged in local worker
   } finally { await worker.dispose(); }
 });
 
-test("Oxlint 1.85.0 public JS entrypoint is configuration, not a Worker lint engine", { timeout: 30000 }, async () => {
-  const { entry, metadata } = artifact("oxlint", "1.85.0");
+test("Oxlint 1.93.0 public JS entrypoint is configuration, not a Worker lint engine", { timeout: 30000 }, async () => {
+  const { entry, metadata } = artifact("oxlint", "1.93.0");
   const code = await compile(`import*as tool from${JSON.stringify(entry)};
     export default{fetch(){return Response.json({exports:Object.keys(tool),lint:typeof tool.lint})}}`);
   const worker = runtime();

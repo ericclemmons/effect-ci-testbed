@@ -10,6 +10,8 @@ import { projectEnvironment } from "./project-env.ts"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
 import * as Effect from "effect/Effect"
+import * as Logger from "effect/Logger"
+import { CurrentLogAnnotations, MinimumLogLevel } from "effect/References"
 import * as Schema from "effect/Schema"
 import { ProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/project-service"
 import { LocalIsolateUnavailable, makeLocalProjectChecks } from "@effect-ci-testbed/cloudflare-dynamic-worker/local"
@@ -32,6 +34,10 @@ export interface Invocation {
   readonly target?: string
   readonly targets?: ReadonlyArray<string>
   readonly rerunFrom?: string
+  /** `-v` (1) or `-vv` (2); remote hosts pass it to the project's CLI. */
+  readonly verbose?: 1 | 2
+  /** `--force`: skip cache reuse; remote hosts pass it to the project's CLI. */
+  readonly force?: true
   readonly workflow: CI.Workflow<unknown>
 }
 
@@ -362,7 +368,9 @@ const builtInRemote = async (
     headers: await connection.requestHeaders(),
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
       ...(project ? { project } : {}),
-      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}) }),
+      ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
+      ...(invocation.verbose ? { verbose: invocation.verbose } : {}),
+      ...(invocation.force ? { force: true } : {}) }),
   })
 
   if (!response.ok) {
@@ -473,6 +481,30 @@ interface ParsedInvocation {
   readonly target?: string
   readonly targets: ReadonlyArray<string>
   readonly rerunFrom?: string
+  /** Number of `-v` flags: 1 logs step details, 2 or more also logs debug details. */
+  readonly verbose: number
+  readonly force: boolean
+}
+
+interface StepLog {
+  readonly step?: string
+  readonly level: string
+  readonly message: string
+}
+
+// Text goes to stderr, prefixed with the step; JSON collects entries for the document.
+const stepLogger = (sink: (log: StepLog) => void) => Logger.layer([Logger.make(options => {
+  const step = options.fiber.getRef(CurrentLogAnnotations)["ci.step"]
+  const messages = Array.isArray(options.message) ? options.message : [options.message]
+  sink({
+    ...(step === undefined ? {} : { step: String(step) }),
+    level: options.logLevel,
+    message: messages.map(message => typeof message === "string" ? message : JSON.stringify(message)).join(" "),
+  })
+})])
+
+const printStepLog = (log: StepLog) => {
+  process.stderr.write(`${log.step === undefined ? "" : `[${log.step}] `}${log.message}\n`)
 }
 
 const parseInvocation = (
@@ -493,6 +525,8 @@ const parseInvocation = (
         local: { type: "boolean" },
         remote: { type: "boolean" },
         "rerun-from": { type: "string" },
+        verbose: { short: "v", type: "boolean", multiple: true },
+        force: { type: "boolean" },
       },
       strict: true,
     })
@@ -542,6 +576,9 @@ const parseInvocation = (
     !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(rerunFrom)))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
       `Use effect-ci run <compute goals...> --remote --rerun-from <run UUID>`)
+  if (parsed.values.force && (command !== "run" || rerunFrom !== undefined))
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
+      "--force only applies to effect-ci run, and cannot be combined with --rerun-from")
 
   if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid" || format === "dot"))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Use effect-ci doctor --remote [--format=text|json]; it checks access without running work`)
@@ -565,6 +602,8 @@ const parseInvocation = (
     help: parsed.values.help === true,
     location,
     targets,
+    verbose: (parsed.values.verbose as boolean[] | undefined)?.length ?? 0,
+    force: parsed.values.force === true,
     ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
   }
@@ -576,7 +615,7 @@ Usage:
   effect-ci oidc [--service https://your-ci-host]
   effect-ci oidc -- <deploy command>
   effect-ci                         Show this help and project targets
-  effect-ci run [targets...] [--local|--remote] [--format=text|json]
+  effect-ci run [targets...] [--local|--remote] [--force] [--format=text|json]
   effect-ci run <compute goals...> --remote --rerun-from <run UUID>
   effect-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid|dot]
   effect-ci list [--format=text|json]
@@ -595,6 +634,8 @@ Commands:
 Examples:
   effect-ci run                     Execute the whole default workflow
   effect-ci run test build          Run both goals with their shared dependencies
+  effect-ci run build -v            Also log step details (stderr, or "logs" in JSON); -vv adds debug
+  effect-ci run deploy --force      Skip cache reuse, including Vite+ task caches
   effect-ci plan                    Inspect the whole workflow without executing
   effect-ci plan --format=mermaid    Print its Mermaid graph
   effect-ci plan --format=dot        Print its Graphviz DOT graph
@@ -981,6 +1022,7 @@ export const main = async (
   workflowPath: string = resolve(process.cwd(), ".cloudflare/ci/workflow.ts"),
 ): Promise<ExitCode> => {
   let format: OutputFormat = detectedFormat()
+  const logs: StepLog[] = []
 
   try {
     const invocation = parseInvocation(args, value => { format = value }, projectRoot(workflowPath))
@@ -1029,6 +1071,8 @@ export const main = async (
       ...(invocation.target ? { target: invocation.target } : {}),
       ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
+      ...(invocation.verbose ? { verbose: Math.min(invocation.verbose, 2) as 1 | 2 } : {}),
+      ...(invocation.force ? { force: true as const } : {}),
       workflow,
     }
 
@@ -1062,12 +1106,17 @@ export const main = async (
       : program.local ?? {}
     const configured: CI.RunConfiguration = { ...defaults, ...overrides }
     const isolate = makeLocalProjectChecks()
-    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(Effect.provideService(ProjectChecks, isolate.service)) }
+    const localWorkflow = { ...workflow, effect: workflow.effect.pipe(
+      Effect.provideService(ProjectChecks, isolate.service),
+      Effect.provideService(MinimumLogLevel, invocation.verbose >= 2 ? "Debug" : invocation.verbose === 1 ? "Info" : "Warn"),
+      Effect.provide(stepLogger(log => format === "json" ? logs.push(log) : printStepLog(log))),
+    ) }
     const result = await (async () => {
       try {
         return await CI.runPromise(localWorkflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
+          ...(invocation.force ? { force: true } : {}),
           ...(format === "json" || format === "mermaid" || format === "dot"
             ? { output: "silent" as const }
             : configured.output
@@ -1089,6 +1138,7 @@ export const main = async (
         ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
         workflow: workflow.id,
         plan: result.plan,
+        ...(logs.length ? { logs } : {}),
       })
     } else if (format === "mermaid") {
       console.log(formatPlanMermaid(result.plan))
@@ -1109,6 +1159,7 @@ export const main = async (
           message: failure.message,
           ...(failure.details === undefined ? {} : { details: failure.details }),
         },
+        ...(logs.length ? { logs } : {}),
       })
     } else {
       console.error(`Error [${failure.code}]: ${failure.message}`)

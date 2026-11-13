@@ -2,7 +2,7 @@
 FROM node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315
 
 RUN apt-get update \
-  && apt-get install --yes --no-install-recommends bash ca-certificates git python3 \
+  && apt-get install --yes --no-install-recommends bash ca-certificates curl git python3 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN npm install --global pnpm@12.8.1 --ignore-scripts --fetch-retries=1 --fetch-timeout=30000
@@ -22,5 +22,11 @@ COPY --from=ghcr.io/jdx/mise:2026.9.11-debian@sha256:12f3fe18fe6c02c54d1bbb9bdc6
   /usr/local/bin/mise /usr/local/bin/mise
 ENV HOME=/home/node
 USER node
+# The installed vp hands `vp run` to each project's own vite-plus (an npm-installed vp
+# does not). Node.js and package managers stay the image's and the project's.
+RUN curl -fsSL -o /tmp/install-vp.sh https://vite.plus \
+  && CI=1 VP_VERSION=1.6.0 VP_HOME=/home/node/.vite-plus VP_NODE_MANAGER=no VP_PM_MANAGER=no bash /tmp/install-vp.sh \
+  && rm /tmp/install-vp.sh && /home/node/.vite-plus/bin/vp --version
+ENV PATH=/home/node/.vite-plus/bin:$PATH
 WORKDIR /workspace
 CMD ["sleep", "infinity"]
