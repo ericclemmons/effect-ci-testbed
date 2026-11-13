@@ -1,13 +1,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 
+import { checkoutRecipe, reportToGitHub, sourceUrl, type Params } from './github';
 import type { InternalWorkflowStep, StepResult } from './workflows-internal';
-
-type Env = { ARTIFACTS: Artifacts; PIPELINE_SHA: string };
-
-type PushEvent = {
-	source: { namespace: string; repoName: string };
-	payload: { ref: string; after: string };
-};
 
 type Check = { exitCode: number | null; log: string; optional?: boolean; skipped?: boolean };
 
@@ -16,27 +10,18 @@ const image = 'workflows/node';
 const pnpm = (command: string) => `cd repo && corepack enable && ${command}`;
 const env = { COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' };
 
-export class CI extends WorkflowEntrypoint<Env> {
-	async run(event: WorkflowEvent<PushEvent>, workflowStep: WorkflowStep) {
-		const step = workflowStep as InternalWorkflowStep;
-		const { repoName } = event.payload.source;
-		const commit = event.payload.payload.after;
+export class CI extends WorkflowEntrypoint<Env, Params> {
+	async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+		return reportToGitHub(this.env, event, step, 'node-pnpm / cf-ci', () => this.pipeline(event, step as InternalWorkflowStep));
+	}
 
-		// The read token reaches the checkout through `env`, which step.runner() does not treat as secret.
-		const repo = await step.do('get clone token', async () => {
-			using artifactsRepo = await this.env.ARTIFACTS.get(repoName);
-			const [info, token] = await Promise.all([artifactsRepo.info(), artifactsRepo.createToken('read', 3600)]);
-			return { remote: info.remote, token: token.plaintext };
-		});
+	private async pipeline(event: WorkflowEvent<Params>, step: InternalWorkflowStep) {
+		const commit = event.payload.sha;
 
 		const checkout = await step.runner('checkout', {
 			image,
-			env: { GIT_TOKEN: repo.token, REMOTE: repo.remote, COMMIT: commit },
-			command: [
-				'git init -q repo && cd repo',
-				'git -c http.extraHeader="Authorization: Bearer $GIT_TOKEN" fetch -q --depth 1 "$REMOTE" "$COMMIT"',
-				'git checkout -q FETCH_HEAD',
-			].join(' && '),
+			env: { SOURCE_URL: sourceUrl(this.env, commit) },
+			command: checkoutRecipe('node-pnpm'),
 			outputs: { repo: 'repo' },
 		});
 		const repoCharm = checkout.outputs.repo;
@@ -67,8 +52,8 @@ export class CI extends WorkflowEntrypoint<Env> {
 		}
 
 		return {
-			repo: repoName,
-			ref: event.payload.payload.ref,
+			repo: this.env.GITHUB_REPO,
+			ref: event.payload.ref,
 			commit,
 			pipelineSha: this.env.PIPELINE_SHA,
 			passed: Object.values(checks).every((check) => check.optional || check.exitCode === 0),
@@ -78,5 +63,5 @@ export class CI extends WorkflowEntrypoint<Env> {
 }
 
 export default {
-	fetch: () => new Response('Runs cf ci for examples/node-pnpm on pushes to its Artifacts repo.'),
+	fetch: () => new Response('Runs cf ci for examples/node-pnpm on GitHub commits.'),
 };
