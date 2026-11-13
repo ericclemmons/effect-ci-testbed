@@ -147,9 +147,9 @@ If the source changes and a snippet no longer matches, the build fails instead o
 publishing stale docs. Shell commands and example output can remain ordinary
 fences; executable code and configuration should link to their source.
 
-Write each example README as a walkthrough someone can follow from an empty
-directory. Include every file the example needs, in the order a reader creates
-it, so the result matches the example directory. See
+Write each example README as a walkthrough for adding the feature to an existing
+project. Embed the files a reader creates or changes, in order, and skip fixture
+noise. See
 [Build and publish a container image](../../examples/custom-container-image).
 
 For a real example, see the [exported action recipe](../../examples/exported-actions).

@@ -6,32 +6,16 @@ image to publication.
 This builds the project's image. [Custom runner images](../custom-runner-image)
 change the environment that runs CI instead.
 
-Every snippet on this page is read from the files in this directory, which CI
-runs end to end. Following the steps gives you the same files.
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
-## Create the project
+## Start with your Dockerfile
 
-The SDK is not published yet, so create the project inside this repository, in
-`examples/custom-container-image/`. Install dependencies once at the repository
-root with `pnpm install`.
-
-[`package.json`](./package.json "source")
-
-The TypeScript configuration extends the repository's and type-checks the CI
-files:
-
-[`tsconfig.json`](./tsconfig.json "source {2}")
-
-## Add the Dockerfile
-
-The image is a tiny `FROM scratch` fixture, so the build does not download a base
-image. It copies one file into the image:
+Use your application's existing Dockerfile. This example uses a tiny
+`FROM scratch` image that copies one file, so the build does not download a base
+image:
 
 [`Dockerfile`](./Dockerfile "source {3}")
-
-[`artifact.txt`](./artifact.txt "source")
-
-Replace both with your application's Dockerfile and sources.
 
 ## Define the actions
 
