@@ -94,10 +94,10 @@ export const cacheLog = (body: string): CacheLogLine[] => {
 
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
-// A global vp comes first; without one, the project's own vite-plus runs.
+// Prefer the global vp; fall back to the project's own when a runner has none.
 const vp = `PATH="$PATH:$PWD/node_modules/.bin" vp`
 
-/** Vite+ in a project, through the global `vp` CLI, or the project's when none is installed. */
+/** Vite+ in a project, through the global `vp` CLI. */
 export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
   workspace,
   /**
