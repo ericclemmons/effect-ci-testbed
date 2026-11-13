@@ -49,18 +49,3 @@ To skip the install on every run, [bake tools into an image](../custom-runner-im
 On a GitHub-hosted runner, the same install needs explicit `sudo`:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L15-L18 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) installs ImageMagick with
-`apt-get` in a Cloudflare Workflows `step.runner()` step. Commands run as root,
-so no `sudo` is needed. Debian trixie ships ImageMagick 7, whose `convert` still
-works. It does not use Effect CI.
-
-```sh
-(cd examples/system-package/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs system-package
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

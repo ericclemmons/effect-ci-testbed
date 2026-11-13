@@ -48,17 +48,3 @@ create a local marker.
 In GitHub Actions, each script needs its own step:
 
 [GitHub Actions comparison](./.github/workflows/github.yml#L11-L24 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) reads the package scripts in
-a discovery step and runs each one as its own parallel check after `npm ci`. No
-list of checks is written into the pipeline. It does not use Effect CI.
-
-```sh
-(cd examples/zero-config/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs zero-config
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

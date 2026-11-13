@@ -38,23 +38,3 @@ effect-ci run
 ```
 
 For native execution, follow the [host setup](../../apps/effect-ci/SELF-HOST.md).
-
-## cf ci comparison
-
-The [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs `npm ci` and
-`npm run build` in `app/` as two durable steps. It does not use Effect CI:
-
-[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#symbol=STEPS "source")
-
-Every step starts a fresh container, so each restores the outputs of the steps
-before it:
-
-[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#L36-L53 "source")
-
-```sh
-(cd examples/cloudflare-runner/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs cloudflare-runner
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

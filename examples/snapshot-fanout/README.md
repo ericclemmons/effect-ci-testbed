@@ -56,18 +56,3 @@ GitHub Actions uploads the prepared file as an artifact, then downloads it into
 each matrix job:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L11-L51 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) saves `app/prepared.txt` as a
-`step.runner()` output and restores it into the left and right checks, which run
-at the same time in separate containers. Each writes the same `branch.txt` and
-reads back only its own. It does not use Effect CI.
-
-```sh
-(cd examples/snapshot-fanout/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs snapshot-fanout
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

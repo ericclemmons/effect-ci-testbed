@@ -48,18 +48,3 @@ Formatting deliberately fails; lint passes, so the run succeeds. Remove
 GitHub Actions marks the format step with `continue-on-error`:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L11-L27 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs lint and format in
-parallel with Cloudflare Workflows `step.runner()`. Format is marked optional, so
-its deliberate failure is reported without failing the run. It does not use
-Effect CI.
-
-```sh
-(cd examples/optional-checks/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs optional-checks
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

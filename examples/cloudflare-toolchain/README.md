@@ -40,20 +40,3 @@ cf workflows instances create effect-ci-example-python-toolchain --body '{"insta
 
 The result is a wheel and source archive. Local command execution needs a
 Debian-based environment with permission to install apt packages.
-
-## cf ci comparison
-
-The [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) installs Python with
-`apt-get` as root, creates a virtual environment, and builds the package.
-`apt-get` installs outside `/workspace`, where no output can save it, so the job
-runs in one container. It does not use Effect CI:
-
-[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#symbol=build "source")
-
-```sh
-(cd examples/cloudflare-toolchain/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs cloudflare-toolchain
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

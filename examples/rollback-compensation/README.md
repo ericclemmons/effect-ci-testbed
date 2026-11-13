@@ -54,18 +54,3 @@ GitHub Actions has no rollback hook. The workflow lets the deploy step fail,
 runs the rollback on failure, then fails the job to keep the original failure:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L21-L32 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) records whether the deploy
-failed and runs the rollback only after a failure. The run still fails after a
-rollback. cf ci runs start from a commit with no inputs, so the `fail-deploy`
-input is a constant in the pipeline. It does not use Effect CI.
-
-```sh
-(cd examples/rollback-compensation/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs rollback-compensation
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

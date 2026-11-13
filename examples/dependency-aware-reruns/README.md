@@ -63,18 +63,3 @@ without changing the previous one.
 cd examples/dependency-aware-reruns
 effect-ci run
 ```
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs the seven comparison
-scenarios in parallel. Each scenario runs the prepare, selected rerun, and
-verify steps in one container, because they share runner-local files. It does
-not use Effect CI.
-
-```sh
-(cd examples/dependency-aware-reruns/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs dependency-aware-reruns
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

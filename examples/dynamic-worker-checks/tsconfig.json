@@ -5,6 +5,5 @@
     "allowImportingTsExtensions": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": [".cloudflare/**/*.ts", "src/**/*.ts", "*.ts"],
-  "exclude": [".cloudflare/cf-ci"]
+  "include": [".cloudflare/**/*.ts", "src/**/*.ts", "*.ts"]
 }

@@ -49,18 +49,3 @@ transports the whole workspace; the selected paths remain in the plan.
 GitHub Actions uses `upload-artifact` and `download-artifact` between two jobs:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L12-L35 "source")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) writes `dist/worker.js` in a
-build step and saves it as a `step.runner()` output. The deploy step restores
-only that file, without the checkout, like `download-artifact`. It does not use
-Effect CI.
-
-```sh
-(cd examples/portable-artifacts/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs portable-artifacts
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.
