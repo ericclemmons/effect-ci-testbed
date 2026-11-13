@@ -94,6 +94,9 @@ export const cacheLog = (body: string): CacheLogLine[] => {
 
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
+// Prefer the global vp; fall back to the project's own when a runner has none.
+const vp = `PATH="$PATH:$PWD/node_modules/.bin" vp`
+
 /** Vite+ in a project, through the global `vp` CLI. */
 export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
   workspace,
@@ -107,12 +110,12 @@ export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
       const verbose = level === "Debug" || level === "Trace" || level === "All" ? "-vv" : "-v"
       // In node_modules, so the plan is never an input of the task it describes.
       const file = "node_modules/.effect-ci-vite-plus-run-plan.json"
-      yield* workspace.exec(`vp run --dry-run --json ${verbose} ${quote(task)} > ${file}`)
+      yield* workspace.exec(`${vp} run --dry-run --json ${verbose} ${quote(task)} > ${file}`)
       const body = yield* workspace.readFile(file)
       if (body === undefined) return yield* Effect.fail(new Error(`Vite+ wrote no run plan to ${file}`))
       const lines = yield* Effect.try({ try: () => cacheLog(body), catch: error => error })
       for (const line of lines) yield* line.level === "Info" ? Effect.logInfo(line.message) : Effect.logDebug(line.message)
     }
-    return yield* workspace.exec(`vp run -v ${quote(task)}`)
+    return yield* workspace.exec(`${vp} run -v ${quote(task)}`)
   }),
 })
