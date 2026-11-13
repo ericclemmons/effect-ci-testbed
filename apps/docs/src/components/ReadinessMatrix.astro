@@ -1,5 +1,5 @@
 ---
-import { compatibility, environments, checkNames, implementationFiles, products } from "../compatibility.mjs"
+import { compatibility, environments, checkApp, checkNames, implementationFiles, products } from "../compatibility.mjs"
 import { join, posix } from "node:path"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { getCollection } from "astro:content"
@@ -30,7 +30,7 @@ function featureHref(link) {
 }
 const snapshot = validateSnapshot(readiness)
 const results = groups.map(group => ({ ...group, rows: group.rows.map(row => ({ ...row,
-  results: row.cells.map((applicable, index) => applicable ? cellResult(snapshot, checkNames(row.recipe, environments[index]), index === 3 ? "effect-ci" : "github-actions") : undefined),
+  results: row.cells.map((applicable, index) => applicable ? cellResult(snapshot, checkNames(row.recipe, environments[index]), checkApp(environments[index])) : undefined),
   files: row.recipe ? implementationFiles(row.recipe, Object.keys(sources)) : { github: [], effect: [], "cf-ci": [] },
 })) }))
 const rows = results.flatMap(group => group.rows)
