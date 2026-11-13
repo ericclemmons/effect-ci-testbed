@@ -21,5 +21,5 @@ export const inputsLint = CI.check("squash-safe lint", () => function* () {
 
   yield* vp.run("lint", { cache: true })
 }, {
-  reuse: { scope: "inputs" },
+  reuse: true,
 })

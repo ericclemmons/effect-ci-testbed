@@ -24,9 +24,10 @@ receipts. Build-output caching and PR approval are separate decisions.
 
 ## Survive rebases and squashes
 
-Commit evidence stops matching once a PR is rebased or squashed. With
-`reuse: { scope: "inputs" }`, a check run through Vite+ is reused whenever the
-files and env vars it read are unchanged, on any commit.
+Commit evidence stops matching once a PR is rebased or squashed. By default,
+`reuse: true` reuses a check run through Vite+ whenever the files and env vars
+it read are unchanged, on any commit. The check above opts into
+`{ scope: "commit" }` instead.
 
 [Source](./.cloudflare/ci/actions.ts#symbol=inputsLint "source")
 

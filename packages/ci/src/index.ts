@@ -41,14 +41,15 @@ export interface WorkflowStepConfig {
 export type StepOptions = WorkflowStepConfig
 
 /**
- * `commit`: reuse a pass for the same commit. `inputs`: reuse a pass whenever the files and
- * env vars its traced commands read are unchanged, so it survives rebases and squashes.
+ * `inputs` (the default): reuse a pass whenever the files and env vars its traced commands
+ * read are unchanged, on any commit, so it survives rebases and squashes.
+ * `commit`: reuse a pass only for the same commit.
  */
 export type CheckReuseScope = "commit" | "inputs"
 
 export interface CheckOptions extends StepOptions {
-  /** Allow a trusted runner to reuse this side-effect-free check. */
-  readonly reuse?: { readonly scope: CheckReuseScope }
+  /** Allow a trusted runner to reuse this side-effect-free check. `true` reuses by inputs. */
+  readonly reuse?: true | { readonly scope?: CheckReuseScope }
 }
 
 /** How a tool can report what a command read. Vite+ traces the files a task reads with fspy. */
@@ -2341,7 +2342,8 @@ const makeRuntime = (
           })()
           : Effect.void
 
-        const policy = definitions.get(stepId)?.options.reuse
+        const reuse = definitions.get(stepId)?.options.reuse
+        const policy = reuse && { scope: reuse === true ? "inputs" as const : reuse.scope ?? "inputs" }
         const checkCacheRequest = policy && !execOptions?.diagnostic
           ? { command, event, policy, stepId, workflowId, workspace,
             ...(execOptions?.trace ? { trace: execOptions.trace } : {}) }

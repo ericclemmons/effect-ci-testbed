@@ -171,7 +171,7 @@ const readRecords = (options: InputEvidenceCheckCacheOptions, object: string): R
 /**
  * Reuses a passing Vite+ check when every file and env var it read is unchanged, on any
  * commit. A trusted writer signs what Vite+ traced; a reader recomputes each digest.
- * Commands without a Vite+ trace and checks without `scope: "inputs"` always run.
+ * Commands without a Vite+ trace and checks reused by commit always run.
  */
 export const inputEvidenceCheckCache = (options: InputEvidenceCheckCacheOptions): CheckCache => ({
   lookup: (request) => Effect.sync(() => {
