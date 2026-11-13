@@ -2,10 +2,50 @@
 
 Reuse build output without maintaining input and output globs.
 
-[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
-
 Vite+ observes the task's file reads and writes. A matching run restores output
 and skips the command. Effect CI only preserves the task cache between runs.
+
+The snippets on this page come from this example's files, which CI runs end to
+end.
+
+## Define a Vite+ task
+
+Add `vite-plus` to your app's dependencies:
+
+[`app/package.json`](./app/package.json#json=dependencies "source")
+
+Define the build as an ordinary Vite+ task in `vite.config.ts`. It is cached by
+default, with no input or output lists:
+
+[`app/vite.config.ts`](./app/vite.config.ts "source {6}")
+
+Network, time, and environment dependencies need explicit tracking when
+filesystem observation cannot capture them.
+
+## Define the actions
+
+Create `.cloudflare/ci/actions.ts`. Import the SDK and the Vite+ toolchain:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1-L2 "source")
+
+Check out the source and install the app's dependencies:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checkout "source")
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=install "source")
+
+Run the task with `VitePlus(workspace).run(task)`:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=build "source {3,5}")
+
+## Define the workflow
+
+Create `.cloudflare/ci/workflow.ts`. It runs the build:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source")
+
+The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,
+including the nested app's cache. No cache key or paths are needed in the workflow.
 
 ## Run it twice
 
@@ -45,14 +85,6 @@ applies to remote runs.
 
 [Vite+ toolchain](../../packages/ci/src/vite-plus.ts#symbol=VitePlus "source")
 
-The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,
-including the nested app's cache. No cache key or paths are needed in the workflow.
-The build is an ordinary Vite+ task, cached by default, with no input or output
-lists; network, time, and environment dependencies need explicit tracking when
-filesystem observation cannot capture them.
-
-[Vite+ task](./app/vite.config.ts "source")
-
 ## Speed up an existing workflow
 
 Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
@@ -69,3 +101,10 @@ second run reports each task as cached.
 [Automatic data tracking](https://viteplus.dev/guide/automatic-data-tracking)
 owns input/output discovery. Cache-enabled tasks track file reads and writes;
 arbitrary commands may still need explicit environment-variable configuration.
+
+## Compare with GitHub Actions
+
+The GitHub Actions workflow saves and restores the task cache with
+`actions/cache`:
+
+[GitHub Actions comparison](./.github/workflows/github.yml#L11-L31 "source")

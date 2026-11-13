@@ -7,7 +7,41 @@ target. It connects actual CI orchestration, signed Git-note evidence, an inacti
 Worker version upload, native Workflow approval and version-attributed HTTP health gates.
 The previous allocation is restored after the final gate, including on failure.
 
-[Portable check and build](./.cloudflare/ci/workflow.ts "source")
+The snippets on this page come from this example's files and its test host.
+
+## The released Worker
+
+The release target is one dependency-free module. Its `/health` response names
+the serving version, which the health gates use to attribute traffic:
+
+[`worker.mjs`](./worker.mjs "source")
+
+## The portable check and build
+
+`.cloudflare/ci/workflow.ts` runs the same way locally and on Cloudflare. Start
+with the SDK import and a checkout:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#L1 "source")
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=checkout "source")
+
+The test is a `CI.check` with `reuse: { scope: "commit" }`. That option lets the
+host skip the command when it finds valid signed evidence for this commit. The
+command runs with an empty environment:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=test "source {4}")
+
+The build always runs, even when the test result is reused. It copies the tested
+module to `candidate.mjs`, the bytes that are uploaded:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=build "source")
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=default "source")
+
+## The trusted hosted Workflow
+
+The test host owns verification, approval, rollout, and restoration. Project code
+does not:
 
 [Trusted hosted Workflow](../../test/apps/example-runner/src/flywheel-workflow.ts#symbol=FlywheelWorkflow "source")
 

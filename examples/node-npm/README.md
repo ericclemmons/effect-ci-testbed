@@ -3,7 +3,44 @@
 Write checkout, install, lint, test, and build once, then run the same workflow
 locally or in CI. The lockfile selects npm automatically.
 
-[Source](./.cloudflare/ci/actions.ts#symbol=install "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
+
+## Start with your npm scripts
+
+Use your project's existing `package.json` and `package-lock.json`. The workflow
+runs these scripts by name:
+
+[`package.json`](./package.json#json=scripts "source")
+
+## Define the actions
+
+Create `.cloudflare/ci/actions.ts`. Start with the SDK import:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1 "source")
+
+Check out the source:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checkout "source")
+
+Install dependencies. `CI.PackageManager.JavaScript(workspace)` detects npm from
+the lockfile and runs `npm ci`:
+
+[Install action](./.cloudflare/ci/actions.ts#symbol=install "source 'npm.install()'")
+
+Each script action calls `install()` first, so Effect CI runs the shared
+installation once. `lint` runs the `lint` script:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=lint "source 'npm.run(\"lint\")'")
+
+`test` and `build` are the same, with `npm.run("test")` and `npm.run("build")`.
+
+## Define the workflow
+
+Create `.cloudflare/ci/workflow.ts`. It runs lint, test, and build on pull
+requests, pushes, and manual runs:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source")
 
 ## Run it
 
@@ -12,11 +49,11 @@ cd examples/node-npm
 effect-ci run
 ```
 
-[Actions](./.cloudflare/ci/actions.ts) declare their own prerequisites: build
-depends on test, which depends on lint. Shared installation runs once.
+## Compare with GitHub Actions
 
-Compare the [Effect workflow](./.cloudflare/ci/workflow.ts) with
-[GitHub Actions YAML](./.github/workflows/github.yml).
+The same pipeline as plain GitHub Actions YAML:
+
+[`.github/workflows/github.yml`](./.github/workflows/github.yml#L12-L23 "source")
 
 ## cf ci comparison
 
