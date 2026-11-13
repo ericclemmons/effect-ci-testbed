@@ -126,7 +126,7 @@ site, with that filename as its caption:
 Diff files use highlighted `diff` syntax. GitHub still shows a source link.
 
 To show one TypeScript declaration, append `#symbol=name` (or `#symbol=outer.inner`
-for a nested declaration) to its path. To show one
+for a nested declaration or class member, such as `#symbol=MyWorkflow.run`) to its path. To show one
 top-level JSON property, append `#json=key`. Selection uses the source declaration
 or JSON key, so moving code does not require updating line numbers. For files
 without declarations, such as a Dockerfile, append GitHub's line anchor (`#L3` or

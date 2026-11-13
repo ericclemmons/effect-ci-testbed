@@ -81,7 +81,7 @@ function target(url, from) {
   return { absolute, path: relative(root, absolute), fragment }
 }
 
-const languages = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff", ".sh": "sh", ".toml": "toml", ".txt": "text" }
+const languages = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".jsonc": "jsonc", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff", ".sh": "sh", ".toml": "toml", ".txt": "text" }
 const language = (path) => basename(path) === "Dockerfile" ? "dockerfile" : languages[extname(path)] ?? "text"
 
 /** `"source"` links may carry Nimbus fence meta, such as `"source {2} ins=\"COPY\""`. */
@@ -89,7 +89,7 @@ const sourceTitle = (title) => title?.match(/^source(?:\s+(.+))?$/)
 
 function validateMeta(meta, value, url) {
   const count = value.split("\n").length
-  for (const [, spec] of meta.matchAll(/\{([^}]*)\}/g)) {
+  for (const [, spec] of meta.replace(/"[^"]*"|'[^']*'/g, " ").matchAll(/\{([^}]*)\}/g)) {
     for (const range of spec.split(",")) {
       const [start, end = start] = range.trim().split("-").map(Number)
       if (!(start >= 1 && end >= start && end <= count)) throw new Error(`Highlighted lines {${spec}} are outside the ${count}-line snippet: ${url}`)
@@ -121,7 +121,7 @@ function snippet(url, from) {
     for (const part of name.split(".")) {
       statement = statements.find((node) => {
         const declaration = node.type === "ExportNamedDeclaration" ? node.declaration : node
-        return declaration?.id?.name === part ||
+        return declaration?.id?.name === part || node.key?.name === part ||
           declaration?.declarations?.some((item) => item.id.name === part) ||
           (part === "default" && node.type === "ExportDefaultDeclaration")
       })
@@ -132,7 +132,9 @@ function snippet(url, from) {
     if (!statement) throw new Error(`Missing documented symbol ${name} in ${file.path}`)
     const start = statement.loc.start.line
     const end = statement.loc.end.line
-    value = value.slice(statement.start, statement.end)
+    const indent = statement.loc.start.column
+    value = value.slice(statement.start - indent, statement.end).split("\n")
+      .map(line => line.slice(Math.min(indent, line.match(/^ */)[0].length))).join("\n")
     lines = `#L${start}-L${end}`
   } else if (file.fragment?.startsWith("json=")) {
     const key = file.fragment.slice(5)

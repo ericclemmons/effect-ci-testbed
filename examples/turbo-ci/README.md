@@ -4,21 +4,19 @@ Build a shared TypeScript library, a storefront, and an inventory dashboard with
 the project's existing Turbo graph. One Effect CI action runs `npm run ci`.
 Turbo schedules independent tasks and restores its cache inside one workspace.
 
-[Workflow](./.cloudflare/ci/workflow.ts "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
 ## Same apps, two execution models
 
 This project is identical to [the distributed recipe's app](../turbo-distributed).
-Both use TypeScript to compile core, esbuild to bundle two browser apps, and
-TypeScript to check each app. There are no artificial delays or CPU workloads.
+Both use TypeScript to compile [core](./app/packages/core/src/index.ts), esbuild
+to bundle two browser apps ([storefront](./app/packages/web/src/main.ts) and
+[inventory dashboard](./app/packages/admin/src/main.ts)), and TypeScript to
+check each app. There are no artificial delays or CPU workloads. Each app has
+ordinary package scripts:
 
-[Shared catalog](./app/packages/core/src/index.ts "source")
-
-[Storefront](./app/packages/web/src/main.ts "source")
-
-[Inventory dashboard](./app/packages/admin/src/main.ts "source")
-
-[App commands](./app/packages/web/package.json#json=scripts "source")
+[`app/packages/web/package.json`](./app/packages/web/package.json#json=scripts "source")
 
 Here, normal Turbo runs all five tasks on one machine, with its own parallelism
 and native local cache. In the distributed recipe, the SDK maps the same native
@@ -27,16 +25,15 @@ scripts or a second package/task graph.
 
 ## Existing project configuration
 
-The recipe's `ci` script queries Turbo's resolved `ci` tags, excludes `!ci`
-entrypoints, then calls normal `turbo run` with the selected targets.
-It is not a built-in `turbo run ci` command or automatic SDK detection.
+### Tag the CI tasks
 
-[Native entrypoint](./app/scripts/ci.mjs "source")
+In the root `turbo.json`, tag the tasks CI should run with `ci`. Both app builds
+and checks require core's build through `^build`. Core's JavaScript and type
+declarations are real inputs to the apps.
 
-[Root tasks](./app/turbo.json#json=tasks "source")
+[`app/turbo.json`](./app/turbo.json#json=tasks "source 'tags'")
 
-Both app builds and checks require core's build through `^build`.
-Core's JavaScript and type declarations are real inputs to the apps.
+Package configurations can change those tags:
 
 - Core's `build` has `!ci` but remains a required dependency.
 - Core's unused `check` has `!ci` and does not run.
@@ -44,11 +41,30 @@ Core's JavaScript and type declarations are real inputs to the apps.
 - Legacy's `build` has both `ci` and `!ci`; its `check` clears inherited tags.
   Neither legacy command runs.
 
-[Core overrides](./app/packages/core/turbo.json "source")
+[`app/packages/core/turbo.json`](./app/packages/core/turbo.json "source")
 
-[Admin inheritance](./app/packages/admin/turbo.json "source")
+[`app/packages/admin/turbo.json`](./app/packages/admin/turbo.json "source")
 
-[Legacy exclusions](./app/packages/legacy/turbo.json "source")
+[`app/packages/legacy/turbo.json`](./app/packages/legacy/turbo.json "source")
+
+### Add a CI entrypoint
+
+The `ci` script queries Turbo's resolved `ci` tags, excludes `!ci` entrypoints,
+then calls normal `turbo run` with the selected targets. It is not a built-in
+`turbo run ci` command or automatic SDK detection.
+
+[`app/scripts/ci.mjs`](./app/scripts/ci.mjs "source {22-31,39}")
+
+Expose it as both `ci` and `check`. Effect CI runs `check`:
+
+[`app/package.json`](./app/package.json#json=scripts "source")
+
+## Define the workflow
+
+Create `.cloudflare/ci/workflow.ts`. It checks out `app`, installs with the
+frozen lockfile, then runs the `check` script once:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source {19}")
 
 ## Run it
 
@@ -77,9 +93,6 @@ dependent builds/checks invalidate through the native graph. The command writes
 a native run summary under `app/.turbo/runs` and stores its cache under
 `app/.effect-ci/turbo/cache`.
 
-The [GitHub Actions comparison](./.github/workflows/github.yml) runs the same
-command and persists Turbo's cache with `actions/cache`.
-
 To run the same command through Effect CI:
 
 ```sh
@@ -92,3 +105,10 @@ This recipe does not distribute tasks across Containers or sign execution.
 The distributed recipe demonstrates graph-to-action mapping and describes its
 remaining transport, runtime, and trust limits. Small projects may run faster
 here because they avoid per-task snapshot and orchestration costs.
+
+## Compare with GitHub Actions
+
+The GitHub Actions workflow runs the same command and persists Turbo's cache
+with `actions/cache`:
+
+[GitHub Actions comparison](./.github/workflows/github.yml#L11-L31 "source")

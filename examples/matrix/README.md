@@ -23,17 +23,31 @@ coverage expansion, not test splitting. The small fixture needs only Node 24+.
 Node versions, browsers or operating systems can also be matrix axes, but require
 a runner that supplies those environments; this recipe does not simulate them.
 
-[The actions](./.cloudflare/ci/actions.ts) create a distinct action definition for
-each combination. Action IDs include both dimensions because Effect CI memoizes
-by action ID, not by arguments. The workflow coordinates them with `CI.parallel`.
-The [GitHub comparison](./.github/workflows/github.yml) uses `strategy.matrix` with
-the same two axes and `fail-fast: false`.
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
-Expected result: four passing combinations and one shared checkout.
-To demonstrate failure, prefix the run command with
-`FAIL_COMBINATION="en-US USD"`; that combination fails and the workflow exits nonzero.
+## Define the matrix actions
 
-Next: [split a suite](../test-splitting) when parallel jobs should run different tests.
+Create `.cloudflare/ci/actions.ts`. Check out the source once. The checks in this
+example live in `app/`:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checkout "source")
+
+Then create one action definition per combination. Action IDs include both
+dimensions because Effect CI memoizes by action ID, not by arguments:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checks "source {3}")
+
+Each action runs this example's `app/verify.mjs` with its locale and currency.
+Replace that command with your own check.
+
+## Run the combinations in parallel
+
+Create `.cloudflare/ci/workflow.ts`. `CI.parallel` runs every combination:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source {5}")
+
+## Run it
 
 From the repository root after `pnpm install`:
 
@@ -44,17 +58,35 @@ effect-ci run --format=text
 node --test .cloudflare/ci/tests/matrix.test.ts
 ```
 
-Compare [plain GitHub Actions](./.github/workflows/github.yml) with the
-[Effect-on-GitHub caller](./.github/workflows/effect-on-github.yml). The repository’s
-[parallel recipe checks](../../.github/workflows/parallel-recipes.yml) exercise native
-matrix jobs, shard report aggregation, and reuse of measured timing history.
+Expected result: four passing combinations and one shared checkout.
+To demonstrate failure, prefix the run command with
+`FAIL_COMBINATION="en-US USD"`; that combination fails and the workflow exits nonzero.
+
+## Compare with GitHub Actions
+
+Plain GitHub Actions uses `strategy.matrix` with the same two axes and
+`fail-fast: false`:
+
+[`.github/workflows/github.yml`](./.github/workflows/github.yml#L11-L29 "source {4-8}")
+
+Compare it with the [Effect-on-GitHub caller](./.github/workflows/effect-on-github.yml).
+The repository's [parallel recipe checks](../../.github/workflows/parallel-recipes.yml)
+exercise native matrix jobs, shard report aggregation, and reuse of measured
+timing history.
 
 See the [recorded execution evidence](../parallel-recipes-verification.md) for the
-local, native GitHub, and Effect-on-GitHub runs. Hosted Cloudflare runs are included in that evidence.
+local, native GitHub, and Effect-on-GitHub runs. Hosted Cloudflare runs are
+included in that evidence.
 
 ## Run on Cloudflare
 
-This recipe owns its [Worker](./src/worker.ts) and [deployment configuration](./wrangler.jsonc).
+This recipe owns its Worker and deployment configuration. The Worker wraps the
+same workflow in a Cloudflare Workflow entrypoint:
+
+[`src/worker.ts`](./src/worker.ts "source {7-11}")
+
+[`wrangler.jsonc`](./wrangler.jsonc "source")
+
 From this recipe's directory, with Docker running and Wrangler authenticated:
 
 ```sh
@@ -79,3 +111,5 @@ node scripts/cf-ci.mjs matrix
 
 See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
 deploys the pipeline and checks the run.
+
+Next: [split a suite](../test-splitting) when parallel jobs should run different tests.

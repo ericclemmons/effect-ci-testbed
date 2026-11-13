@@ -1,10 +1,21 @@
 # Deploy only when needed
 
-Skip work when its inputs did not change. Use ordinary control flow:
+Skip work when its inputs did not change. Use ordinary control flow.
+
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
 ## Start with a source query
 
-[Source](./.cloudflare/ci/if-else.ts#symbol=default "source")
+Create `.cloudflare/ci/actions.ts` with the deploy action. It checks out the
+source and runs the deploy command:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts "source")
+
+Create a workflow that asks `CI.Source` whether the deployment's inputs changed,
+then deploys only in that branch:
+
+[`.cloudflare/ci/if-else.ts`](./.cloudflare/ci/if-else.ts "source {7-11}")
 
 Paths are repository-relative. Include shared dependencies and configuration.
 Effect globs include dotfiles and support `*`, `**`, `?`, character classes, and brace alternatives such as `**/*.{ts,tsx,json}`.
@@ -20,9 +31,23 @@ branch; event adapters supply the comparison in CI.
 
 ## Compare built output
 
-A source change need not change what ships. Build first, then compare the result:
+A source change need not change what ships. Build first, then compare the result.
 
-[Source](./.cloudflare/ci/output-changes.ts#symbol=default "source")
+Start with the host configuration: one local destination and its complete
+deployable scope. A remote host supplies its own provider:
+
+[`.cloudflare/ci/output-changes.ts`](./.cloudflare/ci/output-changes.ts#L1-L10 "source")
+
+Build, then publish the built workspace to that destination:
+
+[`.cloudflare/ci/output-changes.ts`](./.cloudflare/ci/output-changes.ts#L12-L23 "source")
+
+Pass the destination's change comparison to the local run, then deploy only when
+`dist/**` changed:
+
+[`.cloudflare/ci/output-changes.ts`](./.cloudflare/ci/output-changes.ts#symbol=local "source")
+
+[`.cloudflare/ci/output-changes.ts`](./.cloudflare/ci/output-changes.ts#symbol=default "source {3}")
 
 ```sh
 effect-ci run .cloudflare/ci/output-changes.ts
@@ -33,15 +58,20 @@ The first run publishes a local directory; the second skips it. Edit
 [the shared module](./outputs/shared/message.mjs) and repeat: changed output
 publishes again. Failed publication keeps the previous successful baseline.
 
-For event/ref conditions that must appear in a plan, use
-[CI.when](./.cloudflare/ci/workflow.ts). Ordinary JavaScript branches do not
-serialize both paths during planning.
+## Condition on the event and ref
+
+For event/ref conditions that must appear in a plan, use `CI.when`. Ordinary
+JavaScript branches do not serialize both paths during planning:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#L5-L12 "source")
 
 ## cf ci comparison
 
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only when the run's ref is
+The [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only when the run's ref is
 `refs/heads/main`. `scripts/cf-ci.mjs` passes `GITHUB_REF`, so pull request
-runs report the deploy as skipped and pushes to `main` deploy. It does not use Effect CI.
+runs report the deploy as skipped and pushes to `main` deploy. It does not use Effect CI:
+
+[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#L25-L31 "source")
 
 ```sh
 (cd examples/conditional-deploy/.cloudflare/cf-ci && npm ci)

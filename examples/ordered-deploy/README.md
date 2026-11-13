@@ -7,15 +7,47 @@ install → build applications → deploy backend → deploy frontend
 ```
 
 The recipe installs its own npm workspace (`apps/*`) from its lockfile, so it
-runs from this directory alone. Each deployment depends on the shared build. The aggregate deploy action calls
-the two deployments in order; the build runs once.
+runs from this directory alone. Each Worker in `apps/` has an ordinary `cf`
+configuration, such as [`apps/backend/cloudflare.config.ts`](./apps/backend/cloudflare.config.ts).
+
+The snippets on this page come from this example's files, which CI runs end to
+end.
+
+## Define the actions
+
+Create `.cloudflare/ci/actions.ts`. Start with the SDK import:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1 "source")
+
+Check out the source and install the workspace once:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checkout "source")
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=install "source")
+
+Build both applications in one action. Each deployment depends on this shared
+build, so it runs once:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=build "source")
+
+Deploy the backend from the build output. The frontend deployment calls
+`deployBackend()`, so it cannot start until the backend is deployed:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=deployBackend "source")
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=deployFrontend "source 'yield* deployBackend()'")
+
+Export one aggregate deploy action that calls the two deployments in order:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=deploy "source")
 
 ## Condition the whole group
 
-`CI.when` gates the aggregate deploy action, so both deployments and their shared
-build run only for the listed events. The condition appears in the plan.
+Create `.cloudflare/ci/workflow.ts`. `CI.when` gates the aggregate deploy action,
+so both deployments and their shared build run only for the listed events. The
+condition appears in the plan.
 
-[Workflow](./.cloudflare/ci/workflow.ts#symbol=workflow "source")
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source {6-9}")
 
 ## Run it
 
@@ -27,8 +59,11 @@ effect-ci run
 The two Workers build with `cf build` and deploy with
 `cf deploy --prebuilt --dry-run`. No credentials or live deployment are needed.
 
-[Actions](./.cloudflare/ci/actions.ts) ·
-[GitHub Actions comparison](./.github/workflows/github.yml)
+## Compare with GitHub Actions
+
+GitHub Actions lists the same commands as steps in one job:
+
+[`.github/workflows/github.yml`](./.github/workflows/github.yml#L12-L25 "source")
 
 ## cf ci comparison
 
