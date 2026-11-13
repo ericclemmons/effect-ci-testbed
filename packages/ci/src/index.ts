@@ -305,6 +305,7 @@ interface RuntimeShape {
   readonly ci: boolean
   readonly workflowId: string
   readonly mode: WorkflowPlan["mode"]
+  readonly force: boolean
   readonly nodes: Map<string, RuntimeNode>
   readonly afterEdges: Set<string>
   readonly edges: Set<string>
@@ -409,6 +410,11 @@ export class Attempt extends Context.Service<Attempt, number>()("@effect-ci-test
 /** Capability-backed actions must be able to declare dependencies without executing during planning. */
 export const executionMode = Effect.gen(function* () {
   return (yield* Runtime).mode
+})
+
+/** Whether this run skips cache reuse, so toolchains can bypass their own caches too. */
+export const force = Effect.gen(function* () {
+  return (yield* Runtime).force
 })
 class PolicyBody extends Context.Service<PolicyBody, boolean>()("@effect-ci-testbed/PolicyBody") {}
 
@@ -1837,6 +1843,7 @@ const makeRuntime = (
   actionExecutor?: ActionExecutor,
   stepResultCache?: StepResultCache,
   workspaceChanges?: WorkspaceChangeProvider,
+  force = false,
 ) =>
   Effect.gen(function* () {
     const definitions = new Map<string, StepDefinition>()
@@ -2006,8 +2013,9 @@ const makeRuntime = (
         // Resolve before construction: a returned workspace contains the output
         // of its prerequisites, so a hit need not recreate those dependencies.
         // Rollback-bearing actions always execute their normal lifecycle.
+        // A forced run still records, so the next run can reuse its fresh result.
         const reusableBody = mode === "execute" && stepResultCache && !definition.rollback
-          ? cacheOrElse(() => stepResultCache.lookup(resultRequest), undefined).pipe(
+          ? (force ? Effect.succeed(undefined) : cacheOrElse(() => stepResultCache.lookup(resultRequest), undefined)).pipe(
               Effect.flatMap((stored) => {
                 if (stored !== undefined) {
                   resultReused = true
@@ -2112,6 +2120,7 @@ const makeRuntime = (
       ci,
       workflowId,
       mode,
+      force,
       nodes,
       afterEdges,
       edges,
@@ -2314,7 +2323,7 @@ const makeRuntime = (
         const checkCacheRequest = policy
           ? { command, event, policy, stepId, workflowId, workspace }
           : undefined
-        const verified = checkCache && checkCacheRequest
+        const verified = checkCache && checkCacheRequest && !force
           ? cacheOrElse(() => checkCache.lookup(checkCacheRequest), false)
           : Effect.succeed(false)
 
@@ -2513,6 +2522,8 @@ export interface RunOptions {
   readonly workspaceFileSystem?: WorkspaceFileSystem
   readonly checkCache?: CheckCache
   readonly stepResultCache?: StepResultCache
+  /** Skip check and step-result cache lookups. Results are still recorded. */
+  readonly force?: boolean
   readonly workspaceChanges?: WorkspaceChangeProvider
 }
 
@@ -2694,6 +2705,7 @@ const interpret = <A>(
       options.actionExecutor,
       options.stepResultCache,
       options.workspaceChanges,
+      options.force,
     )
     const approval: ApprovalService = {
       request: (request) => Effect.gen(function* () {

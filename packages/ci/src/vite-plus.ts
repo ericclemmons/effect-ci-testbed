@@ -103,19 +103,21 @@ export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
   /**
    * Runs a Vite+ task with `vp run -v`. A dry run first logs whether each step would hit the
    * cache, and every change behind a miss; at Debug, also the cached run's inputs and outputs.
+   * A forced run (`effect-ci run --force`) adds `--no-cache`, so every step runs.
    */
   run: (task: string) => Effect.gen(function* () {
+    const noCache = (yield* CI.force) ? " --no-cache" : ""
     if ((yield* CI.executionMode) === "execute") {
       const level = yield* MinimumLogLevel
       const verbose = level === "Debug" || level === "Trace" || level === "All" ? "-vv" : "-v"
       // In node_modules, so the plan is never an input of the task it describes.
       const file = "node_modules/.effect-ci-vite-plus-run-plan.json"
-      yield* workspace.exec(`${vp} run --dry-run --json ${verbose} ${quote(task)} > ${file}`)
+      yield* workspace.exec(`${vp} run --dry-run --json${noCache} ${verbose} ${quote(task)} > ${file}`)
       const body = yield* workspace.readFile(file)
       if (body === undefined) return yield* Effect.fail(new Error(`Vite+ wrote no run plan to ${file}`))
       const lines = yield* Effect.try({ try: () => cacheLog(body), catch: error => error })
       for (const line of lines) yield* line.level === "Info" ? Effect.logInfo(line.message) : Effect.logDebug(line.message)
     }
-    return yield* workspace.exec(`${vp} run -v ${quote(task)}`)
+    return yield* workspace.exec(`${vp} run -v${noCache} ${quote(task)}`)
   }),
 })

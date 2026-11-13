@@ -57,6 +57,8 @@ export interface RemoteWorkflowParameters {
   readonly rerunFrom?: string
   /** The caller's `-v` (1) or `-vv` (2), for hosts that run the project's CLI. */
   readonly verbose?: 1 | 2
+  /** The caller's `--force`, for hosts that run the project's CLI. */
+  readonly force?: true
 }
 
 export type WorkflowParameters = GitHubWorkflowParameters | RemoteWorkflowParameters
@@ -137,6 +139,7 @@ export interface RemoteRunRequest {
   readonly targets?: ReadonlyArray<string>
   readonly rerunFrom?: string
   readonly verbose?: 1 | 2
+  readonly force?: true
 }
 
 const selectedTargets = (input: { readonly target?: unknown; readonly targets?: unknown }): ReadonlyArray<string> | undefined => {
@@ -270,6 +273,7 @@ const readRemoteRun = async (request: Request): Promise<(RemoteRunRequest & { re
   try { selection = selectedTargets(record) } catch { return undefined }
   if (record.rerunFrom !== undefined && !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(record.rerunFrom)) return undefined
   if (record.verbose !== undefined && record.verbose !== 1 && record.verbose !== 2) return undefined
+  if (record.force !== undefined && record.force !== true) return undefined
 
   return {
     repository: record.repository,
@@ -280,6 +284,7 @@ const readRemoteRun = async (request: Request): Promise<(RemoteRunRequest & { re
     ...(record.targets === undefined ? {} : { targets: selection! }),
     ...(record.rerunFrom === undefined ? {} : { rerunFrom: record.rerunFrom as string }),
     ...(record.verbose === undefined ? {} : { verbose: record.verbose }),
+    ...(record.force === undefined ? {} : { force: true as const }),
   }
 }
 

@@ -36,6 +36,8 @@ export interface Invocation {
   readonly rerunFrom?: string
   /** `-v` (1) or `-vv` (2); remote hosts pass it to the project's CLI. */
   readonly verbose?: 1 | 2
+  /** `--force`: skip cache reuse; remote hosts pass it to the project's CLI. */
+  readonly force?: true
   readonly workflow: CI.Workflow<unknown>
 }
 
@@ -367,7 +369,8 @@ const builtInRemote = async (
     body: JSON.stringify({ repository, revision, ...(ref ? { ref } : {}), ...(targets ? { targets } : {}),
       ...(project ? { project } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
-      ...(invocation.verbose ? { verbose: invocation.verbose } : {}) }),
+      ...(invocation.verbose ? { verbose: invocation.verbose } : {}),
+      ...(invocation.force ? { force: true } : {}) }),
   })
 
   if (!response.ok) {
@@ -480,6 +483,7 @@ interface ParsedInvocation {
   readonly rerunFrom?: string
   /** Number of `-v` flags: 1 logs step details, 2 or more also logs debug details. */
   readonly verbose: number
+  readonly force: boolean
 }
 
 interface StepLog {
@@ -522,6 +526,7 @@ const parseInvocation = (
         remote: { type: "boolean" },
         "rerun-from": { type: "string" },
         verbose: { short: "v", type: "boolean", multiple: true },
+        force: { type: "boolean" },
       },
       strict: true,
     })
@@ -571,6 +576,9 @@ const parseInvocation = (
     !Schema.is(Schema.String.check(Schema.isUUID(undefined)))(rerunFrom)))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
       `Use effect-ci run <compute goals...> --remote --rerun-from <run UUID>`)
+  if (parsed.values.force && (command !== "run" || rerunFrom !== undefined))
+    throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage,
+      "--force only applies to effect-ci run, and cannot be combined with --rerun-from")
 
   if (command === "doctor" && (!parsed.values.remote || targets.length || format === "mermaid" || format === "dot"))
     throw new CliFailure("CI_USAGE_ERROR", ExitCode.usage, `Use effect-ci doctor --remote [--format=text|json]; it checks access without running work`)
@@ -595,6 +603,7 @@ const parseInvocation = (
     location,
     targets,
     verbose: (parsed.values.verbose as boolean[] | undefined)?.length ?? 0,
+    force: parsed.values.force === true,
     ...(rerunFrom ? { rerunFrom } : {}),
     ...(target ? { target } : {}),
   }
@@ -606,7 +615,7 @@ Usage:
   effect-ci oidc [--service https://your-ci-host]
   effect-ci oidc -- <deploy command>
   effect-ci                         Show this help and project targets
-  effect-ci run [targets...] [--local|--remote] [--format=text|json]
+  effect-ci run [targets...] [--local|--remote] [--force] [--format=text|json]
   effect-ci run <compute goals...> --remote --rerun-from <run UUID>
   effect-ci plan [targets...] [--local|--remote] [--format=text|json|mermaid|dot]
   effect-ci list [--format=text|json]
@@ -626,6 +635,7 @@ Examples:
   effect-ci run                     Execute the whole default workflow
   effect-ci run test build          Run both goals with their shared dependencies
   effect-ci run build -v            Also log step details (stderr, or "logs" in JSON); -vv adds debug
+  effect-ci run deploy --force      Skip cache reuse, including Vite+ task caches
   effect-ci plan                    Inspect the whole workflow without executing
   effect-ci plan --format=mermaid    Print its Mermaid graph
   effect-ci plan --format=dot        Print its Graphviz DOT graph
@@ -1062,6 +1072,7 @@ export const main = async (
       ...(invocation.targets.length > 1 ? { targets: invocation.targets } : {}),
       ...(invocation.rerunFrom ? { rerunFrom: invocation.rerunFrom } : {}),
       ...(invocation.verbose ? { verbose: Math.min(invocation.verbose, 2) as 1 | 2 } : {}),
+      ...(invocation.force ? { force: true as const } : {}),
       workflow,
     }
 
@@ -1105,6 +1116,7 @@ export const main = async (
         return await CI.runPromise(localWorkflow, {
           ...configured,
           mode: invocation.command === "plan" ? "plan" : "execute",
+          ...(invocation.force ? { force: true } : {}),
           ...(format === "json" || format === "mermaid" || format === "dot"
             ? { output: "silent" as const }
             : configured.output
