@@ -130,17 +130,3 @@ pnpm exec wrangler workflows instances describe effect-ci-test-splitting test-sp
 
 Use a pushed, full commit SHA. The hosted runner checks out that immutable source;
 it does not execute uncommitted local files. Each parallel action gets its own Container.
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs both shards in parallel.
-Each saves its JSON report as an output, even when a test fails, and a final
-step checks that every test ran exactly once. It does not use Effect CI.
-
-```sh
-(cd examples/test-splitting/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs test-splitting
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

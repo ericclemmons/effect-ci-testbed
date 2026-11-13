@@ -64,19 +64,3 @@ For event/ref conditions that must appear in a plan, use `CI.when`. Ordinary
 JavaScript branches do not serialize both paths during planning:
 
 [`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#L5-L12 "source")
-
-## cf ci comparison
-
-The [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) deploys only when the run's ref is
-`refs/heads/main`. `scripts/cf-ci.mjs` passes `GITHUB_REF`, so pull request
-runs report the deploy as skipped and pushes to `main` deploy. It does not use Effect CI:
-
-[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#L25-L31 "source")
-
-```sh
-(cd examples/conditional-deploy/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs conditional-deploy
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

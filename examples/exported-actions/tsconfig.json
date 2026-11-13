@@ -3,6 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": [".cloudflare/**/*.ts"],
-  "exclude": [".cloudflare/cf-ci"]
+  "include": [".cloudflare/**/*.ts"]
 }

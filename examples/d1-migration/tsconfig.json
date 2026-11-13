@@ -15,6 +15,5 @@
     "cloudflare.config.ts",
     "src/**/*.ts",
     "vite.config.ts"
-  ],
-  "exclude": [".cloudflare/cf-ci"]
+  ]
 }

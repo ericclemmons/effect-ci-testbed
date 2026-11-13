@@ -68,20 +68,3 @@ table and removes the migration record:
 [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=rollbackMigration "source")
 
 See [Rollback](../rollback-compensation) for how compensation runs.
-
-## cf ci comparison
-
-The [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) builds the Worker, applies
-the migration to local D1, and dry-runs the deploy. If the migration or deploy
-fails, it rolls the migration back and still fails. The local D1 state carries
-over as an output. It does not use Effect CI:
-
-[`.cloudflare/cf-ci/src/index.ts`](./.cloudflare/cf-ci/src/index.ts#L44-L58 "source")
-
-```sh
-(cd examples/d1-migration/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs d1-migration
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

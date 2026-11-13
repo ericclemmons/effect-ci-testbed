@@ -52,17 +52,3 @@ Configure the Worker, its workspace container, and the Workflow:
 The wrapper is restricted to that fixture. It does not configure private GitLab
 authentication or run GitLab CI. Another repository needs a host-configured
 source provider. See [Source providers](../source-providers).
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) fetches the pinned public
-GitLab fixture over HTTPS at its full commit SHA and checks its `VERSION`. It
-needs no GitLab credentials. It does not use Effect CI.
-
-```sh
-(cd examples/gitlab-source/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs gitlab-source
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

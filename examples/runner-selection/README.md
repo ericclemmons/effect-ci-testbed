@@ -46,18 +46,3 @@ effect-ci run
 A plain GitHub Actions job reads the same variable in `runs-on`:
 
 [`.github/workflows/github.yml`](./.github/workflows/github.yml#L12-L21 "source {2}")
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs `npm ci` and `npm test`
-on the container size in `CF_CI_INSTANCE_SIZE` at deploy time, like `runs-on`
-from a repository variable. It defaults to `standard-1`. It does not use Effect
-CI.
-
-```sh
-(cd examples/runner-selection/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs runner-selection
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

@@ -17,13 +17,13 @@ test("the built features page contains the completed snapshot without browser re
   assert.doesNotMatch(html, /⏳|data-pending|data-refresh|\/api\/readiness|Loading checks from main|Refreshes every/)
 })
 
-test("each feature expands to compare GitHub Actions, Effect CI and cf ci side by side", async () => {
+test("each feature expands to compare GitHub Actions and Effect CI side by side", async () => {
   const html = await readFile(new URL("../dist/examples/features/index.html", import.meta.url), "utf8")
-  for (const label of ["GitHub Actions", "Effect CI", "cf ci"]) assert.match(html, new RegExp(`class="head-product[^"]*"[^>]*>${label}</span>`), label)
+  for (const label of ["GitHub Actions", "Effect CI"]) assert.match(html, new RegExp(`class="head-product[^"]*"[^>]*>${label}</span>`), label)
   assert.match(html, /class="environment-percent"[^>]*>\d+%<\/span>/)
   const npm = html.slice(html.indexOf('data-recipe="node-npm"'), html.indexOf("</details>", html.indexOf('data-recipe="node-npm"')))
   assert.match(npm, /<summary/)
-  for (const file of ["github.yml", "workflow.ts", "actions.ts", "index.ts"]) assert.ok(npm.includes(`data-nb-tab-label="${file}"`), file)
+  for (const file of ["github.yml", "workflow.ts", "actions.ts"]) assert.ok(npm.includes(`data-nb-tab-label="${file}"`), file)
   assert.ok(npm.includes("astro-code"), "implementations are highlighted at build time")
 })
 
