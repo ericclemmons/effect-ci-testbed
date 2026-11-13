@@ -28,6 +28,21 @@ $ effect-ci run -v
 
 The task runs with `vp run -v`, so its own summary lists every reason for a miss too.
 
+## Skip the cache
+
+Vite+ caches by file inputs, so it can skip a deploy even after remote state
+changed, for example after a production rollback. `--force` runs every step:
+
+```text
+$ effect-ci run -v --force
+[build] vite+ examples/vite-plus-cache/app#build: caching off
+```
+
+Vite+ tasks run with `vp run --no-cache`, and Effect CI skips its own reused
+check and step results. A forced Vite+ run does not update the task cache, so the
+next run without `--force` compares against the last cached run. `--force` also
+applies to remote runs.
+
 [Vite+ toolchain](../../packages/ci/src/vite-plus.ts#symbol=VitePlus "source")
 
 The [runner](./src/worker.ts) automatically preserves `node_modules/.vite/task-cache`,

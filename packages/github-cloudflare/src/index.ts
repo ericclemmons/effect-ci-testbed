@@ -541,6 +541,7 @@ export const workflowEntrypoint = <A>(
             threadKey ?? (runtimeEvent.type === "workflow.completed" ? latestThread : undefined))
         },
         output: "silent",
+        ...(event.payload.trigger === "remote" && event.payload.force ? { force: true } : {}),
         ...(options.secrets ? { secrets: options.secrets(this.env) } : {}),
         source: runner.source,
         workspaceFileSystem: runner.fileSystem,

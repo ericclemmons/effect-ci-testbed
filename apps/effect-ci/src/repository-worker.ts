@@ -28,7 +28,7 @@ export const RepositoryCIWorkflow = Hosted.workflowEntrypoint(
     if (parameters.trigger !== "remote") throw new Error("Repository runs require a remote trigger");
     const project = projectSelection(parameters);
     return standaloneProgram(project?.root ?? ".",
-      parameters.targets ?? (parameters.target ? [parameters.target] : []), project?.workflow, parameters.verbose).workflow;
+      parameters.targets ?? (parameters.target ? [parameters.target] : []), project?.workflow, parameters.verbose, parameters.force).workflow;
   },
   {
     remoteGitHubCheckout: true,
