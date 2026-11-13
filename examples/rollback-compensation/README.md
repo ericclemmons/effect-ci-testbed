@@ -25,7 +25,7 @@ the appropriate recovery action.
 
 [cf ci workflow](./.cloudflare/cf-ci/src/index.ts) records whether the deploy
 failed and runs the rollback only after a failure. The run still fails after a
-rollback. cf ci runs start from pushes, so the `fail-deploy` input is a constant
+rollback. cf ci runs start from a commit with no inputs, so the `fail-deploy` input is a constant
 in the pipeline. It does not use Effect CI.
 
 ```sh

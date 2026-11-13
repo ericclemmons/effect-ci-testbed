@@ -1,40 +1,26 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 
+import { checkoutRecipe, reportToGitHub, sourceUrl, type Params } from './github';
 import type { InternalWorkflowStep, StepResult } from './workflows-internal';
 
-type Env = { ARTIFACTS: Artifacts; PIPELINE_SHA: string };
-
-type PushEvent = {
-	source: { namespace: string; repoName: string };
-	payload: { ref: string; after: string };
-};
 type Check = { exitCode: number | null; log: string; skipped?: true };
 
 const image = 'workflows/node';
 // Stands in for the comparison's fail-deploy dispatch input; cf ci runs start from pushes, which carry no inputs.
 const FAIL_DEPLOY = 'false';
 
-export class CI extends WorkflowEntrypoint<Env> {
-	async run(event: WorkflowEvent<PushEvent>, workflowStep: WorkflowStep) {
-		const step = workflowStep as InternalWorkflowStep;
-		const { repoName } = event.payload.source;
-		const commit = event.payload.payload.after;
+export class CI extends WorkflowEntrypoint<Env, Params> {
+	async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+		return reportToGitHub(this.env, event, step, 'rollback-compensation / cf-ci', () => this.pipeline(event, step as InternalWorkflowStep));
+	}
 
-		// The read token reaches the checkout through `env`, which step.runner() does not treat as secret.
-		const repo = await step.do('get clone token', async () => {
-			using artifactsRepo = await this.env.ARTIFACTS.get(repoName);
-			const [info, token] = await Promise.all([artifactsRepo.info(), artifactsRepo.createToken('read', 3600)]);
-			return { remote: info.remote, token: token.plaintext };
-		});
+	private async pipeline(event: WorkflowEvent<Params>, step: InternalWorkflowStep) {
+		const commit = event.payload.sha;
 
 		const checkout = await step.runner('checkout', {
 			image,
-			env: { GIT_TOKEN: repo.token, REMOTE: repo.remote, COMMIT: commit },
-			command: [
-				'git init -q repo && cd repo',
-				'git -c http.extraHeader="Authorization: Bearer $GIT_TOKEN" fetch -q --depth 1 "$REMOTE" "$COMMIT"',
-				'git checkout -q FETCH_HEAD',
-			].join(' && '),
+			env: { SOURCE_URL: sourceUrl(this.env, commit) },
+			command: checkoutRecipe('rollback-compensation'),
 			outputs: { repo: 'repo' },
 		});
 		const repoCharm = checkout.outputs.repo;
@@ -58,8 +44,8 @@ export class CI extends WorkflowEntrypoint<Env> {
 
 		// The rollback does not erase the original failure.
 		return {
-			repo: repoName,
-			ref: event.payload.payload.ref,
+			repo: this.env.GITHUB_REPO,
+			ref: event.payload.ref,
 			commit,
 			pipelineSha: this.env.PIPELINE_SHA,
 			passed: !failed,
@@ -69,5 +55,5 @@ export class CI extends WorkflowEntrypoint<Env> {
 }
 
 export default {
-	fetch: () => new Response('Runs cf ci for examples/rollback-compensation on pushes to its Artifacts repo.'),
+	fetch: () => new Response('Runs cf ci for examples/rollback-compensation on GitHub commits.'),
 };

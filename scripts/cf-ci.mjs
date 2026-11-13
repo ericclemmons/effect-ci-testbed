@@ -1,34 +1,32 @@
-// Runs one recipe's cf ci comparison: deploy its pipeline with `cf`, push the recipe
-// to its Artifacts repo, and wait for the run that push starts.
-// Usage: node scripts/cf-ci.mjs <recipe>
-// Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, and `npm ci` in the recipe's .cloudflare/cf-ci.
+// Runs one recipe's cf ci pipeline against this GitHub repository through the `scm` binding:
+// deploy .cloudflare/cf-ci with Wrangler, start a run on a pushed commit, and wait for it.
+// The pipeline writes its own `<recipe> / cf-ci` GitHub check and, with --mr, comments on the pull request.
+// Usage: node scripts/cf-ci.mjs <recipe> [--sha <sha>] [--ref <ref>] [--mr <number>]
+// Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, the Cloudflare GitHub app on the repository,
+// and `npm ci` in the recipe's .cloudflare/cf-ci.
 import { execFileSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { join, resolve } from "node:path"
+import { parseArgs } from "node:util"
 
-const recipe = process.argv[2]
-if (!recipe) throw new Error("Usage: node scripts/cf-ci.mjs <recipe>")
+const { positionals: [recipe], values } = parseArgs({ allowPositionals: true, options: { sha: { type: "string" }, ref: { type: "string" }, mr: { type: "string" } } })
+if (!recipe) throw new Error("Usage: node scripts/cf-ci.mjs <recipe> [--sha <sha>] [--ref <ref>] [--mr <number>]")
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
 const apiToken = process.env.CLOUDFLARE_API_TOKEN
 if (!accountId || !apiToken) throw new Error("Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN")
 
 const root = resolve(import.meta.dirname, "..")
-const recipeDir = join(root, "examples", recipe)
-const pipelineDir = join(recipeDir, ".cloudflare", "cf-ci")
-const namespace = "cf-ci"
+const pipelineDir = join(root, "examples", recipe, ".cloudflare", "cf-ci")
 const workflow = `cf-ci-${recipe}`
-const sourceSha = process.env.GITHUB_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()
-const dirty = !process.env.GITHUB_SHA && execFileSync("git", ["status", "--porcelain", "--", `examples/${recipe}`], { cwd: root, encoding: "utf8" }).trim() !== ""
-const pipelineSha = dirty ? `${sourceSha}-dirty` : sourceSha
+// GitHub serves the tarball, so the commit must already be pushed. The pipeline always comes from this checkout.
+const sha = values.sha ?? process.env.GITHUB_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()
+const ref = values.ref ?? process.env.GITHUB_REF
+const mr = values.mr ? Number(values.mr) : undefined
+const pipelineSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
 const log = (message) => console.log(`[cf-ci ${recipe}] ${message}`)
-const cf = (args, options = {}) => execFileSync(join(pipelineDir, "node_modules", ".bin", "cf"), args, {
-  cwd: pipelineDir, encoding: "utf8", stdio: ["ignore", "pipe", options.inherit ? "inherit" : "pipe"], env: { ...process.env, ...options.env },
-})
-const cfJson = (args) => JSON.parse(cf(args))
-const git = (cwd, args, env = {}) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...env } }).trim()
 
 async function api(method, path, body) {
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}${path}`, {
@@ -39,139 +37,109 @@ async function api(method, path, body) {
   return json.result
 }
 
-function latestWorkflowVersion() {
+async function latestVersion() {
   try {
-    return cfJson(["workflows", "versions", "list", "--workflow-name", workflow])[0]?.id
+    const [latest] = await api("GET", `/workflows/${workflow}/versions?per_page=1`)
+    return latest?.id
   } catch (error) {
     // The first deploy of a recipe creates its Workflow.
-    if (String(error.stderr).includes("workflow.not_found")) return undefined
+    if (String(error.message).includes("not_found")) return undefined
     throw error
   }
 }
 
 async function deploy() {
-  const before = latestWorkflowVersion()
+  const before = await latestVersion()
   log(`deploying pipeline ${pipelineSha}`)
-  cf(["deploy", "--tag", pipelineSha.slice(0, 25), "--message", `cf ci pipeline ${pipelineSha}`], {
-    inherit: true, env: { CF_CI_PIPELINE_SHA: pipelineSha },
-  })
+  // A secret rather than --var, so the value stays out of wrangler.jsonc and the deploy log.
+  const dir = mkdtempSync(join(tmpdir(), `${workflow}-`))
+  const secrets = join(dir, "secrets.json")
+  writeFileSync(secrets, JSON.stringify({ PIPELINE_SHA: pipelineSha }))
+  try {
+    execFileSync(join(pipelineDir, "node_modules", ".bin", "wrangler"), ["deploy", "--secrets-file", secrets, "--tag", pipelineSha.slice(0, 25)], {
+      cwd: pipelineDir, stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId },
+    })
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
   for (let attempt = 0; attempt < 30; attempt++) {
-    const after = latestWorkflowVersion()
+    const after = await latestVersion()
     if (after && after !== before) return after
     await sleep(2000)
   }
-  throw new Error("cf deploy finished but no new Workflow version appeared")
+  throw new Error("wrangler deploy finished but no new Workflow version appeared")
 }
 
-// cf/config has no event triggers yet, so the trigger is applied with the same API Wrangler uses.
-const applyTrigger = () => api("PUT", `/triggers/${workflow}`, [{
-  type: "cf.artifacts.repo.pushed",
-  filter: { namespace, repo_name: recipe },
-  targets: [{ type: "workflow", script_name: workflow, workflow_name: workflow }],
-}])
-
-function ensureRepo() {
-  try {
-    return cfJson(["artifacts", "namespaces", "repos", "get", recipe, "--namespace", namespace]).remote
-  } catch {
-    log(`creating Artifacts repo ${namespace}/${recipe}`)
-    return cfJson(["artifacts", "namespaces", "repos", "create", namespace, "--name", recipe]).remote
-  }
-}
-
-function snapshot() {
-  const dir = mkdtempSync(join(tmpdir(), `cf-ci-${recipe}-`))
-  const files = git(root, ["ls-files", "-co", "--exclude-standard", "--", `examples/${recipe}`]).split("\n").filter(Boolean)
-  for (const file of files) {
-    const target = join(dir, file.slice(`examples/${recipe}/`.length))
-    mkdirSync(dirname(target), { recursive: true })
-    cpSync(join(root, file), target)
-  }
-  git(dir, ["init", "-q", "-b", "main"])
-  git(dir, ["add", "-A"])
-  return dir
-}
-
-function push(dir, remote, attempt) {
-  const identity = { GIT_AUTHOR_NAME: "cf ci", GIT_AUTHOR_EMAIL: "cf-ci@localhost", GIT_COMMITTER_NAME: "cf ci", GIT_COMMITTER_EMAIL: "cf-ci@localhost" }
-  git(dir, ["commit", "-q", "--allow-empty", "-m", `examples/${recipe} at ${pipelineSha} (attempt ${attempt})`], identity)
-  const commit = git(dir, ["rev-parse", "HEAD"])
-  const token = cfJson(["artifacts", "namespaces", "tokens", "create", namespace, "--repo", recipe, "--scope", "write", "--ttl", "600"]).plaintext
-  git(dir, ["-c", `http.${remote}.extraHeader=Authorization: Bearer ${token}`, "push", "-q", "--force", remote, `HEAD:refs/heads/run/${commit}`])
-  return commit
-}
-
-async function findInstance(commit, since) {
-  for (let attempt = 0; attempt < 45; attempt++) {
-    const instances = cfJson(["workflows", "instances", "list", "--workflow-name", workflow, "--per-page", "25"])
-    for (const instance of instances.filter((candidate) => Date.parse(candidate.created_on) >= since - 5000)) {
-      const details = cfJson(["workflows", "instances", "get", instance.id, "--workflow-name", workflow, "--simple", "true"])
-      if (details.params?.payload?.after === commit) return instance
-    }
+// The first step reports the PIPELINE_SHA the run executes. Other steps first means older code.
+async function pipelineOf(id) {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const details = await api("GET", `/workflows/${workflow}/instances/${id}`)
+    const steps = details.steps ?? []
+    // The API suffixes step names with their call count, such as "pipeline version-1".
+    const step = steps.find((candidate) => /^pipeline version(-\d+)?$/.test(candidate.name ?? ""))
+    if (step && step.output !== undefined && step.output !== null) return typeof step.output === "string" ? step.output : JSON.stringify(step.output)
+    if (!step && steps.some((candidate) => candidate.type === "step" || candidate.name)) return `older code (first step ${steps[0]?.name})`
+    if (["complete", "errored", "terminated"].includes(details.status)) return `ended as ${details.status}`
     await sleep(2000)
   }
-  return undefined
+  return "unknown"
 }
 
-function terminate(id) {
+async function terminate(id) {
   try {
-    cf(["workflows", "instances", "terminate", id, "--workflow-name", workflow, "--status", "terminate", "--force"])
+    await api("PATCH", `/workflows/${workflow}/instances/${id}/status`, { status: "terminate" })
   } catch (error) {
-    log(`could not terminate ${id}: ${String(error.stderr).trim()}`)
+    log(`could not terminate ${id}: ${error.message}`)
   }
 }
 
 async function waitForResult(id) {
-  const deadline = Date.now() + 10 * 60_000
+  const deadline = Date.now() + 15 * 60_000
   while (Date.now() < deadline) {
-    const details = cfJson(["workflows", "instances", "get", id, "--workflow-name", workflow])
+    const details = await api("GET", `/workflows/${workflow}/instances/${id}`)
     if (["complete", "errored", "terminated"].includes(details.status)) return details
     await sleep(5000)
   }
-  terminate(id)
-  throw new Error(`instance ${id} did not finish within 10 minutes; terminated it`)
+  await terminate(id)
+  throw new Error(`instance ${id} did not finish within 15 minutes; terminated it`)
 }
 
 const expectedVersion = await deploy()
-await applyTrigger()
-const remote = ensureRepo()
-const dir = snapshot()
+const params = { sha, ...(ref && { ref }), ...(mr && { mr }) }
 
 let instance
-for (let attempt = 1; attempt <= 4 && !instance; attempt++) {
-  const since = Date.now()
-  const commit = push(dir, remote, attempt)
-  log(`pushed ${commit}`)
-  const found = await findInstance(commit, since)
-  // A push soon after a new repo or trigger is created can start nothing.
-  if (!found) {
-    log(`no Workflow instance started for ${commit}. Retrying.`)
-    continue
-  }
-  if (found.version_id === expectedVersion) {
-    instance = found
+for (let attempt = 1; attempt <= 10 && !instance; attempt++) {
+  const { id } = await api("POST", `/workflows/${workflow}/instances`, { params })
+  const ran = await pipelineOf(id)
+  if (ran === pipelineSha) {
+    instance = id
     break
   }
-  // A push shortly after a deploy can still start the previous Workflow version.
-  log(`instance ${found.id} ran stale version ${found.version_id}; expected ${expectedVersion}. Retrying.`)
-  terminate(found.id)
-  await sleep(15_000)
+  // Runs started in the first minutes after a deploy can execute the previous pipeline.
+  log(`instance ${id} ran pipeline ${ran}; expected ${pipelineSha} (version ${expectedVersion}). Retrying.`)
+  await terminate(id)
+  await sleep(30_000)
 }
-if (!instance) throw new Error(`no push started Workflow version ${expectedVersion}`)
+if (!instance) throw new Error(`no run executed pipeline ${pipelineSha}`)
 
-log(`waiting for instance ${instance.id}`)
-const result = await waitForResult(instance.id)
+log(`started instance ${instance} on ${sha}${mr ? ` (pull request #${mr})` : ""}`)
+const result = await waitForResult(instance)
 const output = result.output ?? {}
 const label = (name, check) => `${name}${check.optional ? " (optional)" : ""}`
 const status = (check) => check.skipped ? "⏭️ skipped" : `${check.exitCode === 0 ? "✅" : "❌"} ${check.exitCode}`
 for (const [name, check] of Object.entries(output.checks ?? {})) {
   console.log(`\n=== ${label(name, check)}: ${status(check)} ===\n${check.log}`)
 }
+if (output.checkUrl) log(`GitHub check: ${output.checkUrl}`)
 if (process.env.GITHUB_STEP_SUMMARY) {
   const rows = Object.entries(output.checks ?? {}).map(([name, check]) => `| ${label(name, check)} | ${status(check)} |`)
-  writeFileSync(process.env.GITHUB_STEP_SUMMARY, [`### cf ci: ${recipe}`, `Instance \`${instance.id}\`, status \`${result.status}\``, "", "| Check | Exit |", "| --- | --- |", ...rows, ""].join("\n"), { flag: "a" })
+  writeFileSync(process.env.GITHUB_STEP_SUMMARY, [
+    `### cf ci: ${recipe}`,
+    `Instance \`${instance}\`, status \`${result.status}\`${output.checkUrl ? `, [check](${output.checkUrl})` : ""}`,
+    "", "| Check | Exit |", "| --- | --- |", ...rows, "",
+  ].join("\n"), { flag: "a" })
 }
-if (result.status !== "complete") throw new Error(`instance ${instance.id} ended as ${result.status}: ${JSON.stringify(result.error ?? result.steps?.at(-1))}`)
+if (result.status !== "complete") throw new Error(`instance ${instance} ended as ${result.status}: ${JSON.stringify(result.error ?? result.steps?.at(-1))}`)
 if (output.pipelineSha !== pipelineSha) throw new Error(`instance ran pipeline ${output.pipelineSha}, expected ${pipelineSha}`)
 if (!output.passed) throw new Error("one or more checks failed")
-log(`passed (instance ${instance.id})`)
+log(`passed (instance ${instance})`)

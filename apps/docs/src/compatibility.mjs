@@ -55,7 +55,14 @@ export function checkNames(recipe, environment) {
   if (environment === "GitHub Actions") return [recipe.startsWith("oidc-") ? `${recipe} / github / live deployment` : `${recipe} / github`]
   if (environment === "Effect CI (local)") return [`${recipe} / local / execute`, `${recipe} / Cloudflare local runtime`]
   if (environment === "Effect CI on GitHub Actions") return [`${recipe} / effect-on-github / execute`]
-  // scripts/cf-ci.mjs runs a recipe's .cloudflare/cf-ci pipeline; recipes without one stay `—` in COVERAGE.md.
-  if (environment === "cf ci") return [`${recipe} / cf-ci / execute`]
+  // The recipe's .cloudflare/cf-ci pipeline writes this check itself through the GitHub app; recipes without one stay `—` in COVERAGE.md.
+  if (environment === "cf ci") return [`${recipe} / cf-ci`]
   return [`Cloudflare / ${recipe}`]
+}
+
+// The GitHub App that writes each environment's checks.
+export function checkApp(environment) {
+  if (environment === "Effect CI on Cloudflare") return "effect-ci"
+  if (environment === "cf ci") return "cloudflare-workers-and-pages"
+  return "github-actions"
 }
