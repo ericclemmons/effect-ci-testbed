@@ -17,7 +17,7 @@
  const checkout = CI.action("checkout", function* () {
    const source = yield* CI.Source;
 @@ -17,6 +28,14 @@
-   return () => pm.exec("vp run build");
+   return () => pm.exec("vp run --cache build");
  });
  
 +const deploy = CI.action<DirectoryDeploymentReceipt | undefined>(

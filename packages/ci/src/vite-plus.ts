@@ -1,5 +1,4 @@
 import * as Effect from "effect/Effect"
-import { MinimumLogLevel } from "effect/References"
 import * as CI from "./index.ts"
 
 /** The parts of a `vp run --dry-run --json` run plan (version 1, Vite+ 1.6) that the log uses. */
@@ -92,10 +91,45 @@ export const cacheLog = (body: string): CacheLogLine[] => {
   return lines
 }
 
+/**
+ * Cache hits whose run read no project file. fspy can miss every read of some native tools,
+ * such as TypeScript 7's `tsc` on macOS (voidzero-dev/vite-task#587). Such a hit would replay
+ * a stale result forever, so it must not be trusted. Needs a `-vv` plan.
+ */
+export const untracedHits = (body: string): string[] => {
+  const plan = JSON.parse(body) as RunPlan
+  const labels: string[] = []
+  const visit = (tasks: RunPlan["plan"], prefix: string) => {
+    for (const [id, task] of Object.entries(tasks)) {
+      task.steps.forEach((step, index) => {
+        const label = `${prefix}${id}${task.steps.length === 1 ? "" : ` step ${index + 1}`}`
+        if (step.plan) return visit(step.plan, `${label} › `)
+        if (step.cache?.status !== "hit") return
+        const paths = Object.keys(step.cache.baseline?.fingerprint?.inputs ?? {})
+        if (!paths.some(path => path !== "." && path !== "node_modules" && !path.startsWith("node_modules/"))) {
+          labels.push(label)
+        }
+      })
+    }
+  }
+  visit(plan.plan, "")
+  return labels
+}
+
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
 // Prefer the global vp; fall back to the project's own when a runner has none.
 const vp = `PATH="$PATH:$PWD/node_modules/.bin" vp`
+
+// Scripts whose result depends only on files they read. Deploy, publish, dev and
+// in-place formatting scripts have effects a file cache cannot replay.
+const cacheableScripts = new Set(["build", "test", "lint", "check", "typecheck", "compile"])
+
+/** Whether zero-config CI caches a package script with `vp run --cache`, by its name. */
+export const isCacheableScript = (name: string): boolean => {
+  const [kind = ""] = name.split(":")
+  return cacheableScripts.has(kind)
+}
 
 /** Vite+ in a project, through the global `vp` CLI. */
 export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
@@ -104,20 +138,35 @@ export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
    * Runs a Vite+ task with `vp run -v`. A dry run first logs whether each step would hit the
    * cache, and every change behind a miss; at Debug, also the cached run's inputs and outputs.
    * A forced run (`effect-ci run --force`) adds `--no-cache`, so every step runs.
+   *
+   * `cache: true` adds `--cache`, so package.json scripts are cached too. Vite+ then infers
+   * each script's inputs and outputs from the files it reads and writes. Cached scripts run
+   * with a clean environment: only common variables such as `PATH`, `HOME` and `CI` pass through.
    */
-  run: (task: string) => Effect.gen(function* () {
-    const noCache = (yield* CI.force) ? " --no-cache" : ""
+  run: (task: string, options: { readonly cache?: boolean } = {}) => Effect.gen(function* () {
+    let noCache = (yield* CI.force) ? " --no-cache" : options.cache ? " --cache" : ""
+    let traced = !(yield* CI.force)
     if ((yield* CI.executionMode) === "execute") {
-      const level = yield* MinimumLogLevel
-      const verbose = level === "Debug" || level === "Trace" || level === "All" ? "-vv" : "-v"
+      // Always -vv: the cached run's inputs show whether its trace can be trusted.
+      // Its Debug lines only print at -vv.
+      const verbose = "-vv"
       // In node_modules, so the plan is never an input of the task it describes.
-      const file = "node_modules/.effect-ci-vite-plus-run-plan.json"
-      yield* workspace.exec(`${vp} run --dry-run --json${noCache} ${verbose} ${quote(task)} > ${file}`)
+      // One file per task, so parallel steps never read each other's plan.
+      const file = `node_modules/.effect-ci-vite-plus-run-plan-${task.replaceAll(/[^\w-]/g, "_")}.json`
+      yield* workspace.exec(`mkdir -p node_modules && ${vp} run --dry-run --json${noCache} ${verbose} ${quote(task)} > ${file}`,
+        { diagnostic: true })
       const body = yield* workspace.readFile(file)
       if (body === undefined) return yield* Effect.fail(new Error(`Vite+ wrote no run plan to ${file}`))
       const lines = yield* Effect.try({ try: () => cacheLog(body), catch: error => error })
       for (const line of lines) yield* line.level === "Info" ? Effect.logInfo(line.message) : Effect.logDebug(line.message)
+      const untraced = traced ? untracedHits(body) : []
+      if (untraced.length > 0) {
+        yield* Effect.logWarning(`vite+ ${untraced.join(", ")}: the cached run read no project files, so running without the cache`)
+        noCache = " --no-cache"
+        traced = false
+      }
     }
-    return yield* workspace.exec(`${vp} run -v${noCache} ${quote(task)}`)
+    return yield* workspace.exec(`${vp} run -v${noCache} ${quote(task)}`,
+      traced ? { trace: { tool: "vite-plus", task } } : undefined)
   }),
 })

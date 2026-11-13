@@ -14,7 +14,7 @@ const install = CI.action("install", function* () {
 export const build = CI.action("build", function* () {
   const workspace = yield* install();
   const pm = yield* CI.PackageManager.JavaScript(workspace);
-  return () => pm.exec("vp run build");
+  return () => pm.exec("vp run --cache build");
 });
 
 export default CI.workflow("walkthrough", function* () {

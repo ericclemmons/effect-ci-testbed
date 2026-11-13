@@ -1,7 +1,7 @@
 // Runnable local journey. No GitHub repository, host, deployment, or Slack writes.
 import { execFileSync } from "node:child_process";
 import console from "node:console";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -28,8 +28,8 @@ const manifest = {
   private: true,
   type: "module",
   packageManager: "pnpm@12.8.1",
-  scripts: { build: "tsc -b && vp build" },
-  devDependencies: { "vite-plus": "1.0.0", typescript: "7.0.2" },
+  scripts: { build: "vp build", typecheck: "tsc -b" },
+  devDependencies: { "vite-plus": "1.6.0", typescript: "7.0.2" },
 };
 const saveManifest = () =>
   writeFileSync(join(project, "package.json"), JSON.stringify(manifest, null, 2));
@@ -52,19 +52,15 @@ command("pnpm", ["install", "--offline"]);
 const discovered = JSON.parse(run("list", "--format=json"));
 if (!discovered.targets.includes("build")) throw new Error("Build was not discovered");
 run("plan", "build", "--format=mermaid");
-run("run", "build", "--local", "--format=text");
-
-delete manifest.scripts.build;
-saveManifest();
-writeFileSync(
-  join(project, "vite.config.ts"),
-  'import { defineConfig } from "vite-plus";\n' +
-    readFileSync(new URL("cache-task.ts", import.meta.url), "utf8") +
-    "\nexport default defineConfig({ run: cachedBuild });\n",
-);
-run("run", "build", "--local", "--format=text");
-const repeated = run("run", "build", "--local", "--format=text");
-if (!/cache hit/.test(repeated)) throw new Error("Repeated build did not report a cache hit");
+// No input or output configuration: Vite+ traces the scripts' reads and writes.
+run("run", "typecheck", "build", "--local", "--format=text");
+const repeated = run("run", "typecheck", "build", "--local", "--format=text");
+if (!/vp build ◉ cache hit/.test(repeated))
+  throw new Error("Repeated build did not report a cache hit");
+rmSync(join(project, "dist"), { recursive: true });
+const restored = run("run", "build", "--local", "--format=text");
+if (!/vp build ◉ cache hit/.test(restored) || !existsSync(join(project, "dist/index.html")))
+  throw new Error("A cache hit did not restore deleted output");
 writeFileSync(join(project, "src/main.ts"), 'document.title = "Effect CI";');
 const changed = run("run", "build", "--local", "--format=text");
 if (!/cache miss/.test(changed)) throw new Error("Changed source did not report a cache miss");
@@ -75,6 +71,7 @@ const proof = {
   discovered: discovered.targets,
   localBuild: "passed",
   repeatedBuild: "cache hit",
+  deletedOutput: "restored",
   changedSource: "cache miss",
   notExercised: [
     "React/Worker starter",
