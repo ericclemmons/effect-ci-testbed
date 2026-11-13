@@ -3,7 +3,7 @@
 Terminal output is excerpted; hosted examples are illustrative. `<…>` values vary.
 
 - [ ] Build a React app and Worker API.
-- [ ] Inspect, cache, and run the build on Cloudflare.
+- [ ] Inspect, run, and cache the build with no configuration; run it on Cloudflare.
 - [ ] Write `ci.ts`; skip Markdown-only changes and unchanged output.
 - [ ] Deploy with OIDC; notify Slack and gate publication.
 - [ ] Lint while you build; publish only from `main`.
@@ -177,38 +177,72 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
 
 ## 5. Cache the build
 
-1. Apply these changes:
+There is nothing to configure. Effect CI runs `build`, `test`, `lint`, `check`
+and `typecheck` scripts with `vp run --cache`. Vite+ records the files each
+command reads and writes, then replays the run while those files are unchanged.
 
-   [`package.json`](./tutorial/package.diff "source")
-
-   [`vite.config.ts`](./tutorial/cache.diff "source")
-
-2. Run twice to prove unchanged inputs reuse the build:
+1. Run again:
 
    ```console frame="terminal"
    $ effect-ci run build
-   …
-
-   $ effect-ci run build
-   $ tsc -b ◉ cache hit, replaying
-   $ vp build ◉ cache hit, replaying
+   [build] vite+ build step 1: the cached run read no project files, so running without the cache
+   $ tsc -b ⊘ cache disabled
+   $ vp build ⊘ cache disabled
    …
    ```
 
-3. Change the API response:
+   On macOS, Vite+ cannot see what TypeScript 7's `tsc` reads
+   ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587)). A
+   hit would hide type errors, so Effect CI runs the script uncached. On Linux,
+   both commands are cached.
+
+2. Give type checking its own script:
+
+   [`package.json`](./tutorial/package.diff "source")
+
+3. Run twice to prove unchanged inputs reuse the build:
+
+   ```console frame="terminal"
+   $ effect-ci run typecheck build
+   …
+
+   $ effect-ci run typecheck build
+   $ vp build ◉ cache hit, replaying
+   …
+   ✓ build depends on install
+
+   ✓ typecheck depends on install
+   ```
+
+4. Change the API response:
 
    [`worker/index.ts`](./tutorial/worker.diff "source")
 
-4. Run again to prove source edits invalidate the cache:
+5. Run again to prove source edits invalidate the cache:
 
    ```console frame="terminal"
-   $ effect-ci run build
-   …
+   $ effect-ci run build -v
+   [build] vite+ build changes:
+   [build]   ± worker/index.ts
    $ vp build ○ cache miss: 'worker/index.ts' modified, executing
    …
    ```
 
+6. Delete the output and run once more. The hit restores it:
+
+   ```console frame="terminal"
+   $ rm -rf .cloudflare/output
+   $ effect-ci run build
+   $ vp build ◉ cache hit, replaying
+   …
+   ```
+
 - [ ] Unchanged inputs reuse the build; source edits invalidate its cache.
+- [ ] No input or output lists were written.
+
+Cached scripts run with a clean environment: only common variables such as
+`PATH`, `HOME` and `CI` pass through. `deploy`, `dev`, `preview` and other
+scripts always run, uncached.
 
 ## 6. Create a GitHub repository
 
@@ -346,6 +380,9 @@ This job uses push events; fork PR events are not enrolled.
 
    [`.cloudflare/ci/ci.ts`](./tutorial/ci.exec.ts "source")
 
+   An authored workflow runs exactly the commands you write. `vp run --cache`
+   keeps the build cached.
+
 4. Inspect your graph, then run its default goal:
 
    ```console frame="terminal"
@@ -379,7 +416,7 @@ This job uses push events; fork PR events are not enrolled.
      $ pnpm install --frozen-lockfile
    …
    ○ build depends on install
-     $ pnpm exec vp run build
+     $ pnpm exec vp run --cache build
    …
 
    $ effect-ci run --local

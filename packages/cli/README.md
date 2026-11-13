@@ -47,6 +47,13 @@ including transitive prerequisites and package scripts. Cross-package dependenci
 Effect CI plans.
 A name cannot appear in both package scripts and Vite+ tasks.
 
+When `vp` is installed, `build`, `test`, `lint`, `check`, `typecheck` and
+`compile` scripts (and `build:*` and similar) run with `vp run --cache <name>`.
+Vite+ traces the files they read and write, so they are cached without input or
+output lists. Cached scripts get a clean environment. Other scripts run with the
+package manager, uncached. Effect CI runs a script uncached when its cached run
+read no project files, because Vite+ could not trace it.
+
 Auto-discovered projects require an action name: `effect-ci run build`.
 Bare `effect-ci run` fails before initialization or execution. `list` and `plan`
 work without a name. The first named local run creates an empty

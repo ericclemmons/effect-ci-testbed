@@ -55,7 +55,10 @@ filesystem observation cannot capture them.
 
 ## Speed up an existing workflow
 
-Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
+Without a workflow, Effect CI already caches `build`, `test`, `lint`, `check` and
+`typecheck` scripts with `vp run --cache`; see [zero-config](../zero-config).
+In a workflow you write, `VitePlus(workspace).run(script, { cache: true })` does the
+same. Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
 your coding agent:
 
 ```text

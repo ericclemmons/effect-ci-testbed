@@ -1,6 +1,6 @@
 import { hasWorkloadIdentity, workloadHeaders } from "./workload-auth.ts"
 import { runOidc } from "./oidc.ts"
-import { vitePlusTasks } from "./vite-plus.ts"
+import { vitePlusAvailable, vitePlusTasks } from "./vite-plus.ts"
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { basename, dirname, join, relative, resolve } from "node:path"
@@ -9,6 +9,7 @@ import { parseArgs, parseEnv } from "node:util"
 import { projectEnvironment } from "./project-env.ts"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
+import { isCacheableScript, VitePlus } from "@effect-ci-testbed/ci/vite-plus"
 import * as Effect from "effect/Effect"
 import * as Logger from "effect/Logger"
 import { CurrentLogAnnotations, MinimumLogLevel } from "effect/References"
@@ -824,7 +825,17 @@ const inferJavaScriptProgram = (root: string): Program => {
     )
   }
 
-  return CI.fromPackageJson(manifest, { tasks: tasks.names, taskDependencies: tasks.dependencies })
+  return CI.fromPackageJson(manifest, {
+    tasks: tasks.names,
+    taskDependencies: tasks.dependencies,
+    // Vite+ infers each run's inputs and outputs, so build, test, lint and check scripts
+    // are cached without configuration. Hosted runners provide a global vp.
+    runTarget: (workspace, name, kind) => {
+      if (kind === "script" && !isCacheableScript(name)) return undefined
+      if (workspace.kind === "local" && !vitePlusAvailable(workspace.cwd)) return undefined
+      return VitePlus(workspace).pipe(Effect.flatMap(vp => vp.run(name, { cache: kind === "script" })))
+    },
+  })
 }
 
 /** Explicit local execution opts this package into script discovery, never remote or plan. */

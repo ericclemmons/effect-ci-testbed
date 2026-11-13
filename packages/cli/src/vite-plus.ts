@@ -35,3 +35,13 @@ export const vitePlusTasks = (root: string): {
   if (!result) throw new Error("Vite+ did not return task metadata")
   return JSON.parse(result.slice("EFFECT_CI_VITE_TASKS=".length)) as ReturnType<typeof vitePlusTasks>
 }
+
+/** Whether `vp` resolves the way the Vite+ toolchain runs it: globally, then from the project. */
+export const vitePlusAvailable = (cwd: string): boolean => {
+  try {
+    execFileSync("sh", ["-c", 'PATH="$PATH:$PWD/node_modules/.bin"; command -v vp'], { cwd, stdio: "ignore" })
+    return true
+  } catch {
+    return false
+  }
+}
