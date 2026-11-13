@@ -963,7 +963,7 @@ export const JavaScript = (
             workspace,
             install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
             run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
-            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : `${owner.name} exec`} ${command}`),
+            exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : owner.name === "npm" ? "npm exec --" : `${owner.name} exec`} ${command}`),
           }
         }
       }
@@ -1035,9 +1035,8 @@ export const JavaScript = (
         case "run":
           return `${executable} run ${JSON.stringify(value)}`
         case "exec":
-          return name === "bun"
-            ? `bunx ${value}`
-            : `${executable} exec ${value}`
+          if (name === "bun") return `bunx ${value}`
+          return name === "npm" ? `npm exec -- ${value}` : `${executable} exec ${value}`
       }
     }
 
