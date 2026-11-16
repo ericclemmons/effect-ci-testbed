@@ -1,10 +1,9 @@
-export const environments = ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare", "cf ci"]
+export const environments = ["GitHub Actions", "Effect CI (local)", "Effect CI on GitHub Actions", "Effect CI on Cloudflare"]
 
 // Implementations to compare side by side. `headline` is the environment whose coverage the product is judged by.
 export const products = [
   { id: "github", label: "GitHub Actions", headline: "GitHub Actions" },
   { id: "effect", label: "Effect CI", headline: "Effect CI on Cloudflare" },
-  { id: "cf-ci", label: "cf ci", headline: "cf ci" },
 ]
 
 const effectOrder = ["workflow.ts", "ci.ts", "actions.ts"]
@@ -18,7 +17,6 @@ export function implementationFiles(recipe, paths) {
     github: own.filter(path => path === ".github/workflows/github.yml"),
     effect: own.filter(path => /^\.cloudflare\/ci\/[^/]+\.ts$/.test(path))
       .sort((a, b) => rank(a.split("/").at(-1)) - rank(b.split("/").at(-1)) || a.localeCompare(b)),
-    "cf-ci": own.filter(path => path === ".cloudflare/cf-ci/src/index.ts"),
   }
 }
 
@@ -42,7 +40,7 @@ export function compatibility(coverage, readmes) {
   const extra = Object.entries(readmes)
     .map(([path, body]) => {
       const [, recipe] = path.match(/examples\/([^/]+)\/README\.md$/)
-      return { recipe, link: `./${recipe}`, title: body.match(/^# (.+)/m)?.[1] ?? recipe, cells: environments.map(environment => environment !== "cf ci") }
+      return { recipe, link: `./${recipe}`, title: body.match(/^# (.+)/m)?.[1] ?? recipe, cells: environments.map(() => true) }
     })
     .filter(row => !listed.has(row.recipe))
     .sort((a, b) => a.recipe.localeCompare(b.recipe))
@@ -55,14 +53,11 @@ export function checkNames(recipe, environment) {
   if (environment === "GitHub Actions") return [recipe.startsWith("oidc-") ? `${recipe} / github / live deployment` : `${recipe} / github`]
   if (environment === "Effect CI (local)") return [`${recipe} / local / execute`, `${recipe} / Cloudflare local runtime`]
   if (environment === "Effect CI on GitHub Actions") return [`${recipe} / effect-on-github / execute`]
-  // The recipe's .cloudflare/cf-ci pipeline writes this check itself through the GitHub app; recipes without one stay `—` in COVERAGE.md.
-  if (environment === "cf ci") return [`${recipe} / cf-ci`]
   return [`Cloudflare / ${recipe}`]
 }
 
 // The GitHub App that writes each environment's checks.
 export function checkApp(environment) {
   if (environment === "Effect CI on Cloudflare") return "effect-ci"
-  if (environment === "cf ci") return "cloudflare-workers-and-pages"
   return "github-actions"
 }

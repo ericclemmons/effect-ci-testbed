@@ -2,7 +2,31 @@
 
 Expose useful goals without exposing every setup step.
 
-[Source](./.cloudflare/ci/workflow.ts "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
+
+## Define the actions
+
+Create `.cloudflare/ci/actions.ts`. Start with the SDK import and a checkout
+action:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1 "source")
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=checkout "source")
+
+Add the check you want to run by name. It yields `checkout`, so checkout runs
+first:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=check "source {2}")
+
+## Export the goal from the workflow
+
+Create `.cloudflare/ci/workflow.ts`. Only named `CI.action` exports from the
+workflow file become CLI targets. This one exports `check` and not `checkout`:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source {7}")
+
+## Run it
 
 From the repository root:
 
@@ -12,25 +36,8 @@ effect-ci list
 effect-ci run check
 ```
 
-`check` runs its checkout prerequisite automatically. Checkout remains private:
-only named `CI.action` exports become CLI targets.
-
-[Workflow](./.cloudflare/ci/workflow.ts) · [Actions](./.cloudflare/ci/actions.ts)
+`check` runs its checkout prerequisite automatically. Checkout remains private.
 
 Use the same exported goal on your configured hosted service from the repository root:
 `effect-ci run check --remote --workflow examples/exported-actions/.cloudflare/ci/workflow.ts`.
 No recipe-specific deployment is required; remote execution uses the pushed commit.
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs the same `node --check
-app/index.js` as the GitHub Actions comparison. It has no command for running
-one check by name. It does not use Effect CI.
-
-```sh
-(cd examples/exported-actions/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs exported-actions
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

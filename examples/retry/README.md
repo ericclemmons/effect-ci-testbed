@@ -2,7 +2,27 @@
 
 Give a transient failure another chance, with a bounded delay.
 
-[Source](./.cloudflare/ci/actions.ts#symbol=flaky "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
+
+## Add a retry policy to the check
+
+In `.cloudflare/ci/actions.ts`, pass a `retries` option to the check. One retry
+means two total attempts, with a constant 1 second delay between them. To
+simulate a transient failure, this check reads `CI.Attempt`, fails on attempt 1,
+and passes on attempt 2:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts "source {10}")
+
+Use retries for operations safe to repeat. They do not make external writes
+idempotent. See [timeouts and execution policy](../execution-policy).
+
+## Run the check from the workflow
+
+Call the check from `.cloudflare/ci/workflow.ts`. The workflow needs nothing
+retry-specific:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source")
 
 ## Run it
 
@@ -10,26 +30,3 @@ Give a transient failure another chance, with a bounded delay.
 cd examples/retry
 effect-ci run
 ```
-
-The check deliberately fails on `CI.Attempt` 1 and passes on attempt 2.
-One retry means two total attempts.
-
-Use retries for operations safe to repeat. They do not make external writes
-idempotent. See [timeouts and execution policy](../execution-policy).
-
-[Actions](./.cloudflare/ci/actions.ts)
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs each attempt as its own
-step, with a constant 1 second delay between them. The check fails on attempt 1
-and passes on attempt 2. `step.runner()` can retry natively, but its command
-cannot see the attempt number. It does not use Effect CI.
-
-```sh
-(cd examples/retry/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs retry
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

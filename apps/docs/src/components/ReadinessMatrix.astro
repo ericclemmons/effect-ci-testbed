@@ -12,7 +12,7 @@ import { TabItem, Tabs } from "./ui/tabs"
 const readmes = import.meta.glob("../../../../examples/*/README.md", { query: "?raw", import: "default", eager: true })
 // import.meta.glob skips dot-directories, so read implementation sources directly.
 const root = [process.cwd(), join(process.cwd(), "../..")].find(dir => existsSync(join(dir, "examples/COVERAGE.md")))!
-const sourceDirs = [".github/workflows", ".cloudflare/ci", ".cloudflare/cf-ci/src"]
+const sourceDirs = [".github/workflows", ".cloudflare/ci"]
 const sources = Object.fromEntries(readdirSync(join(root, "examples"), { withFileTypes: true }).filter(entry => entry.isDirectory())
   .flatMap(entry => sourceDirs.flatMap(dir => {
     const path = join(root, "examples", entry.name, dir)
@@ -31,7 +31,7 @@ function featureHref(link) {
 const snapshot = validateSnapshot(readiness)
 const results = groups.map(group => ({ ...group, rows: group.rows.map(row => ({ ...row,
   results: row.cells.map((applicable, index) => applicable ? cellResult(snapshot, checkNames(row.recipe, environments[index]), checkApp(environments[index])) : undefined),
-  files: row.recipe ? implementationFiles(row.recipe, Object.keys(sources)) : { github: [], effect: [], "cf-ci": [] },
+  files: row.recipe ? implementationFiles(row.recipe, Object.keys(sources)) : { github: [], effect: [] },
 })) }))
 const rows = results.flatMap(group => group.rows)
 const cells = rows.flatMap(row => row.results).filter(Boolean)
@@ -40,9 +40,9 @@ const percent = (count, total) => Math.round(count / total * 100)
 const environmentCoverage = environments.map((_, index) => rows.filter(row => row.results[index]?.passing).length)
 const checkedAt = new Date(snapshot.fetchedAt).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC")
 const language = (path) => path.endsWith(".yml") ? "yaml" : "ts"
-// Second header row: Effect CI spans three environments; the other products have one.
-const environmentLabels = ["", "Local", "GitHub Actions", "Hosted", ""]
-const missing = { github: "No GitHub Actions comparison for this recipe.", effect: "No Effect CI workflow for this recipe.", "cf-ci": "Not ported to cf ci yet." }
+// Second header row: Effect CI spans three environments; GitHub Actions has one.
+const environmentLabels = ["", "Local", "GitHub Actions", "Hosted"]
+const missing = { github: "No GitHub Actions comparison for this recipe.", effect: "No Effect CI workflow for this recipe." }
 ---
 <section class="readiness" aria-label="Feature readiness" data-readiness>
   <div class="features" aria-label="Feature compatibility on main, grouped by recipe">
@@ -50,7 +50,6 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
       <span class="head-feature">Feature</span>
       <span class="head-product" style="grid-column: 2">GitHub Actions</span>
       <span class="head-product head-span" style="grid-column: 3 / span 3">Effect CI</span>
-      <span class="head-product" style="grid-column: 6">cf ci</span>
       {environments.map((_, index) => environmentLabels[index] && <span class="environment" style={`grid-column: ${index + 2}; grid-row: 2`}>{environmentLabels[index]}</span>)}
       <a class="overall" href={`${repository}/commit/${snapshot.sha}`} title={`${passed} / ${cells.length} passing on main · ${snapshot.sha.slice(0, 7)} · ${snapshot.total_count} completed checks · ${checkedAt}`}>
         <progress max={cells.length} value={passed}></progress>
@@ -98,7 +97,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   a { color: var(--nb-brand); }
 
 
-  .features { --cells: repeat(5, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
+  .features { --cells: repeat(4, minmax(3.2rem, 5.5rem)); font-size: .875rem; }
   .feature-head, summary { display: grid; grid-template-columns: minmax(12rem, 1fr) var(--cells); align-items: center; gap: .25rem; min-width: 36rem; }
   .feature-head { grid-template-rows: auto auto auto; row-gap: .2rem; align-items: end; position: sticky; top: var(--nb-header-height, 3.5rem); z-index: 2; background: var(--nb-background, var(--color-background)); border-bottom: 1px solid var(--nb-border); padding: .5rem .3rem; font-size: .7rem; font-weight: 600; line-height: 1.25; }
   .head-product { text-align: center; }
@@ -117,7 +116,7 @@ const missing = { github: "No GitHub Actions comparison for this recipe.", effec
   a.square:not([data-passing]):not([data-failing]) { color: var(--nb-foreground); font-weight: 600; }
   a.square:hover, a.square:focus-visible { outline: 2px solid var(--nb-foreground); outline-offset: 3px; }
 
-  .compare { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 .75rem; background: var(--nb-border); border: 1px solid var(--nb-border); }
+  .compare { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0 0 .75rem; background: var(--nb-border); border: 1px solid var(--nb-border); }
   .compare::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 2px 4px rgb(0 0 0 / .05); }
   .implementation { min-width: 0; display: flex; flex-direction: column; background: var(--nb-card); }
   .implementation-head { padding: .5rem .75rem 0; font-size: .8125rem; font-weight: 500; color: var(--nb-muted-foreground); }

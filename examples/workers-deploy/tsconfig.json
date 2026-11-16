@@ -10,6 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": [".cloudflare/**/*.ts", "cloudflare.config.ts", "src/**/*.ts", "test/**/*.ts", "vite.config.ts"],
-  "exclude": [".cloudflare/cf-ci"]
+  "include": [".cloudflare/**/*.ts", "cloudflare.config.ts", "src/**/*.ts", "test/**/*.ts", "vite.config.ts"]
 }

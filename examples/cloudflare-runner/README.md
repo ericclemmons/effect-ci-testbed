@@ -2,13 +2,31 @@
 
 Run checkout, install, and build as durable actions without handling snapshot IDs.
 
-An action returns its updated workspace:
+The Cloudflare runner checkpoints each action's workspace and restores it after
+suspension or container eviction. This example disables live reuse so every
+consumer restores its prerequisite's saved revision.
 
-[Source](./.cloudflare/ci/actions.ts#symbol=build "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
-The Cloudflare runner checkpoints that workspace and restores it after suspension
-or container eviction. This example disables live reuse so every consumer restores
-its prerequisite's saved revision.
+## Return the workspace from each action
+
+Create `.cloudflare/ci/actions.ts`. Each action returns its updated workspace.
+That return value is what the runner saves:
+
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts "source")
+
+Create `.cloudflare/ci/workflow.ts`. It builds on manual runs:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts "source")
+
+## Add the Worker adapter
+
+Export the workflow as a Cloudflare Workflow entrypoint in `src/worker.ts`.
+`reuseWorkspace: false` makes every action restore from its prerequisite's
+checkpoint instead of reusing a live container:
+
+[`src/worker.ts`](./src/worker.ts#symbol=EffectCIWorkflow "source {3}")
 
 ## Try it
 
@@ -20,17 +38,3 @@ effect-ci run
 ```
 
 For native execution, follow the [host setup](../../apps/effect-ci/SELF-HOST.md).
-[Worker adapter](./src/worker.ts) · [Actions](./.cloudflare/ci/actions.ts)
-
-## cf ci comparison
-
-[cf ci workflow](./.cloudflare/cf-ci/src/index.ts) runs `npm ci` and `npm run
-build` in `app/` as two durable steps. It does not use Effect CI.
-
-```sh
-(cd examples/cloudflare-runner/.cloudflare/cf-ci && npm ci)
-node scripts/cf-ci.mjs cloudflare-runner
-```
-
-See [node-npm](../node-npm/README.md#cf-ci-comparison) for how the script
-deploys the pipeline and checks the run.

@@ -10,23 +10,25 @@ The difference is orchestration: the single-machine workflow runs the existing
 its tasks into dependency-linked CI actions. Neither workflow lists packages or
 manually groups parallel actions.
 
-[Workflow](./.cloudflare/ci/workflow.ts "source")
+The snippets on this page come from this example's files, which CI runs end to
+end.
 
 ## Real work, existing configuration
 
 Core compiles JavaScript and type declarations with TypeScript. Web and admin
 each bundle a browser app with esbuild, copy their HTML entrypoint, and run a
 TypeScript check. Both apps import core through its normal package exports.
+See the [shared catalog](./app/packages/core/src/index.ts),
+[storefront](./app/packages/web/src/main.ts), and
+[inventory dashboard](./app/packages/admin/src/main.ts) sources. Each app has
+ordinary package scripts:
 
-[Shared catalog](./app/packages/core/src/index.ts "source")
+[`app/packages/web/package.json`](./app/packages/web/package.json#json=scripts "source")
 
-[Storefront](./app/packages/web/src/main.ts "source")
+The workflow reads the project's native Turbo configuration. Nothing in it is
+specific to Effect CI:
 
-[Inventory dashboard](./app/packages/admin/src/main.ts "source")
-
-[App commands](./app/packages/web/package.json#json=scripts "source")
-
-[Native task configuration](./app/turbo.json "source")
+[`app/turbo.json`](./app/turbo.json#json=tasks "source")
 
 Both app builds and checks depend on `^build`. Turbo supplies five nodes:
 core's build, then each app's build and check. The adapter can dispatch those four
@@ -37,8 +39,31 @@ The final workspace contains core's JavaScript/declarations and both apps'
 
 Existing tag rules still apply: `ci` includes entrypoints, `!ci` excludes them,
 and required dependencies remain. Core builds despite its `!ci` tag; core's
-unused check and the legacy package do not run. `turbo.tags(...labels)` selects
-a union of positive labels using Turbo's resolved-tag query.
+unused check and the legacy package do not run. The
+[single-machine recipe](../turbo-ci) shows each package override.
+
+## Define the workflow
+
+Create `.cloudflare/ci/workflow.ts`. Start with the imports:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#L1-L2 "source")
+
+Check out `app` and install its dependencies:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=checkout "source")
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=install "source")
+
+Then ask Turbo for its graph. `turbo.tags(...labels)` selects a union of
+positive labels using Turbo's resolved-tag query, and turns each selected task
+into a dependency-linked CI action:
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=default "source {4-5}")
+
+Finally, export a `local` runner so the CLI can give each task its own
+snapshot. [Run it](#run-it) explains what it does.
+
+[`.cloudflare/ci/workflow.ts`](./.cloudflare/ci/workflow.ts#symbol=local "source")
 
 ## Run it
 
@@ -55,9 +80,7 @@ not in example-specific infrastructure. It copies only the explicitly selected
 `app` directory, installs with a frozen lockfile, and gives each action its own
 working copy. The CLI disposes of those copies on success or failure.
 
-[Local runner configuration](./.cloudflare/ci/workflow.ts#symbol=local "source")
-
-[Reusable snapshot runner](../../packages/local-container/README.md)
+See the [reusable snapshot runner](../../packages/local-container/README.md).
 
 This local mode runs trusted commands on one host, not in physical Containers or
 a security sandbox. It demonstrates graph execution and output/cache transfer,
@@ -115,9 +138,12 @@ Turbo owns task commands, hashes, environment filtering, and cache restoration.
 The adapter never extracts commands or rewrites dependencies. Each invocation
 uses an explicit run-local cache directory; no remote cache service is required.
 
-[SDK adapter](../../packages/ci/src/turbo.ts "source")
+[SDK adapter](../../packages/ci/src/turbo.ts#symbol=makeTurboToolchain "source")
 
-[Native execution bridge](../../packages/ci/src/turbo-bridge.ts "source")
+The adapter sends each operation to the
+[native execution bridge](../../packages/ci/src/turbo-bridge.ts) as one request:
+
+[Bridge request](../../packages/ci/src/turbo-bridge.ts#symbol=TurboBridgeRequest "source")
 
 Ordinary `effect-ci plan` records discovery only. Source-bound native graph
 expansion happens after checkout and installation during execution, not before.

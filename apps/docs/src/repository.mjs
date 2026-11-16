@@ -1,5 +1,5 @@
 import { globSync, readFileSync } from "node:fs"
-import { dirname, extname, relative, resolve } from "node:path"
+import { basename, dirname, extname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parse } from "@babel/parser"
 
@@ -81,11 +81,39 @@ function target(url, from) {
   return { absolute, path: relative(root, absolute), fragment }
 }
 
+const languages = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".jsonc": "jsonc", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff", ".sh": "sh", ".toml": "toml", ".txt": "text" }
+const language = (path) => basename(path) === "Dockerfile" ? "dockerfile" : languages[extname(path)] ?? "text"
+
+/** `"source"` links may carry Nimbus fence meta, such as `"source {2} ins=\"COPY\""`. */
+const sourceTitle = (title) => title?.match(/^source(?:\s+(.+))?$/)
+
+function validateMeta(meta, value, url) {
+  const count = value.split("\n").length
+  for (const [, spec] of meta.replace(/"[^"]*"|'[^']*'/g, " ").matchAll(/\{([^}]*)\}/g)) {
+    for (const range of spec.split(",")) {
+      const [start, end = start] = range.trim().split("-").map(Number)
+      if (!(start >= 1 && end >= start && end <= count)) throw new Error(`Highlighted lines {${spec}} are outside the ${count}-line snippet: ${url}`)
+    }
+  }
+  for (const [, double, single] of meta.matchAll(/"([^"]*)"|'([^']*)'/g)) {
+    const text = double ?? single
+    if (!value.includes(text)) throw new Error(`Highlighted text "${text}" is missing from the snippet: ${url}`)
+  }
+}
+
 function snippet(url, from) {
   const file = target(url, from)
   let value = readFileSync(file.absolute, "utf8").trimEnd()
   let lines = ""
-  if (file.fragment?.startsWith("symbol=")) {
+  const range = file.fragment?.match(/^L(\d+)(?:-L?(\d+))?$/)
+  if (range) {
+    const start = Number(range[1])
+    const end = Number(range[2] ?? start)
+    const source = value.split("\n")
+    if (!(start >= 1 && end >= start && end <= source.length)) throw new Error(`Lines ${file.fragment} are outside the ${source.length}-line file ${file.path}`)
+    value = source.slice(start - 1, end).join("\n")
+    lines = start === end ? `#L${start}` : `#L${start}-L${end}`
+  } else if (file.fragment?.startsWith("symbol=")) {
     const name = file.fragment.slice(7)
     const source = parse(value, { sourceType: "module", plugins: ["typescript"] })
     let statements = source.program.body
@@ -93,7 +121,7 @@ function snippet(url, from) {
     for (const part of name.split(".")) {
       statement = statements.find((node) => {
         const declaration = node.type === "ExportNamedDeclaration" ? node.declaration : node
-        return declaration?.id?.name === part ||
+        return declaration?.id?.name === part || node.key?.name === part ||
           declaration?.declarations?.some((item) => item.id.name === part) ||
           (part === "default" && node.type === "ExportDefaultDeclaration")
       })
@@ -104,7 +132,9 @@ function snippet(url, from) {
     if (!statement) throw new Error(`Missing documented symbol ${name} in ${file.path}`)
     const start = statement.loc.start.line
     const end = statement.loc.end.line
-    value = value.slice(statement.start, statement.end)
+    const indent = statement.loc.start.column
+    value = value.slice(statement.start - indent, statement.end).split("\n")
+      .map(line => line.slice(Math.min(indent, line.match(/^ */)[0].length))).join("\n")
     lines = `#L${start}-L${end}`
   } else if (file.fragment?.startsWith("json=")) {
     const key = file.fragment.slice(5)
@@ -114,8 +144,7 @@ function snippet(url, from) {
   } else if (file.fragment) {
     throw new Error(`Unknown source selector: ${url}`)
   }
-  const language = { ".ts": "ts", ".mts": "ts", ".js": "js", ".mjs": "js", ".json": "json", ".yml": "yaml", ".yaml": "yaml", ".diff": "diff" }[extname(file.path)] ?? "text"
-  return { ...file, value, language, url: `${repository}/blob/main/${file.path}${lines}` }
+  return { ...file, value, language: language(file.path), url: `${repository}/blob/main/${file.path}${lines}` }
 }
 
 /** Standard Markdown source links stay clickable on GitHub and expand on the site. */
@@ -134,14 +163,16 @@ export function repositoryMarkdown() {
     function walk(node) {
       if (!node.children) return
       node.children = node.children.flatMap((child) => {
-        if (child.type === "paragraph" && child.children.length === 1 && child.children[0].type === "link" && child.children[0].title === "source") {
+        if (child.type === "paragraph" && child.children.length === 1 && child.children[0].type === "link" && sourceTitle(child.children[0].title)) {
           const link = child.children[0]
+          const [, meta = ""] = sourceTitle(link.title)
           const code = snippet(link.url, from)
+          validateMeta(meta, code.value, link.url)
           link.url = code.url
           link.title = null
           const [label] = link.children
           const filename = link.children.length === 1 && label.type === "inlineCode" ? label.value : undefined
-          const block = { type: "code", lang: code.language, meta: `title="${(filename ?? code.path).replaceAll('"', '&quot;')}"`, value: code.value }
+          const block = { type: "code", lang: code.language, meta: `title="${(filename ?? code.path).replaceAll('"', '&quot;')}" ${meta}`.trim(), value: code.value }
           return filename ? [block] : [child, block]
         }
         if (child.type === "link" || child.type === "image") child.url = rewrite(child.url, child.type === "image")
@@ -159,6 +190,6 @@ export function repositoryMarkdown() {
 }
 
 export function dependencies(page) {
-  return [resolve(root, page.path), ...[...page.body.matchAll(/\]\(([^\s)]+) "source"\)/g)]
+  return [resolve(root, page.path), ...[...page.body.matchAll(/\]\(([^\s)]+) ["'(]source[\s"')]/g)]
     .map(([, url]) => target(url, resolve(root, page.path)).absolute)]
 }

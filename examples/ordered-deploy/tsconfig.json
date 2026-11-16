@@ -10,6 +10,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": [".cloudflare/**/*.ts", "apps/**/*.ts"],
-  "exclude": [".cloudflare/cf-ci"]
+  "include": [".cloudflare/**/*.ts", "apps/**/*.ts"]
 }

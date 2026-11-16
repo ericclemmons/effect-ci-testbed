@@ -126,11 +126,31 @@ site, with that filename as its caption:
 Diff files use highlighted `diff` syntax. GitHub still shows a source link.
 
 To show one TypeScript declaration, append `#symbol=name` (or `#symbol=outer.inner`
-for a nested declaration) to its path. To show one
+for a nested declaration or class member, such as `#symbol=MyWorkflow.run`) to its path. To show one
 top-level JSON property, append `#json=key`. Selection uses the source declaration
-or JSON key, so moving code does not require updating line numbers. Missing files,
-symbols, and keys fail the build. Shell commands and example output can remain
-ordinary fences; executable code and configuration should link to their source.
+or JSON key, so moving code does not require updating line numbers. For files
+without declarations, such as a Dockerfile, append GitHub's line anchor (`#L3` or
+`#L3-L4`); the GitHub link then highlights the same lines.
+
+To highlight part of a snippet, add fence options after `source` in the title.
+`{2}` or `{7-8}` highlights lines, counted from the first line of the snippet.
+A quoted string highlights that text wherever it appears. The other options
+also work, such as `ins={3}` and `del={3}`:
+
+```md
+[`Dockerfile`](./Dockerfile "source {3}")
+[`actions.ts`](./.cloudflare/ci/actions.ts#symbol=buildImage "source 'docker build'")
+```
+
+Missing files, symbols, keys, line ranges, and highlighted text fail the build.
+If the source changes and a snippet no longer matches, the build fails instead of
+publishing stale docs. Shell commands and example output can remain ordinary
+fences; executable code and configuration should link to their source.
+
+Write each example README as a walkthrough for adding the feature to an existing
+project. Embed the files a reader creates or changes, in order, and skip fixture
+noise. See
+[Build and publish a container image](../../examples/custom-container-image).
 
 For a real example, see the [exported action recipe](../../examples/exported-actions).
 README edits and included source edits refresh the development site. Internal doc

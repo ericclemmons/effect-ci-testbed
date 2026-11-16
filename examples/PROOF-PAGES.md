@@ -28,7 +28,7 @@ where the backend exposes them. Unknown is not zero. State dependency/cache stat
 cold/warm conditions and sample count; one run is not a benchmark distribution.
 Keep raw timings even when the presentation is cut or sped up.
 
-Conventional GitHub Actions, Effect CI (local), Effect CI on GitHub Actions, Effect CI on Cloudflare, cf ci
+Conventional GitHub Actions, Effect CI (local), Effect CI on GitHub Actions, Effect CI on Cloudflare
 and future GitLab CI have separate evidence. Reading GitLab source does not verify
 GitLab execution. Local workerd does not verify hosted CPU enforcement. A DO source
 does not make its Container consumer containerless. An expected failing workflow
