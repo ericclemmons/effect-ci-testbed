@@ -40,7 +40,8 @@ reveal more during execution.
 Without a workflow, every `package.json` script is an action. In Vite+ projects,
 tasks under `run.tasks` in `vite.config.ts` are actions too. Install the project's
 dependencies first so the CLI can use its Vite+ config loader. Vite+ owns task
-dependencies and caching; Effect CI invokes config tasks with `vp run <name>`.
+dependencies and caching; Effect CI invokes config tasks with
+`PackageManager.VitePlus(workspace).run(name)`, which runs `vp run <name>`.
 Plans show same-package prerequisites declared with `dependsOn: ["build", "lint"]`,
 including transitive prerequisites and package scripts. Cross-package dependencies
 (`package#task` and `{ task, from }`) remain inside Vite+ and are not expanded in
@@ -55,6 +56,8 @@ a script out, define it as a Vite+ task with `cache: false` in `vite.config.ts`,
 `PATH`, `HOME`, `CI`, `*_TOKEN` and similar pass through. Effect CI runs a script
 uncached when its cached run read no project files, because Vite+ could not trace it.
 Without `vp`, and in runner workspaces, scripts run with the package manager.
+Installs always use the detected package manager: run from a nested project,
+`vp` can select the enclosing monorepo's manager instead of the project's lockfile.
 
 Auto-discovered projects require an action name: `effect-ci run build`.
 Bare `effect-ci run` fails before initialization or execution. `list` and `plan`

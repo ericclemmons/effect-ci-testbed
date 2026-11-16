@@ -29,3 +29,23 @@ changes. Each command returns a workspace for the next action.
 [Run a script](../../examples/node-npm/.cloudflare/ci/actions.ts#symbol=test "source")
 
 [npm](../../examples/node-npm) · [pnpm](../../examples/node-pnpm)
+
+## Vite+
+
+Vite+ is not a fifth manager. `name` stays npm, pnpm, Yarn, or Bun: that manager
+owns the lockfile, the frozen install, and the runner's package cache under
+`.effect-ci/cache/<name>`. Vite+ only changes `run`.
+
+Where the host provides `vp`, `CI.PackageManager.JavaScript(workspace).run(name)`
+runs `vp run --cache <name>`, so Vite+ caches each script from the files it reads
+and writes. The CLI does this for local workspaces. Elsewhere, `run` uses the
+detected manager, and `vitePlus` is `false`.
+
+`CI.PackageManager.VitePlus(workspace)` always runs through Vite+, so `run` also
+covers `vite.config.ts` tasks. It uses the global `vp`, or the project's own from
+`node_modules/.bin`. Pass `{ cache: false }` to leave script caching to the Vite+
+config.
+
+[Run a Vite+ task](../../examples/vite-plus-cache/.cloudflare/ci/actions.ts#symbol=build "source")
+
+[Vite+ cache](../../examples/vite-plus-cache) · [zero-config](../../examples/zero-config)
