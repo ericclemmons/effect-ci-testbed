@@ -40,9 +40,30 @@ export interface WorkflowStepConfig {
 
 export type StepOptions = WorkflowStepConfig
 
+/**
+ * `inputs` (the default): reuse a pass whenever the files and env vars its traced commands
+ * read are unchanged, on any commit, so it survives rebases and squashes.
+ * `commit`: reuse a pass only for the same commit.
+ */
+export type CheckReuseScope = "commit" | "inputs"
+
 export interface CheckOptions extends StepOptions {
-  /** Allow a trusted runner to reuse this side-effect-free check for the same commit. */
-  readonly reuse?: { readonly scope: "commit" }
+  /** Allow a trusted runner to reuse this side-effect-free check. `true` reuses by inputs. */
+  readonly reuse?: true | { readonly scope?: CheckReuseScope }
+}
+
+/** How a tool can report what a command read. Vite+ traces the files a task reads with fspy. */
+export interface CommandTrace {
+  readonly tool: "vite-plus"
+  /** The task or package.json script `vp run --cache` ran. */
+  readonly task: string
+}
+
+export interface ExecOptions {
+  readonly trace?: CommandTrace
+  /** A read-only command that only describes the step, such as a cache dry run.
+   * It runs every time and never makes a reused check count as executed. */
+  readonly diagnostic?: boolean
 }
 
 type InternalStepOptions = StepOptions & Pick<CheckOptions, "reuse">
@@ -339,6 +360,7 @@ interface RuntimeShape {
     stepId: string,
     workspace: Workspace,
     command: string,
+    options?: ExecOptions,
   ) => Effect.Effect<Workspace, CommandFailure>
   readonly readFile: (
     stepId: string,
@@ -661,12 +683,12 @@ export class Workspace {
     return new Workspace(join(this.cwd, path), this.kind, this.id, this.revision)
   }
 
-  exec(command: string): Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep> {
+  exec(command: string, options?: ExecOptions): Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep> {
     const workspace = this
     return Effect.gen(function* () {
       const runtime = yield* Runtime
       const stepId = yield* CurrentStep
-      return yield* runtime.execute(stepId, workspace, command)
+      return yield* runtime.execute(stepId, workspace, command, options)
     })
   }
 
@@ -868,6 +890,28 @@ export const Apt = (
     }
   })
 
+/**
+ * Runs a package.json script, or returns `undefined` to use the package manager. The CLI
+ * provides one that runs scripts with `vp run --cache`, so Vite+ caches them.
+ */
+export type ScriptRunnerShape = (
+  workspace: Workspace,
+  script: string,
+) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep> | undefined
+
+export const ScriptRunner = Context.Reference<ScriptRunnerShape>("@effect-ci-testbed/ScriptRunner", {
+  defaultValue: () => () => undefined,
+})
+
+const runScript = (
+  workspace: Workspace,
+  script: string,
+  command: string,
+): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> => Effect.gen(function* () {
+  const runner = yield* ScriptRunner
+  return yield* (runner(workspace, script) ?? workspace.exec(command))
+})
+
 export interface JavaScriptInstallOptions {
   readonly frozenLockfile?: boolean
   readonly offline?: boolean
@@ -879,7 +923,8 @@ export interface JavaScriptPackageManager {
   readonly install: (
     options?: JavaScriptInstallOptions,
   ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
-  readonly run: (script: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
+  /** Runs a package.json script. A host's `ScriptRunner` can run it another way, such as cached. */
+  readonly run: (script: string) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>
   readonly exec: (command: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
 
@@ -962,7 +1007,7 @@ export const JavaScript = (
             ...owner,
             workspace,
             install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
-            run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
+            run: (script: string) => runScript(workspace, script, `${owner.name} run ${JSON.stringify(script)}`),
             exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : owner.name === "npm" ? "npm exec --" : `${owner.name} exec`} ${command}`),
           }
         }
@@ -1055,7 +1100,7 @@ export const JavaScript = (
           workspace.kind === "remote" || runtime.ci,
         ))
       }),
-      run: (script: string) => workspace.exec(command("run", script)),
+      run: (script: string) => runScript(workspace, script, command("run", script)),
       exec: (executable: string) => workspace.exec(command("exec", executable)),
     }
   }).pipe(
@@ -1281,8 +1326,10 @@ export interface CommandExecutor {
 export interface CheckCacheRequest {
   readonly command: string
   readonly event: WorkflowEventShape
-  readonly policy: { readonly scope: "commit" }
+  readonly policy: { readonly scope: CheckReuseScope }
   readonly stepId: string
+  /** What the command reports about its reads, when a tool traces them. */
+  readonly trace?: CommandTrace
   readonly workflowId: string
   readonly workspace: Workspace
 }
@@ -2292,7 +2339,7 @@ const makeRuntime = (
         })
         return true
       }),
-      execute: (stepId, workspace, command) => {
+      execute: (stepId, workspace, command, execOptions) => {
         const node = nodes.get(stepId)
         if (!node) return Effect.die(new Error(`Missing plan node for ${stepId}`))
 
@@ -2318,9 +2365,11 @@ const makeRuntime = (
           })()
           : Effect.void
 
-        const policy = definitions.get(stepId)?.options.reuse
-        const checkCacheRequest = policy
-          ? { command, event, policy, stepId, workflowId, workspace }
+        const reuse = definitions.get(stepId)?.options.reuse
+        const policy = reuse && { scope: reuse === true ? "inputs" as const : reuse.scope ?? "inputs" }
+        const checkCacheRequest = policy && !execOptions?.diagnostic
+          ? { command, event, policy, stepId, workflowId, workspace,
+            ...(execOptions?.trace ? { trace: execOptions.trace } : {}) }
           : undefined
         const verified = checkCache && checkCacheRequest && !force
           ? cacheOrElse(() => checkCache.lookup(checkCacheRequest), false)
@@ -2334,7 +2383,7 @@ const makeRuntime = (
               return Effect.succeed(workspace)
             }
 
-            node.executedCommands++
+            if (!execOptions?.diagnostic) node.executedCommands++
             const definitionOptions = definitions.get(stepId)?.options
             return commandExecutor.execute({
               command,
@@ -2807,6 +2856,15 @@ export const fromPackageJson = (manifest: {
   readonly tasks?: ReadonlyArray<string>
   /** Local Vite+ prerequisites, used only to describe the plan. Vite+ executes them. */
   readonly taskDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
+  /**
+   * Runs a discovered script or Vite+ task. Return `undefined` to use the package manager,
+   * which runs scripts through the host's `ScriptRunner`.
+   */
+  readonly runTarget?: (
+    workspace: Workspace,
+    name: string,
+    kind: "script" | "task",
+  ) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep> | undefined
 } = {}) => {
   const tasks = new Set(options.tasks)
   const scripts = Object.keys(manifest.scripts ?? {})
@@ -2846,6 +2904,8 @@ export const fromPackageJson = (manifest: {
         for (const dependency of options.taskDependencies?.[name] ?? []) yield* actions[dependency]!()
       }
       const workspace = yield* install()
+      const custom = options.runTarget?.(workspace, name, tasks.has(name) ? "task" : "script")
+      if (custom) return yield* custom
       const packageManager = yield* PackageManager.JavaScript(workspace)
       return yield* tasks.has(name)
         ? packageManager.exec(`vp run '${name.replaceAll("'", "'\\''")}'`)

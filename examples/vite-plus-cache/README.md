@@ -87,7 +87,9 @@ applies to remote runs.
 
 ## Speed up an existing workflow
 
-Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
+Effect CI already caches every package script with `vp run --cache`, with or
+without a workflow: `PackageManager.JavaScript(workspace).run(script)` uses it.
+See [zero-config](../zero-config). Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
 your coding agent:
 
 ```text

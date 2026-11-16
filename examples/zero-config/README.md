@@ -35,6 +35,13 @@ workflow exists. `plan` and `list` do not create files.
 Add [.cloudflare/ci/workflow.ts](../node-pnpm/.cloudflare/ci/workflow.ts) when you
 need custom ordering or parallelism; it replaces script discovery.
 
+## Cache them
+
+Run `effect-ci run build` twice: the second run replays the cached result. Every
+script runs with `vp run --cache`, so Vite+ learns its inputs and outputs from the
+files it reads and writes. To opt a script out, define it as a Vite+ task with
+`cache: false` in `vite.config.ts`, or pass `--force`.
+
 ## Run remotely
 
 For remote script discovery, run
