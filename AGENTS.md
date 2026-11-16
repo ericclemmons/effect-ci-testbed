@@ -11,6 +11,9 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 
 ## How we work
 
+This is an autorepo: agents manage it. Agents may write and edit PR descriptions,
+and post PR comments and review replies, without asking first.
+
 This is a prototype. Test real-world examples end to end, not the implementation.
 Don't write tests that lock a buggy prototype in place by asserting its internal
 details.
