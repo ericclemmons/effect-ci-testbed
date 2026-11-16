@@ -15,6 +15,7 @@ import { boundedCommandOutput, type CommandDiagnostics } from "./command-diagnos
 import { makeSourceQueries, type SourceComparison, type SourceChanges, type SourceQueries } from "./source-changes.ts"
 import { pathPatterns } from "./paths.ts"
 import { makeTurboToolchain } from "./turbo.ts"
+import { cacheLog, untracedHits } from "./vite-plus.ts"
 export type { SourceComparison, SourceChanges, SourceQueries } from "./source-changes.ts"
 export { makeRuntimeObservers, type RuntimeObservation, type RuntimeObserver, type RuntimeObservers, type ObservationReceipt } from "./observers.ts"
 export { boundedCommandOutput, commandDiagnosticLimit, encodeCommandDiagnostics, decodeCommandDiagnostics, type CommandDiagnostics } from "./command-diagnostics.ts"
@@ -891,25 +892,51 @@ export const Apt = (
   })
 
 /**
- * Runs a package.json script, or returns `undefined` to use the package manager. The CLI
- * provides one that runs scripts with `vp run --cache`, so Vite+ caches them.
+ * Whether the host can run `vp` in a workspace. When it can, `PackageManager.JavaScript`
+ * runs scripts through Vite+. The CLI enables it for local workspaces where `vp` resolves.
  */
-export type ScriptRunnerShape = (
-  workspace: Workspace,
-  script: string,
-) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep> | undefined
+export const VitePlusAvailable = Context.Reference<(workspace: Workspace) => boolean>(
+  "@effect-ci-testbed/VitePlusAvailable",
+  { defaultValue: () => () => false },
+)
 
-export const ScriptRunner = Context.Reference<ScriptRunnerShape>("@effect-ci-testbed/ScriptRunner", {
-  defaultValue: () => () => undefined,
-})
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
-const runScript = (
+// Prefer the global vp; fall back to the project's own when a runner has none.
+const vp = `PATH="$PATH:$PWD/node_modules/.bin" vp`
+
+/**
+ * Runs a script or Vite+ task with `vp run -v`. A dry run first logs whether each step would
+ * hit the cache, and every change behind a miss; at Debug, also the cached run's inputs and
+ * outputs. A forced run (`effect-ci run --force`) adds `--no-cache`, so every step runs.
+ */
+const vitePlusRun = (
   workspace: Workspace,
-  script: string,
-  command: string,
+  name: string,
+  cache: boolean,
 ): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> => Effect.gen(function* () {
-  const runner = yield* ScriptRunner
-  return yield* (runner(workspace, script) ?? workspace.exec(command))
+  let noCache = (yield* force) ? " --no-cache" : cache ? " --cache" : ""
+  let traced = !(yield* force)
+  if ((yield* executionMode) === "execute") {
+    // Always -vv: the cached run's inputs show whether its trace can be trusted.
+    // In node_modules, so the plan is never an input of the task it describes.
+    // One file per task, so parallel steps never read each other's plan.
+    const file = `node_modules/.effect-ci-vite-plus-run-plan-${name.replaceAll(/[^\w-]/g, "_")}.json`
+    yield* workspace.exec(`mkdir -p node_modules && ${vp} run --dry-run --json${noCache} -vv ${shellQuote(name)} > ${file}`,
+      { diagnostic: true })
+    const body = yield* workspace.readFile(file)
+    if (body === undefined) return yield* Effect.fail(new Error(`Vite+ wrote no run plan to ${file}`))
+    const lines = yield* Effect.try({ try: () => cacheLog(body), catch: error => error })
+    for (const line of lines) yield* line.level === "Info" ? Effect.logInfo(line.message) : Effect.logDebug(line.message)
+    const untraced = traced ? untracedHits(body) : []
+    if (untraced.length > 0) {
+      yield* Effect.logWarning(`vite+ ${untraced.join(", ")}: the cached run read no project files, so running without the cache`)
+      noCache = " --no-cache"
+      traced = false
+    }
+  }
+  return yield* workspace.exec(`${vp} run -v${noCache} ${shellQuote(name)}`,
+    traced ? { trace: { tool: "vite-plus", task: name } } : undefined)
 })
 
 export interface JavaScriptInstallOptions {
@@ -917,16 +944,40 @@ export interface JavaScriptInstallOptions {
   readonly offline?: boolean
 }
 
+export interface JavaScriptRunOptions {
+  /**
+   * With Vite+, `true` (the default) adds `--cache`, so package.json scripts are cached
+   * too. Vite+ then infers each script's inputs and outputs from the files it reads and
+   * writes, and runs it with a clean environment: only common variables such as `PATH`,
+   * `HOME` and `CI` pass through. `false` leaves caching to the Vite+ config. A task with
+   * `cache: false` is never cached. Ignored without Vite+.
+   */
+  readonly cache?: boolean
+}
+
 export interface JavaScriptPackageManager {
+  /** The manager that owns the lockfile, install, and runner package cache. */
   readonly name: JavaScriptPackageManagerName
+  /** Whether `run` goes through `vp run`, which caches and also runs Vite+ tasks. */
+  readonly vitePlus: boolean
   readonly workspace: Workspace
   readonly install: (
     options?: JavaScriptInstallOptions,
   ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
-  /** Runs a package.json script. A host's `ScriptRunner` can run it another way, such as cached. */
-  readonly run: (script: string) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>
+  /** Runs a package.json script, or with Vite+ also a `vite.config.ts` task. */
+  readonly run: (name: string, options?: JavaScriptRunOptions) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>
   readonly exec: (command: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
+
+type NativeJavaScriptPackageManager = Omit<JavaScriptPackageManager, "vitePlus" | "run"> & {
+  readonly run: (script: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
+}
+
+const withVitePlus = (manager: NativeJavaScriptPackageManager, vitePlus: boolean): JavaScriptPackageManager => ({
+  ...manager,
+  vitePlus,
+  run: (name, options) => vitePlus ? vitePlusRun(manager.workspace, name, options?.cache ?? true) : manager.run(name),
+})
 
 const fromPackageManagerField = (
   contents: string | undefined,
@@ -949,9 +1000,9 @@ const lockfiles = [
   ["bun", "bun.lockb"],
 ] as const
 
-export const JavaScript = (
+const detectJavaScript = (
   workspace: Workspace,
-): Effect.Effect<JavaScriptPackageManager, PackageManagerError, Runtime | CurrentStep> =>
+): Effect.Effect<NativeJavaScriptPackageManager, PackageManagerError, Runtime | CurrentStep> =>
   Effect.gen(function* () {
     const packageJson = yield* workspace.readFile("package.json")
     const lockfileMatches: Array<JavaScriptPackageManagerName> = []
@@ -1002,12 +1053,12 @@ export const JavaScript = (
         })
         if (member === false) break
         if (member) {
-          const owner = yield* JavaScript(ancestor)
+          const owner = yield* detectJavaScript(ancestor)
           return {
             ...owner,
             workspace,
             install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
-            run: (script: string) => runScript(workspace, script, `${owner.name} run ${JSON.stringify(script)}`),
+            run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
             exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : owner.name === "npm" ? "npm exec --" : `${owner.name} exec`} ${command}`),
           }
         }
@@ -1100,7 +1151,7 @@ export const JavaScript = (
           workspace.kind === "remote" || runtime.ci,
         ))
       }),
-      run: (script: string) => runScript(workspace, script, command("run", script)),
+      run: (script: string) => workspace.exec(command("run", script)),
       exec: (executable: string) => workspace.exec(command("exec", executable)),
     }
   }).pipe(
@@ -1109,7 +1160,30 @@ export const JavaScript = (
       : new PackageManagerError(workspace.cwd, String(error))),
   )
 
-export const PackageManager = { Apt, JavaScript } as const
+/**
+ * Detects npm, pnpm, Yarn, or Bun. Where the host provides `vp` (see `VitePlusAvailable`),
+ * `run` goes through Vite+; elsewhere it uses the detected manager.
+ */
+export const JavaScript = (
+  workspace: Workspace,
+): Effect.Effect<JavaScriptPackageManager, PackageManagerError, Runtime | CurrentStep> =>
+  Effect.gen(function* () {
+    const manager = yield* detectJavaScript(workspace)
+    const available = yield* VitePlusAvailable
+    return withVitePlus(manager, available(workspace))
+  })
+
+/**
+ * The detected manager, with `run` always through Vite+. Use it for Vite+ tasks or wherever
+ * a run must be cached. The global `vp` runs it, or the project's own from `node_modules/.bin`.
+ * Install and exec stay with the detected manager, which owns the lockfile.
+ */
+export const VitePlus = (
+  workspace: Workspace,
+): Effect.Effect<JavaScriptPackageManager, PackageManagerError, Runtime | CurrentStep> =>
+  detectJavaScript(workspace).pipe(Effect.map(manager => withVitePlus(manager, true)))
+
+export const PackageManager = { Apt, JavaScript, VitePlus } as const
 
 export class ToolchainError extends Error {
   readonly _tag = "ToolchainError"
@@ -2856,15 +2930,6 @@ export const fromPackageJson = (manifest: {
   readonly tasks?: ReadonlyArray<string>
   /** Local Vite+ prerequisites, used only to describe the plan. Vite+ executes them. */
   readonly taskDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
-  /**
-   * Runs a discovered script or Vite+ task. Return `undefined` to use the package manager,
-   * which runs scripts through the host's `ScriptRunner`.
-   */
-  readonly runTarget?: (
-    workspace: Workspace,
-    name: string,
-    kind: "script" | "task",
-  ) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep> | undefined
 } = {}) => {
   const tasks = new Set(options.tasks)
   const scripts = Object.keys(manifest.scripts ?? {})
@@ -2904,12 +2969,9 @@ export const fromPackageJson = (manifest: {
         for (const dependency of options.taskDependencies?.[name] ?? []) yield* actions[dependency]!()
       }
       const workspace = yield* install()
-      const custom = options.runTarget?.(workspace, name, tasks.has(name) ? "task" : "script")
-      if (custom) return yield* custom
-      const packageManager = yield* PackageManager.JavaScript(workspace)
-      return yield* tasks.has(name)
-        ? packageManager.exec(`vp run '${name.replaceAll("'", "'\\''")}'`)
-        : packageManager.run(name)
+      // Only Vite+ runs tasks; scripts use it where the host has it.
+      const packageManager = yield* (tasks.has(name) ? PackageManager.VitePlus : PackageManager.JavaScript)(workspace)
+      return yield* packageManager.run(name)
     }),
   ]))
 

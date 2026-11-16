@@ -1,5 +1,4 @@
 import * as CI from "@effect-ci-testbed/ci"
-import { VitePlus } from "@effect-ci-testbed/ci/vite-plus"
 
 const checkout = CI.action("verification checkout", function* () {
   const source = yield* CI.Source
@@ -17,9 +16,9 @@ export const lint = CI.check("verified lint", () => function* () {
 
 export const inputsLint = CI.check("squash-safe lint", () => function* () {
   const workspace = yield* checkout()
-  const vp = yield* VitePlus(workspace)
+  const vp = yield* CI.PackageManager.VitePlus(workspace)
 
-  yield* vp.run("lint", { cache: true })
+  yield* vp.run("lint")
 }, {
   reuse: true,
 })

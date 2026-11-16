@@ -24,9 +24,9 @@ filesystem observation cannot capture them.
 
 ## Define the actions
 
-Create `.cloudflare/ci/actions.ts`. Import the SDK and the Vite+ toolchain:
+Create `.cloudflare/ci/actions.ts`. Import the SDK:
 
-[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1-L2 "source")
+[`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#L1 "source")
 
 Check out the source and install the app's dependencies:
 
@@ -34,7 +34,8 @@ Check out the source and install the app's dependencies:
 
 [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=install "source")
 
-Run the task with `VitePlus(workspace).run(task)`:
+Run the task with `CI.PackageManager.VitePlus(workspace).run(task)`. It is the
+app's package manager, npm here, with `run` going through `vp run`:
 
 [`.cloudflare/ci/actions.ts`](./.cloudflare/ci/actions.ts#symbol=build "source {3,5}")
 
@@ -83,19 +84,20 @@ check and step results. A forced Vite+ run does not update the task cache, so th
 next run without `--force` compares against the last cached run. `--force` also
 applies to remote runs.
 
-[Vite+ toolchain](../../packages/ci/src/vite-plus.ts#symbol=VitePlus "source")
+[Vite+ package manager](../../packages/ci/src/index.ts#symbol=VitePlus "source")
 
 ## Speed up an existing workflow
 
 Effect CI already caches every package script with `vp run --cache`, with or
-without a workflow: `PackageManager.JavaScript(workspace).run(script)` uses it.
+without a workflow: `PackageManager.JavaScript(workspace).run(script)` uses it
+wherever `vp` is installed.
 See [zero-config](../zero-config). Effect CI does not cache arbitrary `workspace.exec` commands. To cache them, ask
 your coding agent:
 
 ```text
 Move the build, lint and test commands this workflow runs with workspace.exec or
 package.json scripts into Vite+ tasks in vite.config.ts. Run them with
-VitePlus(workspace).run(task) from @effect-ci-testbed/ci/vite-plus. Leave deploy
+CI.PackageManager.VitePlus(workspace).run(task). Leave deploy
 and publish steps as they are. Then run `effect-ci run -v` twice and check that the
 second run reports each task as cached.
 ```

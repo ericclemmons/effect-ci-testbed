@@ -45,6 +45,8 @@ for (const [name, workflow, expected] of [
     const sourceRoot = new Map<string, string>([
       ["Node version", "node-version"],
       ["Mise toolchain", "mise-toolchain"],
+      // Its build detects the app's package manager from app/package-lock.json.
+      ["Vite+ cache", "vite-plus-cache"],
       ["source-only checks", "dynamic-worker-checks"],
     ]).get(name)
     const result = await CI.runPromise<unknown>(workflow, {
