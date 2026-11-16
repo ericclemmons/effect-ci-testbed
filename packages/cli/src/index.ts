@@ -9,7 +9,7 @@ import { parseArgs, parseEnv } from "node:util"
 import { projectEnvironment } from "./project-env.ts"
 import { determineAgent } from "@vercel/detect-agent"
 import * as CI from "@effect-ci-testbed/ci"
-import { isCacheableScript, VitePlus } from "@effect-ci-testbed/ci/vite-plus"
+import { VitePlus } from "@effect-ci-testbed/ci/vite-plus"
 import * as Effect from "effect/Effect"
 import * as Logger from "effect/Logger"
 import { CurrentLogAnnotations, MinimumLogLevel } from "effect/References"
@@ -828,15 +828,21 @@ const inferJavaScriptProgram = (root: string): Program => {
   return CI.fromPackageJson(manifest, {
     tasks: tasks.names,
     taskDependencies: tasks.dependencies,
-    // Vite+ infers each run's inputs and outputs, so build, test, lint and check scripts
-    // are cached without configuration. Hosted runners provide a global vp.
-    runTarget: (workspace, name, kind) => {
-      if (kind === "script" && !isCacheableScript(name)) return undefined
-      if (workspace.kind === "local" && !vitePlusAvailable(workspace.cwd)) return undefined
-      return VitePlus(workspace).pipe(Effect.flatMap(vp => vp.run(name, { cache: kind === "script" })))
-    },
+    // Scripts run through the package manager's ScriptRunner; this adds the cache log to tasks.
+    runTarget: (workspace, name, kind) => kind === "task" ? vitePlusRunner(workspace, name, false) : undefined,
   })
 }
+
+/**
+ * Runs scripts and tasks with Vite+, which infers each run's inputs and outputs from the files
+ * it reads and writes, so every script is cached without configuration. To opt a script out,
+ * define it as a Vite+ task with `cache: false`, or run with `--force`. Runner workspaces and
+ * machines without `vp` use the package manager.
+ */
+const vitePlusRunner = (workspace: CI.Workspace, name: string, cache: boolean) =>
+  workspace.kind === "local" && vitePlusAvailable(workspace.cwd)
+    ? VitePlus(workspace).pipe(Effect.flatMap(vp => vp.run(name, { cache })))
+    : undefined
 
 /** Explicit local execution opts this package into script discovery, never remote or plan. */
 export const initializeJavaScriptProject = (
@@ -1119,6 +1125,7 @@ export const main = async (
     const isolate = makeLocalProjectChecks()
     const localWorkflow = { ...workflow, effect: workflow.effect.pipe(
       Effect.provideService(ProjectChecks, isolate.service),
+      Effect.provideService(CI.ScriptRunner, (workspace, script) => vitePlusRunner(workspace, script, true)),
       Effect.provideService(MinimumLogLevel, invocation.verbose >= 2 ? "Debug" : invocation.verbose === 1 ? "Info" : "Warn"),
       Effect.provide(stepLogger(log => format === "json" ? logs.push(log) : printStepLog(log))),
     ) }

@@ -121,16 +121,6 @@ const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 // Prefer the global vp; fall back to the project's own when a runner has none.
 const vp = `PATH="$PATH:$PWD/node_modules/.bin" vp`
 
-// Scripts whose result depends only on files they read. Deploy, publish, dev and
-// in-place formatting scripts have effects a file cache cannot replay.
-const cacheableScripts = new Set(["build", "test", "lint", "check", "typecheck", "compile"])
-
-/** Whether zero-config CI caches a package script with `vp run --cache`, by its name. */
-export const isCacheableScript = (name: string): boolean => {
-  const [kind = ""] = name.split(":")
-  return cacheableScripts.has(kind)
-}
-
 /** Vite+ in a project, through the global `vp` CLI. */
 export const VitePlus = (workspace: CI.Workspace) => Effect.succeed({
   workspace,

@@ -177,8 +177,8 @@ Prerequisites: Git, Node 24.11+ or 26+, pnpm, Vite+, `gh`, `cf`,
 
 ## 5. Cache the build
 
-There is nothing to configure. Effect CI runs `build`, `test`, `lint`, `check`
-and `typecheck` scripts with `vp run --cache`. Vite+ records the files each
+There is nothing to configure. Effect CI runs every package script with
+`vp run --cache`. Vite+ records the files each
 command reads and writes, then replays the run while those files are unchanged.
 
 1. Run again:
@@ -191,10 +191,11 @@ command reads and writes, then replays the run while those files are unchanged.
    …
    ```
 
-   On macOS, Vite+ cannot see what TypeScript 7's `tsc` reads
+   On macOS, Vite+ cannot see what TypeScript 7.0's `tsc` reads
    ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587)). A
-   hit would hide type errors, so Effect CI runs the script uncached. On Linux,
-   both commands are cached.
+   hit would hide type errors, so Effect CI runs the script uncached. TypeScript
+   7.1 fixes this (`pnpm add -D typescript@beta` today). On Linux, both commands
+   are cached.
 
 2. Give type checking its own script:
 
@@ -240,9 +241,8 @@ command reads and writes, then replays the run while those files are unchanged.
 - [ ] Unchanged inputs reuse the build; source edits invalidate its cache.
 - [ ] No input or output lists were written.
 
-Cached scripts run with a clean environment: only common variables such as
-`PATH`, `HOME` and `CI` pass through. `deploy`, `dev`, `preview` and other
-scripts always run, uncached.
+Cached scripts run with a clean environment: common variables such as `PATH`,
+`HOME`, `CI` and `*_TOKEN` pass through. To opt a script out, define it as a Vite+ task with `cache: false` in `vite.config.ts`, or pass `--force`.
 
 ## 6. Create a GitHub repository
 

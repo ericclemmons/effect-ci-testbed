@@ -12,9 +12,9 @@ effect-ci run lint
 ```
 
 Every package script is an action. Run `effect-ci run build` twice: the second
-run replays the cached result. `build`, `test`, `lint`, `check` and `typecheck`
-scripts run with `vp run --cache`, so Vite+ learns their inputs and outputs from
-the files they read and write. Other scripts, such as `format`, always run. Vite+ tasks under `run.tasks` in
+run replays the cached result. Every script runs with `vp run --cache`, so Vite+
+learns its inputs and outputs from the files it reads and writes. To opt a script
+out, define it as a Vite+ task with `cache: false` in `vite.config.ts`, or pass `--force`. Vite+ tasks under `run.tasks` in
 `vite.config.ts` are actions too. The CLI detects the package manager and shares
 checkout and installation across the selected actions. Execution requires a name;
 bare `effect-ci run` reports how to choose one. `list` and `plan` can inspect all

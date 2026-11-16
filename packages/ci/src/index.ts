@@ -890,6 +890,28 @@ export const Apt = (
     }
   })
 
+/**
+ * Runs a package.json script, or returns `undefined` to use the package manager. The CLI
+ * provides one that runs scripts with `vp run --cache`, so Vite+ caches them.
+ */
+export type ScriptRunnerShape = (
+  workspace: Workspace,
+  script: string,
+) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep> | undefined
+
+export const ScriptRunner = Context.Reference<ScriptRunnerShape>("@effect-ci-testbed/ScriptRunner", {
+  defaultValue: () => () => undefined,
+})
+
+const runScript = (
+  workspace: Workspace,
+  script: string,
+  command: string,
+): Effect.Effect<Workspace, unknown, Runtime | CurrentStep> => Effect.gen(function* () {
+  const runner = yield* ScriptRunner
+  return yield* (runner(workspace, script) ?? workspace.exec(command))
+})
+
 export interface JavaScriptInstallOptions {
   readonly frozenLockfile?: boolean
   readonly offline?: boolean
@@ -901,7 +923,8 @@ export interface JavaScriptPackageManager {
   readonly install: (
     options?: JavaScriptInstallOptions,
   ) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
-  readonly run: (script: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
+  /** Runs a package.json script. A host's `ScriptRunner` can run it another way, such as cached. */
+  readonly run: (script: string) => Effect.Effect<Workspace, unknown, Runtime | CurrentStep>
   readonly exec: (command: string) => Effect.Effect<Workspace, CommandFailure, Runtime | CurrentStep>
 }
 
@@ -984,7 +1007,7 @@ export const JavaScript = (
             ...owner,
             workspace,
             install: (options?: JavaScriptInstallOptions) => owner.install(options).pipe(Effect.as(workspace)),
-            run: (script: string) => workspace.exec(`${owner.name} run ${JSON.stringify(script)}`),
+            run: (script: string) => runScript(workspace, script, `${owner.name} run ${JSON.stringify(script)}`),
             exec: (command: string) => workspace.exec(`${owner.name === "bun" ? "bunx" : owner.name === "npm" ? "npm exec --" : `${owner.name} exec`} ${command}`),
           }
         }
@@ -1077,7 +1100,7 @@ export const JavaScript = (
           workspace.kind === "remote" || runtime.ci,
         ))
       }),
-      run: (script: string) => workspace.exec(command("run", script)),
+      run: (script: string) => runScript(workspace, script, command("run", script)),
       exec: (executable: string) => workspace.exec(command("exec", executable)),
     }
   }).pipe(
@@ -2834,8 +2857,8 @@ export const fromPackageJson = (manifest: {
   /** Local Vite+ prerequisites, used only to describe the plan. Vite+ executes them. */
   readonly taskDependencies?: Readonly<Record<string, ReadonlyArray<string>>>
   /**
-   * Runs a discovered script or Vite+ task. Return `undefined` to use the package manager.
-   * The CLI uses it to cache scripts through Vite+.
+   * Runs a discovered script or Vite+ task. Return `undefined` to use the package manager,
+   * which runs scripts through the host's `ScriptRunner`.
    */
   readonly runTarget?: (
     workspace: Workspace,
