@@ -54,7 +54,8 @@ Vite+ traces the files a script reads and writes, so it is cached without input
 or output lists. A deploy whose build output is unchanged is skipped too. To opt
 a script out, define it as a Vite+ task with `cache: false` in `vite.config.ts`, or pass `--force`. Cached scripts get a clean environment:
 `PATH`, `HOME`, `CI`, `*_TOKEN` and similar pass through. Effect CI runs a script
-uncached when its cached run read no project files, because Vite+ could not trace it.
+uncached when its cached run read no project files, because Vite+ could not trace it,
+as with TypeScript 7.0's `tsc` on macOS. TypeScript 7.1 is traced.
 Without `vp`, and in runner workspaces, scripts run with the package manager.
 Installs always use the detected package manager: run from a nested project,
 `vp` can select the enclosing monorepo's manager instead of the project's lockfile.

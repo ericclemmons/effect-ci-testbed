@@ -72,7 +72,8 @@ Limits:
 - Only the writer's trace decides what counts as an input. Sign only runs of
   trusted code, such as `main`. The traced process could hide reads from fspy.
 - A trace that saw no project files is never signed. On macOS, Vite+ cannot trace
-  TypeScript 7's `tsc` ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587)).
+  TypeScript 7.0's `tsc` ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587));
+  use TypeScript 7.1 (`typescript@beta` until it is stable).
 - Local checkouts only. Commands without a Vite+ trace always run.
 
 [Input evidence](../../packages/github/src/input-evidence.ts#symbol=inputEvidenceCheckCache "source")

@@ -181,55 +181,48 @@ There is nothing to configure. Effect CI runs every package script with
 `vp run --cache`. Vite+ records the files each
 command reads and writes, then replays the run while those files are unchanged.
 
-1. Run again:
+1. Use TypeScript 7.1:
 
-   ```console frame="terminal"
-   $ effect-ci run build
-   [build] vite+ build step 1: the cached run read no project files, so running without the cache
-   $ tsc -b ⊘ cache disabled
-   $ vp build ⊘ cache disabled
-   …
+   ```sh
+   pnpm add -D typescript@beta
    ```
 
    On macOS, Vite+ cannot see what TypeScript 7.0's `tsc` reads
-   ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587)). A
-   hit would hide type errors, so Effect CI runs the script uncached. TypeScript
-   7.1 fixes this (`pnpm add -D typescript@beta` today). On Linux, both commands
-   are cached.
+   ([vite-task#587](https://github.com/voidzero-dev/vite-task/issues/587)).
+   Effect CI then runs the build uncached, so a hit can't hide type errors.
+   TypeScript 7.1 fixes this; until it is stable, use the beta. On Linux, 7.0
+   is traced too.
 
-2. Give type checking its own script:
-
-   [`package.json`](./tutorial/package.diff "source")
-
-3. Run twice to prove unchanged inputs reuse the build:
+2. Run twice to prove unchanged inputs reuse the build:
 
    ```console frame="terminal"
-   $ effect-ci run typecheck build
+   $ effect-ci run build
    …
 
-   $ effect-ci run typecheck build
+   $ effect-ci run build
+   $ tsc -b ◉ cache hit, replaying
    $ vp build ◉ cache hit, replaying
    …
    ✓ build depends on install
-
-   ✓ typecheck depends on install
    ```
 
-4. Change the API response:
+3. Change the API response:
 
    [`worker/index.ts`](./tutorial/worker.diff "source")
 
-5. Run again to prove source edits invalidate the cache:
+4. Run again to prove source edits invalidate the cache:
 
    ```console frame="terminal"
    $ effect-ci run build -v
-   [build] vite+ build changes:
+   [build] vite+ build step 1 changes:
    [build]   ± worker/index.ts
+   …
+   $ tsc -b ○ cache miss: 'worker/index.ts' modified, executing
    $ vp build ○ cache miss: 'worker/index.ts' modified, executing
    …
    ```
 
-6. Delete the output and run once more. The hit restores it:
+5. Delete the output and run once more. The hit restores it:
 
    ```console frame="terminal"
    $ rm -rf .cloudflare/output
