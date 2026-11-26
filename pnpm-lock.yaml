@@ -185,8 +185,8 @@ importers:
         specifier: 4.1.2
         version: 4.1.2
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   apps/docs:
     devDependencies:
@@ -291,8 +291,8 @@ importers:
         specifier: 1.0.0-beta.24
         version: 1.0.0-beta.24(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       varlock:
         specifier: 1.23.0
         version: 1.23.0
@@ -319,8 +319,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -350,8 +350,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -374,8 +374,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -405,8 +405,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -427,8 +427,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -449,8 +449,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -483,8 +483,8 @@ importers:
         specifier: 0.19.0
         version: 0.19.0
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -510,8 +510,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -554,7 +554,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       vite-plus:
         specifier: 1.6.0
-        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -590,8 +590,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -621,8 +621,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -652,8 +652,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -692,14 +692,14 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
       vite-plus:
         specifier: 1.6.0
-        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
 
   examples/exported-actions:
     devDependencies:
@@ -713,8 +713,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   examples/github-cloudflare-ci:
     dependencies:
@@ -735,8 +735,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   examples/gitlab-source:
     dependencies:
@@ -763,8 +763,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -792,8 +792,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -821,8 +821,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -836,8 +836,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -892,8 +892,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -923,8 +923,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -947,8 +947,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -969,8 +969,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -988,8 +988,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   examples/static-assets-source:
     dependencies:
@@ -1019,8 +1019,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1046,8 +1046,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -1071,8 +1071,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -1087,8 +1087,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   examples/turbo-distributed:
     dependencies:
@@ -1109,8 +1109,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -1131,8 +1131,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -1153,8 +1153,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   examples/vite-plus-cache:
     dependencies:
@@ -1172,8 +1172,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       wrangler:
         specifier: 4.145.0
         version: 4.145.0(@cloudflare/workers-types@5.20261001.1)(@types/node@26.6.3)
@@ -1182,7 +1182,7 @@ importers:
     dependencies:
       vite-plus:
         specifier: 1.6.0
-        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
 
   examples/workers-deploy:
     devDependencies:
@@ -1220,8 +1220,8 @@ importers:
         specifier: 4.0.2
         version: 4.0.2
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/cli:
     dependencies:
@@ -1242,8 +1242,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/cloudflare:
     dependencies:
@@ -1261,8 +1261,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/cloudflare-dynamic-worker:
     dependencies:
@@ -1289,8 +1289,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/cloudflare-oidc:
     dependencies:
@@ -1305,21 +1305,21 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/flue-budget-provider:
     dependencies:
       '@flue/runtime':
         specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.1)
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: 7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/flue-cloudflare-config:
     devDependencies:
@@ -1334,10 +1334,10 @@ importers:
         version: link:../flue-budget-provider
       '@flue/runtime':
         specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.7)
       '@flue/vite':
         specifier: 2.2.2
-        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)
+        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.1.0-beta)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
@@ -1351,8 +1351,8 @@ importers:
         specifier: 4.12.32
         version: 4.12.32
       typescript:
-        specifier: 7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: 8.1.2
         version: 8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1366,8 +1366,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/github-cloudflare:
     dependencies:
@@ -1397,8 +1397,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/local-container:
     dependencies:
@@ -1413,8 +1413,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   packages/source-tools:
     dependencies:
@@ -1429,8 +1429,8 @@ importers:
         specifier: ^26.6.3
         version: 26.6.3
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
 
   test/apps/demo-site:
     dependencies:
@@ -1451,8 +1451,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1485,8 +1485,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1506,8 +1506,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1537,8 +1537,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1562,8 +1562,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1578,7 +1578,7 @@ importers:
         version: link:../../../packages/github
       '@flue/runtime':
         specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.7)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -1591,7 +1591,7 @@ importers:
         version: link:../../../packages/flue-cloudflare-config
       '@flue/vite':
         specifier: 2.2.2
-        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)
+        version: 2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.1.0-beta)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
@@ -1602,8 +1602,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: 7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: 8.1.2
         version: 8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1615,7 +1615,7 @@ importers:
         version: link:../../../packages/flue-budget-provider
       '@flue/runtime':
         specifier: 2.2.2
-        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)
+        version: 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.1)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -1633,8 +1633,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1654,8 +1654,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1675,8 +1675,8 @@ importers:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(@types/node@26.6.3)
       typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
       vite:
         specifier: ^7.1.12
         version: 7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -1710,7 +1710,7 @@ importers:
         version: 0.19.0
       vite-plus:
         specifier: 1.6.0
-        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+        version: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
       ws:
         specifier: 8.21.0
         version: 8.21.0
@@ -4597,122 +4597,128 @@ packages:
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
-  '@typescript/typescript-aix-ppc64@7.0.2':
-    resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
+  '@typescript/typescript-aix-ppc64@7.1.0-beta':
+    resolution: {integrity: sha512-DXDG+jIWxBHGdoO70tcHON33rCnSzsEZj9P13oyf/r/KEGIo6awsdSNVNjAw0uMwEpqRu75IrgCcW58YcVkZHg==}
     engines: {node: '>=16.20.0'}
     cpu: [ppc64]
     os: [aix]
 
-  '@typescript/typescript-darwin-arm64@7.0.2':
-    resolution: {integrity: sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==}
+  '@typescript/typescript-android-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-UZx6PxoQavuvaVTrSf3aw0Oy/J/uJpRylipA0kzc038jMvZXh0UtE8vnQp20FqtdgD5bhXZ0aJrRJyoTSUO58Q==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [android]
+
+  '@typescript/typescript-darwin-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-q7mxblcyX0E7hXsY4k+Q6KWKK5mGmfVq+BDesdTgRVgjodk27aIxER77Zyj9+TgSTlCje8F7+JM6f6hl2BuNdw==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/typescript-darwin-x64@7.0.2':
-    resolution: {integrity: sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==}
+  '@typescript/typescript-darwin-x64@7.1.0-beta':
+    resolution: {integrity: sha512-D5EYqG5Wm/guw9+0j8+Mn1Jbr/gfS/VtFTuoH8PJtFbcqeDaQGMulc7SW8q51QG6Y3wGOGX3nbsTOw6fIKWWAA==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/typescript-freebsd-arm64@7.0.2':
-    resolution: {integrity: sha512-W5NH4y/J0plIIS5b2xvTEkU7JFxyqdMAOgf+Ilhl0vHQXKO5dZoxd+C/jEtq56c4F3wk71RB4BMRQ2XdI+bwYQ==}
+  '@typescript/typescript-freebsd-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-9A0XX0tcnH9qPdolSKKzSjTb93dlB0UEcAJbHYEsrFX2fkFNSum9+dvkQQJ9vLc+7vxHetDPujq9Qe6wx+Xhow==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [freebsd]
 
-  '@typescript/typescript-freebsd-x64@7.0.2':
-    resolution: {integrity: sha512-UMGDx5sTpzNw3WiPebH7l90IWfJggEd+egHt/q6p7/Cm3zqoV7VxkGXt+3DxPIw8CcmvAB0j3sVVfbhX+M4Tpw==}
+  '@typescript/typescript-freebsd-x64@7.1.0-beta':
+    resolution: {integrity: sha512-EDf/dBHfY0TxX3NmUTek0hbffeyZlh3+ls6WQW3ICB8vYxwYLFnzg7wkgEUvl9eRlpiJ/nmc2S8arPMzINJ7rg==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [freebsd]
 
-  '@typescript/typescript-linux-arm64@7.0.2':
-    resolution: {integrity: sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==}
+  '@typescript/typescript-linux-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-hNqQBgQ5b5oGqN76QqbAU6CwYhJZ6iOcWc2kPTUs2OentgpxZktETziH6KIyRFJPaiBncognwn2ZLu3DNhHiWw==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/typescript-linux-arm@7.0.2':
-    resolution: {integrity: sha512-gffT3xPz9sR7j/YJExkyPntrI0P2EP9XbOyWzth2/Gs0RstK+90RBcO0ncXoXy/beYll1SXw846Nf2zdnEz0QQ==}
+  '@typescript/typescript-linux-arm@7.1.0-beta':
+    resolution: {integrity: sha512-AvN9HmzOQh46G4312ooSgMHhbB7DtnLwg8D9mo324X49B7weMwtJrBG1MxT9IyI8kzDd7YRtW+1hWGun7WG7Qw==}
     engines: {node: '>=16.20.0'}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/typescript-linux-loong64@7.0.2':
-    resolution: {integrity: sha512-uEHck9i8hoAzXPiYRib1O7miOnz23SxIeVl6F4LXox+qov1K35jHcEW6VHKvZI+pyvl7fZEP4MCU5LYvIq1GuQ==}
+  '@typescript/typescript-linux-loong64@7.1.0-beta':
+    resolution: {integrity: sha512-xbUustlBrFflt2pNEyG5ye+d4WGPc/rfr2xK29MXeobPSw297JqwuKRrvbKM5o3fE/eUM/c+urVm6jQ3IaMVTw==}
     engines: {node: '>=16.20.0'}
     cpu: [loong64]
     os: [linux]
 
-  '@typescript/typescript-linux-mips64el@7.0.2':
-    resolution: {integrity: sha512-R4KvAMnE43W5Qeqb0Ly56O3mWMWIAgsMyz36DCaycd5nbg/9kzm0liw3JocfRqyJY0KPmzFjbswozXyW0DnIYA==}
+  '@typescript/typescript-linux-mips64el@7.1.0-beta':
+    resolution: {integrity: sha512-fS4/G7/0bXZ3NSq3nBMAXyg65I3tO4S7j08VNQ2g1aNC/qq79gE7Qne1BNjVsjMFfHBVBFjQYoTQCjmVU2iFlg==}
     engines: {node: '>=16.20.0'}
     cpu: [mips64el]
     os: [linux]
 
-  '@typescript/typescript-linux-ppc64@7.0.2':
-    resolution: {integrity: sha512-DORx5b3sd/4S7eayxm4FQv+A7CrkUIGRaHiwI8oiHTAI1fAPWhF4J0vAlkC8biAlHSVVwxMQ3tjZ2/DVbnQiiA==}
+  '@typescript/typescript-linux-ppc64@7.1.0-beta':
+    resolution: {integrity: sha512-0upCCxYPX8X6gOwkvfv+Ee7/ufyy7k97mTrGE0e5BxLlnUEa+w+rtgnv2dsKcxFdwdeZYVlZKCqgN/xCBV08+A==}
     engines: {node: '>=16.20.0'}
     cpu: [ppc64]
     os: [linux]
 
-  '@typescript/typescript-linux-riscv64@7.0.2':
-    resolution: {integrity: sha512-wf0jqEDOjrPRnKwYRyyJDRo11KMbvMFrU+q4zqKyChODBzvlkbhNQfKvLxQCcwTpdDaXSHZTVuh0JoCrKCUMHQ==}
+  '@typescript/typescript-linux-riscv64@7.1.0-beta':
+    resolution: {integrity: sha512-0jKU9YRgOPRgiy5V/UWv37kB53PaTpIbwGCbbOMUPPAkrjVRNOIAJaz7Wa7s3H7mdDebX1LopUEPEJR+7Xa7zg==}
     engines: {node: '>=16.20.0'}
     cpu: [riscv64]
     os: [linux]
 
-  '@typescript/typescript-linux-s390x@7.0.2':
-    resolution: {integrity: sha512-IkwJc3L7yhytWd/ewjyxNDfOmswCm9GWMJT/ue/dU4aZNbwZeYAetq42VyLmsmSjvoX7z74X6ZaYCtzAr0EuGw==}
+  '@typescript/typescript-linux-s390x@7.1.0-beta':
+    resolution: {integrity: sha512-j+d04s2kxaPQh6DLPb01sknAQfzsrdSZy15jBRHyLEZoaaQ19dVjbFRlkNVvYwUG7ZdP8+y5b/7RmPxdtHUKdQ==}
     engines: {node: '>=16.20.0'}
     cpu: [s390x]
     os: [linux]
 
-  '@typescript/typescript-linux-x64@7.0.2':
-    resolution: {integrity: sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==}
+  '@typescript/typescript-linux-x64@7.1.0-beta':
+    resolution: {integrity: sha512-kcD51ihf+pnI5KT4uQQYG04OpwznaZYBlIQhDhl8fflFd27NktxXsUeguxZyvUMyWfum7IF2bBS6Jv7ox0AgFQ==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/typescript-netbsd-arm64@7.0.2':
-    resolution: {integrity: sha512-+polYF4MF04aPpO5FTkHran9yUQDSXqy5GiSDKpsll5jy3l3+g9QLhpf39T+ePtefhXLOGrLl0QIjkQP6VnelA==}
+  '@typescript/typescript-netbsd-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-8W85YyoGK+rgGoSU9jJQUpELbrKcZcbdJk2jPNQ6UKDKI7ryPlPFTrV2jCE5RQuv4Tt96hMDTc33s4YfRrLFBA==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [netbsd]
 
-  '@typescript/typescript-netbsd-x64@7.0.2':
-    resolution: {integrity: sha512-8YIT0EHM/3dq10ZOVF/A7pc/YSMtbcecct4rWtexrnSCHOPcpC2KTLXfTCR6vDpnSiY12heNb1GiN/wu+T/FyA==}
+  '@typescript/typescript-netbsd-x64@7.1.0-beta':
+    resolution: {integrity: sha512-iGsTE0ve2PG0AcyZinwAR0LnGEZhu/y4dceS0hZsYCaKdYETvQtvtlNWlmYKempsBr6C7Il7dMXHVk+VFm9u0g==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [netbsd]
 
-  '@typescript/typescript-openbsd-arm64@7.0.2':
-    resolution: {integrity: sha512-APT8+ClYnuYm1u9+kgGXoMj2VzWzcymwh2gNSQVySHfkRDGOTVkoWLjCmOQSaO+PoqQ57B0flRp9SA+7GnnkzQ==}
+  '@typescript/typescript-openbsd-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-Z2FERdHB9fAKI+KGqdWn04O7uNlnB+VYiEm6INE1aZuzzLNd3KBqQ6IpKUJF2ny4GigGU6nVu75XD9tAUODPng==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [openbsd]
 
-  '@typescript/typescript-openbsd-x64@7.0.2':
-    resolution: {integrity: sha512-yX7s+Q0Dln0Dt9tEzZsAjXXR/+ytBM7AlglaqyeMPxQszJ1JhlJdZ6jLA+IzldHtflX81em7lDao1xXu+aRRkg==}
+  '@typescript/typescript-openbsd-x64@7.1.0-beta':
+    resolution: {integrity: sha512-NVG3qeyCq/rJEOhaRjR3LsWgjrjo5vJW25omVLeHAVnpKIG4pE4cenwwKGR06DiJ1s0QTOymcJeKXMEpsiNBVg==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [openbsd]
 
-  '@typescript/typescript-sunos-x64@7.0.2':
-    resolution: {integrity: sha512-dLJDGaLZ1D4HPQn62u1n8mBDkJREwMsAkCdkwd4Ieqw+x3TUyTsqY0YiBCtE6H6OzzgGk3iuZ3vFWRS+E8/d1g==}
+  '@typescript/typescript-sunos-x64@7.1.0-beta':
+    resolution: {integrity: sha512-ovAdoWXEn2B5/fyWG69pLU3FWmQwPWOjQV5TFbcxtpnOv+R3g8ySGHl1NYRq7Lb/GYdFDvaGcZ+SiU7iKuiMsA==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [sunos]
 
-  '@typescript/typescript-win32-arm64@7.0.2':
-    resolution: {integrity: sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ==}
+  '@typescript/typescript-win32-arm64@7.1.0-beta':
+    resolution: {integrity: sha512-lJbo71IEOfL7ZZIZnArRaOLqjn9BAfoSzyUQn0aSjfSpDZL4ru0afUsdBfo6PQEjD6ssdmi0n/RwaPADX6bsvQ==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/typescript-win32-x64@7.0.2':
-    resolution: {integrity: sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==}
+  '@typescript/typescript-win32-x64@7.1.0-beta':
+    resolution: {integrity: sha512-UKcHvbybY2tDTvFW2b1vwiAvDlIRooo69lh8CXWVhOQejcvpM5+IgbiFW9EIwR5Wi5X/v+BdN7gdWbigBuJ3rw==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
@@ -7319,8 +7325,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@7.0.2:
-    resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
+  typescript@7.1.0-beta:
+    resolution: {integrity: sha512-cjWjZAJDsmZzsNC5GwHNlW0YPM65jZa5oR0KyQcYX3KSVIfTvtBq//vewISyatKk4OLi5grZjHhIVE9fdrw1UQ==}
     engines: {node: '>=16.20.0'}
     hasBin: true
 
@@ -7816,10 +7822,12 @@ packages:
   yuku-core@0.19.0:
     resolution: {integrity: sha512-kYK9e1XdfirNhkipzW0wmMcSWcVF/CWnuugodfVYRCUwvoBefweL9HzB96OiKEhsx78V5WbUxbJqlizMX869Qg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   yuku-parser@0.19.0:
     resolution: {integrity: sha512-XrBh9ZiQK5mJVRxZBAvD6LwRyAYrK3MFtH3+onyuxFL5hFD44EC3QOmIC1FjTj6H2MMwq46/NAI+NZxLZPZgxg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
@@ -8974,17 +8982,17 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@flue/runtime@2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.1)':
+  '@flue/runtime@2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.1)':
     dependencies:
       '@earendil-works/pi-agent-core': 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.1)
       '@earendil-works/pi-ai': 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.1))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.1)
       '@hono/node-server': 2.1.4(hono@4.13.13)
       '@modelcontextprotocol/client': 2.0.0
-      '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@7.0.2))
+      '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@7.1.0-beta))
       hono: 4.13.13
       js-yaml: 5.4.3
       ulidx: 2.4.1
-      valibot: 1.5.0(typescript@7.0.2)
+      valibot: 1.5.0(typescript@7.1.0-beta)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - bufferutil
@@ -8995,17 +9003,17 @@ snapshots:
       - ws
       - zod
 
-  '@flue/runtime@2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)':
+  '@flue/runtime@2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.7)':
     dependencies:
       '@earendil-works/pi-agent-core': 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.7)
       '@earendil-works/pi-ai': 0.87.1(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.22.0)(zod@4.6.7)
       '@hono/node-server': 2.1.4(hono@4.13.13)
       '@modelcontextprotocol/client': 2.0.0
-      '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@7.0.2))
+      '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@7.1.0-beta))
       hono: 4.13.13
       js-yaml: 5.4.3
       ulidx: 2.4.1
-      valibot: 1.5.0(typescript@7.0.2)
+      valibot: 1.5.0(typescript@7.1.0-beta)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - bufferutil
@@ -9016,9 +9024,9 @@ snapshots:
       - ws
       - zod
 
-  '@flue/vite@2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)':
+  '@flue/vite@2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.1.0-beta)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)':
     dependencies:
-      '@flue/runtime': 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
+      '@flue/runtime': 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.7)
       '@hono/node-server': 2.1.4(hono@4.12.32)
       agents: 0.20.1(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(react@19.3.0)(rolldown@1.2.15)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
       magic-string: 1.4.2
@@ -9052,9 +9060,9 @@ snapshots:
       - ws
       - zod
 
-  '@flue/vite@2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)':
+  '@flue/vite@2.2.2(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(hono@4.13.13)(react@19.3.0)(rolldown@1.2.15)(supports-color@10.2.2)(typescript@7.1.0-beta)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.0)(zod@4.6.7)':
     dependencies:
-      '@flue/runtime': 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
+      '@flue/runtime': 2.2.2(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(typescript@7.1.0-beta)(ws@8.22.0)(zod@4.6.7)
       '@hono/node-server': 2.1.4(hono@4.13.13)
       agents: 0.20.1(@babel/core@8.0.7)(@babel/runtime@7.29.7)(@cloudflare/workers-types@5.20261001.1)(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.0.0)(react@19.3.0)(rolldown@1.2.15)(vite@8.1.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
       magic-string: 1.4.2
@@ -10473,64 +10481,67 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@typescript/typescript-aix-ppc64@7.0.2':
+  '@typescript/typescript-aix-ppc64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-darwin-arm64@7.0.2':
+  '@typescript/typescript-android-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-darwin-x64@7.0.2':
+  '@typescript/typescript-darwin-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-freebsd-arm64@7.0.2':
+  '@typescript/typescript-darwin-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-freebsd-x64@7.0.2':
+  '@typescript/typescript-freebsd-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-arm64@7.0.2':
+  '@typescript/typescript-freebsd-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-arm@7.0.2':
+  '@typescript/typescript-linux-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-loong64@7.0.2':
+  '@typescript/typescript-linux-arm@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-mips64el@7.0.2':
+  '@typescript/typescript-linux-loong64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-ppc64@7.0.2':
+  '@typescript/typescript-linux-mips64el@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-riscv64@7.0.2':
+  '@typescript/typescript-linux-ppc64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-s390x@7.0.2':
+  '@typescript/typescript-linux-riscv64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-linux-x64@7.0.2':
+  '@typescript/typescript-linux-s390x@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-netbsd-arm64@7.0.2':
+  '@typescript/typescript-linux-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-netbsd-x64@7.0.2':
+  '@typescript/typescript-netbsd-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-openbsd-arm64@7.0.2':
+  '@typescript/typescript-netbsd-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-openbsd-x64@7.0.2':
+  '@typescript/typescript-openbsd-arm64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-sunos-x64@7.0.2':
+  '@typescript/typescript-openbsd-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-win32-arm64@7.0.2':
+  '@typescript/typescript-sunos-x64@7.1.0-beta':
     optional: true
 
-  '@typescript/typescript-win32-x64@7.0.2':
+  '@typescript/typescript-win32-arm64@7.1.0-beta':
+    optional: true
+
+  '@typescript/typescript-win32-x64@7.1.0-beta':
     optional: true
 
   '@typescript/vfs@1.6.5(supports-color@10.2.2)(typescript@6.0.3)':
@@ -10547,9 +10558,9 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2))':
+  '@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.1.0-beta))':
     dependencies:
-      valibot: 1.5.0(typescript@7.0.2)
+      valibot: 1.5.0(typescript@7.1.0-beta)
 
   '@varlock/1password-plugin@2.0.5(varlock@1.23.0)':
     dependencies:
@@ -10571,12 +10582,12 @@ snapshots:
 
   '@vercel/detect-agent@1.2.5': {}
 
-  '@vitest/browser-preview@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)':
+  '@vitest/browser-preview@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)':
     dependencies:
       '@testing-library/dom': 10.4.2
       '@testing-library/user-event': 14.6.9(@testing-library/dom@10.4.2)
-      '@vitest/browser': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)
-      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      '@vitest/browser': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)
+      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -10595,17 +10606,17 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@vitest/browser@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)':
+  '@vitest/browser@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)':
     dependencies:
       '@blazediff/core': 1.10.0
-      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
       '@vitest/ui': 5.1.0(vitest@5.1.0)
       '@vitest/utils': 5.1.0
       magic-string: 1.4.3
       pngjs: 7.0.0
       sirv: 3.0.2
       tinyrainbow: 3.2.0
-      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
       ws: 8.22.0
     transitivePeerDependencies:
       - bufferutil
@@ -10640,14 +10651,14 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.2.0
 
-  '@vitest/mocker@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))':
+  '@vitest/mocker@5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.1.0
       estree-walker: 3.0.3
       magic-string: 1.4.3
     optionalDependencies:
-      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
+      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)'
 
   '@vitest/mocker@5.1.0(vite@7.3.6(@types/node@26.6.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
@@ -10685,7 +10696,7 @@ snapshots:
       pathe: 2.0.3
       sirv: 3.0.2
       tinyrainbow: 3.2.0
-      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
 
   '@vitest/utils@5.0.3':
     dependencies:
@@ -10699,7 +10710,7 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.2.0
 
-  '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)':
+  '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)':
     dependencies:
       '@oxc-project/runtime': 0.158.0
       '@oxc-project/types': 0.158.0
@@ -10720,7 +10731,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.15
-      typescript: 7.0.2
+      typescript: 7.1.0-beta
       yaml: 2.9.1
 
   '@voidzero-dev/vite-plus-darwin-arm64@1.6.0':
@@ -12968,7 +12979,7 @@ snapshots:
       '@oxc-transform/binding-win32-ia32-msvc': 0.152.0
       '@oxc-transform/binding-win32-x64-msvc': 0.152.0
 
-  oxfmt@0.78.0(@astrojs/compiler-rs@0.5.2)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)):
+  oxfmt@0.78.0(@astrojs/compiler-rs@0.5.2)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)):
     dependencies:
       tinypool: 2.2.0
     optionalDependencies:
@@ -12992,7 +13003,7 @@ snapshots:
       '@oxfmt/binding-win32-arm64-msvc': 0.78.0
       '@oxfmt/binding-win32-ia32-msvc': 0.78.0
       '@oxfmt/binding-win32-x64-msvc': 0.78.0
-      vite-plus: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+      vite-plus: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
 
   oxlint-tsgolint@7.0.2006:
     optionalDependencies:
@@ -13003,7 +13014,7 @@ snapshots:
       '@oxlint-tsgolint/win32-arm64': 7.0.2006
       '@oxlint-tsgolint/win32-x64': 7.0.2006
 
-  oxlint@1.93.0(oxlint-tsgolint@7.0.2006)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)):
+  oxlint@1.93.0(oxlint-tsgolint@7.0.2006)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)):
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.93.0
       '@oxlint/binding-android-arm64': 1.93.0
@@ -13025,7 +13036,7 @@ snapshots:
       '@oxlint/binding-win32-ia32-msvc': 1.93.0
       '@oxlint/binding-win32-x64-msvc': 1.93.0
       oxlint-tsgolint: 7.0.2006
-      vite-plus: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+      vite-plus: 1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)
 
   p-limit@7.3.3:
     dependencies:
@@ -13908,28 +13919,29 @@ snapshots:
 
   typescript@6.0.3: {}
 
-  typescript@7.0.2:
+  typescript@7.1.0-beta:
     optionalDependencies:
-      '@typescript/typescript-aix-ppc64': 7.0.2
-      '@typescript/typescript-darwin-arm64': 7.0.2
-      '@typescript/typescript-darwin-x64': 7.0.2
-      '@typescript/typescript-freebsd-arm64': 7.0.2
-      '@typescript/typescript-freebsd-x64': 7.0.2
-      '@typescript/typescript-linux-arm': 7.0.2
-      '@typescript/typescript-linux-arm64': 7.0.2
-      '@typescript/typescript-linux-loong64': 7.0.2
-      '@typescript/typescript-linux-mips64el': 7.0.2
-      '@typescript/typescript-linux-ppc64': 7.0.2
-      '@typescript/typescript-linux-riscv64': 7.0.2
-      '@typescript/typescript-linux-s390x': 7.0.2
-      '@typescript/typescript-linux-x64': 7.0.2
-      '@typescript/typescript-netbsd-arm64': 7.0.2
-      '@typescript/typescript-netbsd-x64': 7.0.2
-      '@typescript/typescript-openbsd-arm64': 7.0.2
-      '@typescript/typescript-openbsd-x64': 7.0.2
-      '@typescript/typescript-sunos-x64': 7.0.2
-      '@typescript/typescript-win32-arm64': 7.0.2
-      '@typescript/typescript-win32-x64': 7.0.2
+      '@typescript/typescript-aix-ppc64': 7.1.0-beta
+      '@typescript/typescript-android-arm64': 7.1.0-beta
+      '@typescript/typescript-darwin-arm64': 7.1.0-beta
+      '@typescript/typescript-darwin-x64': 7.1.0-beta
+      '@typescript/typescript-freebsd-arm64': 7.1.0-beta
+      '@typescript/typescript-freebsd-x64': 7.1.0-beta
+      '@typescript/typescript-linux-arm': 7.1.0-beta
+      '@typescript/typescript-linux-arm64': 7.1.0-beta
+      '@typescript/typescript-linux-loong64': 7.1.0-beta
+      '@typescript/typescript-linux-mips64el': 7.1.0-beta
+      '@typescript/typescript-linux-ppc64': 7.1.0-beta
+      '@typescript/typescript-linux-riscv64': 7.1.0-beta
+      '@typescript/typescript-linux-s390x': 7.1.0-beta
+      '@typescript/typescript-linux-x64': 7.1.0-beta
+      '@typescript/typescript-netbsd-arm64': 7.1.0-beta
+      '@typescript/typescript-netbsd-x64': 7.1.0-beta
+      '@typescript/typescript-openbsd-arm64': 7.1.0-beta
+      '@typescript/typescript-openbsd-x64': 7.1.0-beta
+      '@typescript/typescript-sunos-x64': 7.1.0-beta
+      '@typescript/typescript-win32-arm64': 7.1.0-beta
+      '@typescript/typescript-win32-x64': 7.1.0-beta
 
   ufo@1.6.4: {}
 
@@ -14059,9 +14071,9 @@ snapshots:
 
   uuid@13.0.2: {}
 
-  valibot@1.5.0(typescript@7.0.2):
+  valibot@1.5.0(typescript@7.1.0-beta):
     optionalDependencies:
-      typescript: 7.0.2
+      typescript: 7.1.0-beta
 
   varlock@1.23.0:
     optionalDependencies:
@@ -14089,23 +14101,23 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1):
+  vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1):
     dependencies:
       '@oxc-project/runtime': 0.158.0
       '@oxc-project/types': 0.158.0
       '@oxlint/plugins': 1.93.0
-      '@vitest/browser': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)
-      '@vitest/browser-preview': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)
-      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      '@vitest/browser': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)
+      '@vitest/browser-preview': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)
+      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
       '@vitest/pretty-format': 5.1.0
       '@vitest/snapshot': 5.1.0
       '@vitest/spy': 5.1.0
       '@vitest/utils': 5.1.0
-      oxfmt: 0.78.0(@astrojs/compiler-rs@0.5.2)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
-      oxlint: 1.93.0(oxlint-tsgolint@7.0.2006)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      oxfmt: 0.78.0(@astrojs/compiler-rs@0.5.2)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
+      oxlint: 1.93.0(oxlint-tsgolint@7.0.2006)(vite-plus@1.6.0(@astrojs/compiler-rs@0.5.2)(@types/node@26.6.3)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
       oxlint-tsgolint: 7.0.2006
-      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
-      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)'
+      vitest: 5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
     optionalDependencies:
       '@voidzero-dev/vite-plus-darwin-arm64': 1.6.0
       '@voidzero-dev/vite-plus-darwin-x64': 1.6.0
@@ -14200,10 +14212,10 @@ snapshots:
     optionalDependencies:
       vite: 8.3.5(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
-  vitest@5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)):
+  vitest@5.1.0(@types/node@26.6.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      '@vitest/mocker': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))
       chai: 6.3.0
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -14214,11 +14226,11 @@ snapshots:
       tinybench: 6.2.3
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
+      vite: '@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1)'
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@types/node': 26.6.3
-      '@vitest/browser-preview': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.1.0)
+      '@vitest/browser-preview': 5.1.0(@voidzero-dev/vite-plus-core@1.6.0(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.1.0-beta)(yaml@2.9.1))(vitest@5.1.0)
       '@vitest/ui': 5.1.0(vitest@5.1.0)
     transitivePeerDependencies:
       - msw

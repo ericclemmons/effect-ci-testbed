@@ -11,7 +11,11 @@ interface Bridge { request(body: string): Promise<{ status: number; text(): Prom
 const startBridge = async (): Promise<Bridge> => {
   let runtime: { dispose(): Promise<void> } | undefined
   try {
-    const [{ Miniflare, Log, LogLevel }, { build }] = await Promise.all([import("miniflare"), import("esbuild")])
+    // Separate awaits: inferring a Promise.all tuple over miniflare's Zod types
+    // hits TypeScript 7.1's circular-instantiation limit (TS5115).
+    const esbuild = import("esbuild")
+    const { Miniflare, Log, LogLevel } = await import("miniflare")
+    const { build } = await esbuild
     const bundle = await build({ entryPoints: [fileURLToPath(new URL("./local-bridge.ts", import.meta.url))],
       bundle: true, write: false, format: "esm", platform: "neutral", conditions: ["workerd", "import"],
       external: ["node:*", "cloudflare:workers", "cloudflare:workflows"], logLevel: "silent" })
