@@ -26,7 +26,7 @@
     "@effect-ci-testbed/local-container": "workspace:*",
     "@types/node": "^26.6.3",
     "effect": "4.1.2",
-    "typescript": "^7.0.2"
+    "typescript": "7.1.0-beta"
   },
   "engines": {
     "node": ">=24"
